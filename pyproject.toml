@@ -1,0 +1,32 @@
+[project]
+name = "sysu-chemistry-admin"
+version = "0.1.0"
+description = "Standalone SYSU chemistry experiment admin console and backend service."
+requires-python = ">=3.11"
+dependencies = [
+  "beautifulsoup4",
+  "fastapi",
+  "lxml",
+  "pandas",
+  "openpyxl",
+  "openai-agents",
+  "pdfplumber",
+  "pgvector",
+  "psycopg[binary]",
+  "pydantic",
+  "python-multipart",
+  "pymupdf",
+  "pymupdf4llm",
+  "pypdf",
+  "python-pptx",
+  "rapidfuzz",
+  "scikit-learn",
+  "sqlalchemy",
+  "uvicorn",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.fastapi]
+entrypoint = "server.app.admin_main:app"

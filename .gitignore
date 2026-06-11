@@ -1,0 +1,25 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
+dist/
+apps/admin-web/dist/
+data/media/
+*.log
+
+# Admin repository extraction exclusions
+.codex/
+apps/miniprogram/
+miniprogram/
+data/app/
+data/raw/
+data/intermediate/
+data/media/
+pdf_pages*/
+docs/*.pdf
+docs/*.pptx

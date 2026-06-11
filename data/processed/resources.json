@@ -1,0 +1,110 @@
+[
+  {
+    "id": "RES_DOC_CH13_COURSEWARE",
+    "document_id": "DOC_CH13_COURSEWARE",
+    "title": "第13章 卤族元素202603.pdf",
+    "resource_type": "courseware",
+    "path": "docs\\第13章 卤族元素202603.pdf",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:10.021796+00:00"
+  },
+  {
+    "id": "RES_DOC_CH14_COURSEWARE",
+    "document_id": "DOC_CH14_COURSEWARE",
+    "title": "第14章 氧族元素202603.pdf",
+    "resource_type": "courseware",
+    "path": "docs\\第14章 氧族元素202603.pdf",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:10.021811+00:00"
+  },
+  {
+    "id": "RES_DOC_CH15_COURSEWARE",
+    "document_id": "DOC_CH15_COURSEWARE",
+    "title": "第15章 氮族元素202603.pdf",
+    "resource_type": "courseware",
+    "path": "docs\\第15章 氮族元素202603.pdf",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:10.021816+00:00"
+  },
+  {
+    "id": "RES_DOC_CH16_COURSEWARE",
+    "document_id": "DOC_CH16_COURSEWARE",
+    "title": "第16章 碳族元素202604.pdf",
+    "resource_type": "courseware",
+    "path": "docs\\第16章 碳族元素202604.pdf",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:10.021819+00:00"
+  },
+  {
+    "id": "RES_DOC_CH17_COURSEWARE",
+    "document_id": "DOC_CH17_COURSEWARE",
+    "title": "第17章 硼族元素202604.pdf",
+    "resource_type": "courseware",
+    "path": "docs\\第17章 硼族元素202604.pdf",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:10.021821+00:00"
+  },
+  {
+    "id": "RES_DOC_CH18_COURSEWARE",
+    "document_id": "DOC_CH18_COURSEWARE",
+    "title": "第18章 碱金属和碱土金属202604.pdf",
+    "resource_type": "courseware",
+    "path": "docs\\第18章 碱金属和碱土金属202604.pdf",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:10.021822+00:00"
+  },
+  {
+    "id": "RES_DOC_CH19_COURSEWARE",
+    "document_id": "DOC_CH19_COURSEWARE",
+    "title": "第19章 铜锌副族元素202604.pdf",
+    "resource_type": "courseware",
+    "path": "docs\\第19章 铜锌副族元素202604.pdf",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:10.021824+00:00"
+  },
+  {
+    "id": "RES_DOC_CH20_COURSEWARE",
+    "document_id": "DOC_CH20_COURSEWARE",
+    "title": "第20章 d区过渡金属元素202505.pdf",
+    "resource_type": "courseware",
+    "path": "docs\\第20章 d区过渡金属元素202505.pdf",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:10.021827+00:00"
+  },
+  {
+    "id": "RES_DOC_CH21_COURSEWARE",
+    "document_id": "DOC_CH21_COURSEWARE",
+    "title": "第21章 镧系元素和锕系元素202506.pdf",
+    "resource_type": "courseware",
+    "path": "docs\\第21章 镧系元素和锕系元素202506.pdf",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:10.021829+00:00"
+  },
+  {
+    "id": "RES_DOC_CH22_COURSEWARE",
+    "document_id": "DOC_CH22_COURSEWARE",
+    "title": "第22章 氢和稀有气体202506.pdf",
+    "resource_type": "courseware",
+    "path": "docs\\第22章 氢和稀有气体202506.pdf",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:10.021831+00:00"
+  },
+  {
+    "id": "RES_DOC_EXPERIMENTS_SELECTED",
+    "document_id": "DOC_EXPERIMENTS_SELECTED",
+    "title": "元素性质实验-精选实验内容-20260514.pdf",
+    "resource_type": "experiment_material",
+    "path": "docs\\元素性质实验-精选实验内容-20260514.pdf",
+    "review_required": true,
+    "created_at": "2026-06-10T15:57:10.021833+00:00"
+  },
+  {
+    "id": "RES_DOC_KNOWLEDGE_FRAMEWORK",
+    "document_id": "DOC_KNOWLEDGE_FRAMEWORK",
+    "title": "知识框架.md",
+    "resource_type": "knowledge_framework",
+    "path": "docs\\知识框架.md",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:10.021836+00:00"
+  }
+]

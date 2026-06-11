@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: chemistry_exam
+      POSTGRES_USER: chemistry
+      POSTGRES_PASSWORD: chemistry
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chemistry -d chemistry_exam"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    env_file:
+      - .env
+    environment:
+      CHEMISTRY_APP_ENV: production
+      DATA_BACKEND: postgres
+      DATABASE_URL: postgresql+psycopg://chemistry:chemistry@postgres:5432/chemistry_exam
+      MEDIA_ROOT: /app/data/media
+      API_PUBLIC_BASE_URL: http://127.0.0.1:8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data/media:/app/data/media
+      - ./apps/admin-web/dist:/app/apps/admin-web/dist:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

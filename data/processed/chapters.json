@@ -1,0 +1,112 @@
+[
+  {
+    "chapter_id": "CH13",
+    "chapter_number": 13,
+    "chapter_title": "第 13 章 卤族元素",
+    "element_area": "卤族元素",
+    "source_file": "无机知识点框架修改版.md",
+    "source_label": "第 13 章 卤族元素",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:01.802336+00:00"
+  },
+  {
+    "chapter_id": "CH14",
+    "chapter_number": 14,
+    "chapter_title": "第 14 章 氧族元素",
+    "element_area": "氧族元素",
+    "source_file": "无机知识点框架修改版.md",
+    "source_label": "第 14 章 氧族元素",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:01.802874+00:00"
+  },
+  {
+    "chapter_id": "CH15",
+    "chapter_number": 15,
+    "chapter_title": "第 15 章 氮族元素",
+    "element_area": "氮族元素",
+    "source_file": "无机知识点框架修改版.md",
+    "source_label": "第 15 章 氮族元素",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:01.803278+00:00"
+  },
+  {
+    "chapter_id": "CH16",
+    "chapter_number": 16,
+    "chapter_title": "第 16 章 碳族元素",
+    "element_area": "碳族元素",
+    "source_file": "无机知识点框架修改版.md",
+    "source_label": "第 16 章 碳族元素",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:01.803806+00:00"
+  },
+  {
+    "chapter_id": "CH17",
+    "chapter_number": 17,
+    "chapter_title": "第 17 章 硼族元素",
+    "element_area": "硼族元素",
+    "source_file": "无机知识点框架修改版.md",
+    "source_label": "第 17 章 硼族元素",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:01.804240+00:00"
+  },
+  {
+    "chapter_id": "CH18",
+    "chapter_number": 18,
+    "chapter_title": "第 18 章 碱金属和碱土金属",
+    "element_area": "碱金属和碱土金属",
+    "source_file": "无机知识点框架修改版.md",
+    "source_label": "第 18 章 碱金属和碱土金属",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:01.804766+00:00"
+  },
+  {
+    "chapter_id": "CH19",
+    "chapter_number": 19,
+    "chapter_title": "第 19 章 铜锌副族元素",
+    "element_area": "铜锌副族元素",
+    "source_file": "无机知识点框架修改版.md",
+    "source_label": "第 19 章 铜锌副族元素",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:01.805041+00:00"
+  },
+  {
+    "chapter_id": "CH20",
+    "chapter_number": 20,
+    "chapter_title": "第 20 章 d 区过渡金属元素",
+    "element_area": "d 区过渡金属元素",
+    "source_file": "无机知识点框架修改版.md",
+    "source_label": "第 20 章 d 区过渡金属元素",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:01.805463+00:00"
+  },
+  {
+    "chapter_id": "CH21",
+    "chapter_number": 21,
+    "chapter_title": "第 21 章 镧系和锕系元素",
+    "element_area": "镧系和锕系元素",
+    "source_file": "无机知识点框架修改版.md",
+    "source_label": "第 21 章 镧系和锕系元素",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:01.805993+00:00"
+  },
+  {
+    "chapter_id": "CH22",
+    "chapter_number": 22,
+    "chapter_title": "第 22 章 氢和稀有气体",
+    "element_area": "氢和稀有气体",
+    "source_file": "无机知识点框架修改版.md",
+    "source_label": "第 22 章 氢和稀有气体",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:01.806192+00:00"
+  },
+  {
+    "chapter_id": "CH00",
+    "chapter_number": 0,
+    "chapter_title": "通识/跨章节",
+    "element_area": "通识/跨章节",
+    "source_file": "无机知识点框架修改版.md",
+    "source_label": "无机化学通识",
+    "review_required": false,
+    "created_at": "2026-06-10T15:57:01.806481+00:00"
+  }
+]

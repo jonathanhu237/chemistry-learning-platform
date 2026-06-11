@@ -1,0 +1,20 @@
+{
+  "created_at": "2026-06-10T15:57:10.139037+00:00",
+  "chunk_count": 998,
+  "keyword_terms": 12902,
+  "vector_enabled": false,
+  "embedding": {
+    "enabled": false,
+    "reason": "No embedding API or local model is configured by default.",
+    "dimension_config_env": "EMBEDDING_DIMENSION"
+  },
+  "retrieval_strategy": [
+    "metadata filter: chapter_id, experiment_id, knowledge_point_ids",
+    "keyword/BM25-style fallback over source_chunks",
+    "full corpus fallback only when scoped retrieval has no result"
+  ],
+  "files": {
+    "chunks": "data/processed/source_chunks.json",
+    "keyword_index": "data/processed/rag_keyword_index.json"
+  }
+}

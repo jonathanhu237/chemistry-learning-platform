@@ -1,0 +1,3550 @@
+{
+  "experiments": [
+    {
+      "id": "EXP_19_1_01",
+      "code": "19-1-01",
+      "title": "氯、溴、碘的置换次序",
+      "title_en": null,
+      "summary": "来自实验 19-1 卤素 / 卤素的氧化性的具体实验点。",
+      "status": "published",
+      "display_order": 1,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）氯、溴、碘的置换次序",
+          "source_line": 16
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-1",
+        "parent_title": "实验 19-1 卤素",
+        "outline_group": "（一）卤素",
+        "module_title": "1. 卤素的氧化性",
+        "module_display_title": "卤素的氧化性",
+        "procedure_heading": "（1）氯、溴、碘的置换次序",
+        "video_candidates": [
+          "氯水 + KBr 溶液 + CCl₄",
+          "氯水 + KI 溶液 + CCl₄",
+          "溴水 + KI 溶液 + CCl₄"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH13",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_1_02",
+      "code": "19-1-02",
+      "title": "氯水、溴水、碘水氧化性差异的比较",
+      "title_en": null,
+      "summary": "来自实验 19-1 卤素 / 卤素的氧化性的具体实验点。",
+      "status": "published",
+      "display_order": 2,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）氯水、溴水、碘水氧化性差异的比较",
+          "source_line": 22
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-1",
+        "parent_title": "实验 19-1 卤素",
+        "outline_group": "（一）卤素",
+        "module_title": "1. 卤素的氧化性",
+        "module_display_title": "卤素的氧化性",
+        "procedure_heading": "（2）氯水、溴水、碘水氧化性差异的比较",
+        "video_candidates": [
+          "氯水、溴水、碘水分别与 Na₂S₂O₃ 溶液反应",
+          "氯水、溴水、碘水分别与饱和硫化氢水溶液 / 硫化钠替代液反应"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH13",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_1_03",
+      "code": "19-1-03",
+      "title": "氯水对溴离子、碘离子混合溶液的氧化顺序",
+      "title_en": null,
+      "summary": "来自实验 19-1 卤素 / 卤素的氧化性的具体实验点。",
+      "status": "published",
+      "display_order": 3,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（3）氯水对溴离子、碘离子混合溶液的氧化顺序",
+          "source_line": 27
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-1",
+        "parent_title": "实验 19-1 卤素",
+        "outline_group": "（一）卤素",
+        "module_title": "1. 卤素的氧化性",
+        "module_display_title": "卤素的氧化性",
+        "procedure_heading": "（3）氯水对溴离子、碘离子混合溶液的氧化顺序",
+        "video_candidates": [
+          "KBr、KI、CCl₄ 混合体系中逐滴加入氯水",
+          "观察 CCl₄ 层颜色变化，判断 I⁻、Br⁻ 被氧化的先后顺序"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH13",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_1_04",
+      "code": "19-1-04",
+      "title": "卤素离子的还原性（通风橱内进行）",
+      "title_en": null,
+      "summary": "来自实验 19-1 卤素 / 卤素离子的还原性（通风橱内进行）的具体实验点。",
+      "status": "published",
+      "display_order": 4,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "2. 卤素离子的还原性（通风橱内进行）",
+          "source_line": 32
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-1",
+        "parent_title": "实验 19-1 卤素",
+        "outline_group": "（一）卤素",
+        "module_title": "2. 卤素离子的还原性（通风橱内进行）",
+        "module_display_title": "卤素离子的还原性（通风橱内进行）",
+        "procedure_heading": null,
+        "video_candidates": [
+          "KI 固体 + 浓硫酸",
+          "KBr 固体 + 浓硫酸",
+          "KCl 固体 + 浓硫酸",
+          "用湿醋酸铅试纸、湿 KI-淀粉试纸、湿 pH 试纸检验产生的气体",
+          "KBr 与浓硫酸反应后，用湿 KI-淀粉试纸检验生成的溴"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH13",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_1_05",
+      "code": "19-1-05",
+      "title": "次氯酸盐的氧化性",
+      "title_en": null,
+      "summary": "来自实验 19-1 卤素 / 次卤酸盐及卤酸盐的氧化性的具体实验点。",
+      "status": "published",
+      "display_order": 5,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）次氯酸盐的氧化性",
+          "source_line": 42
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-1",
+        "parent_title": "实验 19-1 卤素",
+        "outline_group": "（一）卤素",
+        "module_title": "3. 次卤酸盐及卤酸盐的氧化性",
+        "module_display_title": "次卤酸盐及卤酸盐的氧化性",
+        "procedure_heading": "（1）次氯酸盐的氧化性",
+        "video_candidates": [
+          "NaClO + MnSO₄",
+          "NaClO + 品红溶液",
+          "NaClO + 酸性 KI-淀粉溶液"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH13",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_1_06",
+      "code": "19-1-06",
+      "title": "氯酸盐的氧化性",
+      "title_en": null,
+      "summary": "来自实验 19-1 卤素 / 次卤酸盐及卤酸盐的氧化性的具体实验点。",
+      "status": "published",
+      "display_order": 6,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）氯酸盐的氧化性",
+          "source_line": 48
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-1",
+        "parent_title": "实验 19-1 卤素",
+        "outline_group": "（一）卤素",
+        "module_title": "3. 次卤酸盐及卤酸盐的氧化性",
+        "module_display_title": "次卤酸盐及卤酸盐的氧化性",
+        "procedure_heading": "（2）氯酸盐的氧化性",
+        "video_candidates": [
+          "KClO₃ + 浓盐酸，并用湿 KI-淀粉试纸检验 Cl₂",
+          "KClO₃ + Na₂SO₃：中性条件与酸性条件对比",
+          "用 AgNO₃ 验证 KClO₃ 与 Na₂SO₃ 反应后的产物",
+          "KClO₃ + KI + CCl₄，酸化前后比较",
+          "讨论酸化试剂选择：H₂SO₄、HNO₃、HCl"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH13",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_1_07",
+      "code": "19-1-07",
+      "title": "氯含氧酸盐的氧化性",
+      "title_en": null,
+      "summary": "来自实验 19-1 卤素 / 次卤酸盐及卤酸盐的氧化性的具体实验点。",
+      "status": "published",
+      "display_order": 7,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（3）氯含氧酸盐的氧化性",
+          "source_line": 56
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-1",
+        "parent_title": "实验 19-1 卤素",
+        "outline_group": "（一）卤素",
+        "module_title": "3. 次卤酸盐及卤酸盐的氧化性",
+        "module_display_title": "次卤酸盐及卤酸盐的氧化性",
+        "procedure_heading": "（3）氯含氧酸盐的氧化性",
+        "video_candidates": [
+          "NaClO + KI-淀粉溶液",
+          "KClO₃ + KI-淀粉溶液",
+          "KClO₄ + KI-淀粉溶液",
+          "对不反应体系再加入 H₂SO₄ 酸化，比较氧化能力"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH13",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_1_08",
+      "code": "19-1-08",
+      "title": "卤化银的感光性",
+      "title_en": null,
+      "summary": "来自实验 19-1 卤素 / 金属卤化物的性质的具体实验点。",
+      "status": "published",
+      "display_order": 8,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）卤化银的感光性",
+          "source_line": 65
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-1",
+        "parent_title": "实验 19-1 卤素",
+        "outline_group": "（一）卤素",
+        "module_title": "4. 金属卤化物的性质",
+        "module_display_title": "金属卤化物的性质",
+        "procedure_heading": "（1）卤化银的感光性",
+        "video_candidates": [
+          "AgCl 沉淀感光性",
+          "AgBr 沉淀感光性",
+          "AgI 沉淀感光性",
+          "AgCl、AgBr、AgI 涂在滤纸上，用钥匙遮挡后光照，观察钥匙轮廓"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH13",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_2_01",
+      "code": "19-2-01",
+      "title": "臭氧的制备与性质",
+      "title_en": null,
+      "summary": "来自实验 19-2 氢、氧、过氧化氢 / 臭氧的制备与性质的具体实验点。",
+      "status": "published",
+      "display_order": 9,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "1. 臭氧的制备与性质",
+          "source_line": 76
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-2",
+        "parent_title": "实验 19-2 氢、氧、过氧化氢",
+        "outline_group": "（二）氢、氧、过氧化氢",
+        "module_title": "1. 臭氧的制备与性质",
+        "module_display_title": "臭氧的制备与性质",
+        "procedure_heading": null,
+        "video_candidates": [
+          "BaO₂·2H₂O + 浓 H₂SO₄ 制备臭氧",
+          "用 KI-淀粉试纸检验逸出气体"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH14",
+          "coverage_type": "primary",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH22",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_2_02",
+      "code": "19-2-02",
+      "title": "过氧化氢的制备",
+      "title_en": null,
+      "summary": "来自实验 19-2 氢、氧、过氧化氢 / 过氧化氢的制备与性质的具体实验点。",
+      "status": "published",
+      "display_order": 10,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）过氧化氢的制备",
+          "source_line": 83
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-2",
+        "parent_title": "实验 19-2 氢、氧、过氧化氢",
+        "outline_group": "（二）氢、氧、过氧化氢",
+        "module_title": "2. 过氧化氢的制备与性质",
+        "module_display_title": "过氧化氢的制备与性质",
+        "procedure_heading": "（1）过氧化氢的制备",
+        "video_candidates": [
+          "Na₂O₂ + 水",
+          "冰水冷却",
+          "加入冷却过的 H₂SO₄ 酸化",
+          "用试纸检验酸碱性变化"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH14",
+          "coverage_type": "primary",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH22",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_2_03",
+      "code": "19-2-03",
+      "title": "过氧化氢的鉴定",
+      "title_en": null,
+      "summary": "来自实验 19-2 氢、氧、过氧化氢 / 过氧化氢的制备与性质的具体实验点。",
+      "status": "published",
+      "display_order": 11,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）过氧化氢的鉴定",
+          "source_line": 90
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-2",
+        "parent_title": "实验 19-2 氢、氧、过氧化氢",
+        "outline_group": "（二）氢、氧、过氧化氢",
+        "module_title": "2. 过氧化氢的制备与性质",
+        "module_display_title": "过氧化氢的制备与性质",
+        "procedure_heading": "（2）过氧化氢的鉴定",
+        "video_candidates": [
+          "H₂O₂ + 乙醚 + H₂SO₄ + K₂CrO₄",
+          "观察水层和乙醚层颜色变化",
+          "通过生成蓝色过氧化铬 / 乙醚层蓝色鉴定 H₂O₂"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH14",
+          "coverage_type": "primary",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH22",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_2_04",
+      "code": "19-2-04",
+      "title": "过氧化氢的性质",
+      "title_en": null,
+      "summary": "来自实验 19-2 氢、氧、过氧化氢 / 过氧化氢的制备与性质的具体实验点。",
+      "status": "published",
+      "display_order": 12,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（3）过氧化氢的性质",
+          "source_line": 96
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-2",
+        "parent_title": "实验 19-2 氢、氧、过氧化氢",
+        "outline_group": "（二）氢、氧、过氧化氢",
+        "module_title": "2. 过氧化氢的制备与性质",
+        "module_display_title": "过氧化氢的制备与性质",
+        "procedure_heading": "（3）过氧化氢的性质",
+        "video_candidates": [
+          "H₂O₂ + 40% NaOH + 无水乙醇",
+          "酸性 H₂O₂ + KI",
+          "PbS 沉淀 + H₂O₂，观察黑色 PbS 转化为白色 PbSO₄",
+          "酸性 H₂O₂ + KMnO₄",
+          "AgNO₃ + NaOH 生成 Ag₂O 后再加 H₂O₂",
+          "AgNO₃ 直接与 H₂O₂ 反应，与碱性体系对比",
+          "H₂O₂ + NaOH + MnSO₄",
+          "生成 MnO₂ 后，酸化再加入 H₂O₂",
+          "比较 H₂O₂ 在碱性、酸性介质中的氧化剂 / 还原剂角色",
+          "加热 H₂O₂",
+          "H₂O₂ + MnO₂",
+          "H₂O₂ + 铁粉"
+        ],
+        "h6_sections": [
+          {
+            "title": "① 酸性 / 碱性条件下的行为",
+            "clean_title": "酸性 / 碱性条件下的行为",
+            "line": 98,
+            "video_candidates": [
+              "H₂O₂ + 40% NaOH + 无水乙醇"
+            ]
+          },
+          {
+            "title": "② 氧化性",
+            "clean_title": "氧化性",
+            "line": 102,
+            "video_candidates": [
+              "酸性 H₂O₂ + KI",
+              "PbS 沉淀 + H₂O₂，观察黑色 PbS 转化为白色 PbSO₄"
+            ]
+          },
+          {
+            "title": "③ 还原性",
+            "clean_title": "还原性",
+            "line": 107,
+            "video_candidates": [
+              "酸性 H₂O₂ + KMnO₄",
+              "AgNO₃ + NaOH 生成 Ag₂O 后再加 H₂O₂",
+              "AgNO₃ 直接与 H₂O₂ 反应，与碱性体系对比"
+            ]
+          },
+          {
+            "title": "④ 介质酸碱性对 H₂O₂ 氧化还原性的影响",
+            "clean_title": "介质酸碱性对 H₂O₂ 氧化还原性的影响",
+            "line": 113,
+            "video_candidates": [
+              "H₂O₂ + NaOH + MnSO₄",
+              "生成 MnO₂ 后，酸化再加入 H₂O₂",
+              "比较 H₂O₂ 在碱性、酸性介质中的氧化剂 / 还原剂角色"
+            ]
+          },
+          {
+            "title": "⑤ 过氧化氢的分解",
+            "clean_title": "过氧化氢的分解",
+            "line": 119,
+            "video_candidates": [
+              "加热 H₂O₂",
+              "H₂O₂ + MnO₂",
+              "H₂O₂ + 铁粉"
+            ]
+          }
+        ],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH14",
+          "coverage_type": "primary",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH22",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_2_05",
+      "code": "19-2-05",
+      "title": "过氧化氢的氧化还原性",
+      "title_en": null,
+      "summary": "来自实验 19-2 氢、氧、过氧化氢 / 过氧化氢的氧化还原性的具体实验点。",
+      "status": "published",
+      "display_order": 13,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "3. 过氧化氢的氧化还原性",
+          "source_line": 125
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-2",
+        "parent_title": "实验 19-2 氢、氧、过氧化氢",
+        "outline_group": "（二）氢、氧、过氧化氢",
+        "module_title": "3. 过氧化氢的氧化还原性",
+        "module_display_title": "过氧化氢的氧化还原性",
+        "procedure_heading": null,
+        "video_candidates": [
+          "氧化性：Pb(Ac)₂ 试纸 + H₂S 生成 PbS，再滴加 H₂O₂",
+          "还原性：酸性 H₂O₂ + KMnO₄"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH14",
+          "coverage_type": "primary",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH22",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_3_01",
+      "code": "19-3-01",
+      "title": "二氧化硫的制备（通风橱内进行）",
+      "title_en": null,
+      "summary": "来自实验 19-3 硫及其化合物 / 硫的氧化物——二氧化硫的具体实验点。",
+      "status": "published",
+      "display_order": 14,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）二氧化硫的制备（通风橱内进行）",
+          "source_line": 136
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-3",
+        "parent_title": "实验 19-3 硫及其化合物",
+        "outline_group": "（三）硫及其化合物",
+        "module_title": "1. 硫的氧化物——二氧化硫",
+        "module_display_title": "硫的氧化物——二氧化硫",
+        "procedure_heading": "（1）二氧化硫的制备（通风橱内进行）",
+        "video_candidates": [
+          "Na₂SO₃ + 浓 H₂SO₄ 制备 SO₂"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH14",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_3_02",
+      "code": "19-3-02",
+      "title": "二氧化硫的性质",
+      "title_en": null,
+      "summary": "来自实验 19-3 硫及其化合物 / 硫的氧化物——二氧化硫的具体实验点。",
+      "status": "published",
+      "display_order": 15,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）二氧化硫的性质",
+          "source_line": 140
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-3",
+        "parent_title": "实验 19-3 硫及其化合物",
+        "outline_group": "（三）硫及其化合物",
+        "module_title": "1. 硫的氧化物——二氧化硫",
+        "module_display_title": "硫的氧化物——二氧化硫",
+        "procedure_heading": "（2）二氧化硫的性质",
+        "video_candidates": [
+          "还原性：SO₂ + 酸性 KMnO₄",
+          "氧化性：SO₂ + H₂S / 硫化钠替代液",
+          "漂白作用：SO₂ + 品红溶液",
+          "品红褪色后加热，观察颜色是否恢复"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH14",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_3_03",
+      "code": "19-3-03",
+      "title": "SO₃²⁻ 的检出",
+      "title_en": null,
+      "summary": "来自实验 19-3 硫及其化合物 / 硫的氧化物——二氧化硫的具体实验点。",
+      "status": "published",
+      "display_order": 16,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（3）SO₃²⁻ 的检出",
+          "source_line": 147
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-3",
+        "parent_title": "实验 19-3 硫及其化合物",
+        "outline_group": "（三）硫及其化合物",
+        "module_title": "1. 硫的氧化物——二氧化硫",
+        "module_display_title": "硫的氧化物——二氧化硫",
+        "procedure_heading": "（3）SO₃²⁻ 的检出",
+        "video_candidates": [
+          "设计方法除去 SO₄²⁻ 干扰",
+          "验证样品中 SO₃²⁻ 的存在"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH14",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_3_04",
+      "code": "19-3-04",
+      "title": "性质",
+      "title_en": null,
+      "summary": "来自实验 19-3 硫及其化合物 / 硫代硫酸钠的制备与性质的具体实验点。",
+      "status": "published",
+      "display_order": 17,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）性质",
+          "source_line": 156
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-3",
+        "parent_title": "实验 19-3 硫及其化合物",
+        "outline_group": "（三）硫及其化合物",
+        "module_title": "2. 硫代硫酸钠的制备与性质",
+        "module_display_title": "硫代硫酸钠的制备与性质",
+        "procedure_heading": "（1）性质",
+        "video_candidates": [
+          "Na₂S₂O₃ + HCl",
+          "Na₂S₂O₃ + 碘水",
+          "Na₂S₂O₃ 反应后溶液中 SO₄²⁻ 的验证实验",
+          "Na₂S₂O₃ + AgNO₃，观察沉淀生成、颜色变化及配位溶解"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH14",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_3_05",
+      "code": "19-3-05",
+      "title": "过二硫酸盐的氧化性",
+      "title_en": null,
+      "summary": "来自实验 19-3 硫及其化合物 / 过二硫酸盐的氧化性的具体实验点。",
+      "status": "published",
+      "display_order": 18,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "3. 过二硫酸盐的氧化性",
+          "source_line": 163
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-3",
+        "parent_title": "实验 19-3 硫及其化合物",
+        "outline_group": "（三）硫及其化合物",
+        "module_title": "3. 过二硫酸盐的氧化性",
+        "module_display_title": "过二硫酸盐的氧化性",
+        "procedure_heading": null,
+        "video_candidates": [
+          "K₂S₂O₈ + MnSO₄ + H₂SO₄ + AgNO₃，加热",
+          "K₂S₂O₈ + MnSO₄ + H₂SO₄，不加 AgNO₃，对比催化作用",
+          "K₂S₂O₈ + KI，酸性条件下观察 I₂ 生成"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH14",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_3_06",
+      "code": "19-3-06",
+      "title": "过硫酸盐的氧化性",
+      "title_en": null,
+      "summary": "来自实验 19-3 硫及其化合物 / 过硫酸盐的氧化性的具体实验点。",
+      "status": "published",
+      "display_order": 19,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "4. 过硫酸盐的氧化性",
+          "source_line": 169
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-3",
+        "parent_title": "实验 19-3 硫及其化合物",
+        "outline_group": "（三）硫及其化合物",
+        "module_title": "4. 过硫酸盐的氧化性",
+        "module_display_title": "过硫酸盐的氧化性",
+        "procedure_heading": null,
+        "video_candidates": [
+          "MnSO₄ + H₂SO₄ + AgNO₃ + K₂S₂O₈",
+          "MnSO₄ + H₂SO₄ + K₂S₂O₈，不加 AgNO₃ 对照"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH14",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_4_01",
+      "code": "19-4-01",
+      "title": "亚硝酸的生成与分解",
+      "title_en": null,
+      "summary": "来自实验 19-4 氮和磷 / 亚硝酸及其盐的性质的具体实验点。",
+      "status": "published",
+      "display_order": 20,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）亚硝酸的生成与分解",
+          "source_line": 180
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-4",
+        "parent_title": "实验 19-4 氮和磷",
+        "outline_group": "（四）氮和磷",
+        "module_title": "1. 亚硝酸及其盐的性质",
+        "module_display_title": "亚硝酸及其盐的性质",
+        "procedure_heading": "（1）亚硝酸的生成与分解",
+        "video_candidates": [
+          "冰水冷却的饱和 NaNO₂ + H₂SO₄",
+          "观察 HNO₂ 生成、分解及 NO / NO₂ 气体产生"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_4_02",
+      "code": "19-4-02",
+      "title": "亚硝酸的氧化性",
+      "title_en": null,
+      "summary": "来自实验 19-4 氮和磷 / 亚硝酸及其盐的性质的具体实验点。",
+      "status": "published",
+      "display_order": 21,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）亚硝酸的氧化性",
+          "source_line": 185
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-4",
+        "parent_title": "实验 19-4 氮和磷",
+        "outline_group": "（四）氮和磷",
+        "module_title": "1. 亚硝酸及其盐的性质",
+        "module_display_title": "亚硝酸及其盐的性质",
+        "procedure_heading": "（2）亚硝酸的氧化性",
+        "video_candidates": [
+          "酸性 KI 溶液 + NaNO₂",
+          "微热后观察 I₂ 生成及颜色变化"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_4_03",
+      "code": "19-4-03",
+      "title": "亚硝酸的还原性",
+      "title_en": null,
+      "summary": "来自实验 19-4 氮和磷 / 亚硝酸及其盐的性质的具体实验点。",
+      "status": "published",
+      "display_order": 22,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（3）亚硝酸的还原性",
+          "source_line": 190
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-4",
+        "parent_title": "实验 19-4 氮和磷",
+        "outline_group": "（四）氮和磷",
+        "module_title": "1. 亚硝酸及其盐的性质",
+        "module_display_title": "亚硝酸及其盐的性质",
+        "procedure_heading": "（3）亚硝酸的还原性",
+        "video_candidates": [
+          "NaNO₂ + KMnO₄",
+          "再加入 H₂SO₄ 酸化，观察 KMnO₄ 褪色"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_4_04",
+      "code": "19-4-04",
+      "title": "亚硝酸根的检验方法",
+      "title_en": null,
+      "summary": "来自实验 19-4 氮和磷 / 亚硝酸及其盐的性质的具体实验点。",
+      "status": "published",
+      "display_order": 23,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（4）亚硝酸根的检验方法",
+          "source_line": 195
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-4",
+        "parent_title": "实验 19-4 氮和磷",
+        "outline_group": "（四）氮和磷",
+        "module_title": "1. 亚硝酸及其盐的性质",
+        "module_display_title": "亚硝酸及其盐的性质",
+        "procedure_heading": "（4）亚硝酸根的检验方法",
+        "video_candidates": [
+          "点滴板法：NaNO₂ + HAc + 对氨基苯磺酸 + 萘胺",
+          "KI-CCl₄ 法：NaNO₂ + KI + 酸化 + CCl₄，观察 CCl₄ 层颜色"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_4_05",
+      "code": "19-4-05",
+      "title": "亚硝酸的氧化还原性",
+      "title_en": null,
+      "summary": "来自实验 19-4 氮和磷 / 亚硝酸的氧化还原性的具体实验点。",
+      "status": "published",
+      "display_order": 24,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "2. 亚硝酸的氧化还原性",
+          "source_line": 200
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-4",
+        "parent_title": "实验 19-4 氮和磷",
+        "outline_group": "（四）氮和磷",
+        "module_title": "2. 亚硝酸的氧化还原性",
+        "module_display_title": "亚硝酸的氧化还原性",
+        "procedure_heading": null,
+        "video_candidates": [
+          "HNO₂ 氧化性：酸性 NaNO₂ + KI",
+          "HNO₂ 还原性：NaNO₂ + KMnO₄ + H₂SO₄"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_4_06",
+      "code": "19-4-06",
+      "title": "硝酸的氧化性",
+      "title_en": null,
+      "summary": "来自实验 19-4 氮和磷 / 硝酸及其盐的性质的具体实验点。",
+      "status": "published",
+      "display_order": 25,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）硝酸的氧化性",
+          "source_line": 207
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-4",
+        "parent_title": "实验 19-4 氮和磷",
+        "outline_group": "（四）氮和磷",
+        "module_title": "3. 硝酸及其盐的性质",
+        "module_display_title": "硝酸及其盐的性质",
+        "procedure_heading": "（1）硝酸的氧化性",
+        "video_candidates": [
+          "浓硝酸 + 硫粉",
+          "浓硝酸 + 硫化钠 / 硫化氢替代体系",
+          "浓硝酸 + 铜",
+          "稀硝酸 + 铜",
+          "稀硝酸 + 锌",
+          "验证稀硝酸与 Zn 反应产物中 NH₃ / NH₄⁺ 的存在"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_4_07",
+      "code": "19-4-07",
+      "title": "硝酸盐的热分解",
+      "title_en": null,
+      "summary": "来自实验 19-4 氮和磷 / 硝酸及其盐的性质的具体实验点。",
+      "status": "published",
+      "display_order": 26,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）硝酸盐的热分解",
+          "source_line": 216
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-4",
+        "parent_title": "实验 19-4 氮和磷",
+        "outline_group": "（四）氮和磷",
+        "module_title": "3. 硝酸及其盐的性质",
+        "module_display_title": "硝酸及其盐的性质",
+        "procedure_heading": "（2）硝酸盐的热分解",
+        "video_candidates": [
+          "KNO₃ 热分解",
+          "Cu(NO₃)₂ 热分解",
+          "AgNO₃ 热分解",
+          "用火柴余烬检验热分解生成的气体"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_4_08",
+      "code": "19-4-08",
+      "title": "硝酸根的检验",
+      "title_en": null,
+      "summary": "来自实验 19-4 氮和磷 / 硝酸及其盐的性质的具体实验点。",
+      "status": "published",
+      "display_order": 27,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（3）硝酸根的检验",
+          "source_line": 223
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-4",
+        "parent_title": "实验 19-4 氮和磷",
+        "outline_group": "（四）氮和磷",
+        "module_title": "3. 硝酸及其盐的性质",
+        "module_display_title": "硝酸及其盐的性质",
+        "procedure_heading": "（3）硝酸根的检验",
+        "video_candidates": [
+          "FeSO₄·7H₂O + NaNO₃ + 浓 H₂SO₄ 棕色环实验",
+          "静置、不振荡，观察棕色环形成"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_4_09",
+      "code": "19-4-09",
+      "title": "硝酸根的检验",
+      "title_en": null,
+      "summary": "来自实验 19-4 氮和磷 / 硝酸根的检验的具体实验点。",
+      "status": "published",
+      "display_order": 28,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "4. 硝酸根的检验",
+          "source_line": 228
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-4",
+        "parent_title": "实验 19-4 氮和磷",
+        "outline_group": "（四）氮和磷",
+        "module_title": "4. 硝酸根的检验",
+        "module_display_title": "硝酸根的检验",
+        "procedure_heading": null,
+        "video_candidates": [
+          "FeSO₄·7H₂O + NaNO₃ + 浓 H₂SO₄",
+          "观察棕色环"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_5_01",
+      "code": "19-5-01",
+      "title": "难溶性硅酸盐的生成——“水中花园”",
+      "title_en": null,
+      "summary": "来自实验 19-5 碳、硅、硼 / 难溶性硅酸盐的生成——“水中花园”的具体实验点。",
+      "status": "published",
+      "display_order": 29,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "1. 难溶性硅酸盐的生成——“水中花园”",
+          "source_line": 239
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-5",
+        "parent_title": "实验 19-5 碳、硅、硼",
+        "outline_group": "（五）碳、硅、硼",
+        "module_title": "1. 难溶性硅酸盐的生成——“水中花园”",
+        "module_display_title": "难溶性硅酸盐的生成——“水中花园”",
+        "procedure_heading": null,
+        "video_candidates": [
+          "水玻璃 + CaCl₂",
+          "水玻璃 + CuSO₄",
+          "水玻璃 + Co(NO₃)₂",
+          "水玻璃 + NiSO₄",
+          "水玻璃 + MnSO₄",
+          "水玻璃 + ZnSO₄",
+          "水玻璃 + FeCl₂",
+          "水玻璃 + FeCl₃"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH16",
+          "coverage_type": "primary",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH17",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_6_01",
+      "code": "19-6-01",
+      "title": "金属钠燃烧及产物性质",
+      "title_en": null,
+      "summary": "来自实验 19-6 碱金属和碱土金属 / *碱金属、碱土金属活泼性的比较的具体实验点。",
+      "status": "published",
+      "display_order": 30,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）金属钠燃烧及产物性质",
+          "source_line": 256
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-6",
+        "parent_title": "实验 19-6 碱金属和碱土金属",
+        "outline_group": "（六）碱金属和碱土金属",
+        "module_title": "1. *碱金属、碱土金属活泼性的比较",
+        "module_display_title": "*碱金属、碱土金属活泼性的比较",
+        "procedure_heading": "（1）金属钠燃烧及产物性质",
+        "video_candidates": [
+          "金属钠加热燃烧",
+          "燃烧产物加水溶解",
+          "检验溶液 pH",
+          "酸化后加入 KMnO₄，检验过氧化物 / 过氧化氢相关性质"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH18",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_6_02",
+      "code": "19-6-02",
+      "title": "金属镁燃烧",
+      "title_en": null,
+      "summary": "来自实验 19-6 碱金属和碱土金属 / *碱金属、碱土金属活泼性的比较的具体实验点。",
+      "status": "published",
+      "display_order": 31,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）金属镁燃烧",
+          "source_line": 263
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-6",
+        "parent_title": "实验 19-6 碱金属和碱土金属",
+        "outline_group": "（六）碱金属和碱土金属",
+        "module_title": "1. *碱金属、碱土金属活泼性的比较",
+        "module_display_title": "*碱金属、碱土金属活泼性的比较",
+        "procedure_heading": "（2）金属镁燃烧",
+        "video_candidates": [
+          "镁条除去氧化膜后点燃",
+          "观察镁燃烧及生成物"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH18",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_6_03",
+      "code": "19-6-03",
+      "title": "与水的作用",
+      "title_en": null,
+      "summary": "来自实验 19-6 碱金属和碱土金属 / *碱金属、碱土金属活泼性的比较的具体实验点。",
+      "status": "published",
+      "display_order": 32,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（3）与水的作用",
+          "source_line": 268
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-6",
+        "parent_title": "实验 19-6 碱金属和碱土金属",
+        "outline_group": "（六）碱金属和碱土金属",
+        "module_title": "1. *碱金属、碱土金属活泼性的比较",
+        "module_display_title": "*碱金属、碱土金属活泼性的比较",
+        "procedure_heading": "（3）与水的作用",
+        "video_candidates": [
+          "金属钠与水反应",
+          "原文列出金属钾与水反应，但试剂处标注“不采购，不做”",
+          "镁条与冷水反应",
+          "镁条与热水反应",
+          "金属钙与水反应"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH18",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_6_04",
+      "code": "19-6-04",
+      "title": "焰色反应",
+      "title_en": null,
+      "summary": "来自实验 19-6 碱金属和碱土金属 / 焰色反应的具体实验点。",
+      "status": "published",
+      "display_order": 33,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "2. 焰色反应",
+          "source_line": 276
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-6",
+        "parent_title": "实验 19-6 碱金属和碱土金属",
+        "outline_group": "（六）碱金属和碱土金属",
+        "module_title": "2. 焰色反应",
+        "module_display_title": "焰色反应",
+        "procedure_heading": null,
+        "video_candidates": [
+          "Li⁺ 焰色反应",
+          "Na⁺ 焰色反应",
+          "K⁺ 焰色反应，需透过钴玻璃观察",
+          "Ca²⁺ 焰色反应",
+          "Sr²⁺ 焰色反应",
+          "Ba²⁺ 焰色反应",
+          "PDF 备注：可考虑用网络视频或自制视频展示焰色反应"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH18",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_8_01",
+      "code": "19-8-01",
+      "title": "Pb(OH)₂ 的生成与性质",
+      "title_en": null,
+      "summary": "来自实验 19-8 锡、铅、砷、锑、铋 / 氢氧化物的性质的具体实验点。",
+      "status": "published",
+      "display_order": 34,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）Pb(OH)₂ 的生成与性质",
+          "source_line": 298
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-8",
+        "parent_title": "实验 19-8 锡、铅、砷、锑、铋",
+        "outline_group": "（八）锡、铅、砷、锑、铋",
+        "module_title": "1. 氢氧化物的性质",
+        "module_display_title": "氢氧化物的性质",
+        "procedure_heading": "（1）Pb(OH)₂ 的生成与性质",
+        "video_candidates": [
+          "Pb(NO₃)₂ + NaOH",
+          "Pb(OH)₂ + HNO₃",
+          "Pb(OH)₂ + NaOH"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH16",
+          "coverage_type": "partial",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_8_02",
+      "code": "19-8-02",
+      "title": "Sn(OH)₂ 的生成与性质",
+      "title_en": null,
+      "summary": "来自实验 19-8 锡、铅、砷、锑、铋 / 氢氧化物的性质的具体实验点。",
+      "status": "published",
+      "display_order": 35,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）Sn(OH)₂ 的生成与性质",
+          "source_line": 304
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-8",
+        "parent_title": "实验 19-8 锡、铅、砷、锑、铋",
+        "outline_group": "（八）锡、铅、砷、锑、铋",
+        "module_title": "1. 氢氧化物的性质",
+        "module_display_title": "氢氧化物的性质",
+        "procedure_heading": "（2）Sn(OH)₂ 的生成与性质",
+        "video_candidates": [
+          "SnCl₂ + NaOH",
+          "Sn(OH)₂ + HCl",
+          "Sn(OH)₂ + NaOH"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH16",
+          "coverage_type": "partial",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_8_03",
+      "code": "19-8-03",
+      "title": "Sb(OH)₃ 的生成与性质",
+      "title_en": null,
+      "summary": "来自实验 19-8 锡、铅、砷、锑、铋 / 氢氧化物的性质的具体实验点。",
+      "status": "published",
+      "display_order": 36,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（3）Sb(OH)₃ 的生成与性质",
+          "source_line": 310
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-8",
+        "parent_title": "实验 19-8 锡、铅、砷、锑、铋",
+        "outline_group": "（八）锡、铅、砷、锑、铋",
+        "module_title": "1. 氢氧化物的性质",
+        "module_display_title": "氢氧化物的性质",
+        "procedure_heading": "（3）Sb(OH)₃ 的生成与性质",
+        "video_candidates": [
+          "SbCl₃ + NaOH",
+          "Sb(OH)₃ + HCl",
+          "Sb(OH)₃ + 2 mol/L NaOH",
+          "Sb(OH)₃ + 6 mol/L NaOH"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH16",
+          "coverage_type": "partial",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_8_04",
+      "code": "19-8-04",
+      "title": "Bi(OH)₃ 的生成与性质",
+      "title_en": null,
+      "summary": "来自实验 19-8 锡、铅、砷、锑、铋 / 氢氧化物的性质的具体实验点。",
+      "status": "published",
+      "display_order": 37,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（4）Bi(OH)₃ 的生成与性质",
+          "source_line": 317
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-8",
+        "parent_title": "实验 19-8 锡、铅、砷、锑、铋",
+        "outline_group": "（八）锡、铅、砷、锑、铋",
+        "module_title": "1. 氢氧化物的性质",
+        "module_display_title": "氢氧化物的性质",
+        "procedure_heading": "（4）Bi(OH)₃ 的生成与性质",
+        "video_candidates": [
+          "Bi(NO₃)₃ + NaOH",
+          "Bi(OH)₃ + HCl",
+          "Bi(OH)₃ + 6 mol/L NaOH",
+          "Bi(OH)₃ + 40% NaOH"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH16",
+          "coverage_type": "partial",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_8_05",
+      "code": "19-8-05",
+      "title": "Sn²⁺、Pb²⁺、Sb³⁺、Bi³⁺ 氢氧化物的酸碱性",
+      "title_en": null,
+      "summary": "来自实验 19-8 锡、铅、砷、锑、铋 / Sn²⁺、Pb²⁺、Sb³⁺、Bi³⁺ 氢氧化物的酸碱性的具体实验点。",
+      "status": "published",
+      "display_order": 38,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "2. Sn²⁺、Pb²⁺、Sb³⁺、Bi³⁺ 氢氧化物的酸碱性",
+          "source_line": 324
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-8",
+        "parent_title": "实验 19-8 锡、铅、砷、锑、铋",
+        "outline_group": "（八）锡、铅、砷、锑、铋",
+        "module_title": "2. Sn²⁺、Pb²⁺、Sb³⁺、Bi³⁺ 氢氧化物的酸碱性",
+        "module_display_title": "Sn²⁺、Pb²⁺、Sb³⁺、Bi³⁺ 氢氧化物的酸碱性",
+        "procedure_heading": null,
+        "video_candidates": [
+          "SnCl₂ 制备 Sn(OH)₂，并测试酸碱性",
+          "Pb(NO₃)₂ 制备 Pb(OH)₂，并测试酸碱性",
+          "SbCl₃ 制备 Sb(OH)₃，并测试酸碱性",
+          "Bi(NO₃)₃ 制备 Bi(OH)₃，并测试酸碱性"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH16",
+          "coverage_type": "partial",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_8_06",
+      "code": "19-8-06",
+      "title": "Sn(II) 的还原性",
+      "title_en": null,
+      "summary": "来自实验 19-8 锡、铅、砷、锑、铋 / 氧化还原性的具体实验点。",
+      "status": "published",
+      "display_order": 39,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）Sn(II) 的还原性",
+          "source_line": 333
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-8",
+        "parent_title": "实验 19-8 锡、铅、砷、锑、铋",
+        "outline_group": "（八）锡、铅、砷、锑、铋",
+        "module_title": "3. 氧化还原性",
+        "module_display_title": "氧化还原性",
+        "procedure_heading": "（1）Sn(II) 的还原性",
+        "video_candidates": [
+          "SnCl₂ + FeCl₃",
+          "用 KSCN 检验 Fe³⁺ 是否仍存在",
+          "SnCl₂ + HgCl₂",
+          "比较 Sn(II) 与 Fe(II)、Sn(II) 与 Hg(I) 的还原性"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH16",
+          "coverage_type": "partial",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_8_07",
+      "code": "19-8-07",
+      "title": "Pb(IV) 的氧化性",
+      "title_en": null,
+      "summary": "来自实验 19-8 锡、铅、砷、锑、铋 / 氧化还原性的具体实验点。",
+      "status": "published",
+      "display_order": 40,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）Pb(IV) 的氧化性",
+          "source_line": 340
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-8",
+        "parent_title": "实验 19-8 锡、铅、砷、锑、铋",
+        "outline_group": "（八）锡、铅、砷、锑、铋",
+        "module_title": "3. 氧化还原性",
+        "module_display_title": "氧化还原性",
+        "procedure_heading": "（2）Pb(IV) 的氧化性",
+        "video_candidates": [
+          "PbO₂ + 浓 HCl",
+          "PbO₂ + H₂SO₄ + MnSO₄，水浴加热",
+          "比较 Pb(IV) 与 Cl₂、Pb(IV) 与 MnO₄⁻ 的氧化性"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH16",
+          "coverage_type": "partial",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_8_08",
+      "code": "19-8-08",
+      "title": "As(III)、Sb(III)、Bi(III) 的还原性",
+      "title_en": null,
+      "summary": "来自实验 19-8 锡、铅、砷、锑、铋 / 氧化还原性的具体实验点。",
+      "status": "published",
+      "display_order": 41,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（3）As(III)、Sb(III)、Bi(III) 的还原性",
+          "source_line": 346
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-8",
+        "parent_title": "实验 19-8 锡、铅、砷、锑、铋",
+        "outline_group": "（八）锡、铅、砷、锑、铋",
+        "module_title": "3. 氧化还原性",
+        "module_display_title": "氧化还原性",
+        "procedure_heading": "（3）As(III)、Sb(III)、Bi(III) 的还原性",
+        "video_candidates": [
+          "碱性 KMnO₄ 体系中分别加入 AsCl₃、SbCl₃、BiCl₃",
+          "银氨溶液中分别加入 Na₃AsO₃、Na₃SbO₃、Bi(NO₃)₃",
+          "AsCl₃、SbCl₃ 溶液调至弱酸性后滴加碘水",
+          "Bi(NO₃)₃ + NaOH 生成沉淀后加入氯水"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH16",
+          "coverage_type": "partial",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_8_09",
+      "code": "19-8-09",
+      "title": "As(V)、Sb(V)、Bi(V) 的氧化性",
+      "title_en": null,
+      "summary": "来自实验 19-8 锡、铅、砷、锑、铋 / 氧化还原性的具体实验点。",
+      "status": "published",
+      "display_order": 42,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（4）As(V)、Sb(V)、Bi(V) 的氧化性",
+          "source_line": 355
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-8",
+        "parent_title": "实验 19-8 锡、铅、砷、锑、铋",
+        "outline_group": "（八）锡、铅、砷、锑、铋",
+        "module_title": "3. 氧化还原性",
+        "module_display_title": "氧化还原性",
+        "procedure_heading": "（4）As(V)、Sb(V)、Bi(V) 的氧化性",
+        "video_candidates": [
+          "Na[As(OH)₆]、K[Sb(OH)₆]、NaBiO₃ 分别酸化后加入 KI 和 CCl₄",
+          "Na[As(OH)₆]、K[Sb(OH)₆]、NaBiO₃ 分别与酸性 MnSO₄ 体系反应"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH16",
+          "coverage_type": "partial",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_8_10",
+      "code": "19-8-10",
+      "title": "Sn、Pb、Bi 不同价态离子的氧化还原性",
+      "title_en": null,
+      "summary": "来自实验 19-8 锡、铅、砷、锑、铋 / Sn、Pb、Bi 不同价态离子的氧化还原性的具体实验点。",
+      "status": "published",
+      "display_order": 43,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "4. Sn、Pb、Bi 不同价态离子的氧化还原性",
+          "source_line": 362
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-8",
+        "parent_title": "实验 19-8 锡、铅、砷、锑、铋",
+        "outline_group": "（八）锡、铅、砷、锑、铋",
+        "module_title": "4. Sn、Pb、Bi 不同价态离子的氧化还原性",
+        "module_display_title": "Sn、Pb、Bi 不同价态离子的氧化还原性",
+        "procedure_heading": null,
+        "video_candidates": [
+          "Sn(II) 的还原性：HgCl₂ + SnCl₂",
+          "Pb(IV) 的氧化性：PbO₂ + H₂SO₄ + MnSO₄，水浴加热",
+          "Bi(III) 的还原性和 Bi(V) 的氧化性：Bi(NO₃)₃ + NaOH + 氯水，水浴加热；沉淀再加浓 HCl 并鉴别气体产物"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH16",
+          "coverage_type": "partial",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_19_8_11",
+      "code": "19-8-11",
+      "title": "小设计实验",
+      "title_en": null,
+      "summary": "来自实验 19-8 锡、铅、砷、锑、铋 / 小设计实验的具体实验点。",
+      "status": "published",
+      "display_order": 44,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "5. 小设计实验",
+          "source_line": 368
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "19-8",
+        "parent_title": "实验 19-8 锡、铅、砷、锑、铋",
+        "outline_group": "（八）锡、铅、砷、锑、铋",
+        "module_title": "5. 小设计实验",
+        "module_display_title": "小设计实验",
+        "procedure_heading": null,
+        "video_candidates": [
+          "设计分析铅丹 Pb₃O₄ 组成的实验方法",
+          "Pb₃O₄ + HNO₃，微热",
+          "吸取清液，用稀 H₂SO₄ 检查 Pb²⁺"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH16",
+          "coverage_type": "partial",
+          "sort_order": 1
+        },
+        {
+          "chapter_id": "CH15",
+          "coverage_type": "partial",
+          "sort_order": 2
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_1_01",
+      "code": "20-1-01",
+      "title": "氢氧化物的生成与性质",
+      "title_en": null,
+      "summary": "来自实验 20-1 ds 区元素化合物的性质 / 氢氧化物的生成与性质的具体实验点。",
+      "status": "published",
+      "display_order": 45,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "1. 氢氧化物的生成与性质",
+          "source_line": 380
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-1",
+        "parent_title": "实验 20-1 ds 区元素化合物的性质",
+        "outline_group": "（一）ds 区元素化合物的性质",
+        "module_title": "1. 氢氧化物的生成与性质",
+        "module_display_title": "氢氧化物的生成与性质",
+        "procedure_heading": null,
+        "video_candidates": [
+          "CuSO₄ + NaOH",
+          "AgNO₃ + NaOH",
+          "ZnSO₄ + NaOH",
+          "CdSO₄ + NaOH",
+          "Hg(NO₃)₂ + NaOH",
+          "比较沉淀颜色、形态",
+          "检验沉淀酸碱性",
+          "检验沉淀热稳定性"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH19",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_1_02",
+      "code": "20-1-02",
+      "title": "氨合物",
+      "title_en": null,
+      "summary": "来自实验 20-1 ds 区元素化合物的性质 / 配合物的生成与性质的具体实验点。",
+      "status": "published",
+      "display_order": 46,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）氨合物",
+          "source_line": 393
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-1",
+        "parent_title": "实验 20-1 ds 区元素化合物的性质",
+        "outline_group": "（一）ds 区元素化合物的性质",
+        "module_title": "2. 配合物的生成与性质",
+        "module_display_title": "配合物的生成与性质",
+        "procedure_heading": "（1）氨合物",
+        "video_candidates": [
+          "CuSO₄ + NH₃·H₂O",
+          "AgNO₃ + NH₃·H₂O",
+          "ZnSO₄ + NH₃·H₂O",
+          "CdSO₄ + NH₃·H₂O",
+          "HgCl₂ + NH₃·H₂O",
+          "观察沉淀生成与过量氨水中的溶解",
+          "试验氨合物对酸、碱和热的稳定性",
+          "设计实验确定 CuSO₄ 与氨水反应生成配合物的外界与内界"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH19",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_1_03",
+      "code": "20-1-03",
+      "title": "其他配体的配合物",
+      "title_en": null,
+      "summary": "来自实验 20-1 ds 区元素化合物的性质 / 配合物的生成与性质的具体实验点。",
+      "status": "published",
+      "display_order": 47,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）其他配体的配合物",
+          "source_line": 404
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-1",
+        "parent_title": "实验 20-1 ds 区元素化合物的性质",
+        "outline_group": "（一）ds 区元素化合物的性质",
+        "module_title": "2. 配合物的生成与性质",
+        "module_display_title": "配合物的生成与性质",
+        "procedure_heading": "（2）其他配体的配合物",
+        "video_candidates": [
+          "AgCl、AgBr、AgI 与 NH₃·H₂O 的反应",
+          "AgCl、AgBr、AgI 与 Na₂S₂O₃ 的反应",
+          "比较 AgCl、AgBr、AgI 溶解度",
+          "比较 Ag⁺ 与 NH₃、S₂O₃²⁻ 形成配合物的稳定性",
+          "银镜的制作",
+          "Hg(NO₃)₂ + KI，观察沉淀生成与过量 KI 中溶解",
+          "汞碘配合物 + NaOH + 铵盐",
+          "Hg(NO₃)₂ + KSCN，观察沉淀生成与溶解",
+          "汞硫氰配合物体系中加入锌盐，生成 Zn[Hg(SCN)₄]",
+          "汞硫氰配合物体系中加入钴盐，生成 Co[Hg(SCN)₄]",
+          "CuCl₂ + 浓 HCl，温热溶解",
+          "铜氯配合物加水后的颜色变化",
+          "向上述体系加入 KBr，观察配体变化引起的现象"
+        ],
+        "h6_sections": [
+          {
+            "title": "① 银的配合物",
+            "clean_title": "银的配合物",
+            "line": 406,
+            "video_candidates": [
+              "AgCl、AgBr、AgI 与 NH₃·H₂O 的反应",
+              "AgCl、AgBr、AgI 与 Na₂S₂O₃ 的反应",
+              "比较 AgCl、AgBr、AgI 溶解度",
+              "比较 Ag⁺ 与 NH₃、S₂O₃²⁻ 形成配合物的稳定性",
+              "银镜的制作"
+            ]
+          },
+          {
+            "title": "② 汞的配合物的生成及应用",
+            "clean_title": "汞的配合物的生成及应用",
+            "line": 414,
+            "video_candidates": [
+              "Hg(NO₃)₂ + KI，观察沉淀生成与过量 KI 中溶解",
+              "汞碘配合物 + NaOH + 铵盐",
+              "Hg(NO₃)₂ + KSCN，观察沉淀生成与溶解",
+              "汞硫氰配合物体系中加入锌盐，生成 Zn[Hg(SCN)₄]",
+              "汞硫氰配合物体系中加入钴盐，生成 Co[Hg(SCN)₄]"
+            ]
+          },
+          {
+            "title": "③ 铜(II)的配合物",
+            "clean_title": "铜(II)的配合物",
+            "line": 422,
+            "video_candidates": [
+              "CuCl₂ + 浓 HCl，温热溶解",
+              "铜氯配合物加水后的颜色变化",
+              "向上述体系加入 KBr，观察配体变化引起的现象"
+            ]
+          }
+        ],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH19",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_1_04",
+      "code": "20-1-04",
+      "title": "碘化亚铜的形成",
+      "title_en": null,
+      "summary": "来自实验 20-1 ds 区元素化合物的性质 / 铜(I)化合物及其性质的具体实验点。",
+      "status": "published",
+      "display_order": 48,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）碘化亚铜的形成",
+          "source_line": 430
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-1",
+        "parent_title": "实验 20-1 ds 区元素化合物的性质",
+        "outline_group": "（一）ds 区元素化合物的性质",
+        "module_title": "3. 铜(I)化合物及其性质",
+        "module_display_title": "铜(I)化合物及其性质",
+        "procedure_heading": "（1）碘化亚铜的形成",
+        "video_candidates": [
+          "CuSO₄ + KI",
+          "验证生成 CuI 及副产物"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH19",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_1_05",
+      "code": "20-1-05",
+      "title": "氯化亚铜的形成和性质",
+      "title_en": null,
+      "summary": "来自实验 20-1 ds 区元素化合物的性质 / 铜(I)化合物及其性质的具体实验点。",
+      "status": "published",
+      "display_order": 49,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）氯化亚铜的形成和性质",
+          "source_line": 435
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-1",
+        "parent_title": "实验 20-1 ds 区元素化合物的性质",
+        "outline_group": "（一）ds 区元素化合物的性质",
+        "module_title": "3. 铜(I)化合物及其性质",
+        "module_display_title": "铜(I)化合物及其性质",
+        "procedure_heading": "（2）氯化亚铜的形成和性质",
+        "video_candidates": [
+          "CuCl₂ + NaSO₃ / Na₂SO₃",
+          "生成 CuCl 沉淀",
+          "CuCl + 浓氨水",
+          "CuCl + 浓盐酸"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH19",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_1_06",
+      "code": "20-1-06",
+      "title": "氧化亚铜的形成和性质",
+      "title_en": null,
+      "summary": "来自实验 20-1 ds 区元素化合物的性质 / 铜(I)化合物及其性质的具体实验点。",
+      "status": "published",
+      "display_order": 50,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（3）氧化亚铜的形成和性质",
+          "source_line": 442
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-1",
+        "parent_title": "实验 20-1 ds 区元素化合物的性质",
+        "outline_group": "（一）ds 区元素化合物的性质",
+        "module_title": "3. 铜(I)化合物及其性质",
+        "module_display_title": "铜(I)化合物及其性质",
+        "procedure_heading": "（3）氧化亚铜的形成和性质",
+        "video_candidates": [
+          "CuSO₄ + 过量 NaOH",
+          "加入葡萄糖后水浴微热",
+          "生成 Cu₂O",
+          "Cu₂O + H₂SO₄，观察歧化 / 溶解现象"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH19",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_1_07",
+      "code": "20-1-07",
+      "title": "Hg²⁺ 转化为 Hg₂²⁺",
+      "title_en": null,
+      "summary": "来自实验 20-1 ds 区元素化合物的性质 / *汞(II)和汞(I)相互转化的具体实验点。",
+      "status": "published",
+      "display_order": 51,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）Hg²⁺ 转化为 Hg₂²⁺",
+          "source_line": 451
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-1",
+        "parent_title": "实验 20-1 ds 区元素化合物的性质",
+        "outline_group": "（一）ds 区元素化合物的性质",
+        "module_title": "4. *汞(II)和汞(I)相互转化",
+        "module_display_title": "*汞(II)和汞(I)相互转化",
+        "procedure_heading": "（1）Hg²⁺ 转化为 Hg₂²⁺",
+        "video_candidates": [
+          "Hg(NO₃)₂ + NaCl",
+          "Hg(NO₃)₂ + 金属汞，振荡",
+          "反应后清液 + NaCl，与前一实验对比"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH19",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_1_08",
+      "code": "20-1-08",
+      "title": "汞(I)的歧化分解",
+      "title_en": null,
+      "summary": "来自实验 20-1 ds 区元素化合物的性质 / *汞(II)和汞(I)相互转化的具体实验点。",
+      "status": "published",
+      "display_order": 52,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）汞(I)的歧化分解",
+          "source_line": 457
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-1",
+        "parent_title": "实验 20-1 ds 区元素化合物的性质",
+        "outline_group": "（一）ds 区元素化合物的性质",
+        "module_title": "4. *汞(II)和汞(I)相互转化",
+        "module_display_title": "*汞(II)和汞(I)相互转化",
+        "procedure_heading": "（2）汞(I)的歧化分解",
+        "video_candidates": [
+          "上一步制得的 Hg(I) 溶液 + KI"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH19",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_1_09",
+      "code": "20-1-09",
+      "title": "小设计实验",
+      "title_en": null,
+      "summary": "来自实验 20-1 ds 区元素化合物的性质 / 小设计实验的具体实验点。",
+      "status": "published",
+      "display_order": 53,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "5. 小设计实验",
+          "source_line": 461
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-1",
+        "parent_title": "实验 20-1 ds 区元素化合物的性质",
+        "outline_group": "（一）ds 区元素化合物的性质",
+        "module_title": "5. 小设计实验",
+        "module_display_title": "小设计实验",
+        "procedure_heading": null,
+        "video_candidates": [
+          "含 Ag⁺、Pb²⁺、Zn²⁺、Cu²⁺ 的试液分离与检出",
+          "从废定影液 `[Ag(S₂O₃)₂]³⁻` 中回收银，并以 AgNO₃ 形式回收"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH19",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_2_01",
+      "code": "20-2-01",
+      "title": "氢氧化物的酸碱性",
+      "title_en": null,
+      "summary": "来自实验 20-2 d 区元素化合物的性质（一） / 氢氧化物的酸碱性的具体实验点。",
+      "status": "published",
+      "display_order": 54,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "1. 氢氧化物的酸碱性",
+          "source_line": 470
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-2",
+        "parent_title": "实验 20-2 d 区元素化合物的性质（一）",
+        "outline_group": "（二）d 区元素化合物的性质（一）",
+        "module_title": "1. 氢氧化物的酸碱性",
+        "module_display_title": "氢氧化物的酸碱性",
+        "procedure_heading": null,
+        "video_candidates": [
+          "TiOSO₄ + NaOH",
+          "Cr₂(SO₄)₃ + NaOH",
+          "MnSO₄ + NaOH",
+          "(NH₄)₂Fe(SO₄)₂ + NaOH",
+          "FeCl₃ + NaOH",
+          "CoCl₃ + NaOH",
+          "NiSO₄ + NaOH",
+          "检验沉淀酸碱性",
+          "可溶于稀碱的体系加热煮沸，观察变化"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_2_02",
+      "code": "20-2-02",
+      "title": "铁(II)、钴(II)和镍(II)的还原性",
+      "title_en": null,
+      "summary": "来自实验 20-2 d 区元素化合物的性质（一） / 某些化合物的氧化还原性的具体实验点。",
+      "status": "published",
+      "display_order": 55,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）铁(II)、钴(II)和镍(II)的还原性",
+          "source_line": 484
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-2",
+        "parent_title": "实验 20-2 d 区元素化合物的性质（一）",
+        "outline_group": "（二）d 区元素化合物的性质（一）",
+        "module_title": "2. 某些化合物的氧化还原性",
+        "module_display_title": "某些化合物的氧化还原性",
+        "procedure_heading": "（1）铁(II)、钴(II)和镍(II)的还原性",
+        "video_candidates": [
+          "Fe(II) 溶液 + 溴水",
+          "Co(II) 溶液 + 溴水",
+          "Ni(II) 溶液 + 溴水",
+          "Fe(II)、Co(II)、Ni(II) 分别加 NaOH",
+          "生成沉淀放置一段时间后观察变化",
+          "Co(II) 沉淀 + H₂O₂",
+          "Co(II) 沉淀 + 溴水",
+          "Ni(II) 沉淀 + H₂O₂",
+          "Ni(II) 沉淀 + 溴水"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_2_03",
+      "code": "20-2-03",
+      "title": "铁(III)、钴(III)和镍(III)的氧化性",
+      "title_en": null,
+      "summary": "来自实验 20-2 d 区元素化合物的性质（一） / 某些化合物的氧化还原性的具体实验点。",
+      "status": "published",
+      "display_order": 56,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）铁(III)、钴(III)和镍(III)的氧化性",
+          "source_line": 496
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-2",
+        "parent_title": "实验 20-2 d 区元素化合物的性质（一）",
+        "outline_group": "（二）d 区元素化合物的性质（一）",
+        "module_title": "2. 某些化合物的氧化还原性",
+        "module_display_title": "某些化合物的氧化还原性",
+        "procedure_heading": "（2）铁(III)、钴(III)和镍(III)的氧化性",
+        "video_candidates": [
+          "制备 Fe(OH)₃",
+          "制备 CoO(OH)",
+          "制备 NiO(OH)",
+          "三种沉淀分别加入浓 HCl",
+          "检查是否有 Cl₂ 生成",
+          "比较 Fe(III)、Co(III)、Ni(III) 氧化性"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_2_04",
+      "code": "20-2-04",
+      "title": "锰化合物的氧化还原性",
+      "title_en": null,
+      "summary": "来自实验 20-2 d 区元素化合物的性质（一） / 某些化合物的氧化还原性的具体实验点。",
+      "status": "published",
+      "display_order": 57,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（3）锰化合物的氧化还原性",
+          "source_line": 505
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-2",
+        "parent_title": "实验 20-2 d 区元素化合物的性质（一）",
+        "outline_group": "（二）d 区元素化合物的性质（一）",
+        "module_title": "2. 某些化合物的氧化还原性",
+        "module_display_title": "某些化合物的氧化还原性",
+        "procedure_heading": "（3）锰化合物的氧化还原性",
+        "video_candidates": [
+          "MnSO₄ 在碱性介质中与空气作用",
+          "MnSO₄ 在碱性介质中与溴水作用",
+          "MnSO₄ 在酸性介质中与 NaBiO₃ 作用",
+          "MnO₂ + 浓 HCl，微热并检验 Cl₂",
+          "MnO₂ + 40% NaOH + KMnO₄，微热",
+          "观察 Mn(VI) 的特征颜色",
+          "Mn(VI) 溶液酸化，观察颜色变化和沉淀析出",
+          "KMnO₄ + Na₂SO₃，酸性介质",
+          "KMnO₄ + Na₂SO₃，中性介质",
+          "KMnO₄ + Na₂SO₃，碱性介质"
+        ],
+        "h6_sections": [
+          {
+            "title": "① Mn(II) 的还原性",
+            "clean_title": "Mn(II) 的还原性",
+            "line": 507,
+            "video_candidates": [
+              "MnSO₄ 在碱性介质中与空气作用",
+              "MnSO₄ 在碱性介质中与溴水作用",
+              "MnSO₄ 在酸性介质中与 NaBiO₃ 作用"
+            ]
+          },
+          {
+            "title": "② Mn(IV) 的氧化还原性和 Mn(VI) 的性质",
+            "clean_title": "Mn(IV) 的氧化还原性和 Mn(VI) 的性质",
+            "line": 513,
+            "video_candidates": [
+              "MnO₂ + 浓 HCl，微热并检验 Cl₂",
+              "MnO₂ + 40% NaOH + KMnO₄，微热",
+              "观察 Mn(VI) 的特征颜色",
+              "Mn(VI) 溶液酸化，观察颜色变化和沉淀析出"
+            ]
+          },
+          {
+            "title": "③ Mn(VII) 的氧化性",
+            "clean_title": "Mn(VII) 的氧化性",
+            "line": 520,
+            "video_candidates": [
+              "KMnO₄ + Na₂SO₃，酸性介质",
+              "KMnO₄ + Na₂SO₃，中性介质",
+              "KMnO₄ + Na₂SO₃，碱性介质"
+            ]
+          }
+        ],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_2_05",
+      "code": "20-2-05",
+      "title": "铬、钼、钨化合物的氧化还原性",
+      "title_en": null,
+      "summary": "来自实验 20-2 d 区元素化合物的性质（一） / 某些化合物的氧化还原性的具体实验点。",
+      "status": "published",
+      "display_order": 58,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（4）铬、钼、钨化合物的氧化还原性",
+          "source_line": 526
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-2",
+        "parent_title": "实验 20-2 d 区元素化合物的性质（一）",
+        "outline_group": "（二）d 区元素化合物的性质（一）",
+        "module_title": "2. 某些化合物的氧化还原性",
+        "module_display_title": "某些化合物的氧化还原性",
+        "procedure_heading": "（4）铬、钼、钨化合物的氧化还原性",
+        "video_candidates": [
+          "Cr(III) 在碱性 H₂O₂ 条件下转化为 Cr(VI)",
+          "Cr(VI) 在酸性条件下的氧化性实验",
+          "设计系列试管实验说明 Cr(III) / Cr(VI) 在不同介质中的相互转化",
+          "钼(VI) 酸化后与锌粒 / 锌粉反应",
+          "钨(VI) 酸化后与锌粒 / 锌粉反应",
+          "观察溶液颜色变化及放置后的进一步变化"
+        ],
+        "h6_sections": [
+          {
+            "title": "① 不同氧化态铬的氧化还原性",
+            "clean_title": "不同氧化态铬的氧化还原性",
+            "line": 528,
+            "video_candidates": [
+              "Cr(III) 在碱性 H₂O₂ 条件下转化为 Cr(VI)",
+              "Cr(VI) 在酸性条件下的氧化性实验",
+              "设计系列试管实验说明 Cr(III) / Cr(VI) 在不同介质中的相互转化"
+            ]
+          },
+          {
+            "title": "② 钼(VI)和钨(VI)的氧化性",
+            "clean_title": "钼(VI)和钨(VI)的氧化性",
+            "line": 534,
+            "video_candidates": [
+              "钼(VI) 酸化后与锌粒 / 锌粉反应",
+              "钨(VI) 酸化后与锌粒 / 锌粉反应",
+              "观察溶液颜色变化及放置后的进一步变化"
+            ]
+          }
+        ],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_2_06",
+      "code": "20-2-06",
+      "title": "钛、钒的氧化还原性",
+      "title_en": null,
+      "summary": "来自实验 20-2 d 区元素化合物的性质（一） / 某些化合物的氧化还原性的具体实验点。",
+      "status": "published",
+      "display_order": 59,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（5）钛、钒的氧化还原性",
+          "source_line": 540
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-2",
+        "parent_title": "实验 20-2 d 区元素化合物的性质（一）",
+        "outline_group": "（二）d 区元素化合物的性质（一）",
+        "module_title": "2. 某些化合物的氧化还原性",
+        "module_display_title": "某些化合物的氧化还原性",
+        "procedure_heading": "（5）钛、钒的氧化还原性",
+        "video_candidates": [
+          "TiOSO₄ + 锌粒",
+          "还原后的钛溶液与空气作用",
+          "还原后的钛溶液与 CuCl₂ 作用",
+          "NH₄VO₃ 酸化后加入锌粉还原",
+          "观察钒不同价态颜色变化",
+          "用不同量 KMnO₄ 将 V²⁺ 逐步氧化为 V³⁺、VO²⁺、VO₂⁺",
+          "观察各价态钒在溶液中的颜色"
+        ],
+        "h6_sections": [
+          {
+            "title": "① 钛(IV)和钛(III)的氧化还原性",
+            "clean_title": "钛(IV)和钛(III)的氧化还原性",
+            "line": 542,
+            "video_candidates": [
+              "TiOSO₄ + 锌粒",
+              "还原后的钛溶液与空气作用",
+              "还原后的钛溶液与 CuCl₂ 作用"
+            ]
+          },
+          {
+            "title": "② 钒的常见氧化态水合离子颜色及其氧化还原性",
+            "clean_title": "钒的常见氧化态水合离子颜色及其氧化还原性",
+            "line": 548,
+            "video_candidates": [
+              "NH₄VO₃ 酸化后加入锌粉还原",
+              "观察钒不同价态颜色变化",
+              "用不同量 KMnO₄ 将 V²⁺ 逐步氧化为 V³⁺、VO²⁺、VO₂⁺",
+              "观察各价态钒在溶液中的颜色"
+            ]
+          }
+        ],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_2_07",
+      "code": "20-2-07",
+      "title": "铁(III)盐的水解",
+      "title_en": null,
+      "summary": "来自实验 20-2 d 区元素化合物的性质（一） / 金属离子的水解作用的具体实验点。",
+      "status": "published",
+      "display_order": 60,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）铁(III)盐的水解",
+          "source_line": 557
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-2",
+        "parent_title": "实验 20-2 d 区元素化合物的性质（一）",
+        "outline_group": "（二）d 区元素化合物的性质（一）",
+        "module_title": "3. 金属离子的水解作用",
+        "module_display_title": "金属离子的水解作用",
+        "procedure_heading": "（1）铁(III)盐的水解",
+        "video_candidates": [
+          "沸水中滴加 FeCl₃，继续煮沸"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_2_08",
+      "code": "20-2-08",
+      "title": "铬(III)盐的水解",
+      "title_en": null,
+      "summary": "来自实验 20-2 d 区元素化合物的性质（一） / 金属离子的水解作用的具体实验点。",
+      "status": "published",
+      "display_order": 61,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）铬(III)盐的水解",
+          "source_line": 561
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-2",
+        "parent_title": "实验 20-2 d 区元素化合物的性质（一）",
+        "outline_group": "（二）d 区元素化合物的性质（一）",
+        "module_title": "3. 金属离子的水解作用",
+        "module_display_title": "金属离子的水解作用",
+        "procedure_heading": "（2）铬(III)盐的水解",
+        "video_candidates": [
+          "Cr₂(SO₄)₃ + Na₂CO₃"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_2_09",
+      "code": "20-2-09",
+      "title": "钛(IV)盐的水解",
+      "title_en": null,
+      "summary": "来自实验 20-2 d 区元素化合物的性质（一） / 金属离子的水解作用的具体实验点。",
+      "status": "published",
+      "display_order": 62,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（3）钛(IV)盐的水解",
+          "source_line": 565
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-2",
+        "parent_title": "实验 20-2 d 区元素化合物的性质（一）",
+        "outline_group": "（二）d 区元素化合物的性质（一）",
+        "module_title": "3. 金属离子的水解作用",
+        "module_display_title": "金属离子的水解作用",
+        "procedure_heading": "（3）钛(IV)盐的水解",
+        "video_candidates": [
+          "TiOSO₄ 稀释后加热煮沸"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_2_10",
+      "code": "20-2-10",
+      "title": "小设计实验",
+      "title_en": null,
+      "summary": "来自实验 20-2 d 区元素化合物的性质（一） / 小设计实验的具体实验点。",
+      "status": "published",
+      "display_order": 63,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "4. 小设计实验",
+          "source_line": 569
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-2",
+        "parent_title": "实验 20-2 d 区元素化合物的性质（一）",
+        "outline_group": "（二）d 区元素化合物的性质（一）",
+        "module_title": "4. 小设计实验",
+        "module_display_title": "小设计实验",
+        "procedure_heading": null,
+        "video_candidates": [
+          "含 Cr³⁺、Al³⁺、Mn²⁺ 的混合溶液分离检出"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_3_01",
+      "code": "20-3-01",
+      "title": "水合阳离子颜色",
+      "title_en": null,
+      "summary": "来自实验 20-3 d 区元素化合物的性质（二） / 观察并熟悉过渡金属离子的颜色的具体实验点。",
+      "status": "published",
+      "display_order": 64,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）水合阳离子颜色",
+          "source_line": 579
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-3",
+        "parent_title": "实验 20-3 d 区元素化合物的性质（二）",
+        "outline_group": "（三）d 区元素化合物的性质（二）",
+        "module_title": "1. 观察并熟悉过渡金属离子的颜色",
+        "module_display_title": "观察并熟悉过渡金属离子的颜色",
+        "procedure_heading": "（1）水合阳离子颜色",
+        "video_candidates": [
+          "`[Ti(H₂O)₆]³⁺`",
+          "`[Cr(H₂O)₆]³⁺`",
+          "`[Mn(H₂O)₆]²⁺`",
+          "`[Fe(H₂O)₆]²⁺`",
+          "`[Co(H₂O)₆]²⁺`",
+          "`[Ni(H₂O)₆]²⁺`"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_3_02",
+      "code": "20-3-02",
+      "title": "阴离子颜色",
+      "title_en": null,
+      "summary": "来自实验 20-3 d 区元素化合物的性质（二） / 观察并熟悉过渡金属离子的颜色的具体实验点。",
+      "status": "published",
+      "display_order": 65,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）阴离子颜色",
+          "source_line": 588
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-3",
+        "parent_title": "实验 20-3 d 区元素化合物的性质（二）",
+        "outline_group": "（三）d 区元素化合物的性质（二）",
+        "module_title": "1. 观察并熟悉过渡金属离子的颜色",
+        "module_display_title": "观察并熟悉过渡金属离子的颜色",
+        "procedure_heading": "（2）阴离子颜色",
+        "video_candidates": [
+          "CrO₄²⁻",
+          "Cr₂O₇²⁻",
+          "MnO₄⁻",
+          "MnO₄²⁻",
+          "MoO₄²⁻",
+          "WO₄²⁻",
+          "VO₃⁻"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_3_03",
+      "code": "20-3-03",
+      "title": "Cr(III) 的水合异构现象",
+      "title_en": null,
+      "summary": "来自实验 20-3 d 区元素化合物的性质（二） / 某些过渡金属元素离子的颜色变化的具体实验点。",
+      "status": "published",
+      "display_order": 66,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）Cr(III) 的水合异构现象",
+          "source_line": 600
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-3",
+        "parent_title": "实验 20-3 d 区元素化合物的性质（二）",
+        "outline_group": "（三）d 区元素化合物的性质（二）",
+        "module_title": "2. 某些过渡金属元素离子的颜色变化",
+        "module_display_title": "某些过渡金属元素离子的颜色变化",
+        "procedure_heading": "（1）Cr(III) 的水合异构现象",
+        "video_candidates": [
+          "加热 Cr(NO₃)₃ 溶液",
+          "比较加热前后溶液颜色"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_3_04",
+      "code": "20-3-04",
+      "title": "观察不同配体的 Co(II) 配合物的颜色",
+      "title_en": null,
+      "summary": "来自实验 20-3 d 区元素化合物的性质（二） / 某些过渡金属元素离子的颜色变化的具体实验点。",
+      "status": "published",
+      "display_order": 67,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）观察不同配体的 Co(II) 配合物的颜色",
+          "source_line": 605
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-3",
+        "parent_title": "实验 20-3 d 区元素化合物的性质（二）",
+        "outline_group": "（三）d 区元素化合物的性质（二）",
+        "module_title": "2. 某些过渡金属元素离子的颜色变化",
+        "module_display_title": "某些过渡金属元素离子的颜色变化",
+        "procedure_heading": "（2）观察不同配体的 Co(II) 配合物的颜色",
+        "video_candidates": [
+          "CoCl₂ + KSCN 生成蓝紫色配合物",
+          "原溶液作为对照",
+          "加水后的颜色变化",
+          "加丙酮后的颜色变化"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_3_05",
+      "code": "20-3-05",
+      "title": "氨合物",
+      "title_en": null,
+      "summary": "来自实验 20-3 d 区元素化合物的性质（二） / 某些金属离子配合物的具体实验点。",
+      "status": "published",
+      "display_order": 68,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）氨合物",
+          "source_line": 614
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-3",
+        "parent_title": "实验 20-3 d 区元素化合物的性质（二）",
+        "outline_group": "（三）d 区元素化合物的性质（二）",
+        "module_title": "3. 某些金属离子配合物",
+        "module_display_title": "某些金属离子配合物",
+        "procedure_heading": "（1）氨合物",
+        "video_candidates": [
+          "Cr₂(SO₄)₃ + NH₃·H₂O",
+          "MnSO₄ + NH₃·H₂O",
+          "FeCl₃ + NH₃·H₂O",
+          "(NH₄)₂Fe(SO₄)₂ + NH₃·H₂O",
+          "CoCl₂ + NH₃·H₂O",
+          "NiSO₄ + NH₃·H₂O",
+          "静置一段时间后观察变化",
+          "继续加入 NaOH，比较形成氨合物能力"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_3_06",
+      "code": "20-3-06",
+      "title": "配合物的形成对氧化还原性的影响",
+      "title_en": null,
+      "summary": "来自实验 20-3 d 区元素化合物的性质（二） / 某些金属离子配合物的具体实验点。",
+      "status": "published",
+      "display_order": 69,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）配合物的形成对氧化还原性的影响",
+          "source_line": 625
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-3",
+        "parent_title": "实验 20-3 d 区元素化合物的性质（二）",
+        "outline_group": "（三）d 区元素化合物的性质（二）",
+        "module_title": "3. 某些金属离子配合物",
+        "module_display_title": "某些金属离子配合物",
+        "procedure_heading": "（2）配合物的形成对氧化还原性的影响",
+        "video_candidates": [
+          "KI + CCl₄ + FeCl₃",
+          "KI + CCl₄ + NaF + FeCl₃，对比 NaF 配位 Fe³⁺ 后反应差异",
+          "Fe(II) 溶液 + AgNO₃",
+          "Fe(II) 溶液 + EDTA + AgNO₃"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_3_07",
+      "code": "20-3-07",
+      "title": "配合物稳定性与配体的关系",
+      "title_en": null,
+      "summary": "来自实验 20-3 d 区元素化合物的性质（二） / 某些金属离子配合物的具体实验点。",
+      "status": "published",
+      "display_order": 70,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（3）配合物稳定性与配体的关系",
+          "source_line": 632
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-3",
+        "parent_title": "实验 20-3 d 区元素化合物的性质（二）",
+        "outline_group": "（三）d 区元素化合物的性质（二）",
+        "module_title": "3. 某些金属离子配合物",
+        "module_display_title": "某些金属离子配合物",
+        "procedure_heading": "（3）配合物稳定性与配体的关系",
+        "video_candidates": [
+          "Cr₂(SO₄)₃ + Na₂C₂O₄，再加入 NaOH",
+          "FeCl₃ + KSCN，再加入 Na₂C₂O₄",
+          "NiSO₄ + 过量 NH₃·H₂O，再加入乙二胺"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_3_08",
+      "code": "20-3-08",
+      "title": "铁的鉴定",
+      "title_en": null,
+      "summary": "来自实验 20-3 d 区元素化合物的性质（二） / 配合物应用——金属离子的鉴定的具体实验点。",
+      "status": "published",
+      "display_order": 71,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（1）铁的鉴定",
+          "source_line": 640
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-3",
+        "parent_title": "实验 20-3 d 区元素化合物的性质（二）",
+        "outline_group": "（三）d 区元素化合物的性质（二）",
+        "module_title": "4. 配合物应用——金属离子的鉴定",
+        "module_display_title": "配合物应用——金属离子的鉴定",
+        "procedure_heading": "（1）铁的鉴定",
+        "video_candidates": [
+          "Fe(II) 的鉴定",
+          "Fe(III) 的鉴定"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_3_09",
+      "code": "20-3-09",
+      "title": "钴(II)的鉴定",
+      "title_en": null,
+      "summary": "来自实验 20-3 d 区元素化合物的性质（二） / 配合物应用——金属离子的鉴定的具体实验点。",
+      "status": "published",
+      "display_order": 72,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（2）钴(II)的鉴定",
+          "source_line": 645
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-3",
+        "parent_title": "实验 20-3 d 区元素化合物的性质（二）",
+        "outline_group": "（三）d 区元素化合物的性质（二）",
+        "module_title": "4. 配合物应用——金属离子的鉴定",
+        "module_display_title": "配合物应用——金属离子的鉴定",
+        "procedure_heading": "（2）钴(II)的鉴定",
+        "video_candidates": [
+          "CoCl₂ + 戊醇 / 丙酮 + 饱和 KSCN"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_3_10",
+      "code": "20-3-10",
+      "title": "镍(II)的鉴定",
+      "title_en": null,
+      "summary": "来自实验 20-3 d 区元素化合物的性质（二） / 配合物应用——金属离子的鉴定的具体实验点。",
+      "status": "published",
+      "display_order": 73,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（3）镍(II)的鉴定",
+          "source_line": 649
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-3",
+        "parent_title": "实验 20-3 d 区元素化合物的性质（二）",
+        "outline_group": "（三）d 区元素化合物的性质（二）",
+        "module_title": "4. 配合物应用——金属离子的鉴定",
+        "module_display_title": "配合物应用——金属离子的鉴定",
+        "procedure_heading": "（3）镍(II)的鉴定",
+        "video_candidates": [
+          "NiSO₄ + NH₃·H₂O 调至弱碱性",
+          "加入丁二酮肟，鉴定 Ni²⁺"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_3_11",
+      "code": "20-3-11",
+      "title": "铬(III)的鉴定",
+      "title_en": null,
+      "summary": "来自实验 20-3 d 区元素化合物的性质（二） / 配合物应用——金属离子的鉴定的具体实验点。",
+      "status": "published",
+      "display_order": 74,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（4）铬(III)的鉴定",
+          "source_line": 654
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-3",
+        "parent_title": "实验 20-3 d 区元素化合物的性质（二）",
+        "outline_group": "（三）d 区元素化合物的性质（二）",
+        "module_title": "4. 配合物应用——金属离子的鉴定",
+        "module_display_title": "配合物应用——金属离子的鉴定",
+        "procedure_heading": "（4）铬(III)的鉴定",
+        "video_candidates": [
+          "Cr₂(SO₄)₃ + 过量 NaOH",
+          "加 H₂O₂ 并微热生成黄色铬酸盐",
+          "用 H₂SO₄ 酸化",
+          "加乙醚 / 戊醇",
+          "继续加入 H₂O₂，观察有机层深蓝色"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_3_12",
+      "code": "20-3-12",
+      "title": "钛(IV)的鉴定",
+      "title_en": null,
+      "summary": "来自实验 20-3 d 区元素化合物的性质（二） / 配合物应用——金属离子的鉴定的具体实验点。",
+      "status": "published",
+      "display_order": 75,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（5）钛(IV)的鉴定",
+          "source_line": 662
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-3",
+        "parent_title": "实验 20-3 d 区元素化合物的性质（二）",
+        "outline_group": "（三）d 区元素化合物的性质（二）",
+        "module_title": "4. 配合物应用——金属离子的鉴定",
+        "module_display_title": "配合物应用——金属离子的鉴定",
+        "procedure_heading": "（5）钛(IV)的鉴定",
+        "video_candidates": [
+          "TiOSO₄ + H₂O₂",
+          "再加入 NH₃·H₂O"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_3_13",
+      "code": "20-3-13",
+      "title": "钒(V)的鉴定",
+      "title_en": null,
+      "summary": "来自实验 20-3 d 区元素化合物的性质（二） / 配合物应用——金属离子的鉴定的具体实验点。",
+      "status": "published",
+      "display_order": 76,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "（6）钒(V)的鉴定",
+          "source_line": 667
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-3",
+        "parent_title": "实验 20-3 d 区元素化合物的性质（二）",
+        "outline_group": "（三）d 区元素化合物的性质（二）",
+        "module_title": "4. 配合物应用——金属离子的鉴定",
+        "module_display_title": "配合物应用——金属离子的鉴定",
+        "procedure_heading": "（6）钒(V)的鉴定",
+        "video_candidates": [
+          "NH₄VO₃ + H₂SO₄ 酸化",
+          "加入 H₂O₂",
+          "H₂O₂ 不足与过量时颜色变化比较"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "id": "EXP_20_3_14",
+      "code": "20-3-14",
+      "title": "小设计实验",
+      "title_en": null,
+      "summary": "来自实验 20-3 d 区元素化合物的性质（二） / 小设计实验的具体实验点。",
+      "status": "published",
+      "display_order": 77,
+      "source_refs": [
+        {
+          "document_id": "DOC_EXPERIMENTS_SELECTED",
+          "source_file": "元素性质实验_精选实验目录.md",
+          "source_heading": "5. 小设计实验",
+          "source_line": 673
+        }
+      ],
+      "metadata": {
+        "formal_catalog": true,
+        "catalog_granularity": "concrete_experiment",
+        "parent_code": "20-3",
+        "parent_title": "实验 20-3 d 区元素化合物的性质（二）",
+        "outline_group": "（三）d 区元素化合物的性质（二）",
+        "module_title": "5. 小设计实验",
+        "module_display_title": "小设计实验",
+        "procedure_heading": null,
+        "video_candidates": [
+          "已知溶液中含 Fe³⁺、Co²⁺、Ni²⁺，设计方案分别检出三种离子"
+        ],
+        "h6_sections": [],
+        "source_outline_file": "元素性质实验_精选实验目录.md",
+        "excluded_back_table_items": true
+      },
+      "chapter_bindings": [
+        {
+          "chapter_id": "CH20",
+          "coverage_type": "primary",
+          "sort_order": 1
+        }
+      ]
+    }
+  ]
+}
