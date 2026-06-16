@@ -19,7 +19,7 @@ Current shell and route components:
 | 3467 | `VideoResourcesPage` | `/videos` | `src/features/media/VideoResourcesPage.tsx` |
 | 4585 | `QuestionBanksPage` | `/question-banks` | `src/features/question-bank/QuestionBanksPage.tsx` |
 | 5603 | `AnalyticsPage` | `/analytics` | `src/features/analytics/AnalyticsPage.tsx` |
-| 5853 | `FeedbackPage` | `/feedback` | `src/features/feedback/FeedbackPage.tsx` |
+| Split | `FeedbackPage` | `/feedback` | `src/features/feedback/FeedbackPage.tsx` |
 | 6955 | `LearningAssistantPage` | `/learning-assistant` | `src/features/learning-assistant/LearningAssistantPage.tsx` |
 | 7802 | `SettingsPage` | `/settings` | `src/features/settings/SettingsPage.tsx` |
 | 8137 | `AIConfigurationPage` | `/ai-config` | `src/features/ai-config/AIConfigurationPage.tsx` |
@@ -67,6 +67,13 @@ Suggested first-pass style files:
 - `src/features/learning-assistant/learning-assistant.css`: `.assistant-*`, markdown, chat, diagnostics.
 
 Split CSS after component extraction so selectors can move with their owning feature and visual behavior can be compared page-by-page.
+
+Current frontend extraction status:
+
+- Done: shared `PageTitle` and `QueryState` -> `src/components/`.
+- Done: feedback page -> `src/features/feedback/FeedbackPage.tsx`, lazy-loaded from the `/feedback` route.
+- Done: feedback selectors -> `src/features/feedback/feedback.css`, imported by the feedback feature chunk.
+- Remaining: overview/resources, classes/students, experiments, videos/media, question bank, analytics, learning assistant, settings, AI config, and broader global CSS split.
 
 ## Backend Endpoint Map
 

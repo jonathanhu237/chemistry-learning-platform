@@ -1,0 +1,36 @@
+.feedback-search {
+  width: 280px;
+}
+
+.feedback-list-card .ant-table-row {
+  cursor: pointer;
+}
+
+.feedback-content-preview {
+  display: -webkit-box;
+  max-width: 620px;
+  overflow: hidden;
+  color: var(--sysu-ink-soft);
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  word-break: break-word;
+}
+
+.feedback-detail-summary h4 {
+  margin: 4px 0 10px;
+}
+
+.feedback-content-box {
+  margin-top: 10px;
+  min-height: 110px;
+  padding: 14px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: var(--sysu-panel);
+  color: var(--sysu-ink);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
