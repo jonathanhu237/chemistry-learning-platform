@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { AIGlowButton } from "./components/AIGlowButton";
-import { renderAssistantInlineMarkdown, renderAssistantMarkdown } from "./lib/assistant-markdown";
 import {
   Alert,
   App as AntApp,
@@ -71,9 +70,7 @@ import {
   UnorderedListOutlined,
   VideoCameraOutlined,
 } from "@ant-design/icons";
-import Uppy from "@uppy/core";
-import Tus from "@uppy/tus";
-import { createSHA256 } from "hash-wasm";
+import type Uppy from "@uppy/core";
 import dayjs from "dayjs";
 import {
   api,
@@ -136,6 +133,26 @@ const UsageLineChart = lazy(async () => {
   const module = await import("@ant-design/plots");
   return { default: module.Line };
 });
+const LazyAssistantMarkdownContent = lazy(async () => {
+  const module = await import("./lib/assistant-markdown");
+  return { default: module.AssistantMarkdownContent };
+});
+
+function renderAssistantInlineMarkdown(text: string | null | undefined): ReactNode {
+  return (
+    <Suspense fallback={null}>
+      <LazyAssistantMarkdownContent text={text} inline />
+    </Suspense>
+  );
+}
+
+function renderAssistantMarkdown(text: string | null | undefined): ReactNode {
+  return (
+    <Suspense fallback={null}>
+      <LazyAssistantMarkdownContent text={text} />
+    </Suspense>
+  );
+}
 
 type LoginResponse = {
   access_token: string;
@@ -3371,6 +3388,7 @@ function uploadQueueItemText(item: VideoUploadQueueItem): string {
 }
 
 async function computeVideoFileSha256(file: File, onProgress: (progress: number) => void): Promise<string> {
+  const { createSHA256 } = await import("hash-wasm");
   const hasher = await createSHA256();
   hasher.init();
   const chunkSize = 8 * 1024 * 1024;
@@ -3752,6 +3770,10 @@ function VideoResourcesPage() {
   const uploadItemWithTus = async (item: VideoUploadQueueItem, checksum?: string) => {
     if (!tusEndpoint) throw new Error("未配置 tus 上传端点");
     disposeUploadClient();
+    const [{ default: Uppy }, { default: Tus }] = await Promise.all([
+      import("@uppy/core"),
+      import("@uppy/tus"),
+    ]);
     const uppy = new Uppy({ autoProceed: false, restrictions: { maxNumberOfFiles: 1 } });
     uppy.use(Tus, {
       endpoint: tusEndpoint + "/",
