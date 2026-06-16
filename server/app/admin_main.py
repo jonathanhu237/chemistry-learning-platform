@@ -14,6 +14,7 @@ from server.app.config import get_settings
 from server.app.database import check_database_connection
 from server.app.experiment_admin import admin_router as experiment_admin_router
 from server.app.repositories import get_repositories
+from server.app.routers.admin_learning_resources import router as admin_learning_resources_router
 from server.app.routers.student_experiment_questions import router as student_experiment_questions_router
 
 
@@ -39,6 +40,7 @@ auth_router.post("/password")(change_password)
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(experiment_admin_router)
+app.include_router(admin_learning_resources_router)
 app.include_router(student_experiment_questions_router)
 
 if (settings.admin_web_dist / "assets").exists():
