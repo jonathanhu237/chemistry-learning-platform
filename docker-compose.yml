@@ -27,8 +27,13 @@ services:
       DATABASE_URL: postgresql+psycopg://chemistry:chemistry@postgres:5432/chemistry_exam
       MEDIA_ROOT: /app/data/media
       API_PUBLIC_BASE_URL: http://127.0.0.1:8000
+      FRONTEND_ALLOWED_ORIGINS: http://localhost:8000,http://127.0.0.1:8000,http://localhost:5174,http://127.0.0.1:5174
       TUS_UPLOAD_DIR: tus
       TUS_PUBLIC_ENDPOINT: http://127.0.0.1:10980/files/
+      RAG_HYBRID_BGE_ENABLED: "true"
+      RAG_BGE_SERVICE_URL: http://bge-rag:8010
+      RAG_BGE_TIMEOUT_SECONDS: "60"
+      RAG_RERANK_TOP_K: "9"
     ports:
       - "8000:8000"
     volumes:
@@ -37,6 +42,26 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  bge-rag:
+    profiles:
+      - rag
+    build:
+      context: .
+      dockerfile: server/Dockerfile.bge-rag
+    environment:
+      BGE_EMBED_MODEL: /models/BAAI/bge-m3
+      BGE_RERANK_MODEL: /models/BAAI/bge-reranker-v2-m3
+      BGE_DEVICE: cpu
+      BGE_USE_FP16: "false"
+      BGE_RERANK_MAX_LENGTH: "512"
+      BGE_WARMUP_ON_STARTUP: "true"
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+    ports:
+      - "8010:8010"
+    volumes:
+      - E:/models/BAAI:/models/BAAI:ro
 
   tusd:
     image: tusproject/tusd:v2
@@ -81,3 +106,4 @@ services:
 
 volumes:
   postgres_data:
+  bge_models:

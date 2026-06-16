@@ -2,18 +2,22 @@ from __future__ import annotations
 
 import json
 import secrets
+import time
+import urllib.error
+import urllib.request
 from datetime import datetime
 from pathlib import Path as FilePath
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Path as PathParam, Query, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from server.app.auth import AuthUser, get_user_from_access_token, require_roles
 from server.app.config import get_settings
+from server.app.agent import run_agent, run_agent_stream
 from server.app.curriculum import (
     archive_curriculum_version,
     create_curriculum_draft,
@@ -42,13 +46,21 @@ from server.app.platform_settings import (
     AIConfigurationUpdate,
     LearningBehaviorSettings,
     PlatformSettingsResponse,
+    effective_ai_settings,
     get_ai_configuration_response,
     get_learning_behavior_settings,
     save_ai_configuration,
     save_learning_behavior_settings,
 )
 from server.app.roster import parse_roster, roster_preview
-from server.app.schemas import FeedbackListResponse, FeedbackSummaryResponse, FeedbackUpdateRequest
+from server.app.schemas import (
+    AgentAskRequest,
+    AgentAskResponse,
+    AgentChatMessage,
+    FeedbackListResponse,
+    FeedbackSummaryResponse,
+    FeedbackUpdateRequest,
+)
 from server.app.review import apply_review_action, get_review_item, list_review_items
 from server.app.security import hash_password
 
@@ -164,6 +176,18 @@ class MediaDuplicateDecisionRequest(BaseModel):
     status: str = Field(pattern="^(kept|reused|ignored)$")
 
 
+class LearningAssistantAskRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=800)
+    student_id: str | None = Field(default=None, max_length=128)
+    chapter_id: str | None = Field(default=None, max_length=128)
+    experiment_id: str | None = Field(default=None, max_length=128)
+    knowledge_point_ids: list[str] = Field(default_factory=list, max_length=10)
+    allow_progress_lookup: bool = True
+    allow_rag_lookup: bool = True
+    conversation_history: list[AgentChatMessage] = Field(default_factory=list, max_length=20)
+    max_answer_chars: int | None = Field(default=0, ge=0, le=20000)
+
+
 @router.get("/platform-settings", response_model=PlatformSettingsResponse)
 async def admin_get_platform_settings(
     user: AuthUser = Depends(require_roles("admin", "teacher")),
@@ -195,10 +219,116 @@ async def admin_update_ai_configuration(
     return save_ai_configuration(payload, user.id)
 
 
+@router.get("/learning-assistant/runtime")
+async def admin_get_learning_assistant_runtime(
+    user: AuthUser = Depends(require_roles("admin")),
+) -> dict[str, Any]:
+    settings = get_settings()
+    ai_config = get_ai_configuration_response(can_edit=user.role == "admin", auto_check=False)
+    rag_runtime = ai_config.rag_runtime
+    payload: dict[str, Any] = {
+        "checked_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "rag_runtime": _dump_full_model(rag_runtime),
+        "bge_metrics": None,
+        "bge_error": None,
+    }
+    if settings.rag_bge_service_url and rag_runtime.bge_service_required:
+        metrics_started_at = time.perf_counter()
+        try:
+            with urllib.request.urlopen(
+                f"{settings.rag_bge_service_url.rstrip('/')}/metrics",
+                timeout=2.0,
+            ) as response:
+                metrics = json.loads(response.read().decode("utf-8"))
+            if isinstance(metrics, dict):
+                metrics["request_ms"] = round((time.perf_counter() - metrics_started_at) * 1000, 2)
+                payload["bge_metrics"] = metrics
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
+            payload["bge_error"] = f"{exc.__class__.__name__}: {str(exc)[:160]}"
+    return payload
+
+
+@router.post("/learning-assistant/ask", response_model=AgentAskResponse)
+async def admin_test_learning_assistant(
+    payload: LearningAssistantAskRequest,
+    user: AuthUser = Depends(require_roles("admin")),
+) -> AgentAskResponse:
+    learning_settings = get_learning_behavior_settings()
+    ai_config = get_ai_configuration_response(can_edit=user.role == "admin", auto_check=False)
+    if not learning_settings.learning_features.ai_assistant_enabled:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="学生端 AI 学习助手入口已关闭")
+    if not ai_config.enabled_features.student_ai_assistant:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="学生 AI 学习助手功能已关闭")
+
+    request = AgentAskRequest(
+        student_id=payload.student_id or None,
+        user_id=user.id,
+        user_role="admin_debug",
+        question=payload.question,
+        chapter_id=payload.chapter_id or None,
+        experiment_id=payload.experiment_id or None,
+        knowledge_point_ids=payload.knowledge_point_ids,
+        allow_progress_lookup=payload.allow_progress_lookup,
+        allow_rag_lookup=payload.allow_rag_lookup and ai_config.enabled_features.rag_access_enabled,
+        conversation_history=payload.conversation_history,
+        max_answer_chars=payload.max_answer_chars,
+    )
+    return await run_agent(request, settings=effective_ai_settings(get_settings()))
+
+
+@router.post("/learning-assistant/ask/stream")
+async def admin_stream_learning_assistant(
+    payload: LearningAssistantAskRequest,
+    user: AuthUser = Depends(require_roles("admin")),
+) -> StreamingResponse:
+    learning_settings = get_learning_behavior_settings()
+    ai_config = get_ai_configuration_response(can_edit=user.role == "admin", auto_check=False)
+    if not learning_settings.learning_features.ai_assistant_enabled:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="蟄ｦ逕溽ｫｯ AI 蟄ｦ荵蜉ｩ謇句・蜿｣蟾ｲ蜈ｳ髣ｭ")
+    if not ai_config.enabled_features.student_ai_assistant:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="蟄ｦ逕・AI 蟄ｦ荵蜉ｩ謇句粥閭ｽ蟾ｲ蜈ｳ髣ｭ")
+
+    request = AgentAskRequest(
+        student_id=payload.student_id or None,
+        user_id=user.id,
+        user_role="admin_debug",
+        question=payload.question,
+        chapter_id=payload.chapter_id or None,
+        experiment_id=payload.experiment_id or None,
+        knowledge_point_ids=payload.knowledge_point_ids,
+        allow_progress_lookup=payload.allow_progress_lookup,
+        allow_rag_lookup=payload.allow_rag_lookup and ai_config.enabled_features.rag_access_enabled,
+        conversation_history=payload.conversation_history,
+        max_answer_chars=payload.max_answer_chars,
+    )
+
+    async def event_stream():
+        async for item in run_agent_stream(request, settings=effective_ai_settings(get_settings())):
+            event = str(item.get("event") or "message")
+            data = {key: value for key, value in item.items() if key != "event"}
+            yield _sse_event(event, data)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+def _sse_event(event: str, data: dict[str, Any]) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False, default=str)}\n\n"
+
+
 def _dump_model(model: Any) -> dict[str, Any]:
     if hasattr(model, "model_dump"):
         return model.model_dump(exclude_unset=True)
     return model.dict(exclude_unset=True)
+
+
+def _dump_full_model(model: Any) -> dict[str, Any]:
+    if hasattr(model, "model_dump"):
+        return model.model_dump()
+    return model.dict()
 
 
 def _feedback_filters(

@@ -59,6 +59,22 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/admin/sysu-logo.svg", include_in_schema=False)
+async def admin_logo() -> FileResponse:
+    logo_path = settings.admin_web_dist / "sysu-logo.svg"
+    if not logo_path.exists():
+        raise HTTPException(status_code=404, detail="Admin logo has not been built")
+    return FileResponse(logo_path, media_type="image/svg+xml")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon() -> FileResponse:
+    logo_path = settings.admin_web_dist / "sysu-logo.svg"
+    if not logo_path.exists():
+        raise HTTPException(status_code=404, detail="Admin logo has not been built")
+    return FileResponse(logo_path, media_type="image/svg+xml")
+
+
 @app.get("/admin", include_in_schema=False)
 @app.get("/admin/{full_path:path}", include_in_schema=False)
 async def admin_web(full_path: str = "") -> FileResponse:

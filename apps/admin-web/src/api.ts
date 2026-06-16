@@ -172,6 +172,18 @@ export type AIConfiguration = {
       count: number;
     }>;
   };
+  rag_runtime?: {
+    rag_enabled: boolean;
+    hybrid_bge_enabled: boolean;
+    bge_service_required: boolean;
+    bge_service_url: string;
+    query_generation_enabled: boolean;
+    vector_top_k: number;
+    rerank_top_k: number;
+    final_top_k: number;
+    status: string;
+    message: string;
+  };
   can_edit: boolean;
 };
 
@@ -182,6 +194,105 @@ export type AIConfigurationUpdate = {
   connection_check_interval_minutes: number;
   api_key?: string | null;
   enabled_features: AIConfiguration["enabled_features"];
+};
+
+export type LearningAssistantAskRequest = {
+  question: string;
+  student_id?: string | null;
+  chapter_id?: string | null;
+  experiment_id?: string | null;
+  knowledge_point_ids?: string[];
+  allow_progress_lookup: boolean;
+  allow_rag_lookup: boolean;
+  conversation_history?: Array<{
+    role: "user" | "assistant";
+    content: string;
+  }>;
+  max_answer_chars?: number | null;
+};
+
+export type LearningAssistantSource = {
+  chunk_id: string;
+  source_file?: string | null;
+  page_number?: number | null;
+  text_preview: string;
+};
+
+export type LearningAssistantResponse = {
+  answer: string;
+  sources: LearningAssistantSource[];
+  mode: string;
+  classification: Record<string, unknown>;
+  tool_calls: Array<Record<string, unknown>>;
+  guardrail_decisions: Array<{
+    code?: string;
+    action?: string;
+    reason?: string;
+    [key: string]: unknown;
+  }>;
+  rag_trace?: Record<string, unknown>;
+  review_required: boolean;
+};
+
+export type LearningAssistantRuntime = {
+  checked_at: string;
+  rag_runtime?: AIConfiguration["rag_runtime"];
+  bge_error?: string | null;
+  bge_metrics?: {
+    ok?: boolean;
+    service?: string;
+    request_ms?: number;
+    config?: {
+      embed_model?: string;
+      rerank_model?: string;
+      device?: string;
+      use_fp16?: boolean;
+      rerank_backend?: string;
+      rerank_max_length?: number;
+      offline?: boolean;
+      [key: string]: unknown;
+    };
+    models?: {
+      embed_loaded?: boolean;
+      rerank_loaded?: boolean;
+      [key: string]: unknown;
+    };
+    requests?: {
+      embed?: number;
+      rerank?: number;
+      [key: string]: unknown;
+    };
+    process?: {
+      uptime_seconds?: number;
+      cpu_user_seconds?: number;
+      cpu_system_seconds?: number;
+      memory_rss_mb?: number | null;
+      memory_high_water_mb?: number | null;
+      thread_count?: number | null;
+      [key: string]: unknown;
+    };
+    container?: {
+      memory_current_mb?: number | null;
+      memory_limit_mb?: number | null;
+      cpu_usage_seconds?: number | null;
+      cpu_user_seconds?: number | null;
+      cpu_system_seconds?: number | null;
+      cpu_throttled_seconds?: number | null;
+      [key: string]: unknown;
+    };
+    warmup?: {
+      enabled?: boolean;
+      status?: "disabled" | "not_started" | "running" | "succeeded" | "failed" | string;
+      trigger?: string | null;
+      started_at?: string | null;
+      finished_at?: string | null;
+      duration_ms?: number | null;
+      error?: string | null;
+      models_ready?: boolean;
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  } | null;
 };
 
 export type Chapter = {
@@ -928,6 +1039,76 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     throw new ApiError(response.status, typeof payload === "object" && payload ? payload.detail : payload);
   }
   return payload as T;
+}
+
+export type JsonStreamEvent<T = unknown> = {
+  event: string;
+  data: T;
+};
+
+function parseSseBlock(raw: string): JsonStreamEvent | null {
+  const lines = raw.split(/\r?\n/);
+  let event = "message";
+  const dataLines: string[] = [];
+  for (const line of lines) {
+    if (!line || line.startsWith(":")) continue;
+    if (line.startsWith("event:")) {
+      event = line.slice("event:".length).trim() || "message";
+    } else if (line.startsWith("data:")) {
+      dataLines.push(line.slice("data:".length).trimStart());
+    }
+  }
+  if (!dataLines.length) return null;
+  const dataText = dataLines.join("\n");
+  try {
+    return { event, data: JSON.parse(dataText) };
+  } catch {
+    return { event, data: dataText };
+  }
+}
+
+export async function postJsonStream<T>(
+  path: string,
+  body: unknown,
+  onEvent: (event: JsonStreamEvent<T>) => void | Promise<void>,
+): Promise<void> {
+  const headers = new Headers();
+  headers.set("Accept", "text/event-stream");
+  headers.set("Content-Type", "application/json");
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+  const response = await fetch(`${apiBase}${path}`, { method: "POST", body: JSON.stringify(body), headers });
+  if (response.status === 401) {
+    setAuthToken("");
+  }
+  if (!response.ok) {
+    const contentType = response.headers.get("content-type") || "";
+    const payload = contentType.includes("application/json") ? await response.json() : await response.text();
+    throw new ApiError(response.status, typeof payload === "object" && payload ? payload.detail : payload);
+  }
+  if (!response.body) {
+    throw new ApiError(response.status, "当前浏览器不支持流式响应读取");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+    const blocks = buffer.split(/\r?\n\r?\n/);
+    buffer = blocks.pop() || "";
+    for (const block of blocks) {
+      const event = parseSseBlock(block);
+      if (event) await onEvent(event as JsonStreamEvent<T>);
+    }
+    if (done) break;
+  }
+
+  const event = parseSseBlock(buffer);
+  if (event) await onEvent(event as JsonStreamEvent<T>);
 }
 
 export function postJson<T>(path: string, body: unknown): Promise<T> {

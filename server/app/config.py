@@ -77,6 +77,14 @@ class Settings:
     agent_llm_base_url: str = ""
     agent_llm_api_key: str = ""
     agent_llm_model: str = ""
+    rag_hybrid_bge_enabled: bool = False
+    rag_query_generation_enabled: bool = True
+    rag_bge_service_url: str = "http://bge-rag:8010"
+    rag_bge_timeout_seconds: float = 8.0
+    rag_keyword_top_k: int = 16
+    rag_vector_top_k: int = 24
+    rag_rerank_top_k: int = 9
+    rag_final_top_k: int = 5
     admin_web_dist: Path = ROOT / "apps" / "admin-web" / "dist"
 
     @property
@@ -146,5 +154,13 @@ def get_settings() -> Settings:
         agent_llm_base_url=_getenv("AGENT_LLM_BASE_URL"),
         agent_llm_api_key=_getenv("AGENT_LLM_API_KEY"),
         agent_llm_model=_getenv("AGENT_LLM_MODEL"),
+        rag_hybrid_bge_enabled=_get_bool("RAG_HYBRID_BGE_ENABLED", Settings.rag_hybrid_bge_enabled),
+        rag_query_generation_enabled=_get_bool("RAG_QUERY_GENERATION_ENABLED", Settings.rag_query_generation_enabled),
+        rag_bge_service_url=_getenv("RAG_BGE_SERVICE_URL", Settings.rag_bge_service_url).rstrip("/"),
+        rag_bge_timeout_seconds=_get_float("RAG_BGE_TIMEOUT_SECONDS", Settings.rag_bge_timeout_seconds),
+        rag_keyword_top_k=_get_int("RAG_KEYWORD_TOP_K", Settings.rag_keyword_top_k),
+        rag_vector_top_k=_get_int("RAG_VECTOR_TOP_K", Settings.rag_vector_top_k),
+        rag_rerank_top_k=_get_int("RAG_RERANK_TOP_K", Settings.rag_rerank_top_k),
+        rag_final_top_k=_get_int("RAG_FINAL_TOP_K", Settings.rag_final_top_k),
         admin_web_dist=Path(_getenv("ADMIN_WEB_DIST", str(Settings.admin_web_dist))),
     )

@@ -76,6 +76,19 @@ class StudentAIPolicyStatus(BaseModel):
     outcomes: list[StudentAIPolicyOutcomeSummary] = Field(default_factory=list)
 
 
+class RAGRuntimeStatus(BaseModel):
+    rag_enabled: bool = True
+    hybrid_bge_enabled: bool = False
+    bge_service_required: bool = False
+    bge_service_url: str = ""
+    query_generation_enabled: bool = True
+    vector_top_k: int = 24
+    rerank_top_k: int = 24
+    final_top_k: int = 5
+    status: str = "disabled"
+    message: str = ""
+
+
 class AIConfigurationUpdate(BaseModel):
     provider: str = Field(default="openai", pattern="^openai$")
     base_url: str = ""
@@ -113,6 +126,7 @@ class AIConfigurationResponse(BaseModel):
     enabled_features: AIEnabledFeatureScopes = Field(default_factory=AIEnabledFeatureScopes)
     status: AIStatusSummary
     student_ai_policy: StudentAIPolicyStatus = Field(default_factory=StudentAIPolicyStatus)
+    rag_runtime: RAGRuntimeStatus = Field(default_factory=RAGRuntimeStatus)
     can_edit: bool = False
 
 
@@ -360,6 +374,34 @@ def _student_ai_policy_status(effective: dict[str, Any], log_summary: dict[str, 
     )
 
 
+def _rag_runtime_status(features: dict[str, Any]) -> RAGRuntimeStatus:
+    settings = get_settings()
+    rag_enabled = bool(features.get("rag_access_enabled", True))
+    hybrid_enabled = bool(settings.rag_hybrid_bge_enabled)
+    bge_required = bool(rag_enabled and hybrid_enabled)
+    if not rag_enabled:
+        status = "disabled"
+        message = "RAG 已关闭，BGE CPU 服务无需启动。"
+    elif hybrid_enabled:
+        status = "bge_configured"
+        message = "Hybrid BGE RAG 已启用，后端会通过独立 BGE 服务进行向量召回与重排。"
+    else:
+        status = "legacy"
+        message = "当前使用现有来源/关键词 RAG，未启用 BGE sidecar。"
+    return RAGRuntimeStatus(
+        rag_enabled=rag_enabled,
+        hybrid_bge_enabled=hybrid_enabled,
+        bge_service_required=bge_required,
+        bge_service_url=settings.rag_bge_service_url,
+        query_generation_enabled=bool(settings.rag_query_generation_enabled),
+        vector_top_k=int(settings.rag_vector_top_k),
+        rerank_top_k=int(settings.rag_rerank_top_k),
+        final_top_k=int(settings.rag_final_top_k),
+        status=status,
+        message=message,
+    )
+
+
 def _agent_log_summary() -> dict[str, Any]:
     if not _postgres_enabled():
         return {"usage_buckets": [], "usage_trends": {}}
@@ -589,6 +631,7 @@ def get_ai_configuration_response(can_edit: bool = False, auto_check: bool = Tru
             else None,
         ),
         student_ai_policy=_student_ai_policy_status(effective, log_summary),
+        rag_runtime=_rag_runtime_status(effective["enabled_features"]),
         can_edit=can_edit,
     )
 

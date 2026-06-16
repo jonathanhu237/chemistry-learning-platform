@@ -27,6 +27,11 @@ class RagAskResponse(BaseModel):
     review_required: bool = True
 
 
+class AgentChatMessage(BaseModel):
+    role: str = Field(pattern="^(user|assistant)$")
+    content: str = Field(min_length=1, max_length=8000)
+
+
 class AgentAskRequest(BaseModel):
     student_id: str | None = None
     user_id: str | None = None
@@ -37,6 +42,8 @@ class AgentAskRequest(BaseModel):
     knowledge_point_ids: list[str] = Field(default_factory=list)
     allow_progress_lookup: bool = True
     allow_rag_lookup: bool = True
+    conversation_history: list[AgentChatMessage] = Field(default_factory=list, max_length=20)
+    max_answer_chars: int | None = Field(default=None, ge=0, le=20000)
 
 
 class AgentAskResponse(BaseModel):
@@ -46,6 +53,7 @@ class AgentAskResponse(BaseModel):
     classification: dict = Field(default_factory=dict)
     tool_calls: list[dict] = Field(default_factory=list)
     guardrail_decisions: list[dict] = Field(default_factory=list)
+    rag_trace: dict = Field(default_factory=dict)
     review_required: bool = True
 
 

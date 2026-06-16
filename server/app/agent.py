@@ -5,9 +5,10 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, AsyncIterator, Callable
 
 from server.app.config import ROOT, Settings, get_settings
+from server.app.hybrid_rag import retrieve_hybrid_context
 from server.app.repositories import RepositoryProvider, get_repositories
 from server.app.retrieval import keyword_score
 from server.app.schemas import AgentAskRequest, AgentAskResponse, RagAskRequest, RagSource
@@ -119,9 +120,11 @@ class AgentRunContext:
     repositories: RepositoryProvider
     policy: AgentPolicy
     classification: dict[str, Any]
+    settings: Settings | None = None
     policy_decision: StudentAIPolicyDecision = field(default_factory=StudentAIPolicyDecision)
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
     sources: list[RagSource] = field(default_factory=list)
+    rag_traces: list[dict[str, Any]] = field(default_factory=list)
     guardrail_decisions: list[dict[str, Any]] = field(default_factory=list)
     mode: str = "local"
 
@@ -181,7 +184,8 @@ def classify_agent_request(request: AgentAskRequest) -> dict[str, Any]:
             factual_query=factual_query,
         ),
         "in_course_scope": not is_out_of_scope,
-        "requires_evidence": factual_query and not is_greeting and not is_resource_request,
+        "requires_evidence": False,
+        "rag_preferred": factual_query and not is_greeting and not is_resource_request,
         "resource_request": is_resource_request,
         "experiment_safety": is_unsafe_experiment,
         "assessment_leakage": is_assessment_leakage,
@@ -206,9 +210,10 @@ async def _policy_gate_decision(context: AgentRunContext, settings: Settings) ->
     if not decision.valid:
         context.add_guardrail(
             "policy_decision_invalid",
-            "continue_with_normal_answer",
+            "continue_with_local_policy",
             decision.reason or "invalid structured policy decision",
         )
+        return _local_policy_decision_from_classification(context.classification)
     return decision
 
 
@@ -233,6 +238,8 @@ async def _run_openai_policy_gate(context: AgentRunContext, settings: Settings) 
                     f"{context.policy.compact_rail}\n\n"
                     "Allowed mode values: normal_answer, refuse_out_of_scope, safe_experiment_guidance, "
                     "assessment_hint, needs_platform_evidence.\n"
+                    "Use needs_platform_evidence only for platform-specific resource/material availability claims. "
+                    "For ordinary inorganic chemistry factual questions, use normal_answer and treat RAG as optional support.\n"
                     "Return keys: mode, reason, evidence_required, student_guidance, allowed_tools. "
                     "allowed_tools may include rag_search, curriculum_lookup, published_resource_lookup, "
                     "own_student_progress_lookup."
@@ -319,11 +326,11 @@ def _local_policy_decision_from_classification(classification: dict[str, Any]) -
             evidence_required=True,
             allowed_tools=("published_resource_lookup", "rag_search", "curriculum_lookup"),
         )
-    if classification.get("requires_evidence"):
+    if classification.get("rag_preferred"):
         return StudentAIPolicyDecision(
-            mode="needs_platform_evidence",
-            reason="local fallback identified course factual query requiring evidence",
-            evidence_required=True,
+            mode="normal_answer",
+            reason="local fallback allows normal course answer with optional RAG support",
+            evidence_required=False,
             allowed_tools=("rag_search", "curriculum_lookup"),
         )
     return StudentAIPolicyDecision(mode="normal_answer", reason="local fallback allows normal course answer")
@@ -350,8 +357,8 @@ def _apply_policy_decision_to_classification(context: AgentRunContext) -> None:
             {
                 "intent": mode,
                 "in_course_scope": mode != "refuse_out_of_scope",
-                "requires_evidence": bool(decision.evidence_required or mode == "needs_platform_evidence"),
-                "resource_request": bool(resource_tool_allowed),
+                "requires_evidence": bool(resource_tool_allowed and (decision.evidence_required or mode == "needs_platform_evidence")),
+                "resource_request": bool(resource_tool_allowed and mode == "needs_platform_evidence"),
                 "experiment_safety": mode == "safe_experiment_guidance",
                 "assessment_leakage": mode == "assessment_hint",
             }
@@ -390,6 +397,7 @@ async def run_agent(
         repositories=repositories,
         policy=policy or load_agent_policy(),
         classification=classify_agent_request(request),
+        settings=settings,
     )
 
     try:
@@ -406,6 +414,7 @@ async def run_agent(
             classification=context.classification,
             tool_calls=context.tool_calls,
             guardrail_decisions=context.guardrail_decisions,
+            rag_trace=_rag_trace_payload(context),
             review_required=True,
         )
         _persist_agent_log(context, response)
@@ -413,6 +422,82 @@ async def run_agent(
     except Exception as exc:
         _persist_agent_error_log(context, exc)
         raise
+
+
+async def run_agent_stream(
+    request: AgentAskRequest,
+    repositories: RepositoryProvider | None = None,
+    settings: Settings | None = None,
+    policy: AgentPolicy | None = None,
+) -> AsyncIterator[dict[str, Any]]:
+    repositories = repositories or get_repositories()
+    settings = settings or get_settings()
+    context = AgentRunContext(
+        request=request,
+        repositories=repositories,
+        policy=policy or load_agent_policy(),
+        classification=classify_agent_request(request),
+        settings=settings,
+    )
+
+    try:
+        yield {"event": "status", "message": "正在判断问题类型与安全策略"}
+        context.policy_decision = await _policy_gate_decision(context, settings)
+        _apply_policy_decision_to_classification(context)
+        answer = _preflight_response(context)
+
+        if answer is None:
+            answer_parts: list[str] = []
+            if _sdk_enabled(settings):
+                yield {"event": "status", "message": "正在连接模型，开始流式生成"}
+                try:
+                    async for delta in _run_openai_chat_completion_stream(context, settings):
+                        if not delta:
+                            continue
+                        answer_parts.append(delta)
+                        yield {"event": "delta", "delta": delta}
+                    answer = "".join(answer_parts).strip()
+                except Exception as exc:
+                    context.add_guardrail(
+                        "chat_completion_stream_fallback",
+                        "fallback_to_local",
+                        f"流式模型调用失败：{exc.__class__.__name__}",
+                    )
+                    yield {"event": "status", "message": "模型流式调用失败，已切换到本地兜底"}
+                    context.mode = "local"
+                    answer = _run_local_agent(context)
+                    for delta in _chunk_stream_text(answer):
+                        yield {"event": "delta", "delta": delta}
+            else:
+                yield {"event": "status", "message": "未配置可用模型，使用本地兜底回答"}
+                context.mode = "local"
+                answer = _run_local_agent(context)
+                for delta in _chunk_stream_text(answer):
+                    yield {"event": "delta", "delta": delta}
+        else:
+            for delta in _chunk_stream_text(answer):
+                yield {"event": "delta", "delta": delta}
+
+        guarded_answer = _apply_output_guardrails(context, answer)
+        if guarded_answer != answer:
+            answer = guarded_answer
+            yield {"event": "replace", "answer": answer}
+
+        response = AgentAskResponse(
+            answer=answer,
+            sources=context.sources,
+            mode=context.mode,
+            classification=context.classification,
+            tool_calls=context.tool_calls,
+            guardrail_decisions=context.guardrail_decisions,
+            rag_trace=_rag_trace_payload(context),
+            review_required=True,
+        )
+        _persist_agent_log(context, response)
+        yield {"event": "final", "response": _dump_agent_response(response)}
+    except Exception as exc:
+        _persist_agent_error_log(context, exc)
+        yield {"event": "error", "message": str(exc) or exc.__class__.__name__}
 
 
 def agent_to_rag_request(request: AgentAskRequest) -> RagAskRequest:
@@ -441,7 +526,24 @@ def rag_search_tool(context: AgentRunContext, query: str) -> dict[str, Any]:
         context.add_guardrail("rag_lookup_disabled", "skip_rag_lookup", "学生侧 AI RAG 接入已关闭。")
         context.record_tool("rag_search", {"query": query}, result["evidence"])
         return result
-    chunks = _retrieve_context(context.repositories, query, context.request)
+    settings = context.settings or get_settings()
+    legacy_retrieve = lambda lookup_query, lookup_limit: _retrieve_context(
+        context.repositories,
+        lookup_query,
+        context.request,
+        limit=lookup_limit,
+    )
+    hybrid_result = retrieve_hybrid_context(
+        repositories=context.repositories,
+        question=query,
+        request=context.request,
+        settings=settings,
+        legacy_retrieve=legacy_retrieve,
+        query_generator=lambda lookup_query: _generate_retrieval_queries(context, settings, lookup_query),
+        limit=max(1, settings.rag_final_top_k),
+    )
+    chunks = hybrid_result.chunks
+    context.rag_traces.append(hybrid_result.trace)
     sources = [_source_from_chunk(chunk) for chunk in chunks]
     context.sources = _merge_sources(context.sources, sources)
     result = {
@@ -453,9 +555,18 @@ def rag_search_tool(context: AgentRunContext, query: str) -> dict[str, Any]:
                 "text_preview": source.text_preview,
             }
             for source in sources
-        ]
+        ],
+        "trace": hybrid_result.trace,
     }
-    context.record_tool("rag_search", {"query": query}, result["evidence"])
+    context.record_tool(
+        "rag_search",
+        {
+            "query": query,
+            "mode": hybrid_result.trace.get("mode"),
+            "generated_queries": hybrid_result.trace.get("generated_queries") or [],
+        },
+        result["evidence"],
+    )
     return result
 
 
@@ -554,6 +665,15 @@ async def _run_with_optional_sdk(context: AgentRunContext, settings: Settings) -
             return await _run_openai_agents_sdk(context, settings)
         except Exception as exc:
             context.add_guardrail("agent_sdk_fallback", "fallback_to_local", f"SDK不可用或调用失败：{exc.__class__.__name__}")
+            if not context.classification.get("resource_request"):
+                try:
+                    return await _run_openai_chat_completion(context, settings)
+                except Exception as chat_exc:
+                    context.add_guardrail(
+                        "chat_completion_fallback",
+                        "fallback_to_local",
+                        f"普通模型兜底失败：{chat_exc.__class__.__name__}",
+                    )
     context.mode = "local"
     return _run_local_agent(context)
 
@@ -617,9 +737,146 @@ async def _run_openai_agents_sdk(context: AgentRunContext, settings: Settings) -
         kwargs["run_config"] = RunConfig(tracing_disabled=True)
     except Exception:
         pass
-    result = await Runner.run(agent, context.request.question, **kwargs)
+    result = await Runner.run(agent, _agent_user_input(context), **kwargs)
     context.mode = "openai_agents_sdk"
     return str(result.final_output).strip()
+
+
+async def _run_openai_chat_completion(context: AgentRunContext, settings: Settings) -> str:
+    from openai import OpenAI
+
+    curriculum = curriculum_lookup_tool(context, context.request.question)
+    evidence: list[dict[str, Any]] = []
+    if context.classification.get("allow_rag_lookup", True):
+        evidence = rag_search_tool(context, context.request.question).get("evidence") or []
+        if not evidence:
+            context.add_guardrail("rag_no_match", "answer_from_model_knowledge", "RAG 未命中可用课程证据，改用模型化学常识回答。")
+    else:
+        context.add_guardrail("rag_lookup_disabled", "answer_from_model_knowledge", "本次未开启 RAG 检索，改用模型化学常识回答。")
+
+    point_titles = [
+        point.get("content")
+        for point in curriculum.get("knowledge_points", [])
+        if point.get("content")
+    ][:5]
+    evidence_items = [
+        {
+            "source_file": item.get("source_file"),
+            "page_number": item.get("page_number"),
+            "text_preview": item.get("text_preview"),
+        }
+        for item in evidence[:5]
+    ]
+    client = OpenAI(
+        api_key=settings.agent_llm_api_key or os.getenv("OPENAI_API_KEY"),
+        base_url=settings.agent_llm_base_url or None,
+        timeout=20.0,
+    )
+    response = client.chat.completions.create(
+        model=settings.agent_llm_model,
+        temperature=0.2,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "你是无机化学实验学习助手。请用中文回答学生的课程问题。"
+                    "RAG/课程证据只是辅助：如果提供了证据，优先参考证据并避免和证据冲突；"
+                    "如果没有证据或本次未开启 RAG，就用你可靠的无机化学常识回答。"
+                    "不要声称平台存在某个视频、资源或教材出处，除非证据中明确提供。"
+                    "不要提供危险实验的私下操作步骤，也不要直接给测验答案。"
+                    "回答要适合学生阅读，简洁、分点、可复习。"
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        "question": context.request.question,
+                        "chapter_id": context.request.chapter_id,
+                        "experiment_id": context.request.experiment_id,
+                        "knowledge_point_ids": context.request.knowledge_point_ids,
+                        "conversation_history": _conversation_history_payload(context),
+                        "related_knowledge_points": point_titles,
+                        "rag_evidence": evidence_items,
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+        ],
+    )
+    context.mode = "openai_chat_fallback"
+    content = response.choices[0].message.content if response.choices else ""
+    return str(content or "").strip()
+
+
+async def _run_openai_chat_completion_stream(context: AgentRunContext, settings: Settings) -> AsyncIterator[str]:
+    from openai import OpenAI
+
+    curriculum = curriculum_lookup_tool(context, context.request.question)
+    evidence: list[dict[str, Any]] = []
+    if context.classification.get("allow_rag_lookup", True):
+        evidence = rag_search_tool(context, context.request.question).get("evidence") or []
+        if not evidence:
+            context.add_guardrail("rag_no_match", "answer_from_model_knowledge", "RAG 未命中可用课程证据，改用模型课程知识回答。")
+    else:
+        context.add_guardrail("rag_lookup_disabled", "answer_from_model_knowledge", "本次未启用 RAG 检索，使用模型课程知识回答。")
+
+    point_titles = [
+        point.get("content")
+        for point in curriculum.get("knowledge_points", [])
+        if point.get("content")
+    ][:5]
+    evidence_items = [
+        {
+            "source_file": item.get("source_file"),
+            "page_number": item.get("page_number"),
+            "text_preview": item.get("text_preview"),
+        }
+        for item in evidence[:5]
+    ]
+    client = OpenAI(
+        api_key=settings.agent_llm_api_key or os.getenv("OPENAI_API_KEY"),
+        base_url=settings.agent_llm_base_url or None,
+        timeout=30.0,
+    )
+    stream = client.chat.completions.create(
+        model=settings.agent_llm_model,
+        temperature=0.2,
+        stream=True,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "你是无机化学实验学习助手。请用中文、面向学生、简洁回答。"
+                    "优先基于给定课程证据和实验上下文回答；没有证据时要说明平台暂未找到可靠来源。"
+                    "不要提供危险家庭实验步骤，不要直接泄露测验答案，只给思路和概念提示。"
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        "question": context.request.question,
+                        "chapter_id": context.request.chapter_id,
+                        "experiment_id": context.request.experiment_id,
+                        "knowledge_point_ids": context.request.knowledge_point_ids,
+                        "conversation_history": _conversation_history_payload(context),
+                        "related_knowledge_points": point_titles,
+                        "rag_evidence": evidence_items,
+                        "policy_decision": context.policy_decision.as_dict(),
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+        ],
+    )
+    context.mode = "openai_chat_stream"
+    for chunk in stream:
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta.content or ""
+        if delta:
+            yield str(delta)
 
 
 def _run_local_agent(context: AgentRunContext) -> str:
@@ -668,9 +925,10 @@ def _apply_output_guardrails(context: AgentRunContext, answer: str) -> str:
     if context.classification["resource_request"] and not _has_resource_tool_result(context) and "没有" not in answer:
         context.add_guardrail("no_fabricated_resource", "override_unavailable_resource", "资源请求没有已发布资源支撑。")
         answer = "当前平台还没有查到已发布且可播放的相关视频或资料。老师后续上传并发布后，这里会显示。"
-    if len(answer) > context.policy.max_answer_chars:
+    max_answer_chars = context.policy.max_answer_chars if context.request.max_answer_chars is None else context.request.max_answer_chars
+    if max_answer_chars and len(answer) > max_answer_chars:
         context.add_guardrail("mobile_length", "trim", "回答超过小程序端建议长度。")
-        answer = answer[: context.policy.max_answer_chars].rstrip() + "..."
+        answer = answer[:max_answer_chars].rstrip() + "..."
     return answer
 
 
@@ -695,6 +953,7 @@ def _persist_agent_log(context: AgentRunContext, response: AgentAskResponse) -> 
                     "policy_decision": context.policy_decision.as_dict(),
                     "final_mode": response.mode,
                     "source_count": len(response.sources),
+                    "rag_trace": response.rag_trace,
                 },
             }
         )
@@ -722,6 +981,7 @@ def _persist_agent_error_log(context: AgentRunContext, error: Exception) -> None
                     "policy_decision": context.policy_decision.as_dict(),
                     "final_mode": context.mode,
                     "source_count": len(context.sources),
+                    "rag_trace": _rag_trace_payload(context),
                     "error_type": type(error).__name__,
                     "error_message": str(error)[:240],
                 },
@@ -729,6 +989,103 @@ def _persist_agent_error_log(context: AgentRunContext, error: Exception) -> None
         )
     except Exception:
         pass
+
+
+def _generate_retrieval_queries(
+    context: AgentRunContext,
+    settings: Settings,
+    question: str,
+) -> tuple[list[str], dict[str, Any]]:
+    trace: dict[str, Any] = {"status": "skipped", "reason": "", "provider": settings.agent_llm_provider}
+    if not settings.rag_query_generation_enabled:
+        trace["reason"] = "disabled"
+        return [question], trace
+    if not _sdk_enabled(settings):
+        trace["reason"] = "llm_not_configured"
+        return [question], trace
+    try:
+        from openai import OpenAI
+
+        client = OpenAI(
+            api_key=settings.agent_llm_api_key or os.getenv("OPENAI_API_KEY"),
+            base_url=settings.agent_llm_base_url or None,
+            timeout=10.0,
+        )
+        response = client.chat.completions.create(
+            model=settings.agent_llm_model,
+            temperature=0,
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You rewrite an inorganic chemistry student question into concise retrieval queries. "
+                        "Return JSON only with key queries as an array of 1 to 3 Chinese search queries. "
+                        "Keep reagent names, experiment numbers, and chemistry terms exact. Do not answer the question."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        {
+                            "question": question,
+                            "chapter_id": context.request.chapter_id,
+                            "experiment_id": context.request.experiment_id,
+                            "knowledge_point_ids": context.request.knowledge_point_ids,
+                            "conversation_history": [
+                                item.model_dump() if hasattr(item, "model_dump") else item.dict()
+                                for item in context.request.conversation_history[-6:]
+                            ],
+                        },
+                        ensure_ascii=False,
+                    ),
+                },
+            ],
+        )
+        content = response.choices[0].message.content if response.choices else ""
+        payload = json.loads(content or "{}")
+        raw_queries = payload.get("queries") if isinstance(payload, dict) else []
+        queries = [
+            " ".join(str(item or "").split())
+            for item in raw_queries
+            if isinstance(item, str) and str(item or "").strip()
+        ][:3]
+        if not queries:
+            trace.update({"status": "fallback", "reason": "empty_queries"})
+            return [question], trace
+        trace.update({"status": "generated", "reason": "", "queries": queries})
+        return queries, trace
+    except Exception as exc:
+        trace.update({"status": "fallback", "reason": f"{exc.__class__.__name__}: {str(exc)[:160]}"})
+        return [question], trace
+
+
+def _rag_trace_payload(context: AgentRunContext) -> dict[str, Any]:
+    if not context.rag_traces:
+        return {}
+    return {
+        "runs": context.rag_traces,
+        "latest": context.rag_traces[-1],
+    }
+
+
+def _conversation_history_payload(context: AgentRunContext) -> list[dict[str, str]]:
+    return [
+        item.model_dump() if hasattr(item, "model_dump") else item.dict()
+        for item in context.request.conversation_history[-10:]
+    ]
+
+
+def _agent_user_input(context: AgentRunContext) -> str:
+    if not context.request.conversation_history:
+        return context.request.question
+    return json.dumps(
+        {
+            "conversation_history": _conversation_history_payload(context),
+            "current_question": context.request.question,
+        },
+        ensure_ascii=False,
+    )
 
 
 def _retrieve_context(
@@ -793,6 +1150,18 @@ def source_to_dict(source: RagSource) -> dict[str, Any]:
     if hasattr(source, "model_dump"):
         return source.model_dump()
     return source.dict()
+
+
+def _dump_agent_response(response: AgentAskResponse) -> dict[str, Any]:
+    if hasattr(response, "model_dump"):
+        return response.model_dump()
+    return response.dict()
+
+
+def _chunk_stream_text(text: str, chunk_size: int = 18) -> list[str]:
+    if not text:
+        return []
+    return [text[index : index + chunk_size] for index in range(0, len(text), chunk_size)]
 
 
 def _merge_sources(existing: list[RagSource], incoming: list[RagSource]) -> list[RagSource]:

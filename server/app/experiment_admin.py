@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, Query, Response, UploadFile, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
@@ -170,6 +171,10 @@ def _json_array(value: Any) -> str:
 
 def _dump(model: BaseModel) -> dict[str, Any]:
     return model.model_dump() if hasattr(model, "model_dump") else model.dict()
+
+
+def _sse_event(event: str, data: dict[str, Any]) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False, default=str)}\n\n"
 
 
 def _row_dict(row: Any) -> dict[str, Any]:
@@ -3207,6 +3212,36 @@ async def admin_get_question_workbench_session(
 ) -> dict[str, Any]:
     with db_session() as session:
         return _workbench_session_response(session, session_id)
+
+
+@admin_router.post("/question-banks/workbench-sessions/{session_id}/messages/stream")
+async def admin_stream_question_workbench_message(
+    payload: WorkbenchMessageRequest,
+    session_id: str = Path(min_length=1),
+    user: AuthUser = Depends(require_roles("admin", "teacher")),
+) -> StreamingResponse:
+    if not ai_feature_enabled("question_bank_assistant"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Question bank assistant is disabled")
+    invalid_types = [item for item in payload.question_types if item not in OBJECTIVE_TYPES]
+    if invalid_types:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported question types: {invalid_types}")
+
+    async def event_stream():
+        yield _sse_event("status", {"message": "已收到提示，正在准备题目上下文"})
+        yield _sse_event("status", {"message": "正在调用 AI 生成候选题"})
+        try:
+            result = await admin_send_question_workbench_message(payload=payload, session_id=session_id, user=user)
+            yield _sse_event("final", {"session": result})
+        except HTTPException as exc:
+            yield _sse_event("error", {"message": exc.detail, "status": exc.status_code})
+        except Exception as exc:
+            yield _sse_event("error", {"message": str(exc) or exc.__class__.__name__})
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @admin_router.post("/question-banks/workbench-sessions/{session_id}/messages")

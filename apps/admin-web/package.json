@@ -25,6 +25,7 @@
     "antd": "^6.4.3",
     "dayjs": "^1.11.21",
     "hash-wasm": "^4.12.0",
+    "motion": "^12.40.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.17.0"

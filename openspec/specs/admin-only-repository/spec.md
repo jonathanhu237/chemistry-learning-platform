@@ -48,6 +48,18 @@ The standalone repository SHALL include enough configuration and scripts to vali
 - **WHEN** validation is run in the standalone repository
 - **THEN** the admin-only FastAPI entrypoint MUST import successfully and OpenSpec validation MUST pass
 
+### Requirement: Local Docker Backend Update Discipline
+The standalone repository SHALL treat backend source changes as Docker image changes in the local Compose environment because the backend service does not bind-mount the repository source tree.
+
+#### Scenario: Backend code changes are applied locally
+- **WHEN** any file under `server`, backend migration/runtime configuration, or backend-dependent scripts are changed and the local admin console is served through Docker Compose
+- **THEN** the backend update MUST be applied with `docker compose up -d --build backend`
+- **AND** operators MUST NOT rely on browser refresh, Vite hot reload, or a plain container restart to load backend route, schema, or Python code changes.
+
+#### Scenario: Backend route availability is verified
+- **WHEN** a backend change adds, removes, or renames an API route
+- **THEN** the route MUST be verified against the running backend after the rebuild, for example through `/openapi.json` or a focused HTTP request to the changed endpoint.
+
 ### Requirement: Git Repository Publishing Readiness
 The standalone repository SHALL be initialized as a clean local Git repository with an initial commit and documented GitHub publishing instructions.
 

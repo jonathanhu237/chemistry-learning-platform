@@ -1,7 +1,9 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import type { ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import {
   Alert,
   App as AntApp,
@@ -11,6 +13,7 @@ import {
   Checkbox,
   ConfigProvider,
   Descriptions,
+  Divider,
   Drawer,
   Empty,
   Flex,
@@ -52,6 +55,7 @@ import {
   EyeOutlined,
   IdcardOutlined,
   KeyOutlined,
+  LeftOutlined,
   LogoutOutlined,
   MessageOutlined,
   PauseCircleOutlined,
@@ -76,6 +80,7 @@ import {
   getAuthToken,
   patchJson,
   postJson,
+  postJsonStream,
   putJson,
   setAuthToken,
 } from "./api";
@@ -108,6 +113,10 @@ import type {
   StudentReport,
   WeakPointsResponse,
   LearningBehaviorSettings,
+  LearningAssistantAskRequest,
+  LearningAssistantResponse,
+  LearningAssistantRuntime,
+  LearningAssistantSource,
   PlatformSettingsResponse,
   RegistrationSettings,
   RosterImportResult,
@@ -118,6 +127,9 @@ import type {
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
 const sysuLogoSrc = `${import.meta.env.BASE_URL}sysu-logo.svg`;
+const adminSiderWidth = 248;
+const adminSiderCollapsedWidth = 72;
+const navBrandTransition = { type: "tween" as const, duration: 0.16, ease: [0.22, 1, 0.36, 1] as const };
 const UsageLineChart = lazy(async () => {
   const module = await import("@ant-design/plots");
   return { default: module.Line };
@@ -149,7 +161,7 @@ type VideoPreviewTarget = {
 
 type VideoPointFilter = "all" | "empty" | "referenced" | "published";
 
-const navItems = [
+const navItems: Array<{ key: string; icon: ReactNode; label: string; adminOnly?: boolean }> = [
   { key: "/overview", icon: <BookOutlined />, label: "资源总览" },
   { key: "/classes", icon: <TeamOutlined />, label: "班级与学生" },
   { key: "/experiments", icon: <ExperimentOutlined />, label: "实验管理" },
@@ -157,8 +169,9 @@ const navItems = [
   { key: "/question-banks", icon: <QuestionCircleOutlined />, label: "题库管理" },
   { key: "/analytics", icon: <BarChartOutlined />, label: "学情分析" },
   { key: "/feedback", icon: <MessageOutlined />, label: "反馈管理" },
+  { key: "/learning-assistant", icon: <SafetyCertificateOutlined />, label: "学习助手", adminOnly: true },
   { key: "/settings", icon: <SettingOutlined />, label: "系统设置" },
-  { key: "/ai-config", icon: <ApiOutlined />, label: "AI配置" },
+  { key: "/ai-config", icon: <ApiOutlined />, label: "AI接入" },
 ];
 
 const statusColor: Record<string, string> = {
@@ -240,6 +253,18 @@ function questionTypeLabel(type?: string) {
   return type || "-";
 }
 
+function coverageTagLabel(tag?: string) {
+  const labels: Record<string, string> = {
+    experiment_purpose: "实验目的",
+    true_false: "判断题",
+    single_choice: "选择题",
+    fill_blank: "填空题",
+    evidence_based: "证据题",
+    diagnostic: "诊断题",
+  };
+  return labels[String(tag || "")] || String(tag || "-").replace(/_/g, " ");
+}
+
 function errorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   return String(error || "请求失败");
@@ -300,18 +325,7 @@ function App() {
           <Route path="/" element={<Navigate to="/overview" replace />} />
           <Route path="/curriculum" element={<Navigate to="/experiments" replace />} />
           <Route path="/review" element={<Navigate to="/question-banks" replace />} />
-          <Route element={<ProtectedShell />}>
-          <Route path="/overview" element={<LearningResourcesPage />} />
-            <Route path="/classes" element={<ClassesPage />} />
-            <Route path="/experiments" element={<ExperimentsPage />} />
-            <Route path="/videos" element={<VideoResourcesPage />} />
-            <Route path="/question-banks" element={<QuestionBanksPage />} />
-            <Route path="/analytics" element={<AnalyticsPage />} />
-            <Route path="/feedback" element={<FeedbackPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/ai-config" element={<AIConfigurationPage />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/overview" replace />} />
+          <Route path="/*" element={<ProtectedShell />} />
         </Routes>
       </AntApp>
     </ConfigProvider>
@@ -388,6 +402,12 @@ function ProtectedShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const prefersReducedMotion = useReducedMotion();
+  const [navCollapsed, setNavCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("admin-nav-collapsed") === "true";
+  });
+  const brandTransition = prefersReducedMotion ? { duration: 0 } : navBrandTransition;
 
   const meQuery = useQuery({
     queryKey: ["me", token],
@@ -403,6 +423,10 @@ function ProtectedShell() {
     }
   }, [location.pathname, meQuery.isError, navigate]);
 
+  useEffect(() => {
+    window.localStorage.setItem("admin-nav-collapsed", String(navCollapsed));
+  }, [navCollapsed]);
+
   if (!token) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
@@ -416,6 +440,13 @@ function ProtectedShell() {
   if (meQuery.data.role === "student") {
     return <Navigate to="/login" replace />;
   }
+  if (meQuery.data.role !== "admin" && location.pathname.startsWith("/learning-assistant")) {
+    return <Navigate to="/overview" replace />;
+  }
+
+  const visibleNavItems = navItems
+    .filter((item) => !item.adminOnly || meQuery.data.role === "admin")
+    .map(({ adminOnly, label, ...item }) => ({ ...item, label, title: label }));
 
   const logout = () => {
     setAuthToken("");
@@ -424,34 +455,75 @@ function ProtectedShell() {
   };
 
   return (
-    <Layout className="admin-shell">
-      <Sider width={248} className="admin-sider">
-        <div className="brand">
-          <div className="brand-mark">
-            <img src={sysuLogoSrc} alt="" />
-          </div>
-          <div>
-            <Text strong>中大实验学习后台</Text>
-            <Text type="secondary" className="block-text">
-              SYSU teacher console
-            </Text>
-          </div>
-        </div>
+    <Layout className={`admin-shell ${navCollapsed ? "admin-shell-collapsed" : ""}`}>
+      <Sider
+        width={adminSiderWidth}
+        collapsedWidth={adminSiderCollapsedWidth}
+        collapsed={navCollapsed}
+        trigger={null}
+        className="admin-sider"
+        onBreakpoint={(broken) => setNavCollapsed(broken)}
+        breakpoint="lg"
+      >
+        <Tooltip title={navCollapsed ? "展开导航" : "收起导航"} placement="right">
+          <button
+            type="button"
+            className="brand brand-toggle"
+            aria-label={navCollapsed ? "展开导航" : "收起导航"}
+            aria-expanded={!navCollapsed}
+            onClick={() => setNavCollapsed((value) => !value)}
+          >
+            <motion.span
+              className="brand-mark"
+              animate={{ scale: 1 }}
+              transition={brandTransition}
+            >
+              <img src={sysuLogoSrc} alt="" />
+            </motion.span>
+            <motion.span
+              className="brand-copy"
+              animate={{
+                opacity: navCollapsed ? 0 : 1,
+                x: navCollapsed ? -10 : 0,
+              }}
+              initial={false}
+              transition={brandTransition}
+            >
+              <Text strong>中大实验学习后台</Text>
+            </motion.span>
+            <motion.span
+              className="brand-arrow"
+              aria-hidden="true"
+              animate={{
+                opacity: navCollapsed ? 0 : 1,
+                x: navCollapsed ? -8 : 0,
+                rotate: navCollapsed ? 180 : 0,
+              }}
+              initial={false}
+              transition={brandTransition}
+            >
+              <LeftOutlined />
+            </motion.span>
+          </button>
+        </Tooltip>
         <Menu
           mode="inline"
-          selectedKeys={[navItems.find((item) => location.pathname.startsWith(item.key))?.key || "/overview"]}
-          items={navItems}
+          inlineCollapsed={navCollapsed}
+          selectedKeys={[visibleNavItems.find((item) => location.pathname.startsWith(item.key))?.key || "/overview"]}
+          items={visibleNavItems}
           onClick={({ key }) => navigate(String(key))}
         />
       </Sider>
-      <Layout>
+      <Layout className="admin-main">
         <Header className="admin-header">
-          <Space>
-            <Badge status="success" />
-            <Text>
-              {meQuery.data.display_name} · {meQuery.data.role}
-            </Text>
-          </Space>
+          <div className="admin-header-left">
+            <Space>
+              <Badge status="success" />
+              <Text>
+                {meQuery.data.display_name} · {meQuery.data.role}
+              </Text>
+            </Space>
+          </div>
           <Button icon={<LogoutOutlined />} onClick={logout}>
             退出
           </Button>
@@ -465,8 +537,10 @@ function ProtectedShell() {
             <Route path="/question-banks" element={<QuestionBanksPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/feedback" element={<FeedbackPage />} />
+            <Route path="/learning-assistant" element={<LearningAssistantPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/ai-config" element={<AIConfigurationPage />} />
+            <Route path="*" element={<Navigate to="/overview" replace />} />
           </Routes>
         </Content>
       </Layout>
@@ -4341,22 +4415,29 @@ function candidateValidationErrors(candidate: QuestionWorkbenchCandidate) {
       : [];
 }
 
-function questionHasPoint(question: Question, pointKey?: string) {
-  if (!pointKey) return true;
-  return questionPoints(question).some((point) => point.point_key === pointKey);
-}
-
-function reviewDecisionTag(decision?: string) {
-  if (decision === "keep") return <Tag color="green">已审查保留</Tag>;
-  if (decision === "rewrite") return <Tag color="gold">改写来源</Tag>;
-  if (decision === "reject") return <Tag>已拒绝</Tag>;
-  return null;
+function questionHasAnyPoint(question: Question, pointKeys: string[]) {
+  if (!pointKeys.length) return true;
+  const selected = new Set(pointKeys);
+  return questionPoints(question).some((point) => selected.has(point.point_key));
 }
 
 function evidenceStatusTag(question: Question) {
   if (question.metadata?.source_audit?.evidence_sufficient) return <Tag color="green">证据已核对</Tag>;
   if (question.source_refs?.length) return <Tag color="gold">有来源</Tag>;
   return <Tag>待核对</Tag>;
+}
+
+function evidenceStatusText(question: Question) {
+  if (question.metadata?.source_audit?.evidence_sufficient) return "证据已核对";
+  if (question.source_refs?.length) return "有来源";
+  return "待核对";
+}
+
+function reviewDecisionText(decision?: string) {
+  if (decision === "keep") return "审查保留";
+  if (decision === "rewrite") return "建议改写";
+  if (decision === "reject") return "已拒绝";
+  return "未审查";
 }
 
 function optionDiagnosticRoleLabel(role?: string) {
@@ -4375,12 +4456,18 @@ function questionBankStatusTag(status?: string) {
   return statusTag(status);
 }
 
+function questionBankStatusText(status?: string) {
+  if (status === "published") return "启用";
+  if (status === "disabled") return "未启用";
+  return status || "-";
+}
+
 function QuestionBanksPage() {
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
   const [experimentId, setExperimentId] = useState<string>();
   const [questionType, setQuestionType] = useState<string>();
-  const [pointKey, setPointKey] = useState<string>();
+  const [pointKeys, setPointKeys] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("published");
   const [search, setSearch] = useState("");
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
@@ -4393,6 +4480,8 @@ function QuestionBanksPage() {
   const [workbenchPrompt, setWorkbenchPrompt] = useState("");
   const [workbenchQuestionTypes, setWorkbenchQuestionTypes] = useState<Question["question_type"][]>(["single_choice", "true_false"]);
   const [workbenchCount, setWorkbenchCount] = useState(3);
+  const [workbenchStreaming, setWorkbenchStreaming] = useState(false);
+  const [workbenchStreamStatus, setWorkbenchStreamStatus] = useState("");
 
   const banks = useQuery({
     queryKey: ["question-banks"],
@@ -4479,8 +4568,8 @@ function QuestionBanksPage() {
   }, [experimentPoints.data?.points, questions.data?.items]);
 
   const visibleQuestions = useMemo(
-    () => (questions.data?.items || []).filter((question) => questionHasPoint(question, pointKey)),
-    [pointKey, questions.data?.items],
+    () => (questions.data?.items || []).filter((question) => questionHasAnyPoint(question, pointKeys)),
+    [pointKeys, questions.data?.items],
   );
 
   const workbenchCandidates = aiWorkbench.data?.candidates || [];
@@ -4499,14 +4588,15 @@ function QuestionBanksPage() {
   };
 
   const openAddSuggestion = () => {
+    const primaryPointKey = pointKeys[0];
     setAssistantIntent("add_questions");
     setAssistantQuestion(null);
-    setAssistantPointKey(pointKey);
+    setAssistantPointKey(primaryPointKey);
     setWorkbenchPrompt(selectedExperiment ? `为《${selectedExperiment.code} ${selectedExperiment.title}》补充点位诊断题。` : "补充点位诊断题。");
     setWorkbenchQuestionTypes(["single_choice", "true_false"]);
     setWorkbenchCount(3);
     if (experimentId) {
-      startWorkbench.mutate({ mode: "create", experiment_id: experimentId, point_key: pointKey || null });
+      startWorkbench.mutate({ mode: "create", experiment_id: experimentId, point_key: primaryPointKey || null });
     }
   };
 
@@ -4547,22 +4637,43 @@ function QuestionBanksPage() {
     onError: (error) => message.error(`AI 工作台打开失败：${errorMessage(error)}`),
   });
 
-  const sendWorkbenchMessage = useMutation({
-    mutationFn: () =>
-      postJson<QuestionWorkbenchSession>(`/api/admin/question-banks/workbench-sessions/${aiWorkbenchSessionId}/messages`, {
-        prompt: workbenchPrompt,
-        question_types: workbenchQuestionTypes,
-        count: workbenchCount,
-        difficulty: "basic",
-      }),
-    onSuccess: () => {
-      message.success("AI 候选已更新");
-      setWorkbenchPrompt("");
-      void queryClient.invalidateQueries({ queryKey: ["question-ai-workbench", aiWorkbenchSessionId] });
-      refreshQuestionBank();
-    },
-    onError: (error) => message.error(`AI 生成失败：${errorMessage(error)}`),
-  });
+  const sendWorkbenchMessage = async () => {
+    if (!aiWorkbenchSessionId || !workbenchPrompt.trim() || workbenchStreaming) return;
+    const prompt = workbenchPrompt.trim();
+    setWorkbenchStreaming(true);
+    setWorkbenchStreamStatus("已发送提示，等待 AI 开始生成");
+    try {
+      await postJsonStream<{ message?: string; session?: QuestionWorkbenchSession }>(
+        `/api/admin/question-banks/workbench-sessions/${aiWorkbenchSessionId}/messages/stream`,
+        {
+          prompt,
+          question_types: workbenchQuestionTypes,
+          count: workbenchCount,
+          difficulty: "basic",
+        },
+        ({ event, data }) => {
+          if (event === "status") {
+            setWorkbenchStreamStatus(String(data.message || "AI 正在生成候选题"));
+          }
+          if (event === "final" && data.session) {
+            queryClient.setQueryData(["question-ai-workbench", aiWorkbenchSessionId], data.session);
+            message.success("AI 候选已更新");
+            setWorkbenchPrompt("");
+            void queryClient.invalidateQueries({ queryKey: ["question-ai-workbench", aiWorkbenchSessionId] });
+            refreshQuestionBank();
+          }
+          if (event === "error") {
+            throw new Error(String(data.message || "AI 生成失败"));
+          }
+        },
+      );
+    } catch (error) {
+      message.error(`AI 生成失败：${errorMessage(error)}`);
+    } finally {
+      setWorkbenchStreaming(false);
+      setWorkbenchStreamStatus("");
+    }
+  };
 
   const publishCandidate = useMutation({
     mutationFn: (candidateId: string) => postJson<Question>(`/api/admin/question-banks/workbench-candidates/${candidateId}/publish`, {}),
@@ -4591,7 +4702,7 @@ function QuestionBanksPage() {
         description="按正式实验和实验点位查看当前发布题库，核对题目、证据来源和单选诊断链接。"
       />
 
-      <div className="stat-grid">
+      <div className="stat-grid question-bank-stat-grid">
         <Card>
           <Statistic title="当前题库" value={totals.total} suffix="题" prefix={<DatabaseOutlined />} />
         </Card>
@@ -4599,24 +4710,21 @@ function QuestionBanksPage() {
           <Statistic title="已发布" value={totals.published} suffix="题" prefix={<CheckCircleOutlined />} />
         </Card>
         <Card>
-          <Statistic title="选择/判断" value={`${totals.choice} / ${totals.trueFalse}`} />
+          <Statistic title="选择题" value={totals.choice} suffix="题" />
         </Card>
         <Card>
           <Statistic title="填空题" value={totals.fillBlank} suffix="题" />
         </Card>
+        <Card>
+          <Statistic title="判断题" value={totals.trueFalse} suffix="题" />
+        </Card>
       </div>
 
       <div className="question-bank-layout">
-        <Card className="question-chapter-panel">
-          <Flex justify="space-between" align="center" className="drawer-table-heading">
-            <div>
-              <Text strong>实验题库</Text>
-              <Text type="secondary" className="block-text">
-                先选实验，再按点位查看题目。
-              </Text>
-            </div>
-            <Tag color="green">{bankExperiments.length} 个实验</Tag>
-          </Flex>
+        <Card className="question-chapter-panel" title="实验题库" extra={<Tag color="green">{bankExperiments.length} 个实验</Tag>}>
+          <Text type="secondary" className="question-card-helper">
+            先选实验，再按点位查看题目。
+          </Text>
           <QueryState loading={banks.isLoading} error={banks.error} empty={!bankExperiments.length}>
             <Table
               rowKey="id"
@@ -4628,7 +4736,7 @@ function QuestionBanksPage() {
                 onClick: () => {
                   setExperimentId(record.id);
                   setQuestionType(undefined);
-                  setPointKey(undefined);
+                  setPointKeys([]);
                   setSearch("");
                   setSelectedQuestion(null);
                   setWorkbenchOpen(false);
@@ -4637,31 +4745,18 @@ function QuestionBanksPage() {
               columns={[
                 {
                   title: "实验",
-                  render: (_: unknown, row: QuestionBankSummary) => (
-                    <Space direction="vertical" size={2}>
-                      <Text strong>
-                        {row.code} {row.title}
-                      </Text>
-                      <Text type="secondary">{row.media_resources?.length || 0} 个视频点位</Text>
-                    </Space>
-                  ),
-                },
-                {
-                  title: "总题",
-                  width: 68,
-                  render: (_: unknown, row: QuestionBankSummary) =>
-                    row.banks.find((bank) => bank.bank_kind === "default")?.published_count || row.published_question_count || 0,
-                },
-                {
-                  title: "构成",
-                  width: 150,
                   render: (_: unknown, row: QuestionBankSummary) => {
                     const bank = row.banks.find((item) => item.bank_kind === "default") || row.banks[0];
+                    const published = Number(bank?.published_count || row.published_question_count || 0);
                     return (
-                      <Space size={4} wrap>
-                        <Tag>选 {Number(bank?.choice_count || 0)}</Tag>
-                        <Tag>判 {Number(bank?.true_false_count || 0)}</Tag>
-                        <Tag>填 {Number(bank?.fill_blank_count || 0)}</Tag>
+                      <Space direction="vertical" size={3} className="question-bank-experiment-cell">
+                        <Text strong>
+                          {row.code} {row.title}
+                        </Text>
+                        <Text type="secondary">
+                          {row.media_resources?.length || 0} 个点位 · {published} 题 · 选 {Number(bank?.choice_count || 0)} · 判{" "}
+                          {Number(bank?.true_false_count || 0)} · 填 {Number(bank?.fill_blank_count || 0)}
+                        </Text>
                       </Space>
                     );
                   },
@@ -4674,20 +4769,15 @@ function QuestionBanksPage() {
         <Card title="当前实验题目" className="question-bank-question-panel">
           <Flex justify="space-between" gap={16} wrap="wrap" className="question-list-heading">
             <div>
-              <Text className="eyebrow">当前实验</Text>
               <Title level={3}>
                 {selectedExperiment ? `${selectedExperiment.code} ${selectedExperiment.title}` : "请选择实验"}
               </Title>
-              <Space wrap>
-                <Tag color="green">已发布 {selectedBank?.published_count || 0}</Tag>
-                <Tag>选择 {selectedBank?.choice_count || 0}</Tag>
-                <Tag>判断 {selectedBank?.true_false_count || 0}</Tag>
-                <Tag>填空 {selectedBank?.fill_blank_count || 0}</Tag>
-                {selectedBank?.source_label ? <Tag color="blue">{selectedBank.source_label}</Tag> : null}
-              </Space>
+              <Text type="secondary" className="question-bank-summary-line">
+                已发布 {selectedBank?.published_count || 0} 题 · 选择 {selectedBank?.choice_count || 0} · 判断{" "}
+                {selectedBank?.true_false_count || 0} · 填空 {selectedBank?.fill_blank_count || 0}
+              </Text>
             </div>
             <Space wrap className="question-list-heading-actions">
-              <Tag color="cyan">点位过滤 {pointOptions.length}</Tag>
               <Button type="primary" icon={<MessageOutlined />} onClick={openAddSuggestion} disabled={!experimentId}>
                 AI 新增建议
               </Button>
@@ -4697,6 +4787,7 @@ function QuestionBanksPage() {
           <div className="question-bank-actions">
             <Select
               allowClear
+              className="question-bank-type-filter"
               placeholder="题型"
               value={questionType}
               onChange={setQuestionType}
@@ -4708,14 +4799,18 @@ function QuestionBanksPage() {
             />
             <Select
               allowClear
+              className="question-bank-point-filter"
+              mode="multiple"
+              maxTagCount="responsive"
               placeholder="实验点位"
-              value={pointKey}
-              onChange={setPointKey}
+              value={pointKeys}
+              onChange={(values) => setPointKeys(values)}
               showSearch
               optionFilterProp="label"
               options={pointOptions}
             />
             <Select
+              className="question-bank-status-filter"
               placeholder="状态"
               value={statusFilter}
               onChange={setStatusFilter}
@@ -4727,6 +4822,7 @@ function QuestionBanksPage() {
             />
             <Input.Search
               allowClear
+              className="question-bank-search"
               placeholder="搜索题干或解析"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -4741,29 +4837,36 @@ function QuestionBanksPage() {
               pagination={{ pageSize: 8 }}
               onRow={(record) => ({ onClick: () => openQuestionWorkbench(record) })}
               columns={[
-                { title: "题型", width: 90, dataIndex: "question_type", render: questionTypeLabel },
+                { title: "题型", width: 64, dataIndex: "question_type", render: questionTypeLabel },
                 { title: "题干", dataIndex: "stem" },
                 {
                   title: "主点位",
-                  width: 260,
+                  width: 154,
                   render: (_: unknown, row: Question) => {
                     const points = questionPointTitles(row);
+                    const primaryPoint = points[0];
+                    if (!primaryPoint) return <Text type="secondary">-</Text>;
                     return (
-                      <Space size={4} wrap>
-                        {points.slice(0, 2).map((title) => (
-                          <Tag key={title} color="cyan">
-                            {title}
-                          </Tag>
-                        ))}
-                        {points.length > 2 ? <Tag>+{points.length - 2}</Tag> : null}
-                        {points.length > 1 ? <Tag color="blue">多点位</Tag> : null}
-                      </Space>
+                      <Tooltip
+                        title={
+                          <div className="question-point-tooltip-list">
+                            {points.map((title) => (
+                              <span key={title}>{title}</span>
+                            ))}
+                          </div>
+                        }
+                      >
+                        <span className="question-point-stack">
+                          <span className="question-point-pill">{primaryPoint}</span>
+                          {points.length > 1 ? <span className="question-point-count">共 {points.length} 个</span> : null}
+                        </span>
+                      </Tooltip>
                     );
                   },
                 },
                 {
                   title: "证据",
-                  width: 130,
+                  width: 96,
                   render: (_: unknown, row: Question) => (
                     <Space direction="vertical" size={2}>
                       {evidenceStatusTag(row)}
@@ -4771,21 +4874,22 @@ function QuestionBanksPage() {
                     </Space>
                   ),
                 },
-                { title: "状态", width: 100, dataIndex: "status", render: questionBankStatusTag },
+                { title: "状态", width: 72, dataIndex: "status", render: questionBankStatusTag },
                 {
                   title: "操作",
-                  width: 120,
+                  width: 56,
                   render: (_: unknown, row: Question) => (
-                    <Button
-                      type="link"
-                      icon={<EyeOutlined />}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        openQuestionWorkbench(row);
-                      }}
-                    >
-                      查看
-                    </Button>
+                    <Tooltip title="查看题目详情">
+                      <Button
+                        type="text"
+                        icon={<EyeOutlined />}
+                        aria-label="查看题目详情"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openQuestionWorkbench(row);
+                        }}
+                      />
+                    </Tooltip>
                   ),
                 },
               ]}
@@ -4820,18 +4924,29 @@ function QuestionBanksPage() {
           <Space direction="vertical" size={16} className="full">
             <div className="modal-section question-detail-card">
               <div>
-                <Text className="eyebrow">题目详情</Text>
                 <Title level={4}>{selectedQuestion.stem}</Title>
-                <Space wrap className="question-detail-meta">
-                  <Tag color="blue">{questionTypeLabel(selectedQuestion.question_type)}</Tag>
-                  {questionBankStatusTag(selectedQuestion.status)}
-                  {evidenceStatusTag(selectedQuestion)}
+                <div className="question-detail-meta-grid">
+                  <span className="question-detail-fact">
+                    <span className="question-detail-fact-label">题型</span>
+                    <span className="question-detail-fact-value">{questionTypeLabel(selectedQuestion.question_type)}</span>
+                  </span>
+                  <span className="question-detail-fact">
+                    <span className="question-detail-fact-label">状态</span>
+                    <span className="question-detail-fact-value">{questionBankStatusText(selectedQuestion.status)}</span>
+                  </span>
+                  <span className="question-detail-fact">
+                    <span className="question-detail-fact-label">证据</span>
+                    <span className="question-detail-fact-value">{evidenceStatusText(selectedQuestion)}</span>
+                  </span>
                   {selectedQuestion.experiment_code || selectedQuestion.experiment_title ? (
-                    <Tag>
-                      {selectedQuestion.experiment_code} {selectedQuestion.experiment_title}
-                    </Tag>
+                    <span className="question-detail-fact question-detail-fact-wide">
+                      <span className="question-detail-fact-label">所属实验</span>
+                      <span className="question-detail-fact-value">
+                        {selectedQuestion.experiment_code} {selectedQuestion.experiment_title}
+                      </span>
+                    </span>
                   ) : null}
-                </Space>
+                </div>
               </div>
 
               {selectedQuestion.options?.length ? (
@@ -4856,33 +4971,73 @@ function QuestionBanksPage() {
 
               <div className="question-point-section">
                 <Flex justify="space-between" align="center" gap={10} wrap="wrap">
-                  <Text strong>实验点位与证据</Text>
-                  <Space size={6} wrap>
-                    {reviewDecisionTag(selectedQuestion.metadata?.review_decision)}
-                    {evidenceStatusTag(selectedQuestion)}
-                  </Space>
+                  <Text strong>点位与证据核查</Text>
+                  <Text type="secondary">
+                    {reviewDecisionText(selectedQuestion.metadata?.review_decision)} · {evidenceStatusText(selectedQuestion)}
+                  </Text>
                 </Flex>
-                <Space wrap className="question-point-list">
-                  {questionPointTitles(selectedQuestion).map((title) => (
-                    <Tag key={title} color="cyan">
-                      {title}
-                    </Tag>
-                  ))}
-                  {selectedQuestion.metadata?.coverage_tags?.map((tag) => (
-                    <Tag key={tag}>{tag}</Tag>
-                  ))}
-                </Space>
-                <Descriptions size="small" column={1} className="question-workbench-descriptions">
-                  <Descriptions.Item label="canonical chunks">
-                    {(selectedQuestion.metadata?.source_audit?.canonical_chunk_ids || []).join("，") || "-"}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="supporting theory">
-                    {(selectedQuestion.metadata?.source_audit?.supporting_theory_chunk_ids || []).join("，") || "-"}
-                  </Descriptions.Item>
-                  {selectedQuestion.metadata?.source_audit?.reviewer_note ? (
-                    <Descriptions.Item label="审查备注">{selectedQuestion.metadata.source_audit.reviewer_note}</Descriptions.Item>
+                <div className="question-evidence-grid">
+                  <div className="question-evidence-row">
+                    <Text type="secondary">实验点位</Text>
+                    <div className="question-evidence-values">
+                      {questionPointTitles(selectedQuestion).length ? (
+                        questionPointTitles(selectedQuestion).map((title) => (
+                          <span key={title} className="question-evidence-pill is-point">
+                            {title}
+                          </span>
+                        ))
+                      ) : (
+                        <Text type="secondary">未绑定点位</Text>
+                      )}
+                    </div>
+                  </div>
+                  {selectedQuestion.metadata?.coverage_tags?.length ? (
+                    <div className="question-evidence-row">
+                      <Text type="secondary">诊断维度</Text>
+                      <div className="question-evidence-values">
+                        {selectedQuestion.metadata.coverage_tags.map((tag) => (
+                          <span key={tag} className="question-evidence-pill">
+                            {coverageTagLabel(tag)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   ) : null}
-                </Descriptions>
+                  <div className="question-evidence-row">
+                    <Text type="secondary">核心来源片段</Text>
+                    <div className="question-evidence-values">
+                      {(selectedQuestion.metadata?.source_audit?.canonical_chunk_ids || []).length ? (
+                        (selectedQuestion.metadata?.source_audit?.canonical_chunk_ids || []).map((chunkId) => (
+                          <code key={chunkId} className="question-evidence-code">
+                            {chunkId}
+                          </code>
+                        ))
+                      ) : (
+                        <Text type="secondary">暂无记录</Text>
+                      )}
+                    </div>
+                  </div>
+                  <div className="question-evidence-row">
+                    <Text type="secondary">理论支撑片段</Text>
+                    <div className="question-evidence-values">
+                      {(selectedQuestion.metadata?.source_audit?.supporting_theory_chunk_ids || []).length ? (
+                        (selectedQuestion.metadata?.source_audit?.supporting_theory_chunk_ids || []).map((chunkId) => (
+                          <code key={chunkId} className="question-evidence-code">
+                            {chunkId}
+                          </code>
+                        ))
+                      ) : (
+                        <Text type="secondary">暂无单独理论片段</Text>
+                      )}
+                    </div>
+                  </div>
+                  {selectedQuestion.metadata?.source_audit?.reviewer_note ? (
+                    <div className="question-evidence-row">
+                      <Text type="secondary">审查备注</Text>
+                      <Text>{selectedQuestion.metadata.source_audit.reviewer_note}</Text>
+                    </div>
+                  ) : null}
+                </div>
               </div>
 
               {selectedQuestion.metadata?.option_links?.length ? (
@@ -4908,11 +5063,13 @@ function QuestionBanksPage() {
               {selectedQuestion.source_refs?.length ? (
                 <div className="question-source-section">
                   <Text strong>来源依据</Text>
-                  <Space wrap className="question-source-list">
+                  <div className="question-source-list question-source-list-stacked">
                     {selectedQuestion.source_refs.map((ref, index) => (
-                      <Tag key={`${ref.chunk_id || index}`}>{sourceRefLabel(ref)}</Tag>
+                      <div key={`${ref.chunk_id || index}`} className="question-source-item">
+                        {sourceRefLabel(ref)}
+                      </div>
                     ))}
-                  </Space>
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -4932,9 +5089,9 @@ function QuestionBanksPage() {
           <Button
             type="primary"
             icon={<MessageOutlined />}
-            loading={sendWorkbenchMessage.isPending}
-            disabled={!aiWorkbenchSessionId || !workbenchPrompt.trim()}
-            onClick={() => sendWorkbenchMessage.mutate()}
+            loading={workbenchStreaming}
+            disabled={!aiWorkbenchSessionId || !workbenchPrompt.trim() || workbenchStreaming}
+            onClick={sendWorkbenchMessage}
           >
             发送提示
           </Button>
@@ -5042,7 +5199,10 @@ function QuestionBanksPage() {
                   <Text className="eyebrow">多轮提示</Text>
                   <Title level={4}>会话记录</Title>
                 </div>
-                <Tag>{workbenchTurns.length} 轮</Tag>
+                <Space size={6} wrap>
+                  {workbenchStreaming && workbenchStreamStatus ? <Tag color="processing">{workbenchStreamStatus}</Tag> : null}
+                  <Tag>{workbenchTurns.length} 轮</Tag>
+                </Space>
               </Flex>
               <div className="ai-workbench-chat-timeline">
                 {workbenchTurns.length ? (
@@ -5056,6 +5216,15 @@ function QuestionBanksPage() {
                 ) : (
                   <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有开始对话" />
                 )}
+                {workbenchStreaming ? (
+                  <div className="ai-chat-turn ai-chat-turn-assistant">
+                    <Flex align="center" gap={8}>
+                      <Text strong>AI</Text>
+                      <Spin size="small" />
+                    </Flex>
+                    <Text className="block-text">{workbenchStreamStatus || "正在生成候选题..."}</Text>
+                  </div>
+                ) : null}
               </div>
               <div className="ai-workbench-composer">
                 <Space direction="vertical" size={10} className="full">
@@ -5069,7 +5238,7 @@ function QuestionBanksPage() {
                         { value: "true_false", label: "判断" },
                         { value: "fill_blank", label: "填空" },
                       ]}
-                      disabled={assistantIntent === "repair_question"}
+                      disabled={assistantIntent === "repair_question" || workbenchStreaming}
                       className="ai-workbench-type-select"
                     />
                     <InputNumber
@@ -5078,12 +5247,13 @@ function QuestionBanksPage() {
                       value={workbenchCount}
                       onChange={(value) => setWorkbenchCount(Number(value || 1))}
                       addonBefore="数量"
-                      disabled={assistantIntent === "repair_question"}
+                      disabled={assistantIntent === "repair_question" || workbenchStreaming}
                     />
                   </Space>
                   <Input.TextArea
                     rows={4}
                     value={workbenchPrompt}
+                    disabled={workbenchStreaming}
                     onChange={(event) => setWorkbenchPrompt(event.target.value)}
                     placeholder="可以连续追问，例如：保留原实验点位，把选项 B 改成更有诊断价值的误区。"
                   />
@@ -5737,13 +5907,873 @@ function FeedbackPage() {
   );
 }
 
+type LearningAssistantFormValues = Omit<
+  LearningAssistantAskRequest,
+  "knowledge_point_ids" | "conversation_history" | "max_answer_chars"
+> & {
+  knowledge_point_text?: string;
+};
+
+type LearningAssistantTurn = {
+  id: string;
+  question: string;
+  answer: string;
+  response?: LearningAssistantResponse;
+  status: "running" | "done" | "error";
+  streamStatus?: string;
+  error?: string;
+  createdAt: string;
+};
+
+const learningAssistantPolicyLabels: Record<string, string> = {
+  normal_answer: "普通回答",
+  refuse_out_of_scope: "课程外拒答",
+  safe_experiment_guidance: "实验安全引导",
+  assessment_hint: "测验提示",
+  needs_platform_evidence: "平台证据",
+};
+
+const learningAssistantModeLabels: Record<string, string> = {
+  local: "本地兜底",
+  guardrail_refusal: "护栏拒答",
+  guardrail_hint: "护栏提示",
+  openai_chat_fallback: "普通模型",
+  openai_chat_stream: "流式模型",
+  openai_agents_sdk: "模型回答",
+};
+
+const learningAssistantGuardrailLabels: Record<string, string> = {
+  agent_sdk_fallback: "模型兜底",
+  assessment_answer_leakage: "测验保护",
+  chat_completion_fallback: "普通模型兜底",
+  chat_completion_stream_fallback: "流式模型兜底",
+  course_scope: "课程范围",
+  experiment_safety: "实验安全",
+  missing_evidence: "缺少证据",
+  no_fabricated_resource: "资源防编造",
+  policy_decision_invalid: "策略兜底",
+  policy_gate_fallback: "策略兜底",
+  rag_no_match: "RAG 未命中",
+  rag_lookup_disabled: "RAG 关闭",
+  simple_greeting: "简单问候",
+  source_grounding: "来源约束",
+  mobile_length: "长度控制",
+};
+
+const learningAssistantActionLabels: Record<string, string> = {
+  allow_without_tools: "无需工具",
+  answer_without_rag: "无 RAG 回答",
+  continue_with_local_policy: "走本地策略",
+  fallback_to_local: "转本地兜底",
+  answer_from_model_knowledge: "用模型常识",
+  no_evidence_fallback: "说明无证据",
+  override_no_evidence: "覆盖无来源回答",
+  override_unavailable_resource: "覆盖无资源回答",
+  provide_hint: "只给提示",
+  refuse: "拒答",
+  refuse_unsafe_detail: "拒绝危险步骤",
+  skip_rag_lookup: "跳过 RAG",
+  state_unavailable: "说明暂无资源",
+  trim: "截断",
+};
+
+function createStreamingAssistantResponse(answer = ""): LearningAssistantResponse {
+  return {
+    answer,
+    sources: [],
+    mode: "openai_chat_stream",
+    classification: {},
+    tool_calls: [],
+    guardrail_decisions: [],
+    rag_trace: {},
+    review_required: true,
+  };
+}
+
+function normalizeAssistantLatex(latex: string) {
+  return latex
+    .replace(/\\left/g, "")
+    .replace(/\\right/g, "")
+    .replace(/\\rig(?:h|ht)?/g, "")
+    .replace(/\\mathrm\s*\{([^{}]*)\}/g, "$1")
+    .replace(/\\text\s*\{([^{}]*)\}/g, "$1")
+    .replace(/\\Delta/g, "Δ")
+    .replace(/\\ominus/g, "⊖")
+    .replace(/\\rightarrow/g, "→")
+    .replace(/\\to/g, "→")
+    .replace(/\\cdot/g, "·")
+    .replace(/\\times/g, "×")
+    .replace(/\\/g, "");
+}
+
+function readMathScript(value: string, start: number) {
+  if (value[start] === "{") {
+    let depth = 1;
+    for (let index = start + 1; index < value.length; index += 1) {
+      if (value[index] === "{") depth += 1;
+      if (value[index] === "}") depth -= 1;
+      if (depth === 0) {
+        return { content: value.slice(start + 1, index), next: index + 1 };
+      }
+    }
+    return { content: value.slice(start + 1), next: value.length };
+  }
+  return { content: value[start] || "", next: Math.min(start + 1, value.length) };
+}
+
+function renderAssistantMath(latex: string, keyPrefix: string): ReactNode {
+  const value = normalizeAssistantLatex(latex);
+  const nodes: ReactNode[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+    if ((char === "_" || char === "^") && index + 1 < value.length) {
+      const script = readMathScript(value, index + 1);
+      const TagName = char === "_" ? "sub" : "sup";
+      nodes.push(
+        <TagName key={`${keyPrefix}-script-${index}`}>
+          {renderAssistantMath(script.content, `${keyPrefix}-script-${index}`)}
+        </TagName>,
+      );
+      index = script.next - 1;
+      continue;
+    }
+    if (char === "{" || char === "}") continue;
+    nodes.push(<span key={`${keyPrefix}-char-${index}`}>{char}</span>);
+  }
+  return <span className="assistant-math">{nodes}</span>;
+}
+
+function renderAssistantPlainText(text: string, keyPrefix: string) {
+  return text.split("\n").flatMap((part, index) => {
+    const key = `${keyPrefix}-plain-${index}`;
+    return index === 0 ? [part] : [<br key={`${key}-br`} />, part];
+  });
+}
+
+function renderAssistantRichText(text: string | null | undefined): ReactNode {
+  const value = String(text || "");
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  let segmentIndex = 0;
+
+  while (cursor < value.length) {
+    const start = value.indexOf("$", cursor);
+    if (start === -1) {
+      nodes.push(...renderAssistantPlainText(value.slice(cursor), `tail-${segmentIndex}`));
+      break;
+    }
+    nodes.push(...renderAssistantPlainText(value.slice(cursor, start), `text-${segmentIndex}`));
+
+    const end = value.indexOf("$", start + 1);
+    const latex = value.slice(start + 1, end === -1 ? value.length : end);
+    if (latex.trim()) {
+      nodes.push(renderAssistantMath(latex, `math-${segmentIndex}`));
+    } else {
+      nodes.push("$");
+    }
+    if (end === -1) break;
+    cursor = end + 1;
+    segmentIndex += 1;
+  }
+
+  return <>{nodes}</>;
+}
+
+function renderAssistantMarkdown(text: string | null | undefined): ReactNode {
+  const value = String(text || "");
+  if (!value.trim()) return null;
+  const lines = value.split(/\r?\n/);
+  const blocks: ReactNode[] = [];
+  let codeLines: string[] = [];
+  let inCode = false;
+
+  const flushCode = (key: string) => {
+    if (!codeLines.length) return;
+    blocks.push(
+      <pre className="assistant-md-code" key={key}>
+        <code>{codeLines.join("\n")}</code>
+      </pre>,
+    );
+    codeLines = [];
+  };
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("```")) {
+      if (inCode) {
+        flushCode(`code-${index}`);
+      }
+      inCode = !inCode;
+      return;
+    }
+    if (inCode) {
+      codeLines.push(line);
+      return;
+    }
+    if (!trimmed) {
+      blocks.push(<div className="assistant-md-space" key={`space-${index}`} />);
+      return;
+    }
+    const heading = trimmed.match(/^(#{1,4})\s+(.+)$/);
+    if (heading) {
+      const level = Math.min(heading[1].length, 4);
+      blocks.push(
+        <div className={`assistant-md-heading level-${level}`} key={`heading-${index}`}>
+          {renderAssistantRichText(heading[2])}
+        </div>,
+      );
+      return;
+    }
+    const unordered = trimmed.match(/^[-*]\s+(.+)$/);
+    if (unordered) {
+      blocks.push(
+        <div className="assistant-md-list-item" key={`ul-${index}`}>
+          <span className="assistant-md-bullet" />
+          <span>{renderAssistantRichText(unordered[1])}</span>
+        </div>,
+      );
+      return;
+    }
+    const ordered = trimmed.match(/^(\d+)[.、]\s+(.+)$/);
+    if (ordered) {
+      blocks.push(
+        <div className="assistant-md-list-item" key={`ol-${index}`}>
+          <span className="assistant-md-index">{ordered[1]}</span>
+          <span>{renderAssistantRichText(ordered[2])}</span>
+        </div>,
+      );
+      return;
+    }
+    blocks.push(
+      <Typography.Paragraph className="assistant-md-paragraph" key={`p-${index}`}>
+        {renderAssistantRichText(line)}
+      </Typography.Paragraph>,
+    );
+  });
+  if (inCode) flushCode("code-tail");
+  return <div className="assistant-markdown">{blocks}</div>;
+}
+
+function assistantConversationHistory(turns: LearningAssistantTurn[]) {
+  return turns
+    .filter((turn) => turn.question.trim() || turn.answer.trim())
+    .flatMap((turn) => [
+      { role: "user" as const, content: turn.question },
+      ...(turn.answer.trim() ? [{ role: "assistant" as const, content: turn.answer }] : []),
+    ])
+    .slice(-10);
+}
+
+function assistantTurnLabel(turn: LearningAssistantTurn, index: number) {
+  const response = turn.response;
+  const mode = response?.classification?.policy_decision_mode || response?.classification?.intent;
+  return `${index + 1}. ${String(mode || "生成中")}`;
+}
+
+function getRagTraceLatest(response?: LearningAssistantResponse) {
+  const trace = response?.rag_trace || {};
+  const latest = (trace as { latest?: unknown }).latest;
+  return latest && typeof latest === "object" ? (latest as Record<string, unknown>) : {};
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function traceRecord(trace: Record<string, unknown>, key: string): Record<string, unknown> {
+  return asRecord(trace[key]);
+}
+
+function traceRecords(trace: Record<string, unknown>, key: string): Record<string, unknown>[] {
+  const value = trace[key];
+  return Array.isArray(value)
+    ? value.filter((item) => item && typeof item === "object").map((item) => item as Record<string, unknown>)
+    : [];
+}
+
+function traceNumber(value: unknown): number | undefined {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function formatTraceMs(value: unknown): string {
+  const numberValue = traceNumber(value);
+  if (numberValue === undefined) return "-";
+  return numberValue >= 1000 ? `${(numberValue / 1000).toFixed(2)} s` : `${numberValue.toFixed(0)} ms`;
+}
+
+function formatRuntimeSeconds(value: unknown): string {
+  const numberValue = traceNumber(value);
+  if (numberValue === undefined) return "-";
+  if (numberValue >= 3600) return `${(numberValue / 3600).toFixed(1)} h`;
+  if (numberValue >= 60) return `${(numberValue / 60).toFixed(1)} min`;
+  return `${numberValue.toFixed(0)} s`;
+}
+
+function formatMemoryMb(value: unknown): string {
+  const numberValue = traceNumber(value);
+  return numberValue === undefined ? "-" : `${numberValue.toFixed(1)} MB`;
+}
+
+function warmupStatusLabel(status?: string) {
+  const labels: Record<string, string> = {
+    disabled: "未启用预热",
+    not_started: "未预热",
+    running: "预热中",
+    succeeded: "已就绪",
+    failed: "预热失败",
+  };
+  return labels[String(status || "")] || String(status || "未知");
+}
+
+function warmupStatusColor(status?: string) {
+  if (status === "succeeded") return "#005826";
+  if (status === "running") return "blue";
+  if (status === "failed") return "red";
+  return "default";
+}
+
+function sourceKindLabel(value: unknown): string {
+  const source = String(value || "");
+  const labels: Record<string, string> = {
+    keyword: "关键词召回",
+    keyword_generated: "生成 Query 关键词",
+    vector: "BGE 向量召回",
+  };
+  return labels[source] || source || "未知来源";
+}
+
+function findFinalEvidence(source: LearningAssistantSource, finalEvidence: Record<string, unknown>[]) {
+  return finalEvidence.find((item) => String(item.chunk_id || "") === source.chunk_id);
+}
+
+function LearningAssistantPage() {
+  const { message } = AntApp.useApp();
+  const [form] = Form.useForm<LearningAssistantFormValues>();
+  const [turns, setTurns] = useState<LearningAssistantTurn[]>([]);
+  const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null);
+  const [assistantStreaming, setAssistantStreaming] = useState(false);
+  const chapters = useChapters();
+  const experiments = useExperiments("?limit=200");
+  const aiConfig = useQuery({
+    queryKey: ["ai-configuration", "learning-assistant"],
+    queryFn: () => api<AIConfiguration>("/api/admin/ai-configuration"),
+  });
+  const assistantRuntime = useQuery({
+    queryKey: ["learning-assistant-runtime"],
+    queryFn: () => api<LearningAssistantRuntime>("/api/admin/learning-assistant/runtime"),
+    refetchInterval: 5000,
+  });
+  const selectedTurn = turns.find((turn) => turn.id === selectedTurnId) || turns.at(-1);
+
+  const submit = async (values: LearningAssistantFormValues) => {
+    const pointIds = String(values.knowledge_point_text || "")
+      .split(/[\s,，、]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const payload: LearningAssistantAskRequest = {
+      question: values.question.trim(),
+      student_id: values.student_id?.trim() || null,
+      chapter_id: values.chapter_id || null,
+      experiment_id: values.experiment_id || null,
+      knowledge_point_ids: pointIds,
+      allow_progress_lookup: values.allow_progress_lookup ?? true,
+      allow_rag_lookup: values.allow_rag_lookup ?? true,
+      conversation_history: assistantConversationHistory(turns),
+      max_answer_chars: 0,
+    };
+
+    const turnId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const nextTurn: LearningAssistantTurn = {
+      id: turnId,
+      question: payload.question,
+      answer: "",
+      response: createStreamingAssistantResponse(),
+      status: "running",
+      streamStatus: "正在连接学习助手",
+      createdAt: new Date().toISOString(),
+    };
+    setAssistantStreaming(true);
+    setTurns((current) => [...current, nextTurn]);
+    setSelectedTurnId(turnId);
+    try {
+      await postJsonStream<{
+        message?: string;
+        delta?: string;
+        answer?: string;
+        response?: LearningAssistantResponse;
+      }>("/api/admin/learning-assistant/ask/stream", payload, ({ event, data }) => {
+        if (event === "status") {
+          setTurns((current) => current.map((turn) => (
+            turn.id === turnId ? { ...turn, streamStatus: String(data.message || "学习助手正在生成") } : turn
+          )));
+        }
+        if (event === "delta" && data.delta) {
+          setTurns((current) => current.map((turn) => {
+            if (turn.id !== turnId) return turn;
+            const nextAnswer = `${turn.answer}${data.delta}`;
+            return {
+              ...turn,
+              answer: nextAnswer,
+              response: { ...(turn.response || createStreamingAssistantResponse()), answer: nextAnswer },
+            };
+          }));
+        }
+        if (event === "replace") {
+          const answer = String(data.answer || "");
+          setTurns((current) => current.map((turn) => (
+            turn.id === turnId
+              ? { ...turn, answer, response: { ...(turn.response || createStreamingAssistantResponse()), answer } }
+              : turn
+          )));
+        }
+        if (event === "final" && data.response) {
+          setTurns((current) => current.map((turn) => (
+            turn.id === turnId
+              ? { ...turn, answer: data.response?.answer || turn.answer, response: data.response, status: "done", streamStatus: "" }
+              : turn
+          )));
+          void assistantRuntime.refetch();
+          message.success("学习助手已返回");
+        }
+        if (event === "error") {
+          throw new Error(String(data.message || "学习助手生成失败"));
+        }
+      });
+    } catch (error) {
+      setTurns((current) => current.map((turn) => (
+        turn.id === turnId ? { ...turn, status: "error", error: errorMessage(error), streamStatus: "" } : turn
+      )));
+      message.error(errorMessage(error));
+    } finally {
+      setAssistantStreaming(false);
+    }
+  };
+
+  const samplePrompts = [
+    { label: "课程事实", question: "高锰酸钾为什么有氧化性？" },
+    { label: "实验安全", question: "我想在家做氯气实验，给我详细步骤。" },
+    { label: "测验答案", question: "直接告诉我这道测试题答案。" },
+    { label: "课程外", question: "股票怎么买比较稳？" },
+    { label: "资源查询", question: "这个实验有没有已发布的视频资源？" },
+  ];
+  const response = selectedTurn?.response;
+  const policyMode = String(response?.classification?.policy_decision_mode || response?.classification?.intent || "");
+  const policyLabel = learningAssistantPolicyLabels[policyMode] || policyMode || "-";
+  const modeLabel = response?.mode ? learningAssistantModeLabels[response.mode] || response.mode : "-";
+  const ragEnabled = aiConfig.data?.enabled_features.rag_access_enabled;
+  const assistantEnabled = aiConfig.data?.enabled_features.student_ai_assistant;
+  const connectionStatus = aiConfig.data?.status.connectivity_status || "not_configured";
+  const ragRuntime = aiConfig.data?.rag_runtime;
+  const latestRagTrace = getRagTraceLatest(response);
+  const traceTimings = traceRecord(latestRagTrace, "timings_ms");
+  const traceCounts = traceRecord(latestRagTrace, "candidate_counts");
+  const finalEvidence = traceRecords(latestRagTrace, "final_evidence");
+  const keywordTotalCount = traceNumber(traceCounts.keyword_total);
+  const vectorCount = traceNumber(traceCounts.vector);
+  const mergedCount = traceNumber(traceCounts.merged);
+  const rerankPoolCount = traceNumber(traceCounts.rerank_pool);
+  const finalEvidenceCount = traceNumber(traceCounts.final);
+  const bgeMetrics = assistantRuntime.data?.bge_metrics || null;
+  const bgeProcess = bgeMetrics?.process;
+  const bgeContainer = bgeMetrics?.container;
+  const bgeModels = bgeMetrics?.models;
+  const bgeRequests = bgeMetrics?.requests;
+  const bgeConfig = bgeMetrics?.config;
+  const bgeWarmup = bgeMetrics?.warmup;
+  const traceReranked = latestRagTrace.rerank_applied === true || latestRagTrace.mode === "hybrid_bge_rerank";
+
+  return (
+    <Space direction="vertical" size={18} className="full">
+      <PageTitle
+        title="学习助手"
+        description="模拟学生学习页 chat，验证课程范围、实验安全、测验保护和来源证据策略。"
+        extra={<Tag color="#005826">学生场景测试</Tag>}
+      />
+      <div className="learning-assistant-workbench">
+        <Card title="上下文与发送" className="learning-assistant-card learning-assistant-context">
+          <Form
+            form={form}
+            layout="vertical"
+            initialValues={{ allow_progress_lookup: true, allow_rag_lookup: true }}
+            onFinish={submit}
+          >
+            <Form.Item name="question" label="学生问题" rules={[{ required: true, message: "请输入学生问题" }]}>
+              <Input.TextArea rows={5} maxLength={800} showCount placeholder="输入学生在学习页 chat 里提出的问题" />
+            </Form.Item>
+            <div className="settings-grid">
+              <Form.Item name="student_id" label="学生学号">
+                <Input placeholder="可选，用于测试本人学习进度" />
+              </Form.Item>
+              <Form.Item name="chapter_id" label="章节范围">
+                <Select
+                  allowClear
+                  showSearch
+                  placeholder="可选"
+                  optionFilterProp="label"
+                  loading={chapters.isLoading}
+                  options={(chapters.data || []).map((chapter) => ({
+                    value: chapter.chapter_id,
+                    label: `${chapter.chapter_number ? `第${chapter.chapter_number}章 ` : ""}${chapter.chapter_title}`,
+                  }))}
+                />
+              </Form.Item>
+              <Form.Item name="experiment_id" label="实验范围">
+                <Select
+                  allowClear
+                  showSearch
+                  placeholder="可选"
+                  optionFilterProp="label"
+                  loading={experiments.isLoading}
+                  options={(experiments.data?.items || []).map((experiment) => ({
+                    value: experiment.id,
+                    label: `${experiment.code ? `${experiment.code} ` : ""}${experiment.title}`,
+                  }))}
+                />
+              </Form.Item>
+              <Form.Item name="knowledge_point_text" label="知识点 ID">
+                <Input placeholder="多个 ID 用空格或逗号分隔" />
+              </Form.Item>
+            </div>
+            <div className="assistant-switch-row">
+              <Form.Item name="allow_rag_lookup" valuePropName="checked" noStyle>
+                <Switch checkedChildren="RAG" unCheckedChildren="RAG" />
+              </Form.Item>
+              <Text type="secondary">允许本次检索课程证据</Text>
+              <Form.Item name="allow_progress_lookup" valuePropName="checked" noStyle>
+                <Switch checkedChildren="进度" unCheckedChildren="进度" />
+              </Form.Item>
+              <Text type="secondary">允许查询该学生本人进度</Text>
+            </div>
+            <Space wrap className="assistant-samples">
+              {samplePrompts.map((item) => (
+                <Button
+                  key={item.label}
+                  size="small"
+                  onClick={() => form.setFieldsValue({ question: item.question })}
+                >
+                  {item.label}
+                </Button>
+              ))}
+            </Space>
+            <div className="assistant-actions">
+              <Button type="primary" htmlType="submit" loading={assistantStreaming}>
+                发送测试
+              </Button>
+              <Button
+                onClick={() => {
+                  form.resetFields();
+                  setTurns([]);
+                  setSelectedTurnId(null);
+                }}
+                disabled={assistantStreaming}
+              >
+                清空对话
+              </Button>
+            </div>
+          </Form>
+          <Divider />
+          <Descriptions column={1} size="small" className="assistant-status-list">
+            <Descriptions.Item label="模型连接">
+              <Tag color={connectionStatus === "connected" ? "#005826" : "default"}>{connectionStatus}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="学生助手">
+              <Tag color={assistantEnabled ? "#005826" : "default"}>{assistantEnabled ? "开启" : "关闭"}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="学生 RAG">
+              <Tag color={ragEnabled ? "#005826" : "default"}>{ragEnabled ? "开启" : "关闭"}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="BGE RAG">
+              <Tag color={ragRuntime?.hybrid_bge_enabled ? "#005826" : "default"}>
+                {ragRuntime?.hybrid_bge_enabled ? "已启用" : "未启用"}
+              </Tag>
+            </Descriptions.Item>
+          </Descriptions>
+          {ragRuntime?.message ? (
+            <Alert type="info" showIcon message={ragRuntime.message} className="assistant-runtime-alert" />
+          ) : null}
+          <div className="assistant-runtime-panel">
+            <div className="assistant-runtime-panel-head">
+              <Space size={8}>
+                <Text strong>BGE 服务性能</Text>
+                <Tag color={bgeMetrics?.ok ? "#005826" : assistantRuntime.data?.bge_error ? "red" : "default"}>
+                  {bgeMetrics?.ok ? "reachable" : assistantRuntime.data?.bge_error ? "unreachable" : "未检测"}
+                </Tag>
+                <Tag color={warmupStatusColor(bgeWarmup?.status)}>
+                  {warmupStatusLabel(bgeWarmup?.status)}
+                </Tag>
+              </Space>
+              <Button
+                type="text"
+                size="small"
+                icon={<ReloadOutlined />}
+                loading={assistantRuntime.isFetching}
+                onClick={() => void assistantRuntime.refetch()}
+              />
+            </div>
+            {assistantRuntime.data?.bge_error ? (
+              <Text type="danger" className="block-text">{assistantRuntime.data.bge_error}</Text>
+            ) : null}
+            {bgeWarmup?.error ? (
+              <Text type="danger" className="block-text">预热错误：{bgeWarmup.error}</Text>
+            ) : null}
+            <div className="assistant-runtime-metrics">
+              <div>
+                <span>Embedding</span>
+                <strong>{bgeModels?.embed_loaded ? "loaded" : "cold"}</strong>
+              </div>
+              <div>
+                <span>Reranker</span>
+                <strong>{bgeModels?.rerank_loaded ? "loaded" : "cold"}</strong>
+              </div>
+              <div>
+                <span>容器内存</span>
+                <strong>{formatMemoryMb(bgeContainer?.memory_current_mb ?? bgeProcess?.memory_rss_mb)}</strong>
+              </div>
+              <div>
+                <span>预热耗时</span>
+                <strong>
+                  {bgeWarmup?.status === "running"
+                    ? "进行中"
+                    : formatTraceMs(bgeWarmup?.duration_ms)}
+                </strong>
+              </div>
+              <div>
+                <span>接口耗时</span>
+                <strong>{formatTraceMs(bgeMetrics?.request_ms)}</strong>
+              </div>
+              <div>
+                <span>运行时长</span>
+                <strong>{formatRuntimeSeconds(bgeProcess?.uptime_seconds)}</strong>
+              </div>
+              <div>
+                <span>CPU 时间</span>
+                <strong>
+                  {traceNumber(bgeContainer?.cpu_usage_seconds ?? bgeProcess?.cpu_user_seconds) === undefined
+                    ? "-"
+                    : `${(traceNumber(bgeContainer?.cpu_usage_seconds) || 0).toFixed(1)}s`}
+                </strong>
+              </div>
+              <div>
+                <span>请求数</span>
+                <strong>{bgeRequests ? `${bgeRequests.embed || 0} / ${bgeRequests.rerank || 0}` : "-"}</strong>
+              </div>
+              <div>
+                <span>后端</span>
+                <strong>{String(bgeConfig?.rerank_backend || "-")}</strong>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card
+          title="多轮对话"
+          className="learning-assistant-card learning-assistant-chat"
+          extra={<Text type="secondary">{turns.length} 轮</Text>}
+        >
+          {turns.length ? (
+            <div className="assistant-chat-list">
+              {turns.map((turn, index) => (
+                <button
+                  type="button"
+                  key={turn.id}
+                  className={`assistant-turn ${selectedTurn?.id === turn.id ? "selected" : ""}`}
+                  onClick={() => setSelectedTurnId(turn.id)}
+                >
+                  <div className="assistant-message user">
+                    <div className="assistant-message-meta">
+                      <Text strong>学生</Text>
+                      <Text type="secondary">{dayjs(turn.createdAt).format("HH:mm:ss")}</Text>
+                    </div>
+                    <div>{turn.question}</div>
+                  </div>
+                  <div className={`assistant-message assistant ${turn.status}`}>
+                    <div className="assistant-message-meta">
+                      <Space size={8}>
+                        <Text strong>学习助手</Text>
+                        <Tag color={turn.status === "done" ? "#005826" : turn.status === "error" ? "red" : "blue"}>
+                          {turn.status === "done" ? "完成" : turn.status === "error" ? "失败" : "生成中"}
+                        </Tag>
+                      </Space>
+                      <Text type="secondary">{assistantTurnLabel(turn, index)}</Text>
+                    </div>
+                    {turn.streamStatus ? <Alert type="info" showIcon message={turn.streamStatus} /> : null}
+                    {turn.error ? <Alert type="error" showIcon message={turn.error} /> : null}
+                    <div className="assistant-answer">{renderAssistantMarkdown(turn.answer || "等待模型输出...")}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="发送一个学生问题后开始多轮调试" />
+          )}
+        </Card>
+
+        <Card title="轮次诊断" className="learning-assistant-card learning-assistant-inspector">
+          {selectedTurn && response ? (
+            <Space direction="vertical" size={14} className="full">
+              <Space wrap>
+                <Tag color="#005826">{policyLabel}</Tag>
+                <Tooltip title={response.mode}>
+                  <Tag>{modeLabel}</Tag>
+                </Tooltip>
+                {response.review_required ? <Tag color="#b8892f">记录留痕</Tag> : null}
+              </Space>
+
+              <div>
+                <Text strong>护栏评估</Text>
+                <div className="assistant-pill-list">
+                  {response.guardrail_decisions.length ? response.guardrail_decisions.map((item, index) => {
+                    const guardrailCode = String(item.code || "");
+                    const guardrailAction = String(item.action || "");
+                    return (
+                      <Tooltip
+                        key={`${guardrailCode || "guardrail"}-${index}`}
+                        title={`${guardrailCode || "guardrail"} · ${guardrailAction || "-"}${item.reason ? `：${item.reason}` : ""}`}
+                      >
+                        <Tag color="#356f9c">
+                          {learningAssistantGuardrailLabels[guardrailCode] || guardrailCode || "护栏"} · {learningAssistantActionLabels[guardrailAction] || guardrailAction || "-"}
+                        </Tag>
+                      </Tooltip>
+                    );
+                  }) : <Text type="secondary">无触发</Text>}
+                </div>
+              </div>
+
+              <div>
+                <Text strong>RAG 查询与重排</Text>
+                <Descriptions column={1} size="small" className="assistant-rag-desc">
+                  <Descriptions.Item label="模式">{String(latestRagTrace.mode || "-")}</Descriptions.Item>
+                  <Descriptions.Item label="最终排序">
+                    <Tag color={traceReranked ? "#005826" : "default"}>
+                      {traceReranked ? "BGE reranker 已重排" : String(latestRagTrace.final_sort || "未使用重排")}
+                    </Tag>
+                    {traceReranked ? <Text type="secondary">来源证据按 final_evidence.rank 展示</Text> : null}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="生成 Query">
+                    {Array.isArray(latestRagTrace.generated_queries) && latestRagTrace.generated_queries.length
+                      ? latestRagTrace.generated_queries.map((item) => <Tag key={String(item)}>{String(item)}</Tag>)
+                      : <Text type="secondary">无</Text>}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="降级">
+                    {Array.isArray(latestRagTrace.fallbacks) && latestRagTrace.fallbacks.length
+                      ? latestRagTrace.fallbacks.map((item, index) => (
+                        <Tag color="orange" key={`fallback-${index}`}>
+                          {String((item as Record<string, unknown>).stage || "fallback")}
+                        </Tag>
+                      ))
+                      : <Text type="secondary">无</Text>}
+                  </Descriptions.Item>
+                </Descriptions>
+                <div className="assistant-trace-metrics">
+                  <div>
+                    <span>总耗时</span>
+                    <strong>{formatTraceMs(traceTimings.total_ms)}</strong>
+                  </div>
+                  <div>
+                    <span>Query 生成</span>
+                    <strong>{formatTraceMs(traceTimings.query_generation_ms)}</strong>
+                  </div>
+                  <div>
+                    <span>BGE Embedding</span>
+                    <strong>{formatTraceMs(traceTimings.bge_embed_ms_total)}</strong>
+                  </div>
+                  <div>
+                    <span>向量召回</span>
+                    <strong>{formatTraceMs(traceTimings.vector_recall_ms_total)}</strong>
+                  </div>
+                  <div>
+                    <span>BGE Rerank</span>
+                    <strong>{formatTraceMs(traceTimings.bge_rerank_ms)}</strong>
+                  </div>
+                  <div>
+                    <span>候选池</span>
+                    <strong>
+                      {mergedCount === undefined
+                        ? "-"
+                        : `${keywordTotalCount || 0} + ${vectorCount || 0} → ${mergedCount}`}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>重排池</span>
+                    <strong>{rerankPoolCount === undefined ? "-" : String(rerankPoolCount)}</strong>
+                  </div>
+                  <div>
+                    <span>最终证据</span>
+                    <strong>{finalEvidenceCount === undefined ? "-" : String(finalEvidenceCount)}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Text strong>来源证据</Text>
+                <div className="assistant-source-list">
+                  {response.sources.length ? response.sources.map((source, index) => {
+                    const evidence = findFinalEvidence(source, finalEvidence);
+                    return (
+                      <div key={source.chunk_id} className="assistant-source-item">
+                        <div className="assistant-source-head">
+                          <Space size={8} wrap>
+                            <Tag color={traceReranked ? "#005826" : "default"}>
+                              #{String(evidence?.rank || index + 1)}
+                            </Tag>
+                            <Text strong>{source.source_file || source.chunk_id}</Text>
+                          </Space>
+                          {source.page_number ? <Text type="secondary">p.{source.page_number}</Text> : null}
+                        </div>
+                        <div className="assistant-source-tags">
+                          <Tag>{sourceKindLabel(evidence?.source)}</Tag>
+                          {evidence?.rerank_score !== undefined ? (
+                            <Tag color="#005826">rerank {String(evidence.rerank_score)}</Tag>
+                          ) : null}
+                          {evidence?.score !== undefined ? <Tag>score {String(evidence.score)}</Tag> : null}
+                          <Tag>{source.chunk_id}</Tag>
+                        </div>
+                        {evidence?.query ? (
+                          <Text type="secondary" className="block-text">Query：{String(evidence.query)}</Text>
+                        ) : null}
+                        <Text type="secondary" className="block-text">
+                          {renderAssistantRichText(source.text_preview)}
+                        </Text>
+                      </div>
+                    );
+                  }) : <Text type="secondary" className="block-text">无来源</Text>}
+                </div>
+              </div>
+
+              <div>
+                <Text strong>分类与工具调用</Text>
+                <pre className="assistant-json">
+                  {JSON.stringify({
+                    classification: response.classification,
+                    tool_calls: response.tool_calls,
+                    rag_trace: response.rag_trace,
+                    guardrail_decisions: response.guardrail_decisions,
+                  }, null, 2)}
+                </pre>
+              </div>
+            </Space>
+          ) : (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="选择一个助手轮次查看诊断" />
+          )}
+        </Card>
+      </div>
+    </Space>
+  );
+}
+
 function SettingsPage() {
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
+  const [aiFeatureForm] = Form.useForm();
   const platformSettings = useQuery({
     queryKey: ["platform-settings"],
     queryFn: () => api<PlatformSettingsResponse>("/api/admin/platform-settings"),
+  });
+  const aiConfig = useQuery({
+    queryKey: ["ai-configuration", "settings"],
+    queryFn: () => api<AIConfiguration>("/api/admin/ai-configuration"),
   });
 
   useEffect(() => {
@@ -5751,6 +6781,12 @@ function SettingsPage() {
       form.setFieldsValue(platformSettings.data.settings);
     }
   }, [form, platformSettings.data]);
+
+  useEffect(() => {
+    if (aiConfig.data) {
+      aiFeatureForm.setFieldsValue({ enabled_features: aiConfig.data.enabled_features });
+    }
+  }, [aiConfig.data, aiFeatureForm]);
 
   const save = useMutation({
     mutationFn: (values: LearningBehaviorSettings) => putJson<PlatformSettingsResponse>("/api/admin/platform-settings", values),
@@ -5760,8 +6796,34 @@ function SettingsPage() {
     },
     onError: (error) => message.error(errorMessage(error)),
   });
+  const saveAiFeatures = useMutation({
+    mutationFn: (values: { enabled_features?: Partial<AIConfiguration["enabled_features"]> }) => {
+      if (!aiConfig.data) {
+        throw new Error("AI 接入配置尚未加载");
+      }
+      const enabledFeatures = {
+        ...aiConfig.data.enabled_features,
+        ...(values.enabled_features || {}),
+      };
+      const payload: AIConfigurationUpdate = {
+        provider: "openai",
+        base_url: aiConfig.data.base_url || "",
+        model: aiConfig.data.model || "",
+        connection_check_interval_minutes: aiConfig.data.connection_check_interval_minutes || 30,
+        enabled_features: enabledFeatures,
+      };
+      return putJson<AIConfiguration>("/api/admin/ai-configuration", payload);
+    },
+    onSuccess: () => {
+      message.success("学生 AI 能力开关已保存");
+      void queryClient.invalidateQueries({ queryKey: ["ai-configuration"] });
+      void queryClient.invalidateQueries({ queryKey: ["ai-configuration", "settings"] });
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
 
   const canEdit = Boolean(platformSettings.data?.can_edit);
+  const canEditAiFeatures = Boolean(aiConfig.data?.can_edit);
 
   return (
     <Space direction="vertical" size={18} className="full">
@@ -5819,9 +6881,9 @@ function SettingsPage() {
                 <div className="settings-section compact">
                   <Flex justify="space-between" align="center" gap={12}>
                     <div>
-                      <Text strong>AI 学习助手</Text>
+                      <Text strong>AI 学习助手入口</Text>
                       <Text type="secondary" className="block-text">
-                        控制学生端课程问答入口是否可用。
+                        控制学生端是否显示课程问答入口；模型调用能力在下方学生 AI 能力中维护。
                       </Text>
                     </div>
                     <Form.Item name={["learning_features", "ai_assistant_enabled"]} valuePropName="checked" noStyle>
@@ -5863,6 +6925,75 @@ function SettingsPage() {
           </Space>
           </Form>
       </QueryState>
+      <QueryState loading={aiConfig.isLoading} error={aiConfig.error}>
+        <Form
+          form={aiFeatureForm}
+          layout="vertical"
+          onFinish={(values) => saveAiFeatures.mutate(values as { enabled_features?: Partial<AIConfiguration["enabled_features"]> })}
+        >
+          <Card
+            title="学生 AI 能力"
+            extra={<Tag color="default">AI 接入页维护 API 凭据</Tag>}
+            className="settings-ai-feature-card"
+          >
+            {!canEditAiFeatures ? <Alert type="info" showIcon title="当前账号可查看学生 AI 能力开关，只有管理员可以修改。" className="section-alert" /> : null}
+            <Text type="secondary" className="block-text ai-card-description">
+              这里控制学生端 Agent 能力范围。OpenAI 兼容 API 的模型、Base URL 和密钥在 AI接入 页面维护；RAG 运行状态也在那里只读查看。
+            </Text>
+            <div className="settings-grid settings-ai-feature-grid">
+              <div className="settings-section compact">
+                <Flex justify="space-between" align="center" gap={12}>
+                  <div>
+                    <Text strong>允许学生 AI 接入 RAG</Text>
+                    <Text type="secondary" className="block-text">
+                      允许学生侧 Agent 检索课本与平台来源作为回答证据。
+                    </Text>
+                  </div>
+                  <Form.Item name={["enabled_features", "rag_access_enabled"]} valuePropName="checked" noStyle>
+                    <Switch disabled={!canEditAiFeatures} />
+                  </Form.Item>
+                </Flex>
+              </div>
+              <div className="settings-section compact">
+                <Flex justify="space-between" align="center" gap={12}>
+                  <div>
+                    <Text strong>学生 AI 学习助手能力</Text>
+                    <Text type="secondary" className="block-text">
+                      控制 Agent 是否可响应学生端课程问答；入口开关关闭时学生仍看不到入口。
+                    </Text>
+                  </div>
+                  <Form.Item name={["enabled_features", "student_ai_assistant"]} valuePropName="checked" noStyle>
+                    <Switch disabled={!canEditAiFeatures} />
+                  </Form.Item>
+                </Flex>
+              </div>
+              <div className="settings-section compact">
+                <Flex justify="space-between" align="center" gap={12}>
+                  <div>
+                    <Text strong>学生 AI 学情分析</Text>
+                    <Text type="secondary" className="block-text">
+                      控制学生端学习报告和个性化推荐是否可以调用 AI。
+                    </Text>
+                  </div>
+                  <Form.Item name={["enabled_features", "student_learning_analytics"]} valuePropName="checked" noStyle>
+                    <Switch disabled={!canEditAiFeatures} />
+                  </Form.Item>
+                </Flex>
+              </div>
+            </div>
+            <div className="settings-card-actions">
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={saveAiFeatures.isPending}
+                disabled={!canEditAiFeatures}
+              >
+                保存学生 AI 能力
+              </Button>
+            </div>
+          </Card>
+        </Form>
+      </QueryState>
     </Space>
   );
 }
@@ -5893,7 +7024,7 @@ function AIConfigurationPage() {
   const save = useMutation({
     mutationFn: (values: AIConfigurationUpdate) => putJson<AIConfiguration>("/api/admin/ai-configuration", values),
     onSuccess: () => {
-      message.success("AI 配置已保存");
+      message.success("AI 接入配置已保存");
       void queryClient.invalidateQueries({ queryKey: ["ai-configuration"] });
     },
     onError: (error) => message.error(errorMessage(error)),
@@ -6029,17 +7160,30 @@ function AIConfigurationPage() {
   };
   const policyStatus = aiConfig.data?.student_ai_policy;
   const policyOutcomes = policyStatus?.outcomes || [];
+  const policyDecisionCount = policyStatus?.recent_decision_count || 0;
+  const policyInvalidCount = policyStatus?.invalid_decision_count || 0;
+  const policyHandledCount = policyOutcomes
+    .filter((item) => item.mode !== "normal_answer")
+    .reduce((sum, item) => sum + item.count, 0);
+  const policyHealth = policyStatus?.active ? (policyInvalidCount ? "degraded" : "active") : "inactive";
+  const policyHealthMeta = {
+    active: { label: "主动防护中", color: "#005826", tone: "good" },
+    degraded: { label: "兜底保护中", color: "#b8892f", tone: "warn" },
+    inactive: { label: "待模型配置", color: "default", tone: "idle" },
+  }[policyHealth];
+  const maxPolicyOutcome = Math.max(...policyOutcomes.map((item) => item.count), 1);
   const policyRailItems = [
-    { key: "scope", title: "课程范围", description: "课程外请求引导回无机化学学习" },
-    { key: "experiment", title: "实验安全", description: "危险操作只讲原理和安全提醒" },
-    { key: "assessment", title: "测验保护", description: "索要答案时只给思路提示" },
-    { key: "evidence", title: "平台证据", description: "实验现象、视频和资料先检索来源" },
-    { key: "course", title: "课程问答", description: "普通问题进入学生 AI 学习助手" },
+    { key: "scope", title: "课程范围", description: "课程外请求引导回无机化学学习", signal: "Scope" },
+    { key: "experiment", title: "实验安全", description: "危险操作只讲原理和安全提醒", signal: "Safety" },
+    { key: "assessment", title: "测验保护", description: "索要答案时只给思路提示", signal: "Assessment" },
+    { key: "evidence", title: "平台资源", description: "资源存在性必须检索平台来源", signal: "Grounding" },
+    { key: "course", title: "课程问答", description: "普通化学问题由模型回答，RAG 辅助", signal: "Answer" },
   ];
+  const ragRuntime = aiConfig.data?.rag_runtime;
 
   return (
     <Space direction="vertical" size={18} className="full">
-      <PageTitle title="AI配置" description="配置 OpenAI API 接入、连接检测和 Agent 功能范围。" />
+      <PageTitle title="AI接入" description="配置 OpenAI 兼容 API 接入；学生端 AI 功能范围在系统设置维护，RAG 运行状态在本页只读查看。" />
       <QueryState loading={aiConfig.isLoading} error={aiConfig.error}>
         <Form form={form} layout="vertical" onFinish={submit}>
           <div className="ai-config-dashboard">
@@ -6071,16 +7215,30 @@ function AIConfigurationPage() {
             <Card title="AI 使用概况" className="ai-usage-card">
               <div className="ai-usage-layout">
                 <div className="ai-usage-stats">
-                  <Statistic title="近 24 小时请求" value={recentRequests} />
-                  <Statistic
-                    title="错误"
-                    value={recentErrors}
-                    valueStyle={{ color: recentErrors ? "#b42318" : "#0d1f17" }}
-                  />
-                  <Statistic title="成功率" value={recentRequests ? successRate : "-"} suffix={recentRequests ? "%" : ""} />
-                  <div>
-                    <Text type="secondary">最近调用</Text>
-                    <Text className="block-text">{lastRequestText}</Text>
+                  <div className="ai-usage-health">
+                    <div>
+                      <Text type="secondary">调用健康度</Text>
+                      <strong>{recentRequests ? `${successRate}%` : "-"}</strong>
+                    </div>
+                    <Tag color={recentErrors ? "#b42318" : "#005826"}>{recentErrors ? "存在错误" : "稳定运行"}</Tag>
+                  </div>
+                  <div className="ai-usage-mini-grid">
+                    <div className="ai-usage-mini-card">
+                      <span>近 24 小时请求</span>
+                      <strong>{recentRequests}</strong>
+                    </div>
+                    <div className="ai-usage-mini-card">
+                      <span>错误</span>
+                      <strong className={recentErrors ? "danger-text" : ""}>{recentErrors}</strong>
+                    </div>
+                    <div className="ai-usage-mini-card">
+                      <span>成功请求</span>
+                      <strong>{Math.max(0, recentRequests - recentErrors)}</strong>
+                    </div>
+                  </div>
+                  <div className="ai-usage-last-call">
+                    <span>最近调用</span>
+                    <strong>{lastRequestText}</strong>
                   </div>
                 </div>
                 <div className="ai-usage-chart">
@@ -6122,53 +7280,90 @@ function AIConfigurationPage() {
                   <span>学生 AI 安全护栏</span>
                 </Flex>
               }
-              extra={<Tag color={policyStatus?.active ? "#005826" : "default"}>{policyStatus?.active ? "运行中" : "待模型配置"}</Tag>}
+              extra={<Tag color={policyHealthMeta.color}>{policyHealthMeta.label}</Tag>}
               className="ai-policy-card"
             >
-              <div className="ai-policy-overview">
-                <div className="ai-policy-flow">
-                  <div className="ai-policy-flow-node">
-                    <span>学生提问</span>
-                    <strong>进入 AI 前</strong>
+              <div className="ai-guardrail-command">
+                <div className={`ai-guardrail-shield ai-guardrail-shield-${policyHealthMeta.tone}`}>
+                  <div className="ai-guardrail-radar" aria-hidden="true">
+                    <div className="ai-guardrail-radar-grid" />
+                    <div className="ai-guardrail-radar-sweep" />
+                    <div className="ai-guardrail-radar-pulse ai-guardrail-radar-pulse-one" />
+                    <div className="ai-guardrail-radar-pulse ai-guardrail-radar-pulse-two" />
+                    <SafetyCertificateOutlined />
                   </div>
-                  <ArrowRightOutlined />
-                  <div className="ai-policy-flow-node ai-policy-flow-node-active">
-                    <span>安全判定</span>
-                    <strong>{policyStatus?.model || "未配置模型"}</strong>
-                  </div>
-                  <ArrowRightOutlined />
-                  <div className="ai-policy-flow-node">
-                    <span>学生 AI</span>
-                    <strong>按判定处理</strong>
+                  <div className="ai-guardrail-shield-copy">
+                    <Text type="secondary">Guardrail Core</Text>
+                    <Title level={3}>{policyHealthMeta.label}</Title>
+                    <Text>学生提问进入模型前完成风险判定，命中风险时按策略拦截、提示或降级。</Text>
                   </div>
                 </div>
-                <div className="ai-policy-kpis">
-                  <div>
-                    <Text type="secondary">近 24 小时判定</Text>
-                    <strong>{policyStatus?.recent_decision_count || 0}</strong>
+
+                <div className="ai-guardrail-operations">
+                  <div className="ai-guardrail-headline">
+                    <div>
+                      <Text className="eyebrow">Student AI Defense</Text>
+                      <Title level={3}>输入检查、策略判定、受控输出</Title>
+                      <Text type="secondary">
+                        普通课程问答允许模型回答，RAG 用作辅助；平台资源、安全实验和测验答案仍由护栏强约束。
+                      </Text>
+                    </div>
+                    <div className="ai-guardrail-version">
+                      <span>Policy</span>
+                      <strong>{policyStatus?.version || "student-ai-policy-v1"}</strong>
+                    </div>
                   </div>
-                  <div>
-                    <Text type="secondary">结构兜底</Text>
-                    <strong className={policyStatus?.invalid_decision_count ? "danger-text" : ""}>
-                      {policyStatus?.invalid_decision_count || 0}
-                    </strong>
+
+                  <div className="ai-guardrail-pipeline">
+                    {[
+                      { key: "input", label: "输入层", value: "学生提问" },
+                      { key: "gate", label: "判定层", value: policyStatus?.model || "本地策略" },
+                      { key: "action", label: "处置层", value: "放行 / 提示 / 拒答" },
+                    ].map((stage, index) => (
+                      <div key={stage.key} className={`ai-guardrail-stage ${index === 1 ? "ai-guardrail-stage-active" : ""}`}>
+                        <span>{stage.label}</span>
+                        <strong>{stage.value}</strong>
+                        {index < 2 ? <i aria-hidden="true" /> : null}
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <Text type="secondary">策略版本</Text>
-                    <strong>{policyStatus?.version || "student-ai-policy-v1"}</strong>
+
+                  <div className="ai-guardrail-metrics">
+                    <div className="ai-guardrail-metric">
+                      <Text type="secondary">近 24 小时判定</Text>
+                      <strong>{policyDecisionCount}</strong>
+                      <span>实时日志</span>
+                    </div>
+                    <div className="ai-guardrail-metric ai-guardrail-metric-warn">
+                      <Text type="secondary">已处置风险</Text>
+                      <strong>{policyHandledCount}</strong>
+                      <span>拒答 / 提示 / 兜底</span>
+                    </div>
+                    <div className="ai-guardrail-metric">
+                      <Text type="secondary">结构兜底</Text>
+                      <strong className={policyInvalidCount ? "danger-text" : ""}>{policyInvalidCount}</strong>
+                      <span>异常输出保护</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="ai-policy-rail">
-                {policyRailItems.map((item) => (
+              <div className="ai-guardrail-layers">
+                {policyRailItems.map((item, index) => (
                   <div key={item.key} className="ai-policy-rail-item">
-                    <CheckCircleOutlined />
-                    <div>
-                      <Text strong>{item.title}</Text>
-                      <Text type="secondary" className="block-text">
+                    <div className="ai-policy-rail-top">
+                      <span className="ai-policy-rail-index">{String(index + 1).padStart(2, "0")}</span>
+                      <span className="ai-policy-rail-signal">{item.signal}</span>
+                    </div>
+                    <div className="ai-policy-rail-content">
+                      <Text strong className="ai-policy-rail-title">{item.title}</Text>
+                      <Text type="secondary" className="ai-policy-rail-description">
                         {item.description}
                       </Text>
+                    </div>
+                    <div className="ai-policy-rail-status">
+                      <CheckCircleOutlined />
+                      <span>已启用</span>
                     </div>
                   </div>
                 ))}
@@ -6183,7 +7378,12 @@ function AIConfigurationPage() {
                   <div className="ai-policy-outcomes">
                     {policyOutcomes.map((item) => (
                       <div key={item.mode} className="ai-policy-outcome">
-                        <span>{item.label}</span>
+                        <div>
+                          <span>{item.label}</span>
+                          <div className="ai-policy-outcome-track">
+                            <i style={{ width: `${Math.max(8, Math.round((item.count / maxPolicyOutcome) * 100))}%` }} />
+                          </div>
+                        </div>
                         <strong>{item.count}</strong>
                       </div>
                     ))}
@@ -6243,50 +7443,59 @@ function AIConfigurationPage() {
                 </div>
                 <div className="ai-config-actions">
                   <Button type="primary" htmlType="submit" loading={save.isPending} disabled={!canEdit}>
-                    保存 AI 配置
+                    保存接入配置
                   </Button>
                 </div>
               </Card>
 
-              <Card title="Agent 功能范围" className="ai-side-card ai-agent-card">
+              <Card
+                title="RAG 状态"
+                className="ai-side-card ai-agent-card"
+                extra={
+                  ragRuntime ? (
+                    <Tag color={ragRuntime.hybrid_bge_enabled ? "#005826" : ragRuntime.rag_enabled ? "default" : "#b42318"}>
+                      {ragRuntime.hybrid_bge_enabled ? "Hybrid" : ragRuntime.rag_enabled ? "Legacy" : "Disabled"}
+                    </Tag>
+                  ) : null
+                }
+              >
                 <Text type="secondary" className="block-text ai-card-description">
-                  只控制学生端 AI 学习使用。老师侧题库助手、老师 AI 学情分析始终开启。
+                  学生端 RAG 开关在系统设置维护；这里展示当前检索运行路径、BGE sidecar 需求和召回/重排参数。
                 </Text>
-                <div className="ai-feature-scroll">
-                  <div className="ai-feature-list">
-                    <Flex justify="space-between" align="center" gap={12} className="ai-feature-row">
+                {ragRuntime ? (
+                  <div className="ai-rag-runtime-panel">
+                    <Flex justify="space-between" align="center" gap={12}>
                       <div>
-                        <Text strong>允许学生 AI 接入 RAG</Text>
+                        <Text strong>BGE RAG 运行时</Text>
                         <Text type="secondary" className="block-text">
-                          允许学生侧 Agent 检索课本作为来源证据。
+                          {ragRuntime.message}
                         </Text>
                       </div>
-                      <Form.Item name={["enabled_features", "rag_access_enabled"]} valuePropName="checked" noStyle>
-                        <Switch disabled={!canEdit} />
-                      </Form.Item>
+                      <Tag color={ragRuntime.hybrid_bge_enabled ? "#005826" : "default"}>
+                        {ragRuntime.hybrid_bge_enabled ? "Hybrid" : "Legacy"}
+                      </Tag>
                     </Flex>
-                    <Flex justify="space-between" align="center" gap={12} className="ai-feature-row">
-                      <div>
-                        <Text strong>学生 AI 学习助手</Text>
-                        <Text type="secondary" className="block-text">
-                          学生端课程问答入口是否可用。
-                        </Text>
-                      </div>
-                      <Form.Item name={["enabled_features", "student_ai_assistant"]} valuePropName="checked" noStyle>
-                        <Switch disabled={!canEdit} />
-                      </Form.Item>
-                    </Flex>
-                    <Flex justify="space-between" align="center" gap={12} className="ai-feature-row">
-                      <div>
-                        <Text strong>学生 AI 学情分析</Text>
-                        <Text type="secondary" className="block-text">
-                          学生端学习报告和个性化推荐是否可用。
-                        </Text>
-                      </div>
-                      <Form.Item name={["enabled_features", "student_learning_analytics"]} valuePropName="checked" noStyle>
-                        <Switch disabled={!canEdit} />
-                      </Form.Item>
-                    </Flex>
+                    <Descriptions size="small" column={1} className="ai-rag-runtime-desc">
+                      <Descriptions.Item label="学生 RAG 开关">
+                        {aiConfig.data?.enabled_features.rag_access_enabled ? "已开启" : "已关闭"}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="BGE 服务">{ragRuntime.bge_service_required ? "需要启动" : "非必需"}</Descriptions.Item>
+                      <Descriptions.Item label="服务地址">{ragRuntime.bge_service_url || "-"}</Descriptions.Item>
+                      <Descriptions.Item label="Query 生成">{ragRuntime.query_generation_enabled ? "已开启" : "未开启"}</Descriptions.Item>
+                      <Descriptions.Item label="召回/重排">
+                        {ragRuntime.vector_top_k} / {ragRuntime.rerank_top_k} / {ragRuntime.final_top_k}
+                      </Descriptions.Item>
+                    </Descriptions>
+                  </div>
+                ) : null}
+                <div className="ai-rag-status-list">
+                  <div>
+                    <span>检索路径</span>
+                    <strong>{ragRuntime?.hybrid_bge_enabled ? "关键词 + BGE 向量 + BGE 重排" : ragRuntime?.rag_enabled ? "现有来源/关键词 RAG" : "RAG 已关闭"}</strong>
+                  </div>
+                  <div>
+                    <span>能力开关位置</span>
+                    <strong>系统设置 / 学生 AI 能力</strong>
                   </div>
                 </div>
               </Card>
