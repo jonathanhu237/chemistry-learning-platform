@@ -56,3 +56,28 @@
 .settings-subsection > .settings-grid {
   margin-top: 12px;
 }
+
+.ai-provider-fixed {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: var(--sysu-panel);
+}
+
+.ai-provider-fixed.compact {
+  margin-bottom: 18px;
+}
+
+.ai-provider-fixed.compact > div:last-child {
+  max-width: 72%;
+}
+
+
+.ai-card-description {
+  line-height: 1.7;
+}

@@ -18,10 +18,10 @@
 ## 3. Frontend Modularization
 
 - [x] 3.1 Map current `App.tsx` routes, page state, feature state, API calls, and shared UI components before moving code.
-- [ ] 3.2 Extract admin pages and feature modules for question bank, learning assistant, videos/media, classes/students, analytics, and shared layout.
+- [x] 3.2 Extract admin pages and feature modules for question bank, learning assistant, videos/media, classes/students, analytics, and shared layout.
 - [x] 3.3 Split API helpers and assistant markdown/rendering utilities into focused modules with existing tests preserved or expanded.
-- [ ] 3.4 Split global CSS into feature/page/component styles while keeping visual behavior equivalent.
-- [ ] 3.5 Add route-level or feature-level code splitting for charts, KaTeX, Uppy/tus, learning assistant, and other heavy optional modules.
+- [x] 3.4 Split global CSS into feature/page/component styles while keeping visual behavior equivalent.
+- [x] 3.5 Add route-level or feature-level code splitting for charts, KaTeX, Uppy/tus, learning assistant, and other heavy optional modules.
 
 ## 4. Backend Router And Service Split
 

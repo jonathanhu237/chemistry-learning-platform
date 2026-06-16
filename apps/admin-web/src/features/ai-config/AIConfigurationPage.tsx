@@ -17,6 +17,7 @@ import type { AIConfiguration, LearningAssistantRuntime } from "../../api";
 import { PageTitle } from "../../components/PageTitle";
 import { QueryState } from "../../components/QueryState";
 import { formatMemoryMb, formatRuntimeSeconds, formatTraceMs, warmupStatusLabel } from "../learning-assistant/runtimeFormat";
+import "./ai-config.css";
 
 const { Text, Title } = Typography;
 const UsageLineChart = lazy(async () => {

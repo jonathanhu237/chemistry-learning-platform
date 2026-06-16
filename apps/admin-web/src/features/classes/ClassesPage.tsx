@@ -36,6 +36,7 @@ import { PageTitle } from "../../components/PageTitle";
 import { QueryState } from "../../components/QueryState";
 import { errorMessage } from "../../lib/errors";
 import { statusTag } from "../../lib/status";
+import "./classes.css";
 
 const { Text, Title } = Typography;
 

@@ -57,6 +57,7 @@ import { useExperiments } from "../experiments/experimentHooks";
 import { experimentVideoPointCount } from "../resources/resourceUtils";
 import { errorMessage } from "../../lib/errors";
 import { optionDiagnosticRoleLabel, statusTag } from "../../lib/status";
+import "./question-bank.css";
 
 const { Text, Title } = Typography;
 

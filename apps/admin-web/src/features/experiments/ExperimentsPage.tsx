@@ -51,6 +51,7 @@ import { errorMessage } from "../../lib/errors";
 import { statusTag } from "../../lib/status";
 import { useChapters, useExperiments } from "./experimentHooks";
 import { experimentVideoCandidates, formatChapterTitle, isPreviewableVideo, mediaAssetType, theoryChapters } from "../resources/resourceUtils";
+import "./experiments.css";
 
 const { Text, Title } = Typography;
 

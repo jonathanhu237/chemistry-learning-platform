@@ -10,6 +10,7 @@ import { PageTitle } from "../../components/PageTitle";
 import { QueryState } from "../../components/QueryState";
 import { statusColor, statusLabel } from "../../lib/status";
 import { areaMeta, countValue, questionTypeSummary, resourcePercent, shortResourceTitle } from "./resourceUtils";
+import "./resources.css";
 
 const { Text, Title } = Typography;
 

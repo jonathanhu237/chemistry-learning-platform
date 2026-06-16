@@ -66,7 +66,17 @@ Suggested first-pass style files:
 - `src/features/feedback/feedback.css`: `.feedback-*`.
 - `src/features/learning-assistant/learning-assistant.css`: `.assistant-*`, markdown, chat, diagnostics.
 
-Split CSS after component extraction so selectors can move with their owning feature and visual behavior can be compared page-by-page.
+The first-pass style split has been applied. `src/styles.css` now keeps root variables, login/admin shell layout, shared utilities, shared modal/drawer helpers, Ant Design baseline overrides, and shared responsive overrides. Feature-owned styles load from their lazy page chunks:
+
+- `src/features/ai-config/ai-config.css`
+- `src/features/classes/classes.css`
+- `src/features/experiments/experiments.css`
+- `src/features/feedback/feedback.css`
+- `src/features/learning-assistant/learning-assistant.css`
+- `src/features/media/media.css`
+- `src/features/question-bank/question-bank.css`
+- `src/features/resources/resources.css`
+- `src/features/settings/settings.css`
 
 Current frontend extraction status:
 
@@ -89,7 +99,7 @@ Current frontend extraction status:
 - Done: shared experiment hooks -> `src/features/experiments/experimentHooks.ts`, reused by experiments and remaining learning-assistant code.
 - Done: question bank page and AI workbench UI -> `src/features/question-bank/QuestionBanksPage.tsx`, lazy-loaded from the `/question-banks` route.
 - Done: learning assistant page -> `src/features/learning-assistant/LearningAssistantPage.tsx`, lazy-loaded from the `/learning-assistant` route with assistant markdown/KaTeX rendering isolated to the feature.
-- Remaining: broader global CSS split.
+- Done: global CSS split -> feature CSS files listed above; Vite emits feature CSS chunks for the lazy pages.
 
 ## Backend Endpoint Map
 

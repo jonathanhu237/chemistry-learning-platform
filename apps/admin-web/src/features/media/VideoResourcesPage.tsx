@@ -45,6 +45,7 @@ import { PageTitle } from "../../components/PageTitle";
 import { QueryState } from "../../components/QueryState";
 import { errorMessage } from "../../lib/errors";
 import { isPreviewableVideo, mediaAssetTime, mediaAssetType } from "../resources/resourceUtils";
+import "./media.css";
 
 const { Text, Title } = Typography;
 

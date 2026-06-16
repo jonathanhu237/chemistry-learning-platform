@@ -39,6 +39,7 @@ import { useChapters, useExperiments } from "../experiments/experimentHooks";
 import { experimentVideoCandidates, formatChapterTitle, isGeneralResourceTitle } from "../resources/resourceUtils";
 import { errorMessage } from "../../lib/errors";
 import { formatMemoryMb, formatRuntimeSeconds, formatTraceMs, warmupStatusLabel } from "./runtimeFormat";
+import "./learning-assistant.css";
 
 const { Text, Title } = Typography;
 const LazyAssistantMarkdownContent = lazy(async () => {
