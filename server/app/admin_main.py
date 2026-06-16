@@ -19,6 +19,7 @@ from server.app.routers.admin_experiments import router as admin_experiments_rou
 from server.app.routers.admin_learning_resources import router as admin_learning_resources_router
 from server.app.routers.admin_question_banks import router as admin_question_banks_router
 from server.app.routers.admin_question_drafts import router as admin_question_drafts_router
+from server.app.routers.admin_question_generation import router as admin_question_generation_router
 from server.app.routers.student_experiment_questions import router as student_experiment_questions_router
 
 
@@ -49,6 +50,7 @@ app.include_router(admin_experiments_router)
 app.include_router(admin_learning_resources_router)
 app.include_router(admin_question_banks_router)
 app.include_router(admin_question_drafts_router)
+app.include_router(admin_question_generation_router)
 app.include_router(student_experiment_questions_router)
 
 if (settings.admin_web_dist / "assets").exists():
