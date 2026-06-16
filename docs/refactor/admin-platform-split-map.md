@@ -21,7 +21,7 @@ Current shell and route components:
 | 5603 | `AnalyticsPage` | `/analytics` | `src/features/analytics/AnalyticsPage.tsx` |
 | Split | `FeedbackPage` | `/feedback` | `src/features/feedback/FeedbackPage.tsx` |
 | 6955 | `LearningAssistantPage` | `/learning-assistant` | `src/features/learning-assistant/LearningAssistantPage.tsx` |
-| 7802 | `SettingsPage` | `/settings` | `src/features/settings/SettingsPage.tsx` |
+| Split | `SettingsPage` | `/settings` | `src/features/settings/SettingsPage.tsx` |
 | 8137 | `AIConfigurationPage` | `/ai-config` | `src/features/ai-config/AIConfigurationPage.tsx` |
 
 Redirects to preserve:
@@ -73,7 +73,9 @@ Current frontend extraction status:
 - Done: shared `PageTitle` and `QueryState` -> `src/components/`.
 - Done: feedback page -> `src/features/feedback/FeedbackPage.tsx`, lazy-loaded from the `/feedback` route.
 - Done: feedback selectors -> `src/features/feedback/feedback.css`, imported by the feedback feature chunk.
-- Remaining: overview/resources, classes/students, experiments, videos/media, question bank, analytics, learning assistant, settings, AI config, and broader global CSS split.
+- Done: settings page -> `src/features/settings/SettingsPage.tsx`, lazy-loaded from the `/settings` route.
+- Done: settings-only selectors -> `src/features/settings/settings.css`; shared `.settings-grid` remains global until learning assistant context layout is split.
+- Remaining: overview/resources, classes/students, experiments, videos/media, question bank, analytics, learning assistant, AI config, and broader global CSS split.
 
 ## Backend Endpoint Map
 

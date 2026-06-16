@@ -2098,14 +2098,6 @@ body {
   margin-bottom: 16px;
 }
 
-.settings-form {
-  max-width: 520px;
-}
-
-.section-alert {
-  margin-bottom: 14px;
-}
-
 .resource-dashboard-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -3178,57 +3170,6 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
-}
-
-.settings-section {
-  min-height: 132px;
-  padding: 14px;
-  border: 1px solid var(--sysu-line);
-  border-radius: 8px;
-  background: var(--sysu-panel);
-}
-
-.settings-section.compact {
-  min-height: 92px;
-}
-
-.settings-section .ant-form-item {
-  margin: 16px 0 0;
-}
-
-.settings-ai-config-card {
-  margin-bottom: 18px;
-}
-
-.settings-ai-feature-card .ant-card-body {
-  display: grid;
-  gap: 14px;
-}
-
-.settings-ai-feature-grid {
-  margin-top: 2px;
-}
-
-.settings-card-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.settings-inline-control {
-  max-width: 420px;
-  margin-top: 16px;
-  margin-bottom: 0;
-}
-
-.settings-subsection {
-  margin-top: 6px;
-  margin-bottom: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--sysu-line);
-}
-
-.settings-subsection > .settings-grid {
-  margin-top: 12px;
 }
 
 .ai-status-grid {
