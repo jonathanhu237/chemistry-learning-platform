@@ -6,7 +6,6 @@ import server.app.experiment_admin as experiment_admin_module
 from scripts.point_aware_question_bank import prepare_import_rows
 from server.app.experiment_admin import (
     PointAwareSuggestionRequest,
-    _attempt_diagnostic_metadata,
     _local_point_aware_suggestions,
     _record_workbench_generation_failure,
     _validate_question_payload,
@@ -15,6 +14,7 @@ from server.app.experiment_admin import (
     _question_snapshot,
     _with_point_aware_metadata,
 )
+from server.app.services.student_experiment_service import _attempt_diagnostic_metadata
 
 
 def test_prepare_import_rows_preserves_point_metadata(tmp_path):
