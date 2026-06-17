@@ -89,3 +89,78 @@ The student frontend SHALL produce repeatable evidence that mobile-browser behav
 - **WHEN** implementation tasks for this change are completed
 - **THEN** final verification MUST record the viewport sizes tested, flows tested, commands run, and any remaining manual phone/WebView risks
 - **AND** failures such as horizontal overflow, fixed-control overlap, unreachable actions, or keyboard-blocked inputs MUST be fixed or explicitly tracked before completion
+
+### Requirement: Mobile current-chapter composition
+The student H5 mobile layout SHALL present the element learning page as a current family or chapter page optimized for phone WebView reading and tapping.
+
+#### Scenario: Student views the current chapter page on a phone
+- **WHEN** the current family or chapter page is rendered at common phone widths from 360px to 430px CSS pixels
+- **THEN** the layout MUST show current chapter identity, within-family element chips, selected-element facts, family common properties, property-driven experiment-point groups, floating AI or feedback entries when enabled, and completion actions without horizontal scrolling
+- **AND** sibling-family browsing controls MUST NOT consume the page's primary top navigation area.
+
+#### Scenario: Student needs to switch chapter
+- **WHEN** a student wants to choose a different family or chapter
+- **THEN** the page MUST expose a touch-friendly secondary navigation affordance to return to the periodic-table learning entry or switch chapter
+- **AND** that affordance MUST NOT obscure the main experiment-point task area.
+
+### Requirement: Touch-first chemistry learning controls
+The student H5 mobile layout SHALL make within-family element selection and experiment-point learning controls reachable by touch without desktop-only interaction patterns.
+
+#### Scenario: Student switches selected element
+- **WHEN** element chips are displayed for the current family
+- **THEN** each chip MUST use a phone-appropriate hit area
+- **AND** the active element state MUST be visually clear without relying on hover.
+
+#### Scenario: Student opens an experiment point
+- **WHEN** experiment-point cards are displayed below the chemistry context
+- **THEN** each card MUST be tappable without hover or precise pointer input
+- **AND** floating AI or feedback controls MUST NOT block the point card, back action, completion action, or assessment entry.
+
+### Requirement: Compact context before primary tasks
+The student H5 mobile layout SHALL keep chemistry context compact enough that the experiment-point task area remains discoverable on phone viewports.
+
+#### Scenario: Chemistry facts are lengthy
+- **WHEN** selected-element facts, family common properties, trend formulas, or reference media would make the top context area long
+- **THEN** the layout MUST use compact summaries, carousels, accordions, tabs, or equivalent progressive disclosure
+- **AND** it MUST avoid making experiment-point learning feel secondary to an encyclopedia-style fact page.
+
+### Requirement: Sticky segmented chapter switcher
+The student frontend SHALL provide a phone-first sticky segmented switcher for local facts/experiments switching inside a selected chapter.
+
+#### Scenario: Switcher appears on chapter page
+- **WHEN** the student opens a selected family/chapter learning page
+- **THEN** the page MUST render a two-option segmented switcher for facts/common properties and experiment videos
+- **AND** the switcher MUST be visually associated with the current chapter rather than the global app navigation
+
+#### Scenario: Switcher remains quickly reachable
+- **WHEN** the student scrolls the chapter page on a phone viewport
+- **THEN** the segmented switcher MUST remain sticky or quickly reachable according to the page layout
+- **AND** it MUST NOT be placed in the bottom navigation area where it would conflict with global navigation, AI, feedback, or finish actions
+
+#### Scenario: Switcher supports touch use
+- **WHEN** a student uses touch input on a 360px to 430px CSS-pixel-wide viewport
+- **THEN** each segmented option MUST have a phone-appropriate hit area, clear active state, and readable label
+- **AND** switching views MUST NOT require hover, keyboard shortcuts, or undiscoverable gestures
+
+#### Scenario: Optional swipe gesture exists
+- **WHEN** an implementation supports horizontal swipe between facts and experiments
+- **THEN** the visible segmented buttons MUST remain the primary discoverable switching mechanism
+- **AND** swipe support MUST NOT interfere with vertical scrolling, point-card taps, video controls, AI, or feedback
+
+### Requirement: Segmented switcher overlay governance
+The segmented switcher SHALL coexist with floating entries, safe areas, and bottom actions without visual or interaction overlap.
+
+#### Scenario: Floating entries are visible
+- **WHEN** AI chat, feedback, or finish actions are available on the chapter page
+- **THEN** the segmented switcher MUST remain usable without being covered by those floating entries
+- **AND** floating entries MUST follow the existing overlay governance when panels are opened
+
+#### Scenario: Safe-area and browser chrome are present
+- **WHEN** the H5 app runs in a mobile browser or WebView with safe-area insets or browser chrome
+- **THEN** the segmented switcher and its sticky offset MUST account for the app's safe-area and header layout
+- **AND** it MUST avoid clipped labels, clipped active indicators, and horizontal overflow
+
+#### Scenario: Mobile QA covers A/B switching
+- **WHEN** mobile viewport QA runs for this change
+- **THEN** it MUST cover facts-to-experiments switching, experiments-to-facts switching, element switching, experiment point list, point detail, AI entry, feedback entry, and assessment handoff
+- **AND** it MUST check 360x780, 390x844, and 430x932 CSS-pixel viewports
