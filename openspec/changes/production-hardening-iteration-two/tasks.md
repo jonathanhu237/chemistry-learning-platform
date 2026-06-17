@@ -17,10 +17,10 @@
 
 ## 3. FastAPI Lifespan Migration
 
-- [ ] 3.1 Replace `admin_main.py` `@app.on_event("startup")` with an async lifespan context that preserves database startup checks and media-root creation.
-- [ ] 3.2 Replace `bge_service.py` startup warmup `on_event` with a lifespan context that preserves background warmup behavior.
-- [ ] 3.3 Add or adjust tests/import smoke checks so deprecated FastAPI startup warnings are not emitted by project code.
-- [ ] 3.4 Run backend import smoke, backend tests, Docker health checks, and BGE warmup health verification.
+- [x] 3.1 Replace `admin_main.py` `@app.on_event("startup")` with an async lifespan context that preserves database startup checks and media-root creation.
+- [x] 3.2 Replace `bge_service.py` startup warmup `on_event` with a lifespan context that preserves background warmup behavior.
+- [x] 3.3 Add or adjust tests/import smoke checks so deprecated FastAPI startup warnings are not emitted by project code.
+- [x] 3.4 Run backend import smoke, backend tests, Docker health checks, and BGE warmup health verification.
 
 ## 4. Validation And CI
 

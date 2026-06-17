@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 import os
 import threading
 import time
@@ -35,7 +37,15 @@ WARMUP_STATE: dict[str, Any] = {
     "error": None,
 }
 
-app = FastAPI(title="Chemistry BGE RAG Service")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    if BGE_WARMUP_ON_STARTUP:
+        _start_warmup("startup")
+    yield
+
+
+app = FastAPI(title="Chemistry BGE RAG Service", lifespan=lifespan)
 
 
 class EmbedRequest(BaseModel):
@@ -56,12 +66,6 @@ class RerankRequest(BaseModel):
 class RerankResponse(BaseModel):
     model: str
     scores: list[float]
-
-
-@app.on_event("startup")
-def startup_warmup() -> None:
-    if BGE_WARMUP_ON_STARTUP:
-        _start_warmup("startup")
 
 
 @lru_cache(maxsize=1)

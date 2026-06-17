@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import APIRouter, FastAPI, HTTPException
@@ -28,7 +30,16 @@ settings = get_settings()
 settings.validate_startup()
 repositories = get_repositories()
 
-app = FastAPI(title="SYSU Chemistry Admin Service", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    if settings.run_db_check_on_startup:
+        check_database_connection()
+    settings.media_root.mkdir(parents=True, exist_ok=True)
+    yield
+
+
+app = FastAPI(title="SYSU Chemistry Admin Service", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(settings.frontend_allowed_origins),
@@ -61,14 +72,6 @@ if (settings.admin_web_dist / "assets").exists():
         StaticFiles(directory=settings.admin_web_dist / "assets"),
         name="admin-assets",
     )
-
-
-@app.on_event("startup")
-async def startup_checks() -> None:
-    if settings.run_db_check_on_startup:
-        check_database_connection()
-    settings.media_root.mkdir(parents=True, exist_ok=True)
-
 
 @app.get("/health")
 async def health() -> dict[str, str]:
