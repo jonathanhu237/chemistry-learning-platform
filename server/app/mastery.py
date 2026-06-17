@@ -5,6 +5,8 @@ from dataclasses import dataclass
 STATE_COUNT = 5
 DEFAULT_STATE_PROB = [0.70, 0.20, 0.08, 0.02, 0.00]
 STATE_WEIGHTS = [0, 1, 2, 3, 4]
+DEFAULT_EXPERIMENT_MASTERY_PROB = 0.5
+DEFAULT_EXPERIMENT_MASTERY_SCORE = 50.0
 
 READ_EVENT_STRENGTH = {
     "open_knowledge_point": 0.015,
@@ -23,6 +25,13 @@ CORRECT_LIKELIHOOD = {
 
 CORRECT_PROMOTION = {"basic": 0.05, "medium": 0.08, "hard": 0.12}
 WRONG_DEMOTION = {"basic": 0.04, "medium": 0.06, "hard": 0.08}
+
+QUESTION_GUESS_RATE = {
+    "single_choice": 0.25,
+    "true_false": 0.5,
+    "fill_blank": 0.1,
+}
+DEFAULT_SLIP_RATE = 0.1
 
 
 def normalize_prob(prob: list[float]) -> list[float]:
@@ -93,6 +102,31 @@ def update_mastery(
         is_correct = correct if correct is not None else event_type == "answer_correct"
         prob = apply_answer_event(prob, bool(is_correct), difficulty)
     return {"state_prob": [round(item, 6) for item in prob], "mastery_score": mastery_score(prob)}
+
+
+def experiment_mastery_score(probability: float | None) -> float:
+    probability = DEFAULT_EXPERIMENT_MASTERY_PROB if probability is None else float(probability)
+    return round(max(0.0, min(1.0, probability)) * 100.0, 2)
+
+
+def update_experiment_mastery(
+    mastery_prob: float | None,
+    *,
+    question_type: str,
+    correct: bool,
+) -> dict[str, float]:
+    prior = DEFAULT_EXPERIMENT_MASTERY_PROB if mastery_prob is None else max(0.0, min(1.0, float(mastery_prob)))
+    guess = QUESTION_GUESS_RATE.get(question_type, QUESTION_GUESS_RATE["single_choice"])
+    slip = DEFAULT_SLIP_RATE
+    if correct:
+        numerator = prior * (1.0 - slip)
+        denominator = numerator + (1.0 - prior) * guess
+    else:
+        numerator = prior * slip
+        denominator = numerator + (1.0 - prior) * (1.0 - guess)
+    posterior = prior if denominator <= 0 else numerator / denominator
+    posterior = round(max(0.0, min(1.0, posterior)), 6)
+    return {"mastery_prob": posterior, "mastery_score": experiment_mastery_score(posterior)}
 
 
 @dataclass(frozen=True)

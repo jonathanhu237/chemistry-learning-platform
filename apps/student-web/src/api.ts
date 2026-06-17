@@ -275,6 +275,8 @@ export type StudentPosttestWrongAnswer = {
 
 export type StudentPosttestMasteryChange = {
   knowledge_point_id: string;
+  experiment_id?: string | null;
+  experiment_title?: string | null;
   content?: string | null;
   before_score: number;
   after_score: number;
@@ -336,6 +338,27 @@ export type StudentAssistantGeneratedResponse = {
   cached: boolean;
 };
 
+export type StudentFeedbackType = "system_issue" | "course_content" | "experiment_resource" | "ai_answer" | "other";
+
+export type StudentFeedbackSubmit = {
+  feedback_type: StudentFeedbackType;
+  content: string;
+  page_path?: string | null;
+  chapter_id?: string | null;
+  unit_id?: string | null;
+  knowledge_point_id?: string | null;
+  experiment_id?: string | null;
+  point_key?: string | null;
+  metadata?: Record<string, unknown>;
+  attachment?: File | null;
+};
+
+export type StudentFeedbackSubmitResponse = {
+  id: string;
+  status: string;
+  attachment_count: number;
+};
+
 export type StudentAssistantStreamEvent =
   | { event: "status"; message?: string }
   | { event: "delta"; delta?: string }
@@ -354,6 +377,7 @@ export type StudentFeedbackSubmitRequest = {
   point_key?: string | null;
   page_path?: string | null;
   metadata?: Record<string, unknown>;
+  attachment?: File | null;
 };
 
 export type StudentFeedbackItem = {
@@ -369,6 +393,15 @@ export type StudentFeedbackItem = {
   experiment_id?: string | null;
   page_path?: string | null;
   metadata?: Record<string, unknown>;
+  attachment_count?: number;
+  attachments?: Array<{
+    id: string;
+    feedback_id: string;
+    original_file_name?: string | null;
+    mime_type: string;
+    file_size_bytes: number;
+    created_at?: string | null;
+  }>;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -448,6 +481,11 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 function postJson<T>(path: string, body: unknown): Promise<T> {
   return api<T>(path, { method: "POST", body: JSON.stringify(body) });
+}
+
+function appendOptionalFormValue(formData: FormData, key: string, value: unknown): void {
+  const text = String(value || "").trim();
+  if (text) formData.append(key, text);
 }
 
 function parseSseBlock(block: string): StudentAssistantStreamEvent | null {
@@ -585,7 +623,18 @@ export function explainPosttestMistakes(sessionId: string): Promise<StudentAssis
 }
 
 export function submitStudentFeedback(payload: StudentFeedbackSubmitRequest): Promise<StudentFeedbackItem> {
-  return postJson<StudentFeedbackItem>("/api/student/feedback", payload);
+  const formData = new FormData();
+  formData.append("feedback_type", payload.feedback_type || "other");
+  formData.append("content", payload.content);
+  appendOptionalFormValue(formData, "page_path", payload.page_path);
+  appendOptionalFormValue(formData, "chapter_id", payload.chapter_id);
+  appendOptionalFormValue(formData, "unit_id", payload.unit_id);
+  appendOptionalFormValue(formData, "knowledge_point_id", payload.knowledge_point_id);
+  appendOptionalFormValue(formData, "experiment_id", payload.experiment_id);
+  appendOptionalFormValue(formData, "point_key", payload.point_key);
+  if (payload.metadata) formData.append("metadata", JSON.stringify(payload.metadata));
+  if (payload.attachment) formData.append("attachment", payload.attachment);
+  return api<StudentFeedbackItem>("/api/student/feedback", { method: "POST", body: formData });
 }
 
 export function studentMediaUrl(path: string): string {

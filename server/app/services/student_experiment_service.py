@@ -7,6 +7,7 @@ from sqlalchemy import text
 
 from server.app.database import db_session
 from server.app.experiment_admin_schemas import ExperimentQuestionSubmitRequest
+from server.app.services.experiment_mastery_service import update_experiment_mastery_from_attempt_rows
 
 
 TRUE_FALSE_TRUE_VALUES = {"true", "t", "1", "yes", "y", "正确", "对"}
@@ -182,10 +183,18 @@ def submit_experiment_question_attempt(payload: ExperimentQuestionSubmitRequest)
         correct_count = 0
         submitted_point_keys: set[str] = set()
         submitted_option_links: list[dict[str, Any]] = []
+        mastery_attempt_rows: list[dict[str, Any]] = []
         for question in questions:
             submitted = answer_lookup.get(str(question["id"]))
             correct = _grade_answer(question["question_type"], question["answer"], submitted)
             correct_count += 1 if correct else 0
+            mastery_attempt_rows.append(
+                {
+                    "experiment_id": payload.experiment_id,
+                    "question_type": question["question_type"],
+                    "correct": correct,
+                }
+            )
             attempt_metadata = _attempt_diagnostic_metadata(question, submitted, correct)
             submitted_point_keys.update(attempt_metadata.get("primary_point_keys") or [])
             if isinstance(attempt_metadata.get("selected_option_link"), dict):
@@ -292,5 +301,12 @@ def submit_experiment_question_attempt(payload: ExperimentQuestionSubmitRequest)
                     }
                 ),
             },
+        )
+        update_experiment_mastery_from_attempt_rows(
+            session,
+            student_id=payload.student_id,
+            class_id=class_id,
+            attempt_rows=mastery_attempt_rows,
+            evidence_kind=payload.attempt_kind,
         )
     return {"score": score, "correct_count": correct_count, "total_count": total}

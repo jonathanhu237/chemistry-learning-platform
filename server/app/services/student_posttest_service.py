@@ -11,8 +11,9 @@ from sqlalchemy import text
 
 from server.app.auth import AuthUser
 from server.app.database import db_session
-from server.app.mastery import MasterySnapshot, update_mastery
+from server.app.mastery import DEFAULT_EXPERIMENT_MASTERY_SCORE, MasterySnapshot, update_mastery
 from server.app.platform_settings import get_learning_behavior_settings
+from server.app.services.experiment_mastery_service import update_experiment_mastery_from_attempt_rows
 from server.app.services.student_experiment_service import _grade_answer
 from server.app.services.student_pretest_service import _ensure_student_row, _load_student_context
 from server.app.student_posttest_schemas import (
@@ -354,6 +355,44 @@ def _mastery_snapshot(session: Any, *, student_id: str, kp_ids: list[str]) -> di
     return snapshot
 
 
+def _experiment_mastery_snapshot(
+    session: Any,
+    *,
+    student_id: str,
+    experiments: list[PosttestExperimentSummary],
+) -> dict[str, dict[str, Any]]:
+    experiment_ids = [experiment.id for experiment in experiments if experiment.id]
+    if not experiment_ids:
+        return {}
+    current = {
+        str(row["experiment_id"]): {
+            "mastery_score": float(row["mastery_score"]),
+            "evidence_count": int(row["evidence_count"] or 0),
+        }
+        for row in session.execute(
+            text(
+                """
+                SELECT experiment_id, mastery_score, evidence_count
+                FROM student_experiment_mastery
+                WHERE student_id = :student_id
+                  AND experiment_id = ANY(:experiment_ids)
+                """
+            ),
+            {"student_id": student_id, "experiment_ids": experiment_ids},
+        ).mappings()
+    }
+    snapshot: dict[str, dict[str, Any]] = {}
+    for experiment in experiments:
+        state = current.get(experiment.id)
+        snapshot[experiment.id] = {
+            "experiment_id": experiment.id,
+            "content": experiment.title or experiment.code or experiment.id,
+            "mastery_score": state["mastery_score"] if state else DEFAULT_EXPERIMENT_MASTERY_SCORE,
+            "evidence_count": state["evidence_count"] if state else 0,
+        }
+    return snapshot
+
+
 def _response_for_session(session: Any, row: dict[str, Any]) -> StudentPosttestResponse:
     question_ids = _session_question_ids(row)
     questions = _load_questions_by_ids(session, question_ids)
@@ -396,7 +435,7 @@ def start_student_posttest(user: AuthUser) -> StudentPosttestResponse:
         )
         if not selected:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Posttest question bank is not configured")
-        mastery_before = _mastery_snapshot(session, student_id=context.student_id, kp_ids=_knowledge_point_ids(selected))
+        mastery_before = _experiment_mastery_snapshot(session, student_id=context.student_id, experiments=experiments)
         metadata = {
             "experiments": [experiment.model_dump() for experiment in experiments],
             "target_question_count": target_count,
@@ -518,7 +557,8 @@ def _update_mastery_from_posttest(session: Any, *, student_id: str, posttest_ses
         for row in session.execute(
             text(
                 """
-                SELECT a.correct, q.difficulty, q.related_knowledge_point_ids
+                SELECT a.correct, a.class_id, a.experiment_id, a.question_type,
+                       q.difficulty, q.related_knowledge_point_ids
                 FROM experiment_question_attempts a
                 JOIN experiment_questions q ON q.id = a.question_id
                 WHERE a.student_id = :student_id
@@ -531,6 +571,14 @@ def _update_mastery_from_posttest(session: Any, *, student_id: str, posttest_ses
         .mappings()
         .all()
     ]
+    update_experiment_mastery_from_attempt_rows(
+        session,
+        student_id=student_id,
+        class_id=next((str(row.get("class_id")) for row in attempt_rows if row.get("class_id")), None),
+        attempt_rows=attempt_rows,
+        evidence_kind="posttest",
+        evidence_id=posttest_session_id,
+    )
     kp_ids = sorted(
         {
             str(kp_id)
@@ -622,10 +670,14 @@ def _mastery_changes(before: dict[str, Any], after: dict[str, Any]) -> list[dict
         after_item = after.get(kp_id) if isinstance(after.get(kp_id), dict) else {}
         before_score = float(before_item.get("mastery_score") or 0)
         after_score = float(after_item.get("mastery_score") or 0)
+        content = after_item.get("content") or before_item.get("content")
+        experiment_id = str(after_item.get("experiment_id") or before_item.get("experiment_id") or kp_id)
         changes.append(
             {
-                "knowledge_point_id": kp_id,
-                "content": after_item.get("content") or before_item.get("content"),
+                "knowledge_point_id": experiment_id,
+                "experiment_id": experiment_id,
+                "experiment_title": content,
+                "content": content,
                 "before_score": round(before_score, 2),
                 "after_score": round(after_score, 2),
                 "delta": round(after_score - before_score, 2),
@@ -763,13 +815,13 @@ def submit_student_posttest(user: AuthUser, payload: StudentPosttestSubmitReques
             questions=ordered_questions,
             answers=answers,
         )
-        _update_mastery_from_posttest(session, student_id=context.student_id, posttest_session_id=posttest_session_id)
-        mastery_after = _mastery_snapshot(session, student_id=context.student_id, kp_ids=_knowledge_point_ids(ordered_questions))
-
         correct_count = sum(1 for item in graded if item["correct"])
         total_count = len(graded)
         score = round(100 * correct_count / total_count, 2) if total_count else 0.0
         experiment_ids = _session_experiment_ids(current)
+        experiments = _load_experiment_summaries(session, experiment_ids)
+        _update_mastery_from_posttest(session, student_id=context.student_id, posttest_session_id=posttest_session_id)
+        mastery_after = _experiment_mastery_snapshot(session, student_id=context.student_id, experiments=experiments)
         _update_experiment_progress(
             session,
             student_id=context.student_id,
@@ -831,7 +883,6 @@ def submit_student_posttest(user: AuthUser, payload: StudentPosttestSubmitReques
             .mappings()
             .one()
         )
-        experiments = _load_experiment_summaries(session, experiment_ids)
         report = _build_report(
             row=dict(updated),
             experiments=experiments,

@@ -5,10 +5,12 @@ import {
   App as AntApp,
   Button,
   Card,
+  Collapse,
   Descriptions,
   Drawer,
   Empty,
   Flex,
+  Image,
   Input,
   Select,
   Segmented,
@@ -20,9 +22,10 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 
-import { api, patchJson } from "../../api";
+import { api, apiBase, getAuthToken, patchJson } from "../../api";
 import type {
   ClassItem,
+  FeedbackAttachmentItem,
   FeedbackItem,
   FeedbackListResponse,
   FeedbackStatus,
@@ -36,6 +39,15 @@ import "./feedback.css";
 
 const { Text, Title } = Typography;
 
+const pageTypeLabels: Record<string, string> = {
+  pretest: "课前摸底",
+  learning_home: "学习首页",
+  experiment_group: "实验组",
+  experiment_detail: "实验详情",
+  posttest: "学习后测",
+  posttest_report: "实验报告",
+};
+
 function formatDateTime(value?: string | null) {
   if (!value) return "-";
   return dayjs(value).format("YYYY-MM-DD HH:mm");
@@ -44,6 +56,97 @@ function formatDateTime(value?: string | null) {
 function errorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   return String(error || "????");
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function metadataText(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "-";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
+  return JSON.stringify(value);
+}
+
+function formatBytes(value?: number | null): string {
+  const bytes = Number(value || 0);
+  if (!bytes) return "-";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function feedbackAttachmentUrl(feedbackId: string, attachmentId: string): string {
+  return `${apiBase}/api/admin/feedback/${encodeURIComponent(feedbackId)}/attachments/${encodeURIComponent(attachmentId)}`;
+}
+
+function feedbackPageLabel(item: FeedbackItem): string {
+  const metadata = asRecord(item.metadata);
+  const pageType = metadataText(metadata.page_type);
+  if (pageType !== "-") return pageTypeLabels[pageType] || pageType;
+  return item.page_path || "-";
+}
+
+function feedbackBusinessContext(item: FeedbackItem): string {
+  const metadata = asRecord(item.metadata);
+  const context = asRecord(metadata.context);
+  const parts = [
+    context.parent_code ? `实验组 ${context.parent_code}` : null,
+    item.experiment_id || context.experiment_id ? `实验 ${item.experiment_id || context.experiment_id}` : null,
+    context.session_id ? `报告 ${context.session_id}` : null,
+    context.stage ? `阶段 ${context.stage}` : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" / ") : "-";
+}
+
+function feedbackViewport(item: FeedbackItem): string {
+  const viewport = asRecord(asRecord(item.metadata).viewport);
+  const width = viewport.width;
+  const height = viewport.height;
+  if (!width || !height) return "-";
+  return `${width} × ${height}`;
+}
+
+function FeedbackAttachmentImage({ feedbackId, attachment }: { feedbackId: string; attachment: FeedbackAttachmentItem }) {
+  const [objectUrl, setObjectUrl] = useState<string>();
+  const [failed, setFailed] = useState(false);
+  const src = feedbackAttachmentUrl(feedbackId, attachment.id);
+
+  useEffect(() => {
+    let cancelled = false;
+    let nextUrl: string | undefined;
+    setObjectUrl(undefined);
+    setFailed(false);
+    const headers = new Headers();
+    const token = getAuthToken();
+    if (token) headers.set("Authorization", "Bearer " + token);
+    void fetch(src, { headers })
+      .then((response) => {
+        if (!response.ok) throw new Error("attachment_load_failed");
+        return response.blob();
+      })
+      .then((blob) => {
+        if (cancelled) return;
+        nextUrl = URL.createObjectURL(blob);
+        setObjectUrl(nextUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+      if (nextUrl) URL.revokeObjectURL(nextUrl);
+    };
+  }, [src]);
+
+  if (failed) {
+    return <div className="feedback-attachment-missing">附件加载失败</div>;
+  }
+  return objectUrl ? (
+    <Image src={objectUrl} alt={attachment.original_file_name || "反馈附件"} className="feedback-attachment-image" />
+  ) : (
+    <div className="feedback-attachment-loading">正在加载附件</div>
+  );
 }
 
 const feedbackStatusLabels: Record<FeedbackStatus, string> = {
@@ -263,7 +366,10 @@ export function FeedbackPage() {
               {
                 title: "反馈内容",
                 render: (_: unknown, row: FeedbackItem) => (
-                  <Text className="feedback-content-preview">{row.content}</Text>
+                  <Space orientation="vertical" size={4}>
+                    <Text className="feedback-content-preview">{row.content}</Text>
+                    {row.attachment_count ? <Tag color="green">含截图 {row.attachment_count}</Tag> : null}
+                  </Space>
                 ),
               },
               {
@@ -323,11 +429,30 @@ export function FeedbackPage() {
                 <div className="feedback-content-box">{activeFeedback.content}</div>
               </div>
 
+              {activeFeedback.attachments?.length ? (
+                <div className="drawer-section">
+                  <Text strong>附件截图</Text>
+                  <div className="feedback-attachment-grid">
+                    {activeFeedback.attachments.map((attachment) => (
+                      <div className="feedback-attachment-card" key={attachment.id}>
+                        <FeedbackAttachmentImage feedbackId={activeFeedback.id} attachment={attachment} />
+                        <Text type="secondary">
+                          {attachment.original_file_name || "反馈截图"} · {formatBytes(attachment.file_size_bytes)}
+                        </Text>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="drawer-section">
                 <Descriptions size="small" column={2}>
                   <Descriptions.Item label="学号">{activeFeedback.student_id}</Descriptions.Item>
                   <Descriptions.Item label="班级">{activeFeedback.class_name_snapshot || activeFeedback.class_id || "-"}</Descriptions.Item>
+                  <Descriptions.Item label="页面类型">{feedbackPageLabel(activeFeedback)}</Descriptions.Item>
                   <Descriptions.Item label="页面">{activeFeedback.page_path || "-"}</Descriptions.Item>
+                  <Descriptions.Item label="业务对象">{feedbackBusinessContext(activeFeedback)}</Descriptions.Item>
+                  <Descriptions.Item label="屏幕尺寸">{feedbackViewport(activeFeedback)}</Descriptions.Item>
                   <Descriptions.Item label="章节">{activeFeedback.chapter_id || "-"}</Descriptions.Item>
                   <Descriptions.Item label="知识点">{activeFeedback.knowledge_point_id || "-"}</Descriptions.Item>
                   <Descriptions.Item label="实验">{activeFeedback.experiment_id || "-"}</Descriptions.Item>
@@ -335,6 +460,21 @@ export function FeedbackPage() {
                   <Descriptions.Item label="更新时间">{formatDateTime(activeFeedback.updated_at)}</Descriptions.Item>
                 </Descriptions>
               </div>
+
+              <Collapse
+                size="small"
+                items={[
+                  {
+                    key: "debug",
+                    label: "调试信息",
+                    children: (
+                      <pre className="feedback-debug-json">
+                        {JSON.stringify(activeFeedback.metadata || {}, null, 2)}
+                      </pre>
+                    ),
+                  },
+                ]}
+              />
 
               <div className="drawer-section">
                 <Space orientation="vertical" size={12} className="full">

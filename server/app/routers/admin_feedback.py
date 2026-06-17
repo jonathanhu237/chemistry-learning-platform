@@ -3,11 +3,13 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, Path, Query
+from fastapi.responses import FileResponse
 
 from server.app.auth import AuthUser, require_roles
 from server.app.schemas import FeedbackListResponse, FeedbackSummaryResponse, FeedbackUpdateRequest
 from server.app.services.feedback_service import (
     feedback_summary,
+    get_feedback_attachment,
     get_feedback,
     list_feedback,
     update_feedback,
@@ -55,6 +57,20 @@ async def admin_get_feedback(
     user: AuthUser = Depends(require_roles("admin", "teacher")),
 ) -> dict[str, Any]:
     return get_feedback(feedback_id, user)
+
+
+@router.get("/feedback/{feedback_id}/attachments/{attachment_id}", include_in_schema=False)
+async def admin_get_feedback_attachment(
+    feedback_id: str = Path(min_length=1),
+    attachment_id: str = Path(min_length=1),
+    user: AuthUser = Depends(require_roles("admin", "teacher")),
+) -> FileResponse:
+    attachment = get_feedback_attachment(feedback_id, attachment_id, user)
+    return FileResponse(
+        attachment["absolute_path"],
+        media_type=attachment["mime_type"],
+        filename=attachment.get("original_file_name") or f"{attachment_id}.jpg",
+    )
 
 
 @router.patch("/feedback/{feedback_id}")

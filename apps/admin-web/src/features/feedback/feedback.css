@@ -34,3 +34,52 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+.feedback-attachment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.feedback-attachment-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.feedback-attachment-image,
+.feedback-attachment-loading,
+.feedback-attachment-missing {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: var(--sysu-panel);
+}
+
+.feedback-attachment-image {
+  object-fit: cover;
+}
+
+.feedback-attachment-loading,
+.feedback-attachment-missing {
+  display: grid;
+  place-items: center;
+  color: var(--sysu-muted);
+  font-size: 12px;
+}
+
+.feedback-debug-json {
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #10261e;
+  color: #e6f2ea;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

@@ -1,4 +1,4 @@
-import { CSSProperties, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, FormEvent, ReactNode, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Atom,
@@ -16,10 +16,12 @@ import {
   LogIn,
   LogOut,
   MessageCircle,
+  Paperclip,
   PlayCircle,
   Send,
   ShieldCheck,
   Sparkles,
+  Trash2,
   UserRound,
   Video,
   X,
@@ -151,6 +153,11 @@ const periodicAreaByAreaId: Record<AreaId, PeriodicArea> = {
   ds: "ds区",
   f: "f区",
 };
+
+const LazyAiMarkdown = lazy(async () => {
+  const module = await import("./components/AiMarkdown");
+  return { default: module.AiMarkdown };
+});
 
 const areaSwatches: Record<AreaId, string> = {
   p: "#2f9d70",
@@ -390,13 +397,15 @@ function App() {
         <PretestErrorPanel message={pretestError} onSkip={() => setPretestSkipped(true)} onLogout={handleLogout} />
       ) : null}
       {view === "pretest" && pretest ? (
-        <AssessmentPanel
-          eyebrow="课前摸底"
-          title="请完成以下题目"
-          questions={pretest.questions}
-          submitting={pretestLoading}
-          onSubmit={handlePretestSubmit}
-        />
+        <>
+          <AssessmentPanel
+            eyebrow="课前摸底"
+            title="请完成以下题目"
+            questions={pretest.questions}
+            submitting={pretestLoading}
+            onSubmit={handlePretestSubmit}
+          />
+        </>
       ) : null}
       {view === "home" && user ? <LearningSurface user={user} onLogout={handleLogout} /> : null}
     </main>
@@ -786,17 +795,51 @@ function LearningSurface({ user, onLogout }: { user: AuthUser; onLogout: () => v
 
   if (route.screen === "posttest") {
     return (
-      <PosttestPanel
-        posttest={route.posttest}
-        submitting={posttestSubmitting}
-        error={posttestError}
-        onSubmit={(answers) => submitPosttest(route.posttest, answers)}
-      />
+      <>
+        <PosttestPanel
+          posttest={route.posttest}
+          submitting={posttestSubmitting}
+          error={posttestError}
+          onSubmit={(answers) => submitPosttest(route.posttest, answers)}
+        />
+        {canUseFeedback ? (
+          <StudentFeedbackFab
+            context={{
+              pagePath: "/student/posttest",
+              contextTitle: "学习后测",
+              metadata: {
+                screen: "posttest",
+                session_id: route.posttest.session_id,
+                experiment_ids: route.posttest.experiments.map((experiment) => experiment.id),
+                question_count: route.posttest.questions.length,
+              },
+            }}
+          />
+        ) : null}
+      </>
     );
   }
 
   if (route.screen === "summary") {
-    return <PosttestSummaryPanel report={route.report} onContinue={() => setRoute({ screen: "entry" })} />;
+    return (
+      <>
+        <PosttestSummaryPanel report={route.report} onContinue={() => setRoute({ screen: "entry" })} />
+        {canUseFeedback ? (
+          <StudentFeedbackFab
+            context={{
+              pagePath: "/student/posttest/report",
+              contextTitle: "本轮实验报告",
+              metadata: {
+                screen: "posttest_report",
+                session_id: route.report.session_id,
+                experiment_ids: route.report.experiments.map((experiment) => experiment.id),
+                score: route.report.score,
+              },
+            }}
+          />
+        ) : null}
+      </>
+    );
   }
 
   if (route.screen === "entry") {
@@ -1230,6 +1273,7 @@ function LearningHomePanel({
               finishing={finishing}
               finishError={finishError}
               onFinishLearning={onFinishLearning}
+              floatingOverlayOpen={Boolean(activeOverlay)}
             />
           )}
           {assistantEnabled && homeAssistantContext && activeOverlay !== "feedback" ? (
@@ -1365,6 +1409,7 @@ function LearningExperimentsView({
   finishing,
   finishError,
   onFinishLearning,
+  floatingOverlayOpen,
 }: {
   profile: StudentLearningProfile;
   groups: StudentLearningChapterExperimentGroup[];
@@ -1383,6 +1428,7 @@ function LearningExperimentsView({
   finishing: boolean;
   finishError: string;
   onFinishLearning: () => void;
+  floatingOverlayOpen: boolean;
 }) {
   return (
     <div className="chapter-view-panel experiments-view" data-view="experiments">
@@ -1412,7 +1458,7 @@ function LearningExperimentsView({
           </MobileEmptyState>
         )}
       </section>
-      <FinishLearningAction loading={finishing} error={finishError} onClick={onFinishLearning} />
+      {floatingOverlayOpen ? null : <FinishLearningAction loading={finishing} error={finishError} onClick={onFinishLearning} />}
     </div>
   );
 }
@@ -2079,7 +2125,7 @@ function ExperimentDetailPanel({
               <span>暂未开放</span>
             </button>
           </section>
-          <FinishLearningAction loading={finishing} error={finishError} onClick={onFinishLearning} />
+          {activeOverlay ? null : <FinishLearningAction loading={finishing} error={finishError} onClick={onFinishLearning} />}
           {assistantEnabled && detailAssistantContext && activeOverlay !== "feedback" ? (
             <StudentAiChat
               context={detailAssistantContext}
@@ -2383,9 +2429,12 @@ function StudentFeedbackFab({
   const [localOpen, setLocalOpen] = useState(false);
   const [feedbackType, setFeedbackType] = useState("content");
   const [content, setContent] = useState("");
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachmentError, setAttachmentError] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const open = controlledOpen ?? localOpen;
 
   const setOpen = (nextOpen: boolean | ((current: boolean) => boolean)) => {
@@ -2402,10 +2451,38 @@ function StudentFeedbackFab({
     setError("");
   }, [context.pagePath, context.experimentId, context.pointKey]);
 
+  const selectAttachment = (file: File | null) => {
+    setAttachmentError("");
+    if (!file) {
+      setAttachment(null);
+      return;
+    }
+    const allowedTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
+    if (!allowedTypes.has(file.type)) {
+      setAttachment(null);
+      setAttachmentError("只能上传 PNG、JPG 或 WebP 图片");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAttachment(null);
+      setAttachmentError("图片不能超过 5 MB");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    setAttachment(file);
+  };
+
+  const clearAttachment = () => {
+    setAttachment(null);
+    setAttachmentError("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = content.trim();
-    if (!trimmed || loading) return;
+    if (!trimmed || attachmentError || loading) return;
     setLoading(true);
     setMessage("");
     setError("");
@@ -2420,10 +2497,13 @@ function StudentFeedbackFab({
         metadata: {
           ...context.metadata,
           context_title: context.contextTitle,
+          viewport: { width: window.innerWidth, height: window.innerHeight },
           user_agent: window.navigator.userAgent,
         },
+        attachment,
       });
       setContent("");
+      clearAttachment();
       setMessage("已收到反馈，老师后台可以看到。");
     } catch (requestError) {
       setError(errorMessage(requestError));
@@ -2464,9 +2544,28 @@ function StudentFeedbackFab({
             placeholder="描述你在当前页面遇到的问题或建议"
             onChange={(event) => setContent(event.target.value)}
           />
+          <div className="feedback-attachment-row">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(event) => selectAttachment(event.target.files?.[0] ?? null)}
+            />
+            <button type="button" disabled={loading} onClick={() => fileInputRef.current?.click()}>
+              <Paperclip size={15} />
+              <span>{attachment ? "更换图片" : "添加截图"}</span>
+            </button>
+            {attachment ? (
+              <button type="button" className="feedback-file-pill" disabled={loading} onClick={clearAttachment}>
+                <span>{attachment.name}</span>
+                <Trash2 size={14} />
+              </button>
+            ) : null}
+          </div>
+          {attachmentError ? <div className="form-error">{attachmentError}</div> : null}
           {message ? <div className="form-hint">{message}</div> : null}
           {error ? <div className="form-error">{error}</div> : null}
-          <MobileButton className="primary-action" type="submit" loading={loading} disabled={!content.trim()}>
+          <MobileButton className="primary-action" type="submit" loading={loading} disabled={!content.trim() || Boolean(attachmentError)}>
             {loading ? <LoaderCircle className="spin" size={18} /> : <Send size={18} />}
             <span>{loading ? "正在提交" : "提交反馈"}</span>
           </MobileButton>
@@ -2530,6 +2629,22 @@ function answerLabel(answer: unknown): string {
   return String(answer);
 }
 
+function AiMarkdownBlock({ text, className = "" }: { text: string | null | undefined; className?: string }) {
+  const value = String(text || "");
+  if (!value.trim()) return null;
+  return (
+    <Suspense
+      fallback={
+        <div className={["ai-markdown", className].filter(Boolean).join(" ")}>
+          <p className="ai-md-paragraph">{value}</p>
+        </div>
+      }
+    >
+      <LazyAiMarkdown text={value} className={className} />
+    </Suspense>
+  );
+}
+
 function PosttestSummaryPanel({ report, onContinue }: { report: StudentPosttestReport; onContinue: () => void }) {
   const masteryChanges = report.mastery_changes.slice(0, 5);
   const [aiSummary, setAiSummary] = useState(report.next_recommendation);
@@ -2587,7 +2702,7 @@ function PosttestSummaryPanel({ report, onContinue }: { report: StudentPosttestR
         <div>
           <p>学习总结</p>
           <h2>本轮实验报告</h2>
-          <small>{aiSummaryLoading ? "正在生成 AI 学习总结..." : aiSummary}</small>
+          <AiMarkdownBlock className="summary-ai-text" text={aiSummaryLoading ? "正在生成 AI 学习总结..." : aiSummary} />
           <em>
             <Sparkles size={13} />
             {aiSummarySource === "ai" ? "AI 总结" : "规则总结"}
@@ -2678,7 +2793,7 @@ function PosttestSummaryPanel({ report, onContinue }: { report: StudentPosttestR
                   <Sparkles size={13} />
                   AI 解答
                 </span>
-                <p>{mistakeAnswer}</p>
+                <AiMarkdownBlock text={mistakeAnswer} />
               </div>
             ) : null}
           </>

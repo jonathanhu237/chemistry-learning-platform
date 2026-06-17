@@ -58,6 +58,8 @@ class StudentPosttestWrongAnswer(BaseModel):
 
 class StudentPosttestMasteryChange(BaseModel):
     knowledge_point_id: str
+    experiment_id: str | None = None
+    experiment_title: str | None = None
     content: str | None = None
     before_score: float
     after_score: float

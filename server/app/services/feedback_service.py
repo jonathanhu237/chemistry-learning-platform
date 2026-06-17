@@ -7,7 +7,14 @@ from sqlalchemy import text
 
 from server.app.auth import AuthUser
 from server.app.database import db_session
-from server.app.feedback import FEEDBACK_STATUSES, feedback_row_to_item, feedback_visibility_sql, normalize_feedback_type
+from server.app.feedback import (
+    FEEDBACK_STATUSES,
+    feedback_row_to_item,
+    feedback_visibility_sql,
+    list_feedback_attachments,
+    load_feedback_attachment_file,
+    normalize_feedback_type,
+)
 from server.app.schemas import FeedbackListResponse, FeedbackSummaryResponse, FeedbackUpdateRequest
 
 
@@ -64,7 +71,12 @@ def _feedback_filters(
 def _feedback_select_sql(where_sql: str) -> str:
     return f"""
         SELECT sf.*,
-               au.display_name AS handler_display_name
+               au.display_name AS handler_display_name,
+               COALESCE((
+                 SELECT COUNT(*)
+                 FROM feedback_attachments fa
+                 WHERE fa.feedback_id = sf.id
+               ), 0) AS attachment_count
         FROM student_feedback sf
         LEFT JOIN app_users au ON au.id = sf.handler_user_id
         WHERE {where_sql}
@@ -84,7 +96,10 @@ def _load_visible_feedback(session: Any, feedback_id: str, user: AuthUser) -> di
     )
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
-    return feedback_row_to_item(dict(row))
+    item = feedback_row_to_item(dict(row))
+    item["attachments"] = list_feedback_attachments(session, feedback_id)
+    item["attachment_count"] = len(item["attachments"])
+    return item
 
 
 def feedback_summary(user: AuthUser) -> FeedbackSummaryResponse:
@@ -196,3 +211,9 @@ def update_feedback(payload: FeedbackUpdateRequest, feedback_id: str, user: Auth
                 params,
             )
         return _load_visible_feedback(session, feedback_id, user)
+
+
+def get_feedback_attachment(feedback_id: str, attachment_id: str, user: AuthUser) -> dict[str, Any]:
+    with db_session() as session:
+        _load_visible_feedback(session, feedback_id, user)
+        return load_feedback_attachment_file(session, feedback_id, attachment_id)

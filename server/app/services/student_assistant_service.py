@@ -218,7 +218,7 @@ def _fallback_summary(row: dict[str, Any], experiments: list[dict[str, Any]], wr
     after = _mastery_average(row.get("mastery_after") if isinstance(row.get("mastery_after"), dict) else {})
     mastery_part = ""
     if before is not None and after is not None:
-        mastery_part = f"相关知识点平均掌握度由 {before:.1f} 提升到 {after:.1f}。"
+        mastery_part = f"相关实验平均掌握度由 {before:.1f} 变为 {after:.1f}。"
     if wrong_count:
         advice = "建议先复盘错题对应的实验现象、反应方程式和判断依据，再进入下一组实验。"
     else:
@@ -357,7 +357,7 @@ async def generate_posttest_ai_summary(user: AuthUser, session_id: str) -> Stude
         fallback = _fallback_summary(row, experiments, int(context["wrong_count"]))
     text_value, source, mode = await _generate_with_agent(
         user=user,
-        question="请为学生生成一段课后学习总结，包含本轮学习内容、后测表现、掌握度变化和下一步建议。不要超过 220 字。",
+        question="请为学生生成一段课后学习总结，包含本轮学习内容、后测表现、实验掌握度变化和下一步建议。不要超过 220 字。只输出纯文本，不要使用 Markdown、标题符号、LaTeX 或项目列表。",
         context=context,
         attempts=attempts,
         allow_rag_lookup=rag_enabled,

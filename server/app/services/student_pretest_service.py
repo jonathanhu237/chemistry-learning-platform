@@ -12,6 +12,7 @@ from sqlalchemy import text
 from server.app.auth import AuthUser
 from server.app.database import db_session
 from server.app.mastery import update_mastery
+from server.app.services.experiment_mastery_service import update_experiment_mastery_from_attempt_rows
 from server.app.services.student_experiment_service import _grade_answer
 from server.app.student_pretest_schemas import (
     PublicPretestQuestion,
@@ -22,7 +23,6 @@ from server.app.student_pretest_schemas import (
 
 AREA_ORDER = ["s区", "p区", "d区", "ds区", "f区"]
 WEAKEST_AREA_PRIORITY = ["p区", "d区", "s区", "ds区", "f区"]
-P_AREA_CHAPTER_IDS = ["ch_13", "ch_14", "ch_15", "ch_16", "ch_17"]
 STAGE1_PER_AREA = 2
 STAGE2_TARGET_COUNT = 10
 
@@ -45,6 +45,8 @@ class QuestionCandidate:
     options: list[Any]
     answer: dict[str, Any]
     difficulty: str
+    parent_code: str
+    display_order: int
     related_chapter_ids: list[str]
     related_knowledge_point_ids: list[str]
     areas: tuple[str, ...]
@@ -247,6 +249,11 @@ def _candidate_areas(
     return experiment_areas.get(experiment_id, ())
 
 
+def _experiment_parent_code(experiment_id: str, metadata: Any) -> str:
+    metadata = metadata if isinstance(metadata, dict) else {}
+    return str(metadata.get("parent_code") or experiment_id)
+
+
 def _load_published_pretest_candidates(session: Any) -> list[QuestionCandidate]:
     chapter_areas, kp_context, experiment_areas = _load_area_maps(session)
     candidates: list[QuestionCandidate] = []
@@ -254,8 +261,10 @@ def _load_published_pretest_candidates(session: Any) -> list[QuestionCandidate]:
         text(
             """
             SELECT q.id::text AS id, q.experiment_id, q.question_type, q.stem, q.options,
-                   q.answer, q.difficulty, q.related_chapter_ids, q.related_knowledge_point_ids
+                   q.answer, q.difficulty, q.related_chapter_ids, q.related_knowledge_point_ids,
+                   fe.metadata AS experiment_metadata, fe.display_order
             FROM experiment_questions q
+            JOIN formal_experiments fe ON fe.id = q.experiment_id
             WHERE q.status = 'published'
               AND q.question_type = 'single_choice'
             ORDER BY q.created_at, q.id
@@ -288,6 +297,8 @@ def _load_published_pretest_candidates(session: Any) -> list[QuestionCandidate]:
                 options=options,
                 answer=answer,
                 difficulty=str(row.get("difficulty") or "basic"),
+                parent_code=_experiment_parent_code(str(row["experiment_id"]), row.get("experiment_metadata")),
+                display_order=int(row.get("display_order") or 0),
                 related_chapter_ids=chapter_ids,
                 related_knowledge_point_ids=kp_ids,
                 areas=areas,
@@ -304,8 +315,10 @@ def _load_questions_by_ids(session: Any, question_ids: list[str]) -> dict[str, Q
         text(
             """
             SELECT q.id::text AS id, q.experiment_id, q.question_type, q.stem, q.options,
-                   q.answer, q.difficulty, q.related_chapter_ids, q.related_knowledge_point_ids
+                   q.answer, q.difficulty, q.related_chapter_ids, q.related_knowledge_point_ids,
+                   fe.metadata AS experiment_metadata, fe.display_order
             FROM experiment_questions q
+            JOIN formal_experiments fe ON fe.id = q.experiment_id
             WHERE q.id::text = ANY(:question_ids)
             """
         ),
@@ -331,6 +344,8 @@ def _load_questions_by_ids(session: Any, question_ids: list[str]) -> dict[str, Q
             options=row.get("options") if isinstance(row.get("options"), list) else [],
             answer=row.get("answer") if isinstance(row.get("answer"), dict) else {},
             difficulty=str(row.get("difficulty") or "basic"),
+            parent_code=_experiment_parent_code(str(row["experiment_id"]), row.get("experiment_metadata")),
+            display_order=int(row.get("display_order") or 0),
             related_chapter_ids=chapter_ids,
             related_knowledge_point_ids=kp_ids,
             areas=areas,
@@ -369,11 +384,7 @@ def _select_stage1_questions(
 
 
 def _group_key(question: QuestionCandidate) -> str:
-    if question.related_knowledge_point_ids:
-        return question.related_knowledge_point_ids[0]
-    if question.related_chapter_ids:
-        return question.related_chapter_ids[0]
-    return question.id
+    return f"{question.parent_code}:{question.experiment_id}"
 
 
 def _balanced_stage2_sample(pool: list[QuestionCandidate], *, seed: str, count: int) -> list[QuestionCandidate]:
@@ -415,31 +426,11 @@ def _select_stage2_questions(
     if not pool:
         return [], {}, {"missing_area": weakest_area}
 
-    selected: list[QuestionCandidate] = []
-    if weakest_area == "p区":
-        used: set[str] = set()
-        for chapter_id in P_AREA_CHAPTER_IDS:
-            chapter_pool = [candidate for candidate in pool if chapter_id in candidate.related_chapter_ids]
-            for question in _stable_sample(chapter_pool, 2, f"{student_id}:pretest:stage2:{weakest_area}:{chapter_id}"):
-                if question.id in used:
-                    continue
-                selected.append(question)
-                used.add(question.id)
-        if len(selected) < STAGE2_TARGET_COUNT:
-            fill_pool = [candidate for candidate in pool if candidate.id not in used]
-            selected.extend(
-                _stable_sample(
-                    fill_pool,
-                    STAGE2_TARGET_COUNT - len(selected),
-                    f"{student_id}:pretest:stage2:{weakest_area}:fill",
-                )
-            )
-    else:
-        selected = _balanced_stage2_sample(
-            pool,
-            seed=f"{student_id}:pretest:stage2:{weakest_area}",
-            count=STAGE2_TARGET_COUNT,
-        )
+    selected = _balanced_stage2_sample(
+        pool,
+        seed=f"{student_id}:pretest:stage2:{weakest_area}",
+        count=STAGE2_TARGET_COUNT,
+    )
 
     selected = selected[:STAGE2_TARGET_COUNT]
     question_areas = {question.id: weakest_area for question in selected}
@@ -685,7 +676,8 @@ def _update_mastery_from_session(session: Any, *, student_id: str, pretest_sessi
         for row in session.execute(
             text(
                 """
-                SELECT a.correct, q.difficulty, q.related_knowledge_point_ids
+                SELECT a.correct, a.class_id, a.experiment_id, a.question_type,
+                       q.difficulty, q.related_knowledge_point_ids
                 FROM experiment_question_attempts a
                 JOIN experiment_questions q ON q.id = a.question_id
                 WHERE a.student_id = :student_id
@@ -698,6 +690,14 @@ def _update_mastery_from_session(session: Any, *, student_id: str, pretest_sessi
         .mappings()
         .all()
     ]
+    update_experiment_mastery_from_attempt_rows(
+        session,
+        student_id=student_id,
+        class_id=next((str(row.get("class_id")) for row in attempt_rows if row.get("class_id")), None),
+        attempt_rows=attempt_rows,
+        evidence_kind="pretest",
+        evidence_id=pretest_session_id,
+    )
     kp_ids = sorted(
         {
             str(kp_id)

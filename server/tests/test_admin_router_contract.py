@@ -65,9 +65,18 @@ ADMIN_ROUTE_CONTRACTS = [
 
 
 def _routes_for(path: str, method: str) -> list[object]:
+    routes: list[object] = []
+    stack = list(app.routes)
+    while stack:
+        route = stack.pop(0)
+        original_router = getattr(route, "original_router", None)
+        if original_router is not None:
+            stack[0:0] = list(getattr(original_router, "routes", []) or [])
+            continue
+        routes.append(route)
     return [
         route
-        for route in app.routes
+        for route in routes
         if getattr(route, "path", "") == path and method in getattr(route, "methods", set())
     ]
 

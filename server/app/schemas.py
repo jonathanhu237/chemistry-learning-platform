@@ -122,6 +122,15 @@ class FeedbackUpdateRequest(BaseModel):
     internal_note: str | None = Field(default=None, max_length=4000)
 
 
+class FeedbackAttachmentItem(BaseModel):
+    id: str
+    feedback_id: str
+    original_file_name: str | None = None
+    mime_type: str
+    file_size_bytes: int
+    created_at: datetime | None = None
+
+
 class FeedbackItem(BaseModel):
     id: str
     student_id: str
@@ -141,9 +150,17 @@ class FeedbackItem(BaseModel):
     handler_display_name: str | None = None
     internal_note: str | None = None
     metadata: dict = Field(default_factory=dict)
+    attachment_count: int = 0
+    attachments: list[FeedbackAttachmentItem] = Field(default_factory=list)
     resolved_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+
+class FeedbackSubmitResponse(BaseModel):
+    id: str
+    status: str
+    attachment_count: int = 0
 
 
 class FeedbackSummaryResponse(BaseModel):

@@ -69,6 +69,15 @@ export type FeedbackStatus = "open" | "in_progress" | "resolved" | "archived";
 
 export type FeedbackType = "course_content" | "experiment_resource" | "ai_answer" | "system_issue" | "other";
 
+export type FeedbackAttachmentItem = {
+  id: string;
+  feedback_id: string;
+  original_file_name?: string | null;
+  mime_type: string;
+  file_size_bytes: number;
+  created_at?: string | null;
+};
+
 export type FeedbackItem = {
   id: string;
   student_id: string;
@@ -88,6 +97,8 @@ export type FeedbackItem = {
   handler_display_name?: string | null;
   internal_note?: string | null;
   metadata?: Record<string, unknown>;
+  attachment_count?: number;
+  attachments?: FeedbackAttachmentItem[];
   resolved_at?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -547,6 +558,9 @@ export type Experiment = {
   title_en?: string;
   summary?: string;
   metadata?: Record<string, unknown>;
+  family_id?: string;
+  family_code?: string;
+  family_title?: string;
   status: "draft" | "published" | "archived";
   display_order: number;
   chapter_bindings: ChapterBinding[];
@@ -943,30 +957,59 @@ export type QuestionWorkbenchSession = {
   updated_at?: string;
 };
 
+export type AnalyticsExperimentState = {
+  status: string;
+  completion_percent: number;
+  best_score: number | null;
+  mastery_score: number;
+  score: number;
+  has_mastery: boolean;
+  evidence_count: number;
+  attempt_count: number;
+};
+
+export type AnalyticsExperimentGroup = {
+  id: string;
+  code?: string;
+  title: string;
+  raw_title?: string;
+  experiment_ids: string[];
+  experiment_count: number;
+};
+
+export type AnalyticsExperimentGroupState = {
+  status: string;
+  mastery_score: number;
+  score: number;
+  has_mastery: boolean;
+  evidence_experiment_count: number;
+  experiment_count: number;
+  evidence_count: number;
+  attempt_count: number;
+  lowest_experiment_id?: string | null;
+  lowest_experiment_score?: number | null;
+};
+
 export type AnalyticsDashboard = {
   class_id: string;
   metrics: {
     class_size: number;
     active_students: number;
     published_experiments: number;
+    published_experiment_groups?: number;
     completion_rate: number;
     average_score: number;
     missing_students: number;
   };
   experiments: Experiment[];
+  experiment_groups?: AnalyticsExperimentGroup[];
   matrix: Array<{
     student_id: string;
     student_name: string;
     status?: string;
-    experiments: Record<
-      string,
-      {
-        status: string;
-        completion_percent: number;
-        best_score: number | null;
-        attempt_count: number;
-      }
-    >;
+    average_score?: number;
+    experiments: Record<string, AnalyticsExperimentState>;
+    experiment_groups?: Record<string, AnalyticsExperimentGroupState>;
   }>;
   recent_activity: Array<Record<string, unknown>>;
   missing_students: Array<Record<string, unknown>>;
@@ -1012,10 +1055,20 @@ export type StudentAttempt = {
   question_id?: string;
   question_type?: Question["question_type"];
   stem?: string;
+  options?: Array<Record<string, unknown>>;
+  explanation?: string | null;
+  difficulty?: string | null;
+  attempt_kind?: string;
+  attempt_kind_label?: string;
   correct?: boolean | null;
   score?: number | null;
   submitted_answer?: unknown;
+  submitted_answer_value?: unknown;
   answer?: unknown;
+  correct_answer?: unknown;
+  related_chapter_ids?: string[];
+  related_knowledge_point_ids?: string[];
+  primary_points?: QuestionPoint[];
   metadata?: {
     primary_points?: QuestionPoint[];
     primary_point_keys?: string[];
@@ -1027,10 +1080,33 @@ export type StudentAttempt = {
   created_at?: string;
 };
 
+export type TeacherReportAiContent = {
+  text: string;
+  source: "ai" | "fallback";
+  mode: string;
+  generated_at?: string | null;
+};
+
+export type TeacherLatestPosttestReport = {
+  session_id: string;
+  completed_at?: string | null;
+  score?: number | null;
+  correct_count: number;
+  total_count: number;
+  experiments: Array<{ id: string; code?: string | null; title?: string | null }>;
+  attempts: StudentAttempt[];
+  wrong_answers: StudentAttempt[];
+  ai_summary?: TeacherReportAiContent | null;
+  ai_mistake_explanation?: TeacherReportAiContent | null;
+};
+
 export type StudentReport = {
   student?: Record<string, unknown>;
   progress?: Array<Record<string, unknown>>;
+  experiment_mastery?: Array<Record<string, unknown>>;
   attempts?: StudentAttempt[];
+  latest_posttest_report?: TeacherLatestPosttestReport | null;
+  posttest_reports?: TeacherLatestPosttestReport[];
   weak_points?: Array<Record<string, unknown>>;
   weak_video_points?: WeakVideoPointItem[];
   timeline?: Array<Record<string, unknown>>;

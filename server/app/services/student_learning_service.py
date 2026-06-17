@@ -16,6 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from server.app.auth import AuthUser
 from server.app.config import ROOT, get_settings
 from server.app.database import db_session
+from server.app.mastery import DEFAULT_EXPERIMENT_MASTERY_SCORE
 from server.app.media import is_student_visible_media
 from server.app.normalization import CHAPTER_AREA_MAP
 from server.app.student_learning_schemas import (
@@ -554,11 +555,59 @@ def _lowest_mastery_chapter_id(session: Any, *, student_id: str, area_id: str) -
     return str(row["chapter_id"]) if row else None
 
 
+def _lowest_experiment_mastery_parent_code(
+    session: Any,
+    *,
+    student_id: str,
+    groups: list[ParentGroup],
+    area_id: str,
+) -> str | None:
+    candidates = [group for group in groups if group.area_id == area_id]
+    if not candidates:
+        return None
+    experiment_ids = [
+        str(experiment["id"])
+        for group in candidates
+        for experiment in group.experiments
+    ]
+    if not experiment_ids:
+        return None
+    try:
+        mastery_scores = {
+            str(row["experiment_id"]): float(row["mastery_score"])
+            for row in session.execute(
+                text(
+                    """
+                    SELECT experiment_id, mastery_score
+                    FROM student_experiment_mastery
+                    WHERE student_id = :student_id
+                      AND experiment_id = ANY(:experiment_ids)
+                    """
+                ),
+                {"student_id": student_id, "experiment_ids": experiment_ids},
+            ).mappings()
+        }
+    except SQLAlchemyError:
+        session.rollback()
+        return None
+
+    def group_average(group: ParentGroup) -> float:
+        values = [
+            mastery_scores.get(str(experiment["id"]), DEFAULT_EXPERIMENT_MASTERY_SCORE)
+            for experiment in group.experiments
+        ]
+        return sum(values) / len(values) if values else DEFAULT_EXPERIMENT_MASTERY_SCORE
+
+    weakest = min(candidates, key=lambda group: (group_average(group), group.display_order, group.parent_code))
+    return weakest.parent_code
+
+
 def _choose_recommendation(
     *,
     groups: list[ParentGroup],
     pretest_area_id: str | None,
-    mastery_chapter_id: str | None,
+    mastery_parent_code: str | None = None,
+    mastery_chapter_id: str | None = None,
 ) -> tuple[str | None, str | None]:
     groups_by_area: dict[str, list[ParentGroup]] = defaultdict(list)
     for group in groups:
@@ -570,6 +619,10 @@ def _choose_recommendation(
         return (first_group.area_id, first_group.parent_code) if first_group else (None, None)
 
     candidates = groups_by_area[area_id]
+    if mastery_parent_code:
+        matched = next((group for group in candidates if group.parent_code == mastery_parent_code), None)
+        if matched:
+            return matched.area_id, matched.parent_code
     if mastery_chapter_id:
         matched = next((group for group in candidates if mastery_chapter_id in group.chapter_ids), None)
         if matched:
@@ -690,14 +743,22 @@ def get_student_learning_home(user: AuthUser) -> StudentLearningHomeResponse:
         groups = _build_parent_groups(experiments)
         student_id = _student_id(user)
         pretest_area_id = _latest_pretest_area_id(session, student_id)
+        recommendation_area_id = pretest_area_id or DEFAULT_RECOMMENDED_AREA_ID
+        mastery_parent_code = _lowest_experiment_mastery_parent_code(
+            session,
+            student_id=student_id,
+            groups=groups,
+            area_id=recommendation_area_id,
+        )
         mastery_chapter_id = _lowest_mastery_chapter_id(
             session,
             student_id=student_id,
-            area_id=pretest_area_id or DEFAULT_RECOMMENDED_AREA_ID,
+            area_id=recommendation_area_id,
         )
         recommended_area_id, recommended_parent_code = _choose_recommendation(
             groups=groups,
             pretest_area_id=pretest_area_id,
+            mastery_parent_code=mastery_parent_code,
             mastery_chapter_id=mastery_chapter_id,
         )
     return StudentLearningHomeResponse(
