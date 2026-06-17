@@ -1,10 +1,10 @@
 ## 1. Baseline And Guardrails
 
-- [ ] 1.1 Confirm `codex/productionize-admin-platform` is clean, pushed, and aligned with `origin/codex/productionize-admin-platform`.
-- [ ] 1.2 Run the current production-readiness validation chain to capture the second-pass baseline.
-- [ ] 1.3 Capture current frontend build output and identify oversized chunks by file, dependency family, and route owner.
-- [ ] 1.4 Confirm current backend warning surface for FastAPI `on_event` deprecation in admin and BGE services.
-- [ ] 1.5 Add or update notes that this hardening pass must not change core resources, API contracts, question data, or evidence semantics.
+- [x] 1.1 Confirm `codex/productionize-admin-platform` is clean, pushed, and aligned with `origin/codex/productionize-admin-platform`.
+- [x] 1.2 Run the current production-readiness validation chain to capture the second-pass baseline.
+- [x] 1.3 Capture current frontend build output and identify oversized chunks by file, dependency family, and route owner.
+- [x] 1.4 Confirm current backend warning surface for FastAPI `on_event` deprecation in admin and BGE services.
+- [x] 1.5 Add or update notes that this hardening pass must not change core resources, API contracts, question data, or evidence semantics.
 
 ## 2. Frontend Build Splitting
 
