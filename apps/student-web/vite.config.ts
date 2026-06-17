@@ -12,4 +12,12 @@ export default defineConfig({
   preview: {
     port: 4173,
   },
+  test: {
+    environment: "jsdom",
+    environmentOptions: {
+      jsdom: {
+        url: "http://localhost:5173/",
+      },
+    },
+  },
 });

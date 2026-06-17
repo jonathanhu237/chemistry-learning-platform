@@ -158,6 +158,8 @@ export type StudentPosttestWrongAnswer = {
 
 export type StudentPosttestMasteryChange = {
   knowledge_point_id: string;
+  experiment_id?: string | null;
+  experiment_title?: string | null;
   content?: string | null;
   before_score: number;
   after_score: number;

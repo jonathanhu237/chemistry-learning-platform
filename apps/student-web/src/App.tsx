@@ -1,4 +1,4 @@
-import { CSSProperties, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, FormEvent, ReactNode, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Atom,
@@ -88,6 +88,11 @@ const periodicAreaByAreaId: Record<AreaId, PeriodicArea> = {
   ds: "ds区",
   f: "f区",
 };
+
+const LazyAiMarkdown = lazy(async () => {
+  const module = await import("./components/AiMarkdown");
+  return { default: module.AiMarkdown };
+});
 
 const areaSwatches: Record<AreaId, string> = {
   p: "#2f9d70",
@@ -1297,6 +1302,22 @@ function answerLabel(answer: unknown): string {
   return String(answer);
 }
 
+function AiMarkdownBlock({ text, className = "" }: { text: string | null | undefined; className?: string }) {
+  const value = String(text || "");
+  if (!value.trim()) return null;
+  return (
+    <Suspense
+      fallback={
+        <div className={["ai-markdown", className].filter(Boolean).join(" ")}>
+          <p className="ai-md-paragraph">{value}</p>
+        </div>
+      }
+    >
+      <LazyAiMarkdown text={value} className={className} />
+    </Suspense>
+  );
+}
+
 function PosttestSummaryPanel({ report, onContinue }: { report: StudentPosttestReport; onContinue: () => void }) {
   const masteryChanges = report.mastery_changes.slice(0, 5);
   const [aiSummary, setAiSummary] = useState(report.next_recommendation);
@@ -1354,7 +1375,7 @@ function PosttestSummaryPanel({ report, onContinue }: { report: StudentPosttestR
         <div>
           <p>学习总结</p>
           <h2>本轮实验报告</h2>
-          <small>{aiSummaryLoading ? "正在生成 AI 学习总结..." : aiSummary}</small>
+          <AiMarkdownBlock className="summary-ai-text" text={aiSummaryLoading ? "正在生成 AI 学习总结..." : aiSummary} />
           <em>
             <Sparkles size={13} />
             {aiSummarySource === "ai" ? "AI 总结" : "规则总结"}
@@ -1440,7 +1461,7 @@ function PosttestSummaryPanel({ report, onContinue }: { report: StudentPosttestR
                   <Sparkles size={13} />
                   AI 解答
                 </span>
-                <p>{mistakeAnswer}</p>
+                <AiMarkdownBlock text={mistakeAnswer} />
               </div>
             ) : null}
           </>
