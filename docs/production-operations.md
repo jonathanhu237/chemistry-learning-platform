@@ -115,7 +115,7 @@ python scripts/validate_production_readiness.py --install-frontend
 ```
 
 The command checks protected resources, OpenSpec strict validation, backend import smoke, backend tests, frontend typecheck, frontend tests, and frontend build.
-During the second hardening pass, the default OpenSpec target is `production-hardening-iteration-two`; use `--change <name>` to validate a different active or historical change.
+During the third quality pass, the default OpenSpec target is `production-quality-iteration-three`; use `--change <name>` to validate a different active or historical change.
 The frontend stage also runs `npm run build:report` after `npm run build` so large production chunks stay classified by owner.
 
 For backend/resource-only environments:
@@ -125,6 +125,28 @@ python scripts/validate_production_readiness.py --skip-frontend
 ```
 
 Skipping frontend validation is acceptable only for a scoped backend/resource phase. A production release gate should run the full command.
+
+Browser e2e smoke is opt-in because it requires a running backend, a running frontend dev server on the allowed local origin, and a local browser runtime:
+
+```powershell
+Set-Location apps/admin-web
+npm run dev
+# In another shell, with the Docker backend running:
+npm run e2e:smoke
+Set-Location ..\..
+```
+
+The smoke script defaults to:
+
+- frontend: `http://localhost:5174`
+- backend API: `http://localhost:8000`
+- local admin: `codex_smoke_admin`
+
+If `E2E_ADMIN_PASSWORD` is not set, the script prepares a disposable local smoke admin through the Docker backend container. For an existing admin account, set `E2E_ADMIN_USERNAME` and `E2E_ADMIN_PASSWORD`. To run the same check through the validation chain:
+
+```powershell
+python scripts/validate_production_readiness.py --run-e2e
+```
 
 ## Local Smoke Tests
 
@@ -144,7 +166,7 @@ Invoke-RestMethod http://localhost:8000/api/admin/media/assets?limit=3 -Headers 
 Invoke-RestMethod http://localhost:8000/api/admin/learning-assistant/ask -Method Post -Headers @{ Authorization = "Bearer <token>" } -ContentType "application/json" -Body '{"question":"Explain a representative experiment point.","allow_rag_lookup":false}'
 ```
 
-Browser-smoke the main admin paths after the frontend dev or preview server is running:
+Browser-smoke the main admin paths after the frontend dev server is running:
 
 - `/admin/overview`
 - `/admin/videos`
@@ -208,7 +230,7 @@ Before declaring a phase production-ready, run:
 
 ```powershell
 python scripts/validate_production_readiness.py --install-frontend
-openspec validate production-hardening-iteration-two --strict
+openspec validate production-quality-iteration-three --strict
 git status --short
 ```
 
@@ -217,15 +239,15 @@ The worktree should be clean after generated local outputs are either ignored or
 ## Continuous Integration
 
 The repository includes a GitHub Actions workflow at `.github/workflows/production-readiness.yml`.
-It runs on pull requests and pushes to `main` or `codex/**` branches.
+It is manually triggered with `workflow_dispatch` so ordinary pushes do not send automatic GitHub Actions notifications.
 
 CI performs the same readiness gates as the local script:
 
 - checkout with Git LFS enabled so protected seed resources are present
 - Python dependency installation and backend tests
 - frontend `npm ci`, typecheck, tests, production build, and chunk report
-- OpenSpec strict validation for the active hardening change
+- OpenSpec strict validation for the active quality change
 - protected resource manifest validation
 - admin app import smoke
 
-If an environment-specific phase needs to skip a stage locally, use the explicit script flags such as `--skip-frontend`, `--skip-backend-tests`, `--skip-openspec`, or `--skip-resource-validation`. Production release gates and CI should run the full chain.
+If an environment-specific phase needs to skip a stage locally, use the explicit script flags such as `--skip-frontend`, `--skip-backend-tests`, `--skip-openspec`, or `--skip-resource-validation`. Use `--run-e2e` only when the local browser smoke prerequisites are running. Production release gates should run the full chain and may add `--run-e2e` when validating an interactive runtime.

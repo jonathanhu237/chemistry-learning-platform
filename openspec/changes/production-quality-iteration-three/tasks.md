@@ -15,11 +15,11 @@
 
 ## 3. Repeatable E2E Smoke
 
-- [ ] 3.1 Add a committed e2e smoke script that authenticates with a local-only admin and visits `/admin/overview`, `/admin/videos`, `/admin/learning-assistant`, `/admin/question-banks`, and `/admin/analytics`.
-- [ ] 3.2 Make the e2e script report console warnings/errors, page errors, failed requests, 404s, login redirects, text length, and route-specific counters.
-- [ ] 3.3 Add a package script or root script entry for running e2e smoke without changing normal frontend test behavior.
-- [ ] 3.4 Add an explicit opt-in e2e flag to `scripts/validate_production_readiness.py`; default validation must not require a running browser or frontend server.
-- [ ] 3.5 Document local e2e prerequisites and smoke admin handling in production operations docs.
+- [x] 3.1 Add a committed e2e smoke script that authenticates with a local-only admin and visits `/admin/overview`, `/admin/videos`, `/admin/learning-assistant`, `/admin/question-banks`, and `/admin/analytics`.
+- [x] 3.2 Make the e2e script report console warnings/errors, page errors, failed requests, 404s, login redirects, text length, and route-specific counters.
+- [x] 3.3 Add a package script or root script entry for running e2e smoke without changing normal frontend test behavior.
+- [x] 3.4 Add an explicit opt-in e2e flag to `scripts/validate_production_readiness.py`; default validation must not require a running browser or frontend server.
+- [x] 3.5 Document local e2e prerequisites and smoke admin handling in production operations docs.
 
 ## 4. Assistant Module Quality
 

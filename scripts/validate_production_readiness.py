@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_DIR = ROOT / "apps" / "admin-web"
-DEFAULT_CHANGE = "production-hardening-iteration-two"
+DEFAULT_CHANGE = "production-quality-iteration-three"
 
 
 @dataclass
@@ -72,7 +72,7 @@ def _run(stage: Stage) -> StageResult:
 
 
 def _frontend_dependencies_stage(args: argparse.Namespace) -> list[Stage]:
-    if args.skip_frontend:
+    if args.skip_frontend and not args.run_e2e:
         return []
     if args.install_frontend:
         return [Stage("frontend dependency install", [_npm(), "ci"], cwd=FRONTEND_DIR)]
@@ -130,6 +130,8 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
                 Stage("frontend build chunk report", [_npm(), "run", "build:report"], cwd=FRONTEND_DIR),
             ]
         )
+    if args.run_e2e:
+        stages.append(Stage("frontend e2e smoke", [_npm(), "run", "e2e:smoke"], cwd=FRONTEND_DIR))
     return stages
 
 
@@ -143,6 +145,11 @@ def main() -> None:
     parser.add_argument("--skip-backend-tests", action="store_true", help="Skip pytest backend checks.")
     parser.add_argument("--skip-openspec", action="store_true", help="Skip OpenSpec strict validation.")
     parser.add_argument("--skip-resource-validation", action="store_true", help="Skip protected resource validation.")
+    parser.add_argument(
+        "--run-e2e",
+        action="store_true",
+        help="Run opt-in browser e2e smoke. Requires backend and frontend to be running.",
+    )
     args = parser.parse_args()
 
     os.environ.setdefault("PYTHONUTF8", "1")
