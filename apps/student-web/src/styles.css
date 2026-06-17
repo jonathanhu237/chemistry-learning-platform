@@ -476,8 +476,8 @@ button {
 
 .area-legend {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
   margin-bottom: 10px;
 }
 
@@ -493,9 +493,10 @@ button {
   border-radius: 8px;
   color: var(--area-ink);
   background: rgba(255, 255, 255, 0.7);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 850;
   cursor: pointer;
+  overflow: visible;
 }
 
 .area-legend button span {
@@ -504,19 +505,50 @@ button {
 
 .area-legend button em {
   position: absolute;
-  top: -8px;
-  right: 6px;
+  top: -11px;
+  left: 50%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   width: max-content;
+  max-width: calc(100% + 22px);
+  transform: translateX(-50%);
   border-radius: 999px;
-  padding: 2px 5px;
+  border: 1px solid rgba(172, 117, 25, 0.22);
+  padding: 2px 4px 2px 6px;
   color: #6e4a10;
-  background: rgba(210, 155, 45, 0.2);
+  background: #f3dfb1;
+  box-shadow: 0 0 0 3px rgba(255, 253, 246, 0.96), 0 2px 5px rgba(109, 74, 16, 0.12);
   font-size: 9px;
   font-style: normal;
   font-weight: 900;
   line-height: 1;
   pointer-events: none;
   white-space: nowrap;
+}
+
+.area-legend button em b {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  max-width: 72px;
+  height: 13px;
+  padding: 0 4px;
+  border-radius: 999px;
+  color: #fffaf0;
+  background: #a96f13;
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.area-legend button em > span {
+  flex: 0 0 auto;
 }
 
 .area-legend button i {
@@ -545,12 +577,13 @@ button {
 
 .periodic-grid {
   display: grid;
-  grid-template-columns: repeat(18, minmax(0, 1fr));
+  grid-template-columns: 14px repeat(18, minmax(0, 1fr));
   grid-template-rows: 18px repeat(9, 18px);
   gap: 3px;
 }
 
-.group-number {
+.group-number,
+.period-number {
   display: grid;
   place-items: center;
   color: var(--muted);
@@ -558,11 +591,25 @@ button {
   font-weight: 800;
 }
 
+.period-number {
+  writing-mode: vertical-rl;
+}
+
 .element-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
   min-width: 0;
   min-height: 18px;
+  padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.56);
   border-radius: 4px;
+  overflow: hidden;
+  color: var(--cell-ink);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
   cursor: pointer;
   transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease, opacity 140ms ease;
 }
@@ -572,9 +619,35 @@ button {
   filter: saturate(1.18) brightness(1.03);
 }
 
+.element-cell.learnable-element {
+  box-shadow: 0 4px 10px rgba(21, 49, 34, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.66);
+}
+
+.element-cell.learnable-element span {
+  max-width: 100%;
+  padding: 0 1px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.element-cell.recommended-element {
+  border-color: #c99022;
+  box-shadow: 0 3px 8px rgba(109, 74, 16, 0.12), inset 0 0 0 1px rgba(201, 144, 34, 0.78);
+}
+
+.element-cell.recommended-element.learnable-element,
+.element-cell.recommended-element.selected-area {
+  box-shadow: 0 4px 10px rgba(21, 49, 34, 0.16), inset 0 0 0 1px rgba(201, 144, 34, 0.82);
+}
+
 .element-cell.muted-area {
   opacity: 0.44;
   filter: saturate(0.82);
+}
+
+.element-cell.recommended-element.muted-area {
+  opacity: 0.7;
+  filter: saturate(0.95) brightness(1.02);
 }
 
 .element-cell:active {
@@ -868,9 +941,18 @@ button {
   white-space: nowrap;
 }
 
+.chapter-entry-title,
 .chapter-entry-card strong,
 .chapter-entry-card span {
   min-width: 0;
+}
+
+.chapter-entry-title {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
 
 .chapter-entry-card strong {

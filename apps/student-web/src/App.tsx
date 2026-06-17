@@ -100,7 +100,7 @@ type FeedbackContext = {
   pointKey?: string | null;
   metadata?: Record<string, unknown>;
 };
-type AreaId = "p" | "s" | "d" | "ds" | "f";
+type AreaId = "p" | "s" | "ds" | "d" | "f" | "integrated";
 type ChapterLearningView = "facts" | "experiments";
 type PeriodicArea = "s区" | "p区" | "d区" | "ds区" | "f区";
 type LearningRoute =
@@ -146,13 +146,38 @@ const areaIdByPeriodicArea: Record<PeriodicArea, AreaId> = {
   "f区": "f",
 };
 
-const periodicAreaByAreaId: Record<AreaId, PeriodicArea> = {
-  s: "s区",
+const periodicAreaByAreaId: Record<AreaId, string> = {
   p: "p区",
-  d: "d区",
+  s: "s区",
   ds: "ds区",
+  d: "d区",
   f: "f区",
+  integrated: "氢和稀有气体",
 };
+
+const periodicLegendLabelByAreaId: Record<AreaId, string> = {
+  p: "p区元素",
+  s: "s区元素",
+  ds: "ds区元素",
+  d: "d区元素",
+  f: "f区元素",
+  integrated: "氢和稀有气体",
+};
+
+const periodicAreaOrder: AreaId[] = ["p", "s", "ds", "d", "f", "integrated"];
+const periodicPeriodLabels = ["一", "二", "三", "四", "五", "六", "七", "镧系", "锕系"];
+const integratedElementSymbols = new Set(["H", "He", "Ne", "Ar", "Kr", "Xe", "Rn", "Og"]);
+type PeriodicElementMeta = (typeof periodicElements)[number];
+
+function periodicAreaIdForElement(element: PeriodicElementMeta): AreaId {
+  if (integratedElementSymbols.has(element.symbol)) return "integrated";
+  return areaIdByPeriodicArea[element.area as PeriodicArea];
+}
+
+function periodicGridColumnForElement(element: PeriodicElementMeta): number {
+  const displayGroup = element.area === "f区" && element.period >= 8 ? element.group - 1 : element.group;
+  return displayGroup + 1;
+}
 
 const LazyAiMarkdown = lazy(async () => {
   const module = await import("./components/AiMarkdown");
@@ -162,17 +187,19 @@ const LazyAiMarkdown = lazy(async () => {
 const areaSwatches: Record<AreaId, string> = {
   p: "#2f9d70",
   s: "#8cc95f",
-  d: "#6fa3d8",
   ds: "#d7ab3c",
+  d: "#6fa3d8",
   f: "#a77bd2",
+  integrated: "#86b4d2",
 };
 
 const areaInk: Record<AreaId, string> = {
   p: "#0f3d2b",
   s: "#28430e",
-  d: "#123556",
   ds: "#4d3510",
+  d: "#123556",
   f: "#3a2452",
+  integrated: "#205071",
 };
 
 const profileAreaByChapterId: Record<string, AreaId> = {
@@ -185,7 +212,7 @@ const profileAreaByChapterId: Record<string, AreaId> = {
   CH19: "ds",
   CH20: "d",
   CH21: "f",
-  CH22: "p",
+  CH22: "integrated",
 };
 
 const elementEnglishNames: Record<string, string> = {
@@ -925,7 +952,22 @@ function LearningEntryPanel({
   const recommendedProfileId = page?.recommended_profile_id || page?.active_profile?.profile_id || profiles[0]?.profile_id || "";
   const recommendedProfile = profiles.find((profile) => profile.profile_id === recommendedProfileId) || profiles[0] || null;
   const recommendedArea = recommendedProfile ? profileAreaId(recommendedProfile) : null;
-  const selectedAreaProfiles = profiles.filter((profile) => profileAreaId(profile) === selectedArea);
+  const recommendedCueLabel = formatRecommendedAreaCueLabel(recommendedProfile);
+  const recommendedElementSymbols = useMemo(
+    () => new Set<string>(recommendedProfile?.element_symbols || []),
+    [recommendedProfile],
+  );
+  const selectedAreaProfiles = useMemo(
+    () => profiles.filter((profile) => profileAreaId(profile) === selectedArea),
+    [profiles, selectedArea],
+  );
+  const selectedAreaLearnableSymbols = useMemo(() => {
+    const symbols = new Set<string>();
+    selectedAreaProfiles.forEach((profile) => {
+      profile.element_symbols.forEach((symbol) => symbols.add(symbol));
+    });
+    return symbols;
+  }, [selectedAreaProfiles]);
   const feedbackContext: FeedbackContext = {
     pagePath: "/student/learning",
     contextTitle: "元素周期表章节入口",
@@ -958,7 +1000,14 @@ function LearningEntryPanel({
             <span>先从周期表定位章节，再进入该族的元素特性、通性规律和实验点位学习。</span>
           </section>
 
-          <PeriodicTable selectedArea={selectedArea} recommendedArea={recommendedArea} onSelectArea={setSelectedArea} />
+          <PeriodicTable
+            selectedArea={selectedArea}
+            recommendedArea={recommendedArea}
+            recommendedCueLabel={recommendedCueLabel}
+            recommendedSymbols={recommendedElementSymbols}
+            learnableSymbols={selectedAreaLearnableSymbols}
+            onSelectArea={setSelectedArea}
+          />
 
           <section className="chapter-card-panel" aria-label="可学习章节">
             <div className="point-list-head">
@@ -970,19 +1019,26 @@ function LearningEntryPanel({
             </div>
             {selectedAreaProfiles.length ? (
               <div className="chapter-card-list">
-                {selectedAreaProfiles.map((profile) => (
-                  <button
-                    className={profile.profile_id === recommendedProfileId ? "chapter-entry-card recommended" : "chapter-entry-card"}
-                    key={profile.profile_id}
-                    type="button"
-                    onClick={() => onSelectProfile(profile.profile_id)}
-                  >
-                    <strong>{profile.title}</strong>
-                    {profile.profile_id === recommendedProfileId ? <em>推荐学习</em> : null}
-                    <span>{profile.element_symbols.join(" ") || profile.family_name}</span>
-                    <ChevronRight size={17} />
-                  </button>
-                ))}
+                {selectedAreaProfiles.map((profile) => {
+                  const isRecommended = profile.profile_id === recommendedProfileId;
+                  const chapterEntryTitle = formatChapterEntryTitle(profile);
+                  return (
+                    <button
+                      aria-label={`${chapterEntryTitle}${isRecommended ? "，推荐学习" : ""}`}
+                      className={isRecommended ? "chapter-entry-card recommended" : "chapter-entry-card"}
+                      key={profile.profile_id}
+                      type="button"
+                      onClick={() => onSelectProfile(profile.profile_id)}
+                    >
+                      <div className="chapter-entry-title">
+                        <strong>{chapterEntryTitle}</strong>
+                      </div>
+                      {isRecommended ? <em>推荐学习</em> : null}
+                      <span className="chapter-entry-elements">{profile.element_symbols.join(" ") || profile.family_name}</span>
+                      <ChevronRight size={17} />
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <MobileEmptyState className="empty-learning-card" icon={<Atom size={20} />}>
@@ -1041,7 +1097,7 @@ function elementEnglishName(element: StudentLearningElementBadge): string {
 
 function elementTileStyle(element: StudentLearningElementBadge): CSSProperties | undefined {
   const periodicElement = periodicMetaForElement(element.symbol);
-  const areaId = periodicElement ? areaIdByPeriodicArea[periodicElement.area as PeriodicArea] : null;
+  const areaId = periodicElement ? periodicAreaIdForElement(periodicElement) : null;
   if (!areaId) return undefined;
   return {
     "--element-area-color": areaSwatches[areaId],
@@ -1821,13 +1877,83 @@ function stripExperimentPrefix(value: string): string {
   return value.replace(/^实验\s+\d+(?:-\d+)?\s*/, "").trim() || value;
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function stripFamilyNumberPrefix(title: string, familyNumber?: string | null): string {
+  if (!familyNumber) return title;
+  const escapedFamilyNumber = escapeRegExp(familyNumber);
+  const stripped = title
+    .replace(new RegExp(`^第\\s*${escapedFamilyNumber}\\s*族\\s*`), "")
+    .replace(new RegExp(`^${escapedFamilyNumber}\\s*族\\s*`), "")
+    .trim();
+  return stripped || title;
+}
+
+function formatFamilyNumberLabel(familyNumber?: string | null): string {
+  const normalized = familyNumber?.trim();
+  if (!normalized || !/^\d+$/.test(normalized)) return "";
+  const parsed = Number.parseInt(normalized, 10);
+  return parsed >= 1 && parsed <= 18 ? `${parsed}族` : "";
+}
+
+function formatChapterEntryTitle(profile: StudentLearningProfileSummary): string {
+  const title = stripFamilyNumberPrefix(profile.title, profile.family_number);
+  const familyLabel = formatFamilyNumberLabel(profile.family_number);
+  if (!familyLabel) return formatAreaProfileLabel(profile);
+  return `${familyLabel}${formatNicknameParentheses(title)}`;
+}
+
+function formatNicknameParentheses(value: string): string {
+  const title = value.trim();
+  if (/^（.+）$/.test(title)) return title;
+  const asciiWrapped = title.match(/^\((.+)\)$/);
+  if (asciiWrapped) return `（${asciiWrapped[1]}）`;
+  return title ? `（${title}）` : "";
+}
+
+function stripLearningChapterPrefix(value: string): string {
+  return value.replace(/^第\s*\d+\s*章\s*/, "").trim() || value;
+}
+
+function formatAreaProfileLabel(profile: StudentLearningProfileSummary): string {
+  if (profileAreaId(profile) === "integrated") return "氢和稀有气体";
+
+  const rawLabel = profile.family_name || profile.title || profile.subtitle || "";
+  const withoutChapter = stripLearningChapterPrefix(rawLabel).trim();
+  const parenthesizedAreaLabel = withoutChapter.match(/^(?:s|p|d|ds|f)\s*区\s*[（(](.+)[）)]$/i);
+  const label = (parenthesizedAreaLabel?.[1] || withoutChapter)
+    .replace(/^(?:s|p|d|ds|f)\s*区\s*/i, "")
+    .replace(/元素$/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+  return label || withoutChapter || profile.title;
+}
+
+function formatRecommendedAreaCueLabel(profile: StudentLearningProfileSummary | null): string | null {
+  if (!profile) return null;
+  if (profileAreaId(profile) === "integrated") return "氢和稀有气体";
+
+  const familyLabel = formatFamilyNumberLabel(profile.family_number);
+  if (familyLabel) return familyLabel;
+
+  return formatAreaProfileLabel(profile);
+}
+
 function PeriodicTable({
   selectedArea,
   recommendedArea,
+  recommendedCueLabel,
+  recommendedSymbols,
+  learnableSymbols,
   onSelectArea,
 }: {
   selectedArea: AreaId;
   recommendedArea?: AreaId | null;
+  recommendedCueLabel?: string | null;
+  recommendedSymbols: ReadonlySet<string>;
+  learnableSymbols: ReadonlySet<string>;
   onSelectArea: (areaId: AreaId) => void;
 }) {
   const groupNumbers = Array.from({ length: 18 }, (_, index) => index + 1);
@@ -1842,7 +1968,7 @@ function PeriodicTable({
         <Atom size={22} />
       </div>
       <div className="area-legend" aria-label="元素区图例">
-        {(Object.keys(periodicAreaByAreaId) as AreaId[]).map((areaId) => {
+        {periodicAreaOrder.map((areaId) => {
           const isSelected = selectedArea === areaId;
           const isRecommended = recommendedArea === areaId;
           return (
@@ -1852,12 +1978,17 @@ function PeriodicTable({
               className={[isSelected ? "selected" : "", isRecommended ? "recommended-area" : ""].filter(Boolean).join(" ")}
               style={{ "--area-color": areaSwatches[areaId], "--area-ink": areaInk[areaId] } as CSSProperties}
               onClick={() => onSelectArea(areaId)}
-              aria-label={`${periodicAreaByAreaId[areaId]}${isRecommended ? "，推荐学习区域" : ""}`}
+              aria-label={`${periodicLegendLabelByAreaId[areaId]}${isRecommended ? `，推荐学习区域${recommendedCueLabel ? `，推荐${recommendedCueLabel}` : ""}` : ""}`}
               aria-pressed={isSelected}
             >
               <i />
-              <span>{periodicAreaByAreaId[areaId]}</span>
-              {isRecommended ? <em>推荐学习</em> : null}
+              <span>{periodicLegendLabelByAreaId[areaId]}</span>
+              {isRecommended ? (
+                <em>
+                  <span>推荐学习</span>
+                  {recommendedCueLabel ? <b>{recommendedCueLabel}</b> : null}
+                </em>
+              ) : null}
             </button>
           );
         })}
@@ -1865,28 +1996,44 @@ function PeriodicTable({
       <div className="periodic-caption">族（IUPAC 编号）</div>
       <div className="periodic-grid">
         {groupNumbers.map((group) => (
-          <div className="group-number" key={group} style={{ gridColumn: group, gridRow: 1 }}>
+          <div aria-label={`${group}族`} className="group-number" key={group} style={{ gridColumn: group + 1, gridRow: 1 }}>
             {group}
           </div>
         ))}
+        {periodicPeriodLabels.map((period, index) => (
+          <div className="period-number" key={period} style={{ gridColumn: 1, gridRow: index + 2 }}>
+            {period}
+          </div>
+        ))}
         {periodicElements.map((element) => {
-          const areaId = areaIdByPeriodicArea[element.area as PeriodicArea];
+          const areaId = periodicAreaIdForElement(element);
           const selected = areaId === selectedArea;
+          const learnable = selected && learnableSymbols.has(element.symbol);
+          const recommended = recommendedSymbols.has(element.symbol);
           return (
             <button
               key={element.atomicNumber}
               type="button"
-              className={["element-cell", selected ? "selected-area" : "muted-area"].filter(Boolean).join(" ")}
+              className={[
+                "element-cell",
+                selected ? "selected-area" : "muted-area",
+                learnable ? "learnable-element" : "",
+                recommended ? "recommended-element" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
               style={{
-                gridColumn: element.group,
+                gridColumn: periodicGridColumnForElement(element),
                 gridRow: element.period + 1,
                 background: areaSwatches[areaId],
                 "--cell-ink": areaInk[areaId],
               } as CSSProperties}
-              aria-label={`${element.symbol} ${element.name}，选择${periodicAreaByAreaId[areaId]}`}
-              title={`${element.symbol} ${element.name}`}
+              aria-label={`${element.symbol} ${element.name}，${recommended ? "推荐学习，" : ""}${learnable ? "当前选区可学习" : `选择${periodicAreaByAreaId[areaId]}`}`}
+              title={`${element.symbol} ${element.name}${recommended ? " · 推荐学习" : ""}${learnable ? " · 可学习" : ""}`}
               onClick={() => onSelectArea(areaId)}
-            />
+            >
+              {learnable ? <span>{element.symbol}</span> : null}
+            </button>
           );
         })}
       </div>

@@ -144,11 +144,20 @@ const learningPage: StudentLearningPageResponse = {
     {
       profile_id: "halogens-17",
       chapter_id: "CH17",
-      title: "第 17 族 卤族元素",
+      title: "第 17 族（卤素）",
       subtitle: "p区元素性质与实验",
       family_number: "17",
       family_name: "卤族元素",
       element_symbols: ["F", "Cl", "Br", "I"],
+    },
+    {
+      profile_id: "alkali-alkaline-earth",
+      chapter_id: "CH18",
+      title: "s区（碱金属和碱土金属）",
+      subtitle: "s区元素性质与实验",
+      family_number: "1/2",
+      family_name: "碱金属和碱土金属",
+      element_symbols: ["Li", "Na", "K", "Mg", "Ca", "Ba"],
     },
   ],
   active_profile: {
@@ -387,13 +396,34 @@ describe("student app e2e flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "跳过课前摸底" }));
 
     const periodic = await screen.findByRole("region", { name: "元素周期表选择区" });
-    expect(within(periodic).getByRole("button", { name: "H 氢，选择s区" })).toBeInTheDocument();
-    fireEvent.click(within(periodic).getByRole("button", { name: "H 氢，选择s区" }));
-    expect(screen.getByRole("heading", { name: "s区", level: 2 })).toBeInTheDocument();
-    fireEvent.click(within(periodic).getByRole("button", { name: "Cl 氯，选择p区" }));
-    expect(screen.getByRole("heading", { name: "p区", level: 2 })).toBeInTheDocument();
+    expect(within(periodic).getByRole("button", { name: "p区元素，推荐学习区域，推荐17族" })).toHaveTextContent("推荐学习17族");
+    const groupNumber17 = Array.from(periodic.querySelectorAll(".group-number")).find((node) => node.textContent === "17");
+    expect(groupNumber17).toHaveClass("group-number");
+    expect(within(periodic).getByRole("button", { name: "氢和稀有气体" })).toBeInTheDocument();
+    expect(within(periodic).queryByRole("button", { name: "通识资源" })).not.toBeInTheDocument();
+    expect(within(periodic).getByRole("button", { name: "H 氢，选择氢和稀有气体" })).toBeInTheDocument();
+    const recommendedFluorine = within(periodic).getByRole("button", { name: "F 氟，推荐学习，当前选区可学习" });
+    expect(recommendedFluorine).toHaveTextContent("F");
+    expect(recommendedFluorine).toHaveClass("recommended-element");
+    expect(within(periodic).getByRole("button", { name: "He 氦，选择氢和稀有气体" })).toHaveTextContent("");
+    expect(within(periodic).getByRole("button", { name: "Rn 氡，选择氢和稀有气体" }).style.gridColumn).toBe("19");
+    expect(within(periodic).getByRole("button", { name: "Og 鿫，选择氢和稀有气体" }).style.gridColumn).toBe("19");
+    expect(within(periodic).getByRole("button", { name: "Lu 镥，选择f区" }).style.gridColumn).toBe("18");
+    expect(within(periodic).getByRole("button", { name: "Lr 铹，选择f区" }).style.gridColumn).toBe("18");
+    fireEvent.click(within(periodic).getByRole("button", { name: "Li 锂，选择s区" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "s区", level: 2 })).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "碱金属和碱土金属" })).toBeInTheDocument();
+    expect(screen.queryByText("s区（碱金属和碱土金属）")).not.toBeInTheDocument();
+    fireEvent.click(within(periodic).getByRole("button", { name: "H 氢，选择氢和稀有气体" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "氢和稀有气体", level: 2 })).toBeInTheDocument());
+    fireEvent.click(within(periodic).getByRole("button", { name: "Cl 氯，推荐学习，选择p区" }));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "p区", level: 2 })).toBeInTheDocument());
+    expect(within(periodic).getByRole("button", { name: "Cl 氯，推荐学习，当前选区可学习" })).toHaveTextContent("Cl");
 
-    fireEvent.click(screen.getByRole("button", { name: /第 17 族 卤族元素/ }));
+    const recommendedChapter = screen.getByRole("button", { name: /17族（卤素），推荐学习/ });
+    expect(recommendedChapter.querySelector(".chapter-family-badge")).toBeNull();
+    expect(within(recommendedChapter).getByText("17族（卤素）")).toBeInTheDocument();
+    fireEvent.click(recommendedChapter);
     expect(await screen.findByRole("heading", { name: "第 17 族 卤族元素" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /看实验视频/ }));
     expect(await screen.findByRole("heading", { name: "实验-点位视频" })).toBeInTheDocument();

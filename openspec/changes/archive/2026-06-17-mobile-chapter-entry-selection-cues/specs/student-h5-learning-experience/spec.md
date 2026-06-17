@@ -18,3 +18,16 @@ The student H5 periodic-table entry SHALL distinguish area selection, recommende
 - **WHEN** the student taps a chapter entry card
 - **THEN** the H5 app MUST navigate into that family or chapter learning page
 - **AND** the entry card itself MUST be treated as a navigation row rather than a persistent selected item on the entry page
+
+#### Scenario: Current area shows learnable elements
+- **WHEN** the periodic-table entry has learning profiles for the selected area
+- **THEN** element cells in the selected area whose symbols appear in those profiles MUST show the element symbol
+- **AND** element cells outside the selected area MUST NOT show profile-driven element symbols
+- **AND** selected-area element cells without a matching profile symbol MAY remain unlabeled color cells
+
+#### Scenario: Hydrogen and noble gases are a student learning area
+- **WHEN** the student uses the periodic-table entry
+- **THEN** hydrogen and group 18 noble gas cells MUST map to a dedicated `氢和稀有气体` learning area
+- **AND** the area MUST filter the chapter list to matching learning profiles such as the hydrogen and noble gases chapter
+- **AND** the student entry MUST NOT expose a `通识资源` area
+- **AND** f-block layout coordinates MUST NOT cause lanthanide or actinide cells such as Lu or Lr to map to the `氢和稀有气体` learning area
