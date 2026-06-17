@@ -18,6 +18,35 @@ export type LoginResponse = {
   user: AuthUser;
 };
 
+export type PretestQuestionOption = {
+  label?: string;
+  key?: string;
+  value?: string;
+  text?: string;
+  [key: string]: unknown;
+};
+
+export type PublicPretestQuestion = {
+  id: string;
+  question_type: "single_choice" | "true_false" | "fill_blank";
+  stem: string;
+  options: PretestQuestionOption[];
+  area: string;
+  related_chapter_ids: string[];
+  related_knowledge_point_ids: string[];
+};
+
+export type StudentPretestResponse = {
+  status: "in_progress" | "completed";
+  stage: 1 | 2 | null;
+  questions: PublicPretestQuestion[];
+};
+
+export type StudentPretestAnswer = {
+  question_id: string;
+  answer: unknown;
+};
+
 export const apiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const tokenKey = "chem_student_token";
 
@@ -49,7 +78,12 @@ export class ApiError extends Error {
 
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.status === 409) return "账号配置异常，请联系教师";
+    if (error.status === 409) {
+      if (typeof error.detail === "string" && error.detail.includes("Pretest question bank")) {
+        return "课前摸底题库暂未配置，请联系教师";
+      }
+      return "账号或题库配置异常，请联系教师";
+    }
     if (typeof error.detail === "string") return error.detail;
     return "请求失败，请稍后重试";
   }
@@ -97,6 +131,17 @@ export function changeStudentPassword(currentPassword: string, newPassword: stri
 
 export function loadCurrentUser(): Promise<AuthUser> {
   return api<AuthUser>("/api/auth/me");
+}
+
+export function startStudentPretest(): Promise<StudentPretestResponse> {
+  return postJson<StudentPretestResponse>("/api/student/pretest/start", {});
+}
+
+export function submitStudentPretest(stage: 1 | 2, answers: StudentPretestAnswer[]): Promise<StudentPretestResponse> {
+  return postJson<StudentPretestResponse>("/api/student/pretest/submit", {
+    stage,
+    answers,
+  });
 }
 
 export async function logout(): Promise<void> {

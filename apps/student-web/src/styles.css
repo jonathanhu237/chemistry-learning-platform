@@ -254,6 +254,10 @@ button {
   border-radius: 8px;
 }
 
+.warning-mark {
+  background: var(--amber);
+}
+
 .student-summary {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -292,6 +296,153 @@ button {
   color: #6e4a10;
   background: rgba(210, 155, 45, 0.12);
   font-weight: 800;
+}
+
+.assessment-shell {
+  overflow: visible;
+}
+
+.assessment-panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 520px);
+  margin: 0 auto;
+}
+
+.assessment-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.assessment-title p {
+  margin: 0;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.assessment-title h2 {
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-size: 24px;
+  line-height: 1.05;
+}
+
+.question-list {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 76px;
+}
+
+.question-card {
+  border: 1px solid rgba(0, 88, 38, 0.16);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(255, 253, 246, 0.96);
+  box-shadow: 0 16px 42px rgba(21, 49, 34, 0.12);
+}
+
+.question-card-head {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+.question-card-head span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 38px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--green);
+  background: rgba(0, 88, 38, 0.09);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.question-card h3 {
+  margin: 0 0 14px;
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.option-list {
+  display: grid;
+  gap: 9px;
+}
+
+.option {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid rgba(0, 88, 38, 0.16);
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: var(--ink);
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.option b {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  color: var(--green);
+  background: rgba(0, 88, 38, 0.08);
+  font-size: 13px;
+}
+
+.option span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.42;
+}
+
+.option:active {
+  transform: scale(0.99);
+}
+
+.option.selected {
+  border-color: rgba(0, 88, 38, 0.58);
+  background: rgba(0, 88, 38, 0.08);
+}
+
+.option.selected b {
+  color: white;
+  background: var(--green);
+}
+
+.sticky-action {
+  position: sticky;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 54px;
+  border: 0;
+  border-radius: 8px;
+  color: white;
+  background: var(--green);
+  box-shadow: 0 18px 35px rgba(0, 88, 38, 0.26);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sticky-action:disabled {
+  cursor: not-allowed;
+  background: #9aa9a1;
+  box-shadow: none;
 }
 
 .spin {
@@ -336,6 +487,15 @@ button {
 
   .auth-panel {
     align-self: center;
+    margin: 0;
+  }
+
+  .assessment-shell {
+    align-content: start;
+  }
+
+  .assessment-panel {
+    align-self: start;
     margin: 0;
   }
 }

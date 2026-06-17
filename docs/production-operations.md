@@ -18,11 +18,11 @@ Destructive cleanup must run only after this validation passes. The cleanup scri
 
 Historical migrations are append-only. Do not rename or renumber existing files, including the two historical `010_*.sql` files. They have already become part of the migration identity recorded in `schema_migrations`.
 
-This productionization baseline now includes `014_student_h5_login.sql`. New migrations after this baseline must use the next unambiguous prefix:
+This productionization baseline now includes `014_student_h5_login.sql` and `015_student_pretest_sessions.sql`. New migrations after this baseline must use the next unambiguous prefix:
 
 ```text
-015_<short_description>.sql
 016_<short_description>.sql
+017_<short_description>.sql
 ...
 ```
 

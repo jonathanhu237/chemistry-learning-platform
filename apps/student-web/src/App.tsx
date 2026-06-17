@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
+  ClipboardList,
   FlaskConical,
   LoaderCircle,
   LockKeyhole,
@@ -13,16 +14,20 @@ import logoUrl from "./assets/sysu-logo.svg";
 import {
   AuthUser,
   LoginResponse,
+  PublicPretestQuestion,
   changeStudentPassword,
   errorMessage,
   getAuthToken,
   loadCurrentUser,
   logout,
   setAuthToken,
+  startStudentPretest,
   studentLogin,
+  submitStudentPretest,
 } from "./api";
 
-type ViewState = "checking" | "login" | "password" | "home";
+type ViewState = "checking" | "login" | "password" | "pretest-loading" | "pretest-error" | "pretest" | "home";
+type AnswerMap = Record<string, string>;
 
 function normalizeStudentId(value: string): string {
   return value.trim().toUpperCase();
@@ -36,6 +41,9 @@ function App() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [checking, setChecking] = useState(true);
   const [sessionError, setSessionError] = useState("");
+  const [pretest, setPretest] = useState<Awaited<ReturnType<typeof startStudentPretest>> | null>(null);
+  const [pretestLoading, setPretestLoading] = useState(false);
+  const [pretestError, setPretestError] = useState("");
 
   useEffect(() => {
     if (!getAuthToken()) {
@@ -57,12 +65,45 @@ function App() {
       .finally(() => setChecking(false));
   }, []);
 
+  useEffect(() => {
+    if (!user || user.must_change_password) {
+      setPretest(null);
+      setPretestLoading(false);
+      setPretestError("");
+      return;
+    }
+
+    let cancelled = false;
+    setPretestLoading(true);
+    setPretestError("");
+    startStudentPretest()
+      .then((response) => {
+        if (cancelled) return;
+        setPretest(response);
+      })
+      .catch((requestError) => {
+        if (cancelled) return;
+        setPretestError(errorMessage(requestError));
+      })
+      .finally(() => {
+        if (!cancelled) setPretestLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, user?.must_change_password, user?.password_version]);
+
   const view: ViewState = useMemo(() => {
     if (checking) return "checking";
     if (!user) return "login";
     if (user.must_change_password) return "password";
+    if (pretestLoading && !pretest) return "pretest-loading";
+    if (pretestError) return "pretest-error";
+    if (pretest?.status === "in_progress" && pretest.stage && pretest.questions.length) return "pretest";
+    if (pretestLoading) return "pretest-loading";
     return "home";
-  }, [checking, user]);
+  }, [checking, pretest, pretestError, pretestLoading, user]);
 
   const acceptLogin = (response: LoginResponse) => {
     if (!isStudent(response)) {
@@ -77,11 +118,30 @@ function App() {
 
   const handleLogout = async () => {
     await logout();
+    setPretest(null);
+    setPretestError("");
     setUser(null);
   };
 
+  const handlePretestSubmit = async (answers: AnswerMap) => {
+    if (!pretest?.stage) return;
+    setPretestLoading(true);
+    setPretestError("");
+    try {
+      const response = await submitStudentPretest(
+        pretest.stage,
+        Object.entries(answers).map(([questionId, answer]) => ({ question_id: questionId, answer })),
+      );
+      setPretest(response);
+    } catch (requestError) {
+      setPretestError(errorMessage(requestError));
+    } finally {
+      setPretestLoading(false);
+    }
+  };
+
   return (
-    <main className="app-shell">
+    <main className={view === "pretest" ? "app-shell assessment-shell" : "app-shell"}>
       <section className="brand-rail" aria-label="中山大学化学学院">
         <div className="brand-seal">
           <img src={logoUrl} alt="中山大学校徽" />
@@ -92,19 +152,117 @@ function App() {
         </div>
       </section>
 
-      {view === "checking" ? <LoadingPanel /> : null}
+      {view === "checking" ? <LoadingPanel text="正在恢复登录状态" /> : null}
       {view === "login" ? <LoginPanel sessionError={sessionError} onLogin={acceptLogin} /> : null}
       {view === "password" && user ? <PasswordPanel user={user} onChanged={acceptLogin} /> : null}
+      {view === "pretest-loading" ? <LoadingPanel text="正在准备课前摸底" /> : null}
+      {view === "pretest-error" ? <PretestErrorPanel message={pretestError} onLogout={handleLogout} /> : null}
+      {view === "pretest" && pretest ? (
+        <AssessmentPanel questions={pretest.questions} submitting={pretestLoading} onSubmit={handlePretestSubmit} />
+      ) : null}
       {view === "home" && user ? <HomePanel user={user} onLogout={handleLogout} /> : null}
     </main>
   );
 }
 
-function LoadingPanel() {
+function LoadingPanel({ text }: { text: string }) {
   return (
     <section className="auth-panel compact-panel" aria-live="polite">
       <LoaderCircle className="spin" size={24} />
-      <p>正在恢复登录状态</p>
+      <p>{text}</p>
+    </section>
+  );
+}
+
+function optionValue(option: Record<string, unknown>, index: number): string {
+  const raw = option.label ?? option.key ?? option.value ?? String.fromCharCode(65 + index);
+  return String(raw);
+}
+
+function optionText(option: Record<string, unknown>, index: number): string {
+  const fallback = optionValue(option, index);
+  return String(option.text ?? fallback);
+}
+
+function AssessmentPanel({
+  questions,
+  submitting,
+  onSubmit,
+}: {
+  questions: PublicPretestQuestion[];
+  submitting: boolean;
+  onSubmit: (answers: AnswerMap) => void;
+}) {
+  const [answers, setAnswers] = useState<AnswerMap>({});
+
+  useEffect(() => {
+    setAnswers({});
+  }, [questions]);
+
+  const allAnswered = questions.length > 0 && questions.every((question) => answers[question.id]);
+
+  return (
+    <section className="assessment-panel" aria-label="课前摸底">
+      <div className="assessment-title">
+        <span className="panel-icon">
+          <ClipboardList size={19} />
+        </span>
+        <div>
+          <p>课前摸底</p>
+          <h2>请完成以下题目</h2>
+        </div>
+      </div>
+
+      <div className="question-list">
+        {questions.map((question, questionIndex) => (
+          <article className="question-card" key={question.id}>
+            <div className="question-card-head">
+              <span>Q{questionIndex + 1}</span>
+            </div>
+            <h3>{question.stem}</h3>
+            <div className="option-list">
+              {question.options.map((option, optionIndex) => {
+                const value = optionValue(option, optionIndex);
+                const selected = answers[question.id] === value;
+                return (
+                  <button
+                    key={`${question.id}-${value}`}
+                    className={selected ? "option selected" : "option"}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setAnswers((current) => ({ ...current, [question.id]: value }))}
+                  >
+                    <b>{value}</b>
+                    <span>{optionText(option, optionIndex)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </article>
+        ))}
+      </div>
+      <button className="sticky-action" type="button" disabled={!allAnswered || submitting} onClick={() => onSubmit(answers)}>
+        {submitting ? <LoaderCircle className="spin" size={18} /> : <CheckCircle2 size={18} />}
+        <span>{submitting ? "正在提交" : "提交答案"}</span>
+      </button>
+    </section>
+  );
+}
+
+function PretestErrorPanel({ message, onLogout }: { message: string; onLogout: () => void }) {
+  return (
+    <section className="auth-panel success-panel">
+      <div className="success-mark warning-mark">
+        <ClipboardList size={30} />
+      </div>
+      <div className="success-copy">
+        <p>课前摸底</p>
+        <h2>{message || "暂时无法开始"}</h2>
+      </div>
+      <button className="secondary-action" type="button" onClick={onLogout}>
+        <LogOut size={18} />
+        <span>退出登录</span>
+      </button>
     </section>
   );
 }
