@@ -8,12 +8,12 @@
 
 ## 2. Frontend Build Splitting
 
-- [ ] 2.1 Add route-level lazy loading for page modules that are not required for the first admin shell render.
-- [ ] 2.2 Split heavyweight feature-only imports such as charts, KaTeX/Markdown rendering, Uppy/tus upload code, and assistant/video utilities behind page or component boundaries.
-- [ ] 2.3 Configure Vite `manualChunks` for stable vendor families including React/router/query, Ant Design/icons, charts, markdown/math, and upload utilities.
-- [ ] 2.4 Add a lightweight build-output report or documented check that maps large chunks to owners and budgets.
-- [ ] 2.5 Run frontend typecheck, tests, and build; verify that remaining chunk warnings are eliminated or explicitly documented as named vendor budgets.
-- [ ] 2.6 Browser-smoke the main admin shell plus lazy-loaded learning assistant, question bank, analytics, and media pages.
+- [x] 2.1 Add route-level lazy loading for page modules that are not required for the first admin shell render.
+- [x] 2.2 Split heavyweight feature-only imports such as charts, KaTeX/Markdown rendering, Uppy/tus upload code, and assistant/video utilities behind page or component boundaries.
+- [x] 2.3 Configure Vite `manualChunks` for stable vendor families including React/router/query, Ant Design/icons, charts, markdown/math, and upload utilities.
+- [x] 2.4 Add a lightweight build-output report or documented check that maps large chunks to owners and budgets.
+- [x] 2.5 Run frontend typecheck, tests, and build; verify that remaining chunk warnings are eliminated or explicitly documented as named vendor budgets.
+- [x] 2.6 Browser-smoke the main admin shell plus lazy-loaded learning assistant, question bank, analytics, and media pages.
 
 ## 3. FastAPI Lifespan Migration
 

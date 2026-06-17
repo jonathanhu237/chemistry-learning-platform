@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5174",
     "build": "vite build",
+    "build:report": "node scripts/report-build-chunks.mjs",
     "test": "vitest run",
     "preview": "vite preview --host 0.0.0.0 --port 4174",
     "typecheck": "tsc --noEmit"

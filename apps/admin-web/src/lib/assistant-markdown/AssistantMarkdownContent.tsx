@@ -5,6 +5,7 @@ import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import katex from "katex";
+import "katex/dist/katex.min.css";
 import "katex/contrib/mhchem";
 import { Typography } from "antd";
 
