@@ -1,6 +1,6 @@
 {
   "version": "production-core-resources-v1",
-  "generated_at": "2026-06-16T17:10:59.805639+00:00",
+  "generated_at": "2026-06-17T08:15:15.967340+00:00",
   "policy": "These files are the protected current system resources. Destructive cleanup must validate this manifest before deleting or moving historical artifacts.",
   "external_sources_mirrored": true,
   "expected_database_counts": {
@@ -36,8 +36,8 @@
       "source_path": "data/processed/chapters.json",
       "required": true,
       "kind": "json",
-      "size_bytes": 3879,
-      "sha256": "0196a524f2a564f71376e61bd4c6ba09af162ccc49824115041d4a22f94ebf11",
+      "size_bytes": 3767,
+      "sha256": "e2300aacb6ab5be43d420e8bb20c4594cccb986b264fc77150f97f9337a83092",
       "count": 11,
       "expected_count": 11
     },
@@ -48,8 +48,8 @@
       "source_path": "data/processed/knowledge_units.json",
       "required": true,
       "kind": "json",
-      "size_bytes": 54507,
-      "sha256": "e787d6bf8e7b73fd008ed997c68b46188ca50328a25a39abac93ba7cc5e9be55",
+      "size_bytes": 53042,
+      "sha256": "0bb8110ac1303f42fbdd86de911c574cdce33f46e4cfe720036910f6975efebb",
       "count": 133,
       "expected_count": 133
     },
@@ -60,8 +60,8 @@
       "source_path": "data/processed/knowledge_points.json",
       "required": true,
       "kind": "json",
-      "size_bytes": 258952,
-      "sha256": "b02c9dc949d572757a1b183540e5357deb4b0207e092bd4ddc5eaeac2eac138a",
+      "size_bytes": 251517,
+      "sha256": "6ba1d4d142eb7b312644d7d5a0aa006d3281fddd2b5d9112a33484751e04cc7a",
       "count": 385,
       "expected_count": 385
     },
@@ -72,8 +72,8 @@
       "source_path": "data/processed/reviewed_curriculum.json",
       "required": true,
       "kind": "json",
-      "size_bytes": 335832,
-      "sha256": "a91b51ea95e2deedc1fb9eae2eb94f81a3a8eece57a91641744c2f9f03f7af8e",
+      "size_bytes": 326804,
+      "sha256": "164e077de81d447221e7d1d001f9d44c73301ec38a1ead2ba2c124d3634e376f",
       "count": {
         "chapters": 11,
         "knowledge_units": 133,
@@ -92,8 +92,8 @@
       "source_path": "artifacts/point-aware-question-bank/formal_experiment_point_inventory.json",
       "required": true,
       "kind": "json",
-      "size_bytes": 3194408,
-      "sha256": "41ef61fd628d9b1eeee9961dd6e24498ae902724646db7714c93a9299338fba5",
+      "size_bytes": 3133725,
+      "sha256": "9a50b9c58fad0ac98c2a34edc8ba7a597ed3bfe28f9c6e71b1ef96e76e608deb",
       "count": {
         "experiments": 77,
         "points": 300
@@ -128,8 +128,8 @@
       "source_path": "artifacts/point-aware-question-bank/point_aware_question_bank_schema.json",
       "required": true,
       "kind": "json",
-      "size_bytes": 1211,
-      "sha256": "5c91e182b96ae4734b0e3d39a82d28d72823417ac4799c7979a204e4c9f83407"
+      "size_bytes": 1160,
+      "sha256": "cfe6b127e0470730a3b8dd7e5e61b898d18cb2163ed11b6dd103a825606f3b60"
     },
     {
       "id": "manual_reviewed_point_evidence",
@@ -150,8 +150,8 @@
       "source_path": "artifacts/video-point-default-evidence/gpu-rerank-direct-v2-20260616T1140Z/manual-reviewed-from-start-20260616T2135Z/manifest.json",
       "required": true,
       "kind": "json",
-      "size_bytes": 445,
-      "sha256": "4f3041e18c81dc9e4b7ed11e4f9b2c6aad0858245e531d13532c35d4beb66a09"
+      "size_bytes": 421,
+      "sha256": "f4b2c123c2c7818ecdf4d2fa83372ca87068e040461cbdfc287396d24b41add3"
     },
     {
       "id": "canonical_chunks_inorganic_lower",
@@ -236,8 +236,8 @@
       "source_path": "artifacts/experiment_knowledge_framework_import_report.json",
       "required": true,
       "kind": "json",
-      "size_bytes": 792,
-      "sha256": "656393236328dff3ff0d5131b39f77f0beb1171a91fda30c671afcf1470f0da8"
+      "size_bytes": 771,
+      "sha256": "c490f40e11554e313ae1abe098d036871c29e086c560cea9924bf41e002d67ca"
     },
     {
       "id": "point_aware_question_bank_import_report",
