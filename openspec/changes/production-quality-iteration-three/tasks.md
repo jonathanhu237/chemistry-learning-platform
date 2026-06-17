@@ -23,10 +23,10 @@
 
 ## 4. Assistant Module Quality
 
-- [ ] 4.1 Map remaining `server/app/agent.py` sections after the second-pass extraction and identify one low-risk behavior-preserving slice to move.
-- [ ] 4.2 Add or extend assistant characterization tests for the selected slice before moving it.
-- [ ] 4.3 Move the selected helpers or endpoint facade code into a focused service module while preserving existing imports and response schemas.
-- [ ] 4.4 Run assistant-focused tests and full backend tests after extraction.
+- [x] 4.1 Map remaining `server/app/agent.py` sections after the second-pass extraction and identify one low-risk behavior-preserving slice to move.
+- [x] 4.2 Add or extend assistant characterization tests for the selected slice before moving it.
+- [x] 4.3 Move the selected helpers or endpoint facade code into a focused service module while preserving existing imports and response schemas.
+- [x] 4.4 Run assistant-focused tests and full backend tests after extraction.
 
 ## 5. Media Lifecycle Follow-Through
 

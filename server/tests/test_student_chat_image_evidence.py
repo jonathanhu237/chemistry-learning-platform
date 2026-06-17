@@ -49,6 +49,30 @@ def test_source_figure_request_stays_on_learning_evidence_rail():
     assert any(item["code"] == "policy_resource_veto" for item in context.guardrail_decisions)
 
 
+def test_source_figure_classification_prefers_rag_over_platform_resources():
+    classification = classify_agent_request(_context("Please show the Latimer diagram evidence.").request)
+
+    assert classification["source_asset_request"] is True
+    assert classification["resource_request"] is False
+    assert classification["rag_preferred"] is True
+
+
+def test_platform_resource_classification_requires_published_resource_lookup():
+    context = _context("\u8fd9\u4e2a\u5b9e\u9a8c\u6709\u6ca1\u6709\u5df2\u53d1\u5e03\u7684\u89c6\u9891\u8d44\u6e90\uff1f")
+    context.policy_decision = StudentAIPolicyDecision(
+        mode="needs_platform_evidence",
+        reason="platform resource availability",
+        evidence_required=True,
+        allowed_tools=("published_resource_lookup", "rag_search", "curriculum_lookup"),
+    )
+
+    _apply_policy_decision_to_classification(context)
+
+    assert context.classification["resource_request"] is True
+    assert context.classification["requires_evidence"] is True
+    assert context.classification["policy_decision_mode"] == "needs_platform_evidence"
+
+
 def test_figure_evidence_items_only_reference_existing_image_assets():
     context = _context("Please show the Frost diagram evidence.")
     context.sources = [
