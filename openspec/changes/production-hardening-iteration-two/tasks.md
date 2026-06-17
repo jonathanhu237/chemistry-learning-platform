@@ -56,11 +56,11 @@
 
 ## 8. Final Verification And Handoff
 
-- [ ] 8.1 Run protected resource validation and confirm core resource counts/checksums are unchanged.
-- [ ] 8.2 Run OpenSpec strict validation for `production-hardening-iteration-two`.
-- [ ] 8.3 Run backend import smoke and backend tests.
-- [ ] 8.4 Run frontend typecheck, frontend tests, and frontend production build.
-- [ ] 8.5 Rebuild/restart Docker Compose with the RAG profile and verify backend/BGE health.
-- [ ] 8.6 Run authenticated admin API smoke and browser smoke for representative pages.
-- [ ] 8.7 Commit the completed hardening work in coherent phases and push the branch.
-- [ ] 8.8 Update final notes with remaining known risks and mark the OpenSpec tasks complete only after validation passes.
+- [x] 8.1 Run protected resource validation and confirm core resource counts/checksums are unchanged.
+- [x] 8.2 Run OpenSpec strict validation for `production-hardening-iteration-two`.
+- [x] 8.3 Run backend import smoke and backend tests.
+- [x] 8.4 Run frontend typecheck, frontend tests, and frontend production build.
+- [x] 8.5 Rebuild/restart Docker Compose with the RAG profile and verify backend/BGE health.
+- [x] 8.6 Run authenticated admin API smoke and browser smoke for representative pages.
+- [x] 8.7 Commit the completed hardening work in coherent phases and push the branch.
+- [x] 8.8 Update final notes with remaining known risks and mark the OpenSpec tasks complete only after validation passes.
