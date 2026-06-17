@@ -977,8 +977,8 @@ function LearningEntryPanel({
                     type="button"
                     onClick={() => onSelectProfile(profile.profile_id)}
                   >
-                    {profile.profile_id === recommendedProfileId ? <em>推荐</em> : null}
                     <strong>{profile.title}</strong>
+                    {profile.profile_id === recommendedProfileId ? <em>推荐学习</em> : null}
                     <span>{profile.element_symbols.join(" ") || profile.family_name}</span>
                     <ChevronRight size={17} />
                   </button>
@@ -1838,6 +1838,7 @@ function PeriodicTable({
         <div>
           <p>周期表入口</p>
           <h3>按族进入章节</h3>
+          {recommendedArea ? <span className="periodic-recommendation-tag">推荐学习 · {periodicAreaByAreaId[recommendedArea]}</span> : null}
         </div>
         <Atom size={22} />
       </div>
@@ -1852,12 +1853,11 @@ function PeriodicTable({
               className={[isSelected ? "selected" : "", isRecommended ? "recommended-area" : ""].filter(Boolean).join(" ")}
               style={{ "--area-color": areaSwatches[areaId], "--area-ink": areaInk[areaId] } as CSSProperties}
               onClick={() => onSelectArea(areaId)}
-              aria-label={`${periodicAreaByAreaId[areaId]}${isRecommended ? "，推荐区域" : ""}`}
+              aria-label={`${periodicAreaByAreaId[areaId]}${isRecommended ? "，推荐学习区域" : ""}`}
               aria-pressed={isSelected}
             >
               <i />
               <span>{periodicAreaByAreaId[areaId]}</span>
-              {isRecommended ? <em>推荐</em> : null}
             </button>
           );
         })}

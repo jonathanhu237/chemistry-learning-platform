@@ -30,11 +30,11 @@ The current recommended chapter card uses a green border and light green backgro
 
    Alternative considered: keep the recommended chapter's green-tinted card. Rejected because it looks like the current active choice before the user has entered a chapter.
 
-2. Add recommended-area cue to the area controls.
+2. Add recommended-area cue to the periodic-table heading.
 
-   The selected area button remains the primary state indicator. The recommended area receives a small recommendation tag so a student who switches away can still see the system suggestion.
+   The selected area button remains the primary state indicator. The periodic-table heading shows a compact `推荐学习 · <area>` tag so a student can see the system suggestion without crowding or distorting the area buttons.
 
-   Alternative considered: show a recommendation banner above the list. Rejected for now because it consumes vertical space on the phone entry screen and duplicates the chapter tag.
+   Alternative considered: attach a small tag to the recommended area button. Rejected because the button is narrow on phone widths and the tag either floats awkwardly or crowds the area label.
 
 3. Use fill, opacity, and soft shadow for periodic-table area emphasis.
 
@@ -44,6 +44,6 @@ The current recommended chapter card uses a green border and light green backgro
 
 ## Risks / Trade-offs
 
-- Recommendation may be less prominent after removing the full-card tint. Mitigation: keep the chapter tag and add an area-level recommendation tag.
+- Recommendation may be less prominent after removing the full-card tint. Mitigation: keep the chapter tag and add a heading-level area recommendation tag.
 - Muting non-selected periodic-table cells could reduce color category recognition. Mitigation: preserve each area color and only reduce opacity/saturation modestly.
-- The area button now carries both selected and recommended cues. Mitigation: selected styling remains structural, while recommendation is a small label.
+- The recommended-area tag is not embedded inside the area button. Mitigation: include the recommended area name in the tag while keeping area buttons dedicated to selection state.
