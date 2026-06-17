@@ -1,26 +1,27 @@
 ## Purpose
 
-Define the structure, runtime behavior, validation expectations, and publishing readiness for the standalone SYSU chemistry admin-management repository.
+Define the structure, runtime behavior, validation expectations, and publishing readiness for the standalone SYSU chemistry admin-management repository, including its student H5 login shell.
 
 ## Requirements
 
-### Requirement: Standalone Admin Repository Structure
-The extraction process SHALL produce a separate local repository containing the admin web application, admin backend runtime, database migrations, and admin bootstrap/import utilities needed to operate the management console.
+### Requirement: Standalone Platform Repository Structure
+The extraction process SHALL produce a separate local repository containing the admin web application, the student H5 login shell, backend runtime, database migrations, and admin bootstrap/import utilities needed to operate the management console.
 
 #### Scenario: Extracted repository excludes student mini-program source
 - **WHEN** the standalone repository is generated
 - **THEN** it MUST NOT contain `apps/miniprogram`, root `miniprogram`, WXML/WXSS student mini-program pages, or generated student app bundles
+- **AND** it MAY contain `apps/student-web` for the browser-based H5 login surface
 
-#### Scenario: Extracted repository retains admin runtime files
+#### Scenario: Extracted repository retains runtime files
 - **WHEN** the standalone repository is generated
-- **THEN** it MUST contain `apps/admin-web`, `server`, required backend migration files, selected admin/import scripts, runtime configuration examples, and documentation for local operation
+- **THEN** it MUST contain `apps/admin-web`, `apps/student-web`, `server`, required backend migration files, selected admin/import scripts, runtime configuration examples, and documentation for local operation
 
-### Requirement: Admin-Only Backend Entrypoint
-The extracted repository SHALL run the backend through an admin-only FastAPI entrypoint that serves the admin console and mounts only admin-required API surfaces by default.
+### Requirement: Scoped Backend Entrypoint
+The extracted repository SHALL run the backend through a scoped FastAPI entrypoint that serves the admin console, the student H5 login shell, and only the API surfaces required by those experiences by default.
 
-#### Scenario: Admin server starts without student routes
-- **WHEN** the extracted backend is imported through its admin-only entrypoint
-- **THEN** admin routes and authentication routes MUST be available while student-facing learning, testing, recommendation, report, mastery, and mini-program routes MUST NOT be mounted by default
+#### Scenario: Server starts without student learning routes
+- **WHEN** the extracted backend is imported through its scoped entrypoint
+- **THEN** admin routes, authentication routes, and student H5 login/password routes MUST be available while student-facing learning, testing, recommendation, report, mastery, and mini-program routes MUST NOT be mounted by default
 
 #### Scenario: Admin frontend dependencies remain available
 - **WHEN** the admin frontend requests shared read data still required by admin screens
@@ -46,7 +47,7 @@ The standalone repository SHALL include enough configuration and scripts to vali
 
 #### Scenario: Backend validation succeeds
 - **WHEN** validation is run in the standalone repository
-- **THEN** the admin-only FastAPI entrypoint MUST import successfully and OpenSpec validation MUST pass
+- **THEN** the scoped FastAPI entrypoint MUST import successfully and OpenSpec validation MUST pass
 
 ### Requirement: Local Docker Backend Update Discipline
 The standalone repository SHALL treat backend source changes as Docker image changes in the local Compose environment because the backend service does not bind-mount the repository source tree.

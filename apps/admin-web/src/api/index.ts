@@ -1043,7 +1043,41 @@ export type ApiList<T> = {
 
 export const apiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
-let authToken = localStorage.getItem("chem_admin_token") || "";
+const ADMIN_TOKEN_STORAGE_KEY = "chem_admin_token";
+
+function getBrowserStorage(): Storage | null {
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function readStoredAuthToken(): string {
+  try {
+    return getBrowserStorage()?.getItem(ADMIN_TOKEN_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function writeStoredAuthToken(token: string): void {
+  try {
+    const storage = getBrowserStorage();
+    if (!storage) {
+      return;
+    }
+    if (token) {
+      storage.setItem(ADMIN_TOKEN_STORAGE_KEY, token);
+    } else {
+      storage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+    }
+  } catch {
+    // Keep the in-memory token usable when storage is unavailable.
+  }
+}
+
+let authToken = readStoredAuthToken();
 
 export function getAuthToken(): string {
   return authToken;
@@ -1051,11 +1085,7 @@ export function getAuthToken(): string {
 
 export function setAuthToken(token: string): void {
   authToken = token;
-  if (token) {
-    localStorage.setItem("chem_admin_token", token);
-  } else {
-    localStorage.removeItem("chem_admin_token");
-  }
+  writeStoredAuthToken(token);
 }
 
 export class ApiError extends Error {

@@ -87,6 +87,7 @@ class Settings:
     rag_final_top_k: int = 5
     chemistry_rag_root: Path = Path("E:/chemistry-rag") if os.name == "nt" else Path("/chemistry-rag")
     admin_web_dist: Path = ROOT / "apps" / "admin-web" / "dist"
+    student_web_dist: Path = ROOT / "apps" / "student-web" / "dist"
 
     @property
     def is_production(self) -> bool:
@@ -165,4 +166,5 @@ def get_settings() -> Settings:
         rag_final_top_k=_get_int("RAG_FINAL_TOP_K", Settings.rag_final_top_k),
         chemistry_rag_root=Path(_getenv("CHEMISTRY_RAG_ROOT", str(Settings.chemistry_rag_root))),
         admin_web_dist=Path(_getenv("ADMIN_WEB_DIST", str(Settings.admin_web_dist))),
+        student_web_dist=Path(_getenv("STUDENT_WEB_DIST", str(Settings.student_web_dist))),
     )

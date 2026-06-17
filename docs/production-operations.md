@@ -18,11 +18,11 @@ Destructive cleanup must run only after this validation passes. The cleanup scri
 
 Historical migrations are append-only. Do not rename or renumber existing files, including the two historical `010_*.sql` files. They have already become part of the migration identity recorded in `schema_migrations`.
 
-New migrations after this productionization baseline must use the next unambiguous prefix:
+This productionization baseline now includes `014_student_h5_login.sql`, `015_student_pretest_sessions.sql`, and `016_student_posttest_sessions.sql`. New migrations after this baseline must use the next unambiguous prefix:
 
 ```text
-014_<short_description>.sql
-015_<short_description>.sql
+017_<short_description>.sql
+018_<short_description>.sql
 ...
 ```
 
@@ -57,10 +57,13 @@ Do not commit real `.env` files or secrets.
 
 ## Docker Expectations
 
-Before starting the backend image, build the admin frontend:
+Before starting the backend image, build both frontends:
 
 ```powershell
 Set-Location apps/admin-web
+npm ci
+npm run build
+Set-Location ../student-web
 npm ci
 npm run build
 Set-Location ..\..
@@ -70,7 +73,7 @@ docker compose up --build
 Default Compose services:
 
 - `postgres`: pgvector Postgres with `pg_isready` health check.
-- `backend`: FastAPI admin service, serves `/health` and `/admin`.
+- `backend`: FastAPI service, serves `/health`, the student H5 at `/`, and the admin console at `/admin`.
 - `tusd`: resumable upload receiver sharing `data/media`.
 - `video-worker`: local video processing worker sharing `data/media`.
 
@@ -114,9 +117,9 @@ Run the full local validation chain with frontend dependency installation:
 python scripts/validate_production_readiness.py --install-frontend
 ```
 
-The command checks protected resources, OpenSpec strict validation, backend import smoke, backend tests, frontend typecheck, frontend tests, and frontend build.
-During the third quality pass, the default OpenSpec target is `production-quality-iteration-three`; use `--change <name>` to validate a different active or historical change.
-The frontend stage also runs `npm run build:report` after `npm run build` so large production chunks stay classified by owner.
+The command checks protected resources, OpenSpec strict validation, backend import smoke, backend tests, admin frontend typecheck/tests/build, student H5 typecheck/build, and the admin build chunk report.
+During the student H5 integration pass, the default OpenSpec target is `integrate-student-h5-platform`; use `--change <name>` to validate a different active or historical change.
+The admin frontend stage also runs `npm run build:report` after `npm run build` so large production chunks stay classified by owner.
 
 For backend/resource-only environments:
 
@@ -230,7 +233,7 @@ Before declaring a phase production-ready, run:
 
 ```powershell
 python scripts/validate_production_readiness.py --install-frontend
-openspec validate production-quality-iteration-three --strict
+openspec validate integrate-student-h5-platform --strict
 git status --short
 ```
 

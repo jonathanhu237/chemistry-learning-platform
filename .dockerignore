@@ -1,10 +1,12 @@
 .git
+.venv
 .pytest_cache
 .tmp
 artifacts
 logs
 
 apps/admin-web/node_modules
+apps/student-web/node_modules
 
 data/media
 data/processed

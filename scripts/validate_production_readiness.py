@@ -11,8 +11,12 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-FRONTEND_DIR = ROOT / "apps" / "admin-web"
-DEFAULT_CHANGE = "production-quality-iteration-three"
+FRONTENDS = [
+    ("admin frontend", ROOT / "apps" / "admin-web", True),
+    ("student H5 frontend", ROOT / "apps" / "student-web", False),
+]
+ADMIN_FRONTEND_DIR = ROOT / "apps" / "admin-web"
+DEFAULT_CHANGE = "integrate-student-h5-platform"
 
 
 @dataclass
@@ -75,24 +79,28 @@ def _frontend_dependencies_stage(args: argparse.Namespace) -> list[Stage]:
     if args.skip_frontend and not args.run_e2e:
         return []
     if args.install_frontend:
-        return [Stage("frontend dependency install", [_npm(), "ci"], cwd=FRONTEND_DIR)]
-    if not (FRONTEND_DIR / "node_modules").exists():
-        return [
+        return [Stage(f"{name} dependency install", [_npm(), "ci"], cwd=frontend_dir) for name, frontend_dir, _ in FRONTENDS]
+    stages: list[Stage] = []
+    for name, frontend_dir, _ in FRONTENDS:
+        if (frontend_dir / "node_modules").exists():
+            continue
+        relative_dir = frontend_dir.relative_to(ROOT).as_posix()
+        stages.append(
             Stage(
-                "frontend dependency check",
+                f"{name} dependency check",
                 [
                     sys.executable,
                     "-c",
                     (
                         "raise SystemExit("
-                        "'apps/admin-web/node_modules is missing; rerun with --install-frontend "
+                        f"'{relative_dir}/node_modules is missing; rerun with --install-frontend "
                         "or install dependencies before validation'"
                         ")"
                     ),
                 ],
             )
-        ]
-    return []
+        )
+    return stages
 
 
 def _stages(args: argparse.Namespace) -> list[Stage]:
@@ -122,16 +130,16 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
 
     stages.extend(_frontend_dependencies_stage(args))
     if not args.skip_frontend:
-        stages.extend(
-            [
-                Stage("frontend typecheck", [_npm(), "run", "typecheck"], cwd=FRONTEND_DIR),
-                Stage("frontend tests", [_npm(), "test"], cwd=FRONTEND_DIR),
-                Stage("frontend build", [_npm(), "run", "build"], cwd=FRONTEND_DIR),
-                Stage("frontend build chunk report", [_npm(), "run", "build:report"], cwd=FRONTEND_DIR),
-            ]
+        for name, frontend_dir, has_tests in FRONTENDS:
+            stages.append(Stage(f"{name} typecheck", [_npm(), "run", "typecheck"], cwd=frontend_dir))
+            if has_tests:
+                stages.append(Stage(f"{name} tests", [_npm(), "test"], cwd=frontend_dir))
+            stages.append(Stage(f"{name} build", [_npm(), "run", "build"], cwd=frontend_dir))
+        stages.append(
+            Stage("admin frontend build chunk report", [_npm(), "run", "build:report"], cwd=ADMIN_FRONTEND_DIR)
         )
     if args.run_e2e:
-        stages.append(Stage("frontend e2e smoke", [_npm(), "run", "e2e:smoke"], cwd=FRONTEND_DIR))
+        stages.append(Stage("admin frontend e2e smoke", [_npm(), "run", "e2e:smoke"], cwd=ADMIN_FRONTEND_DIR))
     return stages
 
 

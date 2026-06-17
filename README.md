@@ -1,10 +1,11 @@
-# SYSU Chemistry Admin Console
+# SYSU Chemistry Platform Console
 
-This repository contains the standalone admin-management application for the SYSU chemistry experiment learning platform.
+This repository contains the standalone admin-management application and the student H5 login shell for the SYSU chemistry experiment learning platform.
 
 It includes:
 
 - React + Ant Design admin frontend in `apps/admin-web`
+- React student H5 login frontend in `apps/student-web`
 - FastAPI admin backend in `server`
 - database migrations in `server/migrations`
 - admin bootstrap/import scripts in `scripts`
@@ -28,10 +29,14 @@ Install backend dependencies:
 python -m pip install -r requirements.txt
 ```
 
+Use Node.js `^20.19.0 || >=22.12.0` for the frontend workspaces. The repository includes `.nvmrc` for teams that use nvm-compatible tooling.
+
 Install frontend dependencies:
 
 ```powershell
 Set-Location apps/admin-web
+npm install
+Set-Location ../student-web
 npm install
 ```
 
@@ -48,7 +53,14 @@ Set-Location apps/admin-web
 npm run dev
 ```
 
-The admin frontend runs at `http://127.0.0.1:5174/admin/login` and proxies `/api` to the backend.
+Run the student H5 frontend:
+
+```powershell
+Set-Location apps/student-web
+npm run dev
+```
+
+The student H5 runs at `http://127.0.0.1:5173/` and the admin frontend runs at `http://127.0.0.1:5174/admin/login`. Both proxy `/api` to the backend.
 
 ## Production-Style Local Run
 
@@ -62,10 +74,13 @@ Copy-Item .env.example .env
 Set-Location apps/admin-web
 npm ci
 npm run build
+Set-Location ../student-web
+npm ci
+npm run build
 Set-Location ..\..
 ```
 
-Then run the backend with the built frontend mounted at `/admin`:
+Then run the backend with the built student H5 mounted at `/` and the built admin frontend mounted at `/admin`:
 
 ```powershell
 python -m uvicorn server.app.admin_main:app --host 0.0.0.0 --port 8000
@@ -117,6 +132,26 @@ For backend/resource-only phases:
 
 ```powershell
 python scripts/validate_production_readiness.py --skip-frontend
+```
+
+For focused frontend validation:
+
+```powershell
+Set-Location apps/admin-web
+npm run typecheck
+npm test
+npm run build
+Set-Location ../student-web
+npm run typecheck
+npm run build
+```
+
+The student H5 currently has no separate test script; its focused validation is typecheck plus build.
+
+Validate OpenSpec:
+
+```powershell
+openspec validate production-hardening-iteration-two --strict
 ```
 
 ## GitHub Publishing

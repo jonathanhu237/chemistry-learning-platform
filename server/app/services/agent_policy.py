@@ -231,8 +231,12 @@ def classify_agent_request(request: AgentAskRequest) -> dict[str, Any]:
         or any(keyword in question for keyword in ("视频", "资料", "资源", "课件", "演示"))
     )
     is_resource_request = (not is_source_asset_request) and _is_platform_resource_request(question)
-    is_assessment_leakage = any(keyword in question for keyword in ASSESSMENT_KEYWORDS) and (
-        "答案" in question or "选" in question or "直接" in question
+    is_assessment_leakage = (
+        not request.assessment_review
+        and any(keyword in question for keyword in ASSESSMENT_KEYWORDS)
+        and (
+            "答案" in question or "选" in question or "直接" in question
+        )
     )
     is_experiment_request = "实验" in question or bool(request.experiment_id)
     is_unsafe_experiment = is_experiment_request and any(keyword in question for keyword in UNSAFE_KEYWORDS)

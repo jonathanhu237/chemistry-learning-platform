@@ -27,7 +27,7 @@ services:
       DATABASE_URL: postgresql+psycopg://chemistry:chemistry@postgres:5432/chemistry_exam
       MEDIA_ROOT: /app/data/media
       API_PUBLIC_BASE_URL: http://127.0.0.1:8000
-      FRONTEND_ALLOWED_ORIGINS: http://localhost:8000,http://127.0.0.1:8000,http://localhost:5174,http://127.0.0.1:5174
+      FRONTEND_ALLOWED_ORIGINS: http://localhost:8000,http://127.0.0.1:8000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174
       TUS_UPLOAD_DIR: tus
       TUS_PUBLIC_ENDPOINT: http://127.0.0.1:10980/files/
       RAG_HYBRID_BGE_ENABLED: "true"
@@ -40,6 +40,7 @@ services:
     volumes:
       - ./data/media:/app/data/media
       - ./apps/admin-web/dist:/app/apps/admin-web/dist:ro
+      - ./apps/student-web/dist:/app/apps/student-web/dist:ro
       - E:/chemistry-rag:/chemistry-rag:ro
     depends_on:
       postgres:
