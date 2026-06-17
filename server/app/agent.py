@@ -456,7 +456,7 @@ def classify_agent_request(request: AgentAskRequest) -> dict[str, Any]:
         or any(keyword in question for keyword in ("视频", "资料", "资源", "课件", "演示"))
     )
     is_resource_request = (not is_source_asset_request) and _is_platform_resource_request(question)
-    is_assessment_leakage = any(keyword in question for keyword in ASSESSMENT_KEYWORDS) and (
+    is_assessment_leakage = (not request.assessment_review) and any(keyword in question for keyword in ASSESSMENT_KEYWORDS) and (
         "答案" in question or "选" in question or "直接" in question
     )
     is_experiment_request = "实验" in question or bool(request.experiment_id)
@@ -583,6 +583,7 @@ async def _run_openai_policy_gate(context: AgentRunContext, settings: Settings) 
                         "knowledge_point_ids": context.request.knowledge_point_ids,
                         "student_id_present": bool(context.request.student_id),
                         "allow_rag_lookup": context.request.allow_rag_lookup,
+                        "assessment_review": context.request.assessment_review,
                     },
                     ensure_ascii=False,
                 ),
@@ -1680,6 +1681,7 @@ def _agent_instructions(context: AgentRunContext) -> str:
         "只回答课程范围内的问题；事实、实验现象、方程式、资料推荐必须先调用工具取得证据。"
         "不能编造课程材料、视频或资料；没有证据时明确说明平台未找到可靠材料。"
         "遇到测验或考试直接答案请求，只给提示和概念引导。"
+        "如果 assessment_review 为 true，说明学生已提交后测，允许解释已完成题目的错因和复习方法，但不要帮助作答未提交的测验。"
         "遇到危险实验操作请求，拒绝提供步骤、剂量和危险条件，转为安全说明。"
         "回答要短，适合手机端。"
         f"\n分类结果：{context.classification}"

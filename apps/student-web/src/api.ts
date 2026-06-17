@@ -184,6 +184,38 @@ export type StudentPosttestSubmitResponse = {
   report: StudentPosttestReport;
 };
 
+export type AgentChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type StudentAssistantAskRequest = {
+  question: string;
+  context_type: "learning_home" | "experiment_group" | "experiment_detail";
+  context_title: string;
+  context_summary: string;
+  chapter_id?: string | null;
+  experiment_id?: string | null;
+  point_key?: string | null;
+  knowledge_point_ids?: string[];
+  conversation_history?: AgentChatMessage[];
+};
+
+export type StudentAssistantGeneratedResponse = {
+  text: string;
+  source: "ai" | "fallback";
+  mode: string;
+  cached: boolean;
+};
+
+export type StudentAssistantStreamEvent =
+  | { event: "status"; message?: string }
+  | { event: "delta"; delta?: string }
+  | { event: "replace"; answer?: string }
+  | { event: "final"; response?: unknown }
+  | { event: "error"; message?: string }
+  | { event: string; [key: string]: unknown };
+
 export const apiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const tokenKey = "chem_student_token";
 
@@ -225,6 +257,9 @@ export function errorMessage(error: unknown): string {
       if (typeof error.detail === "string" && error.detail.includes("No learning experiments")) {
         return "请先进入至少一个实验详情页学习";
       }
+      if (typeof error.detail === "string" && error.detail.includes("AI")) {
+        return error.detail;
+      }
       return "账号或题库配置异常，请联系教师";
     }
     if (typeof error.detail === "string") return error.detail;
@@ -256,6 +291,67 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 function postJson<T>(path: string, body: unknown): Promise<T> {
   return api<T>(path, { method: "POST", body: JSON.stringify(body) });
+}
+
+function parseSseBlock(block: string): StudentAssistantStreamEvent | null {
+  if (!block.trim()) return null;
+  let event = "message";
+  const dataLines: string[] = [];
+  for (const rawLine of block.split("\n")) {
+    const line = rawLine.trimEnd();
+    if (line.startsWith("event:")) {
+      event = line.slice(6).trim();
+    } else if (line.startsWith("data:")) {
+      dataLines.push(line.slice(5).trimStart());
+    }
+  }
+  let payload: Record<string, unknown> = {};
+  if (dataLines.length) {
+    try {
+      const parsed = JSON.parse(dataLines.join("\n"));
+      payload = typeof parsed === "object" && parsed ? parsed : {};
+    } catch {
+      payload = { message: dataLines.join("\n") };
+    }
+  }
+  return { event, ...payload } as StudentAssistantStreamEvent;
+}
+
+export async function streamStudentAssistantAsk(
+  payload: StudentAssistantAskRequest,
+  onEvent: (event: StudentAssistantStreamEvent) => void,
+): Promise<void> {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (authToken) headers.set("Authorization", `Bearer ${authToken}`);
+  const response = await fetch(`${apiBase}/api/student/assistant/ask/stream`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+  if (response.status === 401) setAuthToken("");
+  if (!response.ok) {
+    const contentType = response.headers.get("content-type") || "";
+    const errorPayload = contentType.includes("application/json") ? await response.json() : await response.text();
+    throw new ApiError(response.status, typeof errorPayload === "object" && errorPayload ? errorPayload.detail : errorPayload);
+  }
+  if (!response.body) throw new Error("AI 响应流不可用");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+    const blocks = buffer.split("\n\n");
+    buffer = blocks.pop() || "";
+    for (const block of blocks) {
+      const event = parseSseBlock(block);
+      if (event) onEvent(event);
+    }
+    if (done) break;
+  }
+  const event = parseSseBlock(buffer);
+  if (event) onEvent(event);
 }
 
 export function studentLogin(studentId: string, password: string): Promise<LoginResponse> {
@@ -307,6 +403,18 @@ export function submitStudentPosttest(sessionId: string, answers: StudentPosttes
   return postJson<StudentPosttestSubmitResponse>("/api/student/posttest/submit", {
     session_id: sessionId,
     answers,
+  });
+}
+
+export function generatePosttestAiSummary(sessionId: string): Promise<StudentAssistantGeneratedResponse> {
+  return postJson<StudentAssistantGeneratedResponse>("/api/student/assistant/posttest-summary", {
+    session_id: sessionId,
+  });
+}
+
+export function explainPosttestMistakes(sessionId: string): Promise<StudentAssistantGeneratedResponse> {
+  return postJson<StudentAssistantGeneratedResponse>("/api/student/assistant/posttest-mistakes", {
+    session_id: sessionId,
   });
 }
 

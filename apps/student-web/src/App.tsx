@@ -1,8 +1,9 @@
-import { CSSProperties, FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { CSSProperties, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Atom,
   BarChart3,
+  Bot,
   BookOpenCheck,
   CheckCircle2,
   ChevronRight,
@@ -14,17 +15,23 @@ import {
   LockKeyhole,
   LogIn,
   LogOut,
+  MessageCircle,
   PlayCircle,
+  Send,
   ShieldCheck,
+  Sparkles,
   UserRound,
   Video,
+  X,
 } from "lucide-react";
 import logoUrl from "./assets/sysu-logo.svg";
 import {
+  AgentChatMessage,
   AuthUser,
   LoginResponse,
   PublicPosttestQuestion,
   PublicPretestQuestion,
+  StudentAssistantAskRequest,
   StudentExperimentDetailResponse,
   StudentExperimentGroupResponse,
   StudentExperimentGroupSummary,
@@ -34,6 +41,8 @@ import {
   StudentPosttestResponse,
   changeStudentPassword,
   errorMessage,
+  explainPosttestMistakes,
+  generatePosttestAiSummary,
   getStudentExperimentDetail,
   getStudentExperimentGroup,
   getStudentLearningHome,
@@ -43,6 +52,7 @@ import {
   setAuthToken,
   startStudentPretest,
   startStudentPosttest,
+  streamStudentAssistantAsk,
   studentMediaUrl,
   studentLogin,
   submitStudentPosttest,
@@ -53,6 +63,7 @@ import { periodicElements } from "./periodic";
 type ViewState = "checking" | "login" | "password" | "pretest-loading" | "pretest-error" | "pretest" | "home";
 type AnswerMap = Record<string, string>;
 type AssessmentQuestion = PublicPretestQuestion | PublicPosttestQuestion;
+type AssistantContext = Omit<StudentAssistantAskRequest, "question" | "conversation_history"> & { prompts: string[] };
 type AreaId = "p" | "s" | "d" | "ds" | "f";
 type PeriodicArea = "s区" | "p区" | "d区" | "ds区" | "f区";
 type LearningRoute =
@@ -100,6 +111,22 @@ function normalizeStudentId(value: string): string {
 
 function isStudent(response: LoginResponse): boolean {
   return response.user.role === "student";
+}
+
+function compactText(parts: Array<string | null | undefined>): string {
+  return parts
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join("；")
+    .slice(0, 1800);
+}
+
+function assistantStatusLabel(status: string, loading: boolean): string {
+  if (loading) return "正在生成";
+  if (status === "ai") return "AI 已回答";
+  if (status === "fallback") return "兜底回答";
+  if (status === "error") return "请求失败";
+  return "课程上下文已绑定";
 }
 
 function App() {
@@ -655,6 +682,21 @@ function LearningHomePanel({
   const groups = home?.groups.filter((group) => group.area_id === selectedArea) || [];
   const selectedGroup =
     groups.find((group) => group.parent_code === selectedParentCode) || groups.find((group) => group.recommended) || groups[0] || null;
+  const selectedAreaName = home?.areas.find((area) => area.area_id === selectedArea)?.area_name || periodicAreaByAreaId[selectedArea];
+  const homeAssistantContext: AssistantContext | null = home
+    ? {
+        context_type: "learning_home",
+        context_title: `${selectedAreaName}实验学习`,
+        context_summary: compactText([
+          `当前选区：${selectedAreaName}`,
+          selectedGroup ? `当前实验组：${stripExperimentPrefix(selectedGroup.parent_title)}` : null,
+          groups.length ? `开放实验组：${groups.map((group) => stripExperimentPrefix(group.parent_title)).join("、")}` : null,
+          `推荐区：${home.recommended_area_id || "未生成"}`,
+        ]),
+        chapter_id: selectedGroup?.chapter_ids[0] || null,
+        prompts: ["我应该先学哪个实验？", `${selectedAreaName}怎么复习？`, "帮我规划本轮学习"],
+      }
+    : null;
 
   return (
     <section className="learning-panel" aria-label="实验学习">
@@ -714,6 +756,7 @@ function LearningHomePanel({
             <span>进入实验</span>
           </button>
           <FinishLearningAction loading={finishing} error={finishError} onClick={onFinishLearning} />
+          {homeAssistantContext ? <StudentAiChat context={homeAssistantContext} /> : null}
         </>
       ) : null}
     </section>
@@ -898,6 +941,21 @@ function ExperimentGroupPanel({
         </div>
       ) : null}
       {group ? <FinishLearningAction loading={finishing} error={finishError} onClick={onFinishLearning} /> : null}
+      {group ? (
+        <StudentAiChat
+          context={{
+            context_type: "experiment_group",
+            context_title: stripExperimentPrefix(group.parent_title),
+            context_summary: compactText([
+              `实验组：${group.parent_title}`,
+              `所属区域：${group.area_name}`,
+              `实验点：${group.experiments.map((experiment) => experiment.title).join("、")}`,
+            ]),
+            chapter_id: group.experiments[0]?.chapter_ids[0] || null,
+            prompts: ["这一组实验重点是什么？", "我应该按什么顺序看？", "这些实验会考什么现象？"],
+          }}
+        />
+      ) : null}
     </section>
   );
 }
@@ -939,6 +997,22 @@ function ExperimentDetailPanel({
   }, [experimentId]);
 
   const video = detail?.videos[0] || null;
+  const detailAssistantContext: AssistantContext | null = detail
+    ? {
+        context_type: "experiment_detail",
+        context_title: detail.title,
+        context_summary: compactText([
+          `实验：${detail.title}`,
+          detail.summary || null,
+          detail.video_candidates.length ? `观察点：${detail.video_candidates.join("、")}` : null,
+          detail.videos.length ? `视频：${detail.videos.map((item) => item.point_title || item.title).join("、")}` : null,
+        ]),
+        chapter_id: detail.chapter_ids[0] || null,
+        experiment_id: detail.id,
+        point_key: video?.point_key || detail.video_candidates[0] || null,
+        prompts: ["这个现象说明什么？", "帮我解释反应原理", "这个实验怎么记？"],
+      }
+    : null;
 
   return (
     <section className="learning-panel" aria-label="实验详情">
@@ -996,6 +1070,7 @@ function ExperimentDetailPanel({
             </button>
           </section>
           <FinishLearningAction loading={finishing} error={finishError} onClick={onFinishLearning} />
+          {detailAssistantContext ? <StudentAiChat context={detailAssistantContext} /> : null}
         </>
       ) : null}
     </section>
@@ -1011,6 +1086,164 @@ function FinishLearningAction({ loading, error, onClick }: { loading: boolean; e
         <span>{loading ? "正在生成后测" : "完成学习"}</span>
       </button>
     </section>
+  );
+}
+
+function StudentAiChat({ context }: { context: AssistantContext }) {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<AgentChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState("idle");
+  const streamRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMessages([]);
+    setInput("");
+    setStatus("idle");
+    setLoading(false);
+  }, [context.context_type, context.context_title, context.experiment_id, context.chapter_id]);
+
+  useEffect(() => {
+    streamRef.current?.scrollTo({ top: streamRef.current.scrollHeight });
+  }, [messages, loading, open]);
+
+  const submitQuestion = async (questionText?: string) => {
+    const question = (questionText || input).trim();
+    if (!question || loading) return;
+    const history = messages.slice(-10);
+    const nextMessages: AgentChatMessage[] = [...messages, { role: "user", content: question }, { role: "assistant", content: "" }];
+    setMessages(nextMessages);
+    setInput("");
+    setLoading(true);
+    setStatus("streaming");
+    let answer = "";
+    try {
+      await streamStudentAssistantAsk(
+        {
+          ...context,
+          question,
+          conversation_history: history,
+        },
+        (event) => {
+          if (event.event === "status" && typeof event.message === "string") {
+            setStatus(event.message);
+            return;
+          }
+          if (event.event === "delta" && typeof event.delta === "string") {
+            answer += event.delta;
+            setMessages((current) => {
+              const updated = [...current];
+              const last = updated[updated.length - 1];
+              if (last?.role === "assistant") updated[updated.length - 1] = { ...last, content: answer };
+              return updated;
+            });
+            return;
+          }
+          if (event.event === "replace" && typeof event.answer === "string") {
+            answer = event.answer;
+            setMessages((current) => {
+              const updated = [...current];
+              const last = updated[updated.length - 1];
+              if (last?.role === "assistant") updated[updated.length - 1] = { ...last, content: answer };
+              return updated;
+            });
+            return;
+          }
+          if (event.event === "error") {
+            throw new Error(typeof event.message === "string" ? event.message : "AI 请求失败");
+          }
+          if (event.event === "final") {
+            setStatus("ai");
+          }
+        },
+      );
+      if (!answer.trim()) {
+        setMessages((current) => {
+          const updated = [...current];
+          const last = updated[updated.length - 1];
+          if (last?.role === "assistant") updated[updated.length - 1] = { ...last, content: "AI 暂时没有生成有效回答。" };
+          return updated;
+        });
+      }
+      setStatus("ai");
+    } catch (requestError) {
+      const message = errorMessage(requestError);
+      setStatus("error");
+      setMessages((current) => {
+        const updated = [...current];
+        const last = updated[updated.length - 1];
+        if (last?.role === "assistant") updated[updated.length - 1] = { ...last, content: message };
+        return updated;
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void submitQuestion();
+  };
+
+  return (
+    <aside className={open ? "ai-chat-fab open" : "ai-chat-fab"}>
+      {open ? (
+        <section className="ai-chat-panel" role="dialog" aria-label="AI 学习助手">
+          <header className="ai-chat-head">
+            <div>
+              <span>
+                <Sparkles size={14} />
+                当前内容
+              </span>
+              <h2>{context.context_title}</h2>
+            </div>
+            <button type="button" onClick={() => setOpen(false)} aria-label="关闭 AI 助手">
+              <X size={18} />
+            </button>
+          </header>
+
+          <div className="ai-chat-stream" aria-live="polite" ref={streamRef}>
+            {!messages.length ? (
+              <div className="ai-empty-bubble">
+                <Bot size={18} />
+                <p>可以问我这一页里的实验现象、原理、复习顺序和知识点。</p>
+              </div>
+            ) : null}
+            {messages.map((message, index) => (
+              <div className={`ai-message ${message.role}`} key={`${message.role}-${index}`}>
+                {message.content || (message.role === "assistant" && loading ? "正在生成..." : "")}
+              </div>
+            ))}
+          </div>
+
+          <div className="ai-quick-prompts" aria-label="快捷问题">
+            {context.prompts.map((prompt) => (
+              <button type="button" key={prompt} disabled={loading} onClick={() => void submitQuestion(prompt)}>
+                {prompt}
+              </button>
+            ))}
+          </div>
+
+          <form className="ai-chat-compose" onSubmit={handleSubmit}>
+            <input
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              placeholder="问当前学习内容"
+              aria-label="输入给 AI 的问题"
+            />
+            <button type="submit" disabled={!input.trim() || loading} aria-label="发送问题">
+              {loading ? <LoaderCircle className="spin" size={17} /> : <Send size={17} />}
+            </button>
+          </form>
+          <div className="ai-chat-status">{assistantStatusLabel(status, loading)}</div>
+        </section>
+      ) : null}
+      <button className="ai-chat-toggle" type="button" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+        <MessageCircle size={18} />
+        <span>问 AI</span>
+      </button>
+    </aside>
   );
 }
 
@@ -1066,6 +1299,52 @@ function answerLabel(answer: unknown): string {
 
 function PosttestSummaryPanel({ report, onContinue }: { report: StudentPosttestReport; onContinue: () => void }) {
   const masteryChanges = report.mastery_changes.slice(0, 5);
+  const [aiSummary, setAiSummary] = useState(report.next_recommendation);
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(true);
+  const [aiSummarySource, setAiSummarySource] = useState<"ai" | "fallback">("fallback");
+  const [mistakeAnswer, setMistakeAnswer] = useState("");
+  const [mistakeLoading, setMistakeLoading] = useState(false);
+  const [mistakeError, setMistakeError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setAiSummary(report.next_recommendation);
+    setAiSummarySource("fallback");
+    setAiSummaryLoading(true);
+    generatePosttestAiSummary(report.session_id)
+      .then((response) => {
+        if (cancelled) return;
+        setAiSummary(response.text);
+        setAiSummarySource(response.source);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAiSummary(report.next_recommendation);
+          setAiSummarySource("fallback");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setAiSummaryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [report.session_id, report.next_recommendation]);
+
+  const explainMistakes = async () => {
+    if (mistakeLoading || !report.wrong_answers.length) return;
+    setMistakeLoading(true);
+    setMistakeError("");
+    try {
+      const response = await explainPosttestMistakes(report.session_id);
+      setMistakeAnswer(response.text);
+    } catch (requestError) {
+      setMistakeError(errorMessage(requestError));
+    } finally {
+      setMistakeLoading(false);
+    }
+  };
+
   return (
     <section className="learning-panel" aria-label="学习总结">
       <section className="summary-hero">
@@ -1075,7 +1354,11 @@ function PosttestSummaryPanel({ report, onContinue }: { report: StudentPosttestR
         <div>
           <p>学习总结</p>
           <h2>本轮实验报告</h2>
-          <small>{report.next_recommendation}</small>
+          <small>{aiSummaryLoading ? "正在生成 AI 学习总结..." : aiSummary}</small>
+          <em>
+            <Sparkles size={13} />
+            {aiSummarySource === "ai" ? "AI 总结" : "规则总结"}
+          </em>
         </div>
       </section>
 
@@ -1144,6 +1427,24 @@ function PosttestSummaryPanel({ report, onContinue }: { report: StudentPosttestR
             <span>本轮没有错题</span>
           </div>
         )}
+        {report.wrong_answers.length ? (
+          <>
+            <button className="secondary-action full ai-mistake-action" type="button" disabled={mistakeLoading} onClick={() => void explainMistakes()}>
+              {mistakeLoading ? <LoaderCircle className="spin" size={18} /> : <Bot size={18} />}
+              <span>{mistakeLoading ? "AI 正在讲解" : "AI 讲解错题"}</span>
+            </button>
+            {mistakeError ? <div className="form-error">{mistakeError}</div> : null}
+            {mistakeAnswer ? (
+              <div className="mistake-ai-answer">
+                <span>
+                  <Sparkles size={13} />
+                  AI 解答
+                </span>
+                <p>{mistakeAnswer}</p>
+              </div>
+            ) : null}
+          </>
+        ) : null}
       </section>
 
       <button className="primary-action full" type="button" onClick={onContinue}>

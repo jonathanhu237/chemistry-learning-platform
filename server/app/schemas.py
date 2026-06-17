@@ -55,6 +55,7 @@ class AgentAskRequest(BaseModel):
     knowledge_point_ids: list[str] = Field(default_factory=list)
     allow_progress_lookup: bool = True
     allow_rag_lookup: bool = True
+    assessment_review: bool = False
     conversation_history: list[AgentChatMessage] = Field(default_factory=list, max_length=20)
     max_answer_chars: int | None = Field(default=None, ge=0, le=20000)
 
