@@ -1,7 +1,7 @@
 import { FlaskConical, PlayCircle } from "lucide-react";
 import type { StudentLearningChapterExperimentGroup, StudentLearningPointCard, StudentLearningPointGroup, StudentLearningProfile } from "../../api";
 import { studentMediaUrl } from "../../api";
-import type { ChapterLearningView } from "../../app/routes";
+import type { ChapterLearningView } from "../../app/router/routeTypes";
 import { stripExperimentPrefix } from "../experiments/experimentFormat";
 
 export function LearningPointGroupView({

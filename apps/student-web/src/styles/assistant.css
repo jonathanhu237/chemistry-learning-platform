@@ -8,6 +8,10 @@
   padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
 
+.student-app-shell.detail-route .assistant-tab-panel {
+  --assistant-panel-height: calc(100dvh - 118px - env(safe-area-inset-bottom, 0px));
+}
+
 .ai-chat-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;

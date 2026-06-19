@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import logoUrl from "./assets/sysu-logo.svg";
-import { StudentAppShell } from "./app/StudentAppShell";
-import type { ViewState } from "./app/routes";
+import { StudentRouterProvider } from "./app/router/StudentRouterProvider";
+import type { ViewState } from "./app/router/routeTypes";
 import { LoginPanel } from "./features/auth/LoginPanel";
 import { PasswordPanel } from "./features/auth/PasswordPanel";
 import { isStudent } from "./features/auth/authUtils";
@@ -167,7 +167,7 @@ function App() {
           />
         </>
       ) : null}
-      {view === "home" && user ? <StudentAppShell user={user} onLogout={handleLogout} /> : null}
+      {view === "home" && user ? <StudentRouterProvider user={user} onLogout={handleLogout} /> : null}
     </main>
   );
 }

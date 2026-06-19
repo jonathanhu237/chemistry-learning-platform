@@ -1,15 +1,14 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import type {
   AuthUser,
-  LoginResponse,
   PublicPosttestQuestion,
   PublicPretestQuestion,
-  StudentAssistantGeneratedResponse,
   StudentAppConfigResponse,
   StudentExperimentDetailResponse,
+  StudentLearningHomeResponse,
   StudentLearningPageResponse,
   StudentPosttestReport,
   StudentPosttestResponse,
@@ -17,7 +16,7 @@ import type {
 } from "./api";
 
 const apiMocks = vi.hoisted(() => ({
-  authToken: "",
+  authToken: "student-token",
   studentLogin: vi.fn(),
   changeStudentPassword: vi.fn(),
   loadCurrentUser: vi.fn(),
@@ -60,14 +59,14 @@ vi.mock("./api", () => ({
   streamStudentAssistantAsk: apiMocks.streamStudentAssistantAsk,
   submitStudentFeedback: apiMocks.submitStudentFeedback,
   studentMediaUrl: (path: string) => path,
-  errorMessage: (error: unknown) => (error instanceof Error ? error.message : "请求失败，请稍后重试"),
+  errorMessage: (error: unknown) => (error instanceof Error ? error.message : "request failed"),
 }));
 
 vi.mock("./features/atom-viewer/AtomViewerZdog", () => ({
   AtomViewerZdog: ({ element, mode }: { element: { name: string }; mode: "bohr" | "orbital" }) => (
     <figure className="atom-viewer">
-      <canvas className="atom-canvas" aria-label={`${element.name}${mode === "bohr" ? "电子层" : "轨道"}模型`} />
-      <figcaption className="atom-hint">拖动旋转模型</figcaption>
+      <canvas className="atom-canvas" aria-label={`${element.name} ${mode}`} />
+      <figcaption className="atom-hint">atom model</figcaption>
     </figure>
   ),
 }));
@@ -76,45 +75,29 @@ const user: AuthUser = {
   id: "student-user-e2e",
   username: "20249999",
   role: "student",
-  display_name: "测试学生",
+  display_name: "Route Stack Student",
   status: "active",
   must_change_password: false,
   password_version: 1,
   student_id: "20249999",
   class_id: "class-e2e",
-  class_name: "测试班",
-};
-
-const loginResponse: LoginResponse = {
-  access_token: "student-token",
-  token_type: "bearer",
-  expires_at: "2099-01-01T00:00:00Z",
-  user,
-};
-
-const pretestQuestion: PublicPretestQuestion = {
-  id: "pre-q-1",
-  question_type: "single_choice",
-  stem: "摸底题：卤素实验中用于萃取溴单质的试剂是什么？",
-  options: [
-    { label: "A", text: "CCl4" },
-    { label: "B", text: "NaOH" },
-  ],
-  area: "p区",
-  related_chapter_ids: ["ch-19"],
-  related_knowledge_point_ids: ["kp-halogen"],
-};
-
-const pretestResponse: StudentPretestResponse = {
-  status: "in_progress",
-  stage: 1,
-  questions: [pretestQuestion],
+  class_name: "Class E2E",
 };
 
 const completedPretestResponse: StudentPretestResponse = {
   status: "completed",
   stage: null,
   questions: [],
+};
+
+const pretestQuestion: PublicPretestQuestion = {
+  id: "pre-q-1",
+  question_type: "single_choice",
+  stem: "Pretest question",
+  options: [{ label: "A", text: "A" }],
+  area: "p",
+  related_chapter_ids: ["CH17"],
+  related_knowledge_point_ids: ["kp-halogen"],
 };
 
 const appConfig: StudentAppConfigResponse = {
@@ -129,22 +112,22 @@ const appConfig: StudentAppConfigResponse = {
 const learningPoint = {
   id: "EXP_19_1_01",
   code: "19-1-01",
-  title: "氯、溴、碘的置换次序",
-  summary: "比较卤素单质氧化性强弱。",
+  title: "Halogen displacement",
+  summary: "Chlorine displaces bromide.",
   parent_code: "19-1",
-  parent_title: "实验 19-1 卤素",
-  module_title: "氯水 + KBr 溶液 + CCl4",
+  parent_title: "Experiment 19-1 Halogens",
+  module_title: "Chlorine water + KBr + CCl4",
   chapter_ids: ["CH17"],
   video_candidate_count: 1,
   published_video_count: 0,
-  question_count: 10,
+  question_count: 2,
   property_key: "oxidation",
-  property_title: "氧化性",
+  property_title: "Oxidation",
   point_key: "halogen-displacement",
-  point_title: "卤素置换观察",
+  point_title: "Halogen displacement observation",
   formula: "Cl2 + 2Br- -> 2Cl- + Br2",
   videos: [],
-  video_candidates: ["氯水 + KBr 溶液 + CCl4"],
+  video_candidates: ["Chlorine water + KBr + CCl4"],
 };
 
 const learningPage: StudentLearningPageResponse = {
@@ -153,40 +136,40 @@ const learningPage: StudentLearningPageResponse = {
     {
       profile_id: "halogens-17",
       chapter_id: "CH17",
-      title: "第 17 族（卤素）",
-      subtitle: "p区元素性质与实验",
+      title: "Group 17 Halogens",
+      subtitle: "p-block family properties and experiments",
       family_number: "17",
-      family_name: "卤族元素",
+      family_name: "Halogens",
       element_symbols: ["F", "Cl", "Br", "I"],
     },
     {
       profile_id: "alkali-alkaline-earth",
       chapter_id: "CH18",
-      title: "s区（碱金属和碱土金属）",
-      subtitle: "s区元素性质与实验",
+      title: "s-block metals",
+      subtitle: "s-block family properties and experiments",
       family_number: "1/2",
-      family_name: "碱金属和碱土金属",
-      element_symbols: ["Li", "Na", "K", "Mg", "Ca", "Ba"],
+      family_name: "Alkali and alkaline earth metals",
+      element_symbols: ["Li", "Na", "K", "Mg", "Ca"],
     },
   ],
   active_profile: {
     profile_id: "halogens-17",
     chapter_id: "CH17",
-    title: "第 17 族 卤族元素",
-    subtitle: "p区元素性质与实验",
+    title: "Group 17 Halogens",
+    subtitle: "p-block family properties and experiments",
     family_number: "17",
-    family_name: "卤族元素",
+    family_name: "Halogens",
     hero: {
-      eyebrow: "p区",
-      title: "卤素单质氧化性与置换反应",
-      summary: "从族元素性质进入实验点位学习。",
+      eyebrow: "p-block",
+      title: "Halogen oxidation and displacement",
+      summary: "Learn the trend through facts and experiment videos.",
     },
     default_element_symbol: "Cl",
     element_symbols: ["F", "Cl", "Br", "I"],
     elements: [
       {
         symbol: "Cl",
-        name: "氯",
+        name: "Chlorine",
         atomic_number: 17,
         relative_atomic_mass: "35.45",
         group: "17",
@@ -195,16 +178,16 @@ const learningPage: StudentLearningPageResponse = {
         state_at_20c: "Gas",
         density: "0.002898 g/cm3",
         rsc_url: "https://periodic-table.rsc.org/element/17/chlorine",
-        fact_source: "Royal Society of Chemistry Periodic Table",
-        state: "气体",
-        group_label: "第 17 族",
+        fact_source: "RSC",
+        state: "gas",
+        group_label: "Group 17",
         electron_configuration: "[Ne]3s2 3p5",
         common_valence: "-1, +1, +5, +7",
-        redox_tendency: "氧化性较强",
+        redox_tendency: "Strong oxidizer",
       },
       {
         symbol: "Br",
-        name: "溴",
+        name: "Bromine",
         atomic_number: 35,
         relative_atomic_mass: "79.904",
         group: "17",
@@ -213,26 +196,22 @@ const learningPage: StudentLearningPageResponse = {
         state_at_20c: "Liquid",
         density: "3.11 g/cm3",
         rsc_url: "https://periodic-table.rsc.org/element/35/bromine",
-        fact_source: "Royal Society of Chemistry Periodic Table",
-        state: "液体",
-        group_label: "第 17 族",
+        fact_source: "RSC",
+        state: "liquid",
+        group_label: "Group 17",
         electron_configuration: "[Ar]3d10 4s2 4p5",
         common_valence: "-1, +1, +5",
-        redox_tendency: "可被氯置换",
+        redox_tendency: "Can be displaced by chlorine",
       },
     ],
-    property_cards: [
-      { key: "oxidation", label: "氧化性", value: "F2 > Cl2 > Br2 > I2", description: "卤素单质氧化性沿族递减。" },
-    ],
-    family_common_properties: [
-      { key: "oxidation", label: "氧化性", value: "由强到弱", description: "置换反应可用于比较。" },
-    ],
+    property_cards: [{ key: "oxidation", label: "Oxidation", value: "F2 > Cl2 > Br2 > I2", description: "Oxidizing ability decreases down the group." }],
+    family_common_properties: [{ key: "oxidation", label: "Oxidation", value: "Decreasing", description: "Displacement reactions show the trend." }],
     property_sections: [
       {
         key: "oxidation",
-        title: "氧化性",
-        subtitle: "置换反应",
-        summary: "氯能把溴离子氧化为溴单质。",
+        title: "Oxidation",
+        subtitle: "Displacement",
+        summary: "Chlorine oxidizes bromide to bromine.",
         formula: "Cl2 + 2Br- -> 2Cl- + Br2",
         tone: "green",
       },
@@ -241,46 +220,46 @@ const learningPage: StudentLearningPageResponse = {
     related_groups: [
       {
         property_key: "oxidation",
-        property_title: "氧化性",
+        property_title: "Oxidation",
         parent_code: "19-1",
-        parent_title: "实验 19-1 卤素",
+        parent_title: "Experiment 19-1 Halogens",
         points: [learningPoint],
       },
     ],
     chapter_experiment_groups: [
       {
         parent_code: "19-1",
-        parent_title: "实验 19-1 卤素",
+        parent_title: "Experiment 19-1 Halogens",
         points: [learningPoint],
       },
     ],
   },
 };
 
-const learningHome = {
+const learningHome: StudentLearningHomeResponse = {
   recommended_area_id: "p",
   recommended_parent_code: "19-1",
   areas: [
     {
       area_id: "p",
-      area_name: "p区元素",
+      area_name: "p-block",
       enabled: true,
       parent_codes: ["19-1"],
       experiment_count: 1,
       published_video_count: 0,
-      question_count: 10,
+      question_count: 2,
     },
   ],
   groups: [
     {
       parent_code: "19-1",
-      parent_title: "实验 19-1 卤素",
+      parent_title: "Experiment 19-1 Halogens",
       area_id: "p",
-      area_name: "p区元素",
+      area_name: "p-block",
       chapter_ids: ["CH17"],
       experiment_count: 1,
       published_video_count: 0,
-      question_count: 10,
+      question_count: 2,
       recommended: true,
     },
   ],
@@ -288,9 +267,9 @@ const learningHome = {
 
 const experimentGroup = {
   parent_code: "19-1",
-  parent_title: "实验 19-1 卤素",
+  parent_title: "Experiment 19-1 Halogens",
   area_id: "p",
-  area_name: "p区元素",
+  area_name: "p-block",
   experiments: [learningPoint],
 };
 
@@ -314,24 +293,14 @@ const posttestQuestions: PublicPosttestQuestion[] = [
   {
     id: "post-q-1",
     experiment_id: "EXP_19_1_01",
-    experiment_title: "氯、溴、碘的置换次序",
+    experiment_title: "Halogen displacement",
     question_type: "single_choice",
-    stem: "氯水加入 KBr 后，CCl4 层呈什么颜色？",
+    stem: "What color appears in CCl4?",
     options: [
-      { label: "A", text: "无色" },
-      { label: "B", text: "橙红色" },
+      { label: "A", text: "colorless" },
+      { label: "B", text: "orange" },
     ],
-    related_chapter_ids: ["ch-19"],
-    related_knowledge_point_ids: ["kp-halogen"],
-  },
-  {
-    id: "post-q-2",
-    experiment_id: "EXP_19_1_01",
-    experiment_title: "氯、溴、碘的置换次序",
-    question_type: "fill_blank",
-    stem: "该置换反应证明氯单质的____性更强。",
-    options: [],
-    related_chapter_ids: ["ch-19"],
+    related_chapter_ids: ["CH17"],
     related_knowledge_point_ids: ["kp-halogen"],
   },
 ];
@@ -339,7 +308,7 @@ const posttestQuestions: PublicPosttestQuestion[] = [
 const posttestResponse: StudentPosttestResponse = {
   status: "in_progress",
   session_id: "posttest-session-e2e",
-  experiments: [{ id: "EXP_19_1_01", code: "19-1-01", title: "氯、溴、碘的置换次序", parent_code: "19-1", parent_title: "实验 19-1 卤素" }],
+  experiments: [{ id: "EXP_19_1_01", code: "19-1-01", title: "Halogen displacement", parent_code: "19-1", parent_title: "Experiment 19-1 Halogens" }],
   questions: posttestQuestions,
 };
 
@@ -347,74 +316,53 @@ const report: StudentPosttestReport = {
   session_id: "posttest-session-e2e",
   experiments: posttestResponse.experiments,
   correct_count: 1,
-  total_count: 2,
-  score: 50,
-  correct_rate: 0.5,
+  total_count: 1,
+  score: 100,
+  correct_rate: 1,
   mastery_before_average: 50,
-  mastery_after_average: 45,
-  mastery_delta: -5,
-  mastery_changes: [
-    {
-      knowledge_point_id: "EXP_19_1_01",
-      experiment_id: "EXP_19_1_01",
-      experiment_title: "氯、溴、碘的置换次序",
-      content: "氯、溴、碘的置换次序",
-      before_score: 50,
-      after_score: 45,
-      delta: -5,
-    },
-  ],
+  mastery_after_average: 60,
+  mastery_delta: 10,
+  mastery_changes: [],
   wrong_answers: [
     {
       question_id: "post-q-1",
       experiment_id: "EXP_19_1_01",
-      experiment_title: "氯、溴、碘的置换次序",
+      experiment_title: "Halogen displacement",
       question_type: "single_choice",
-      stem: "氯水加入 KBr 后，CCl4 层呈什么颜色？",
+      stem: "What color appears in CCl4?",
       options: posttestQuestions[0].options,
       submitted_answer: "A",
       correct_answer: "B",
-      explanation: "Br2 被 CCl4 萃取后呈橙红色。",
+      explanation: "Bromine dissolves in CCl4 and appears orange.",
     },
   ],
-  next_recommendation: "建议复习卤素单质氧化性强弱顺序。",
+  next_recommendation: "Review halogen displacement.",
 };
 
-const aiSummary: StudentAssistantGeneratedResponse = {
-  text: "### 学习总结\n\n- 本轮重点是 **卤素置换**。",
-  source: "ai",
-  mode: "test",
-  cached: true,
-};
+function rootButton(root: string): HTMLButtonElement {
+  const button = document.querySelector<HTMLButtonElement>(`.student-bottom-nav button[data-root="${root}"]`);
+  if (!button) throw new Error(`Missing root nav button: ${root}`);
+  return button;
+}
 
-const aiMistakeExplanation: StudentAssistantGeneratedResponse = {
-  text: String.raw`### 共同错因
+function activeRoot(): string | null {
+  return document.querySelector(".student-bottom-nav button.active")?.getAttribute("data-root") || null;
+}
 
-- **核心观察**：CCl4 层变橙红色说明生成 $\ce{Br2}$。
+async function clickRoot(root: string) {
+  fireEvent.click(rootButton(root));
+  await waitFor(() => expect(window.location.pathname).toBe(`/${root}`));
+  await waitFor(() => expect(activeRoot()).toBe(root));
+}
 
----
-
-### 复习抓手
-
-1. 记住 $\ce{Cl2 + 2Br- -> 2Cl- + Br2}$。
-2. 观察有机层颜色，而不是水层。`,
-  source: "ai",
-  mode: "test",
-  cached: true,
-};
+function expectBottomNavHidden() {
+  expect(document.querySelector(".student-bottom-nav")).toBeNull();
+}
 
 function answerVisibleAssessment() {
-  const questionCards = document.querySelectorAll("article.question-card");
-  questionCards.forEach((card) => {
+  document.querySelectorAll("article.question-card").forEach((card) => {
     const option = card.querySelector<HTMLButtonElement>("button.option");
-    if (option) {
-      fireEvent.click(option);
-      return;
-    }
-    const input = card.querySelector<HTMLInputElement>("input.fill-answer");
-    if (input) {
-      fireEvent.change(input, { target: { value: "氧化" } });
-    }
+    if (option) fireEvent.click(option);
   });
 }
 
@@ -425,16 +373,26 @@ async function submitVisibleAssessment() {
   fireEvent.click(submitButton);
 }
 
-describe("student app e2e flow", () => {
+async function renderAuthenticatedApp(pathname = "/") {
+  window.history.replaceState({}, "", pathname);
+  render(<App />);
+  const skipPretest = await screen.findByRole("button", { name: "跳过课前摸底" }).catch(() => null);
+  if (skipPretest) fireEvent.click(skipPretest);
+  await waitFor(() => expect(document.querySelector(".student-app-shell")).not.toBeNull());
+  await waitFor(() => expect(apiMocks.loadCurrentUser).toHaveBeenCalled());
+}
+
+describe("student app route stack", () => {
   beforeEach(() => {
-    apiMocks.authToken = "";
+    apiMocks.authToken = "student-token";
     vi.clearAllMocks();
+    window.sessionStorage.clear();
+    window.history.replaceState({}, "", "/");
     Object.defineProperty(window, "scrollTo", { value: vi.fn(), writable: true });
-    apiMocks.studentLogin.mockResolvedValue(loginResponse);
     apiMocks.loadCurrentUser.mockResolvedValue(user);
     apiMocks.logout.mockResolvedValue(undefined);
-    apiMocks.startStudentPretest.mockResolvedValue(pretestResponse);
-    apiMocks.submitStudentPretest.mockResolvedValue(completedPretestResponse);
+    apiMocks.startStudentPretest.mockResolvedValue(completedPretestResponse);
+    apiMocks.submitStudentPretest.mockResolvedValue({ status: "completed", stage: null, questions: [] } satisfies StudentPretestResponse);
     apiMocks.getStudentAppConfig.mockResolvedValue(appConfig);
     apiMocks.getStudentLearningHome.mockResolvedValue(learningHome);
     apiMocks.getStudentLearningPage.mockResolvedValue(learningPage);
@@ -442,211 +400,114 @@ describe("student app e2e flow", () => {
     apiMocks.getStudentExperimentDetail.mockResolvedValue(experimentDetail);
     apiMocks.startStudentPosttest.mockResolvedValue(posttestResponse);
     apiMocks.submitStudentPosttest.mockResolvedValue({ status: "completed", report });
-    apiMocks.generatePosttestAiSummary.mockResolvedValue(aiSummary);
-    apiMocks.explainPosttestMistakes.mockResolvedValue(aiMistakeExplanation);
+    apiMocks.generatePosttestAiSummary.mockResolvedValue({ text: "### Study summary\n\n- Review **halogens**.", source: "ai", mode: "test", cached: true });
+    apiMocks.explainPosttestMistakes.mockResolvedValue({ text: "### Mistake explanation\n\n- $\\ce{Br2}$ is orange.", source: "ai", mode: "test", cached: true });
     apiMocks.streamStudentAssistantAsk.mockImplementation(async (_payload, onEvent) => {
-      onEvent({ event: "status", message: "正在检索课程资料" });
-      onEvent({
-        event: "delta",
-        delta: String.raw`### 回答思路
-
-- **现象**：CCl4 层变橙红色通常说明生成了 $\ce{Br2}$。`,
-      });
-      onEvent({
-        event: "final",
-        response: {
-          text: "",
-          source_count: 1,
-          sources: [{ title: "卤素置换实验资料", section: "实验现象", chunk_id: "halogen-displacement" }],
-        },
-      });
+      onEvent({ event: "delta", delta: "### Route answer\n\n- $\\ce{Cl2}$ oxidizes bromide." });
+      onEvent({ event: "final", response: { source_count: 1, sources: [{ title: "Halogen evidence", chunk_id: "halogen" }] } });
     });
     apiMocks.submitStudentFeedback.mockResolvedValue({ id: "feedback-e2e", status: "open", attachment_count: 0 });
   });
 
   afterEach(() => cleanup());
 
-  it("keeps pretest fallback, periodic table, report, and AI Markdown rendering usable", async () => {
-    render(<App />);
-
-    fireEvent.change(await screen.findByPlaceholderText("请输入学号"), { target: { value: "20249999" } });
-    fireEvent.change(screen.getByPlaceholderText("请输入密码"), { target: { value: "Codex2026!" } });
-    fireEvent.click(screen.getByRole("button", { name: "登录" }));
-
-    expect(await screen.findByRole("heading", { name: "课前摸底暂未接入" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "跳过课前摸底" }));
+  it("drives roots, details, contextual AI, assessment, and feedback through URLs instead of tab state", async () => {
+    await renderAuthenticatedApp("/");
 
     const nav = await screen.findByRole("navigation", { name: "学生端主导航" });
-    expect(within(nav).getByRole("button", { name: "学习" })).toHaveClass("active");
-    expect(within(nav).getByRole("button", { name: "实验" })).toBeInTheDocument();
-    expect(within(nav).getByRole("button", { name: "问答" })).toBeInTheDocument();
-    expect(within(nav).getByRole("button", { name: "测评" })).toBeInTheDocument();
-    expect(within(nav).getByRole("button", { name: "我的" })).toBeInTheDocument();
-    expect(document.querySelector(".brand-rail")).toBeNull();
+    expect(Array.from(nav.querySelectorAll("button")).map((button) => button.getAttribute("data-root"))).toEqual([
+      "home",
+      "learn",
+      "ai",
+      "assessment",
+      "profile",
+    ]);
+    await waitFor(() => expect(window.location.pathname).toBe("/home"));
+    expect(activeRoot()).toBe("home");
 
-    fireEvent.click(within(nav).getByRole("button", { name: "问答" }));
-    expect(await screen.findByRole("heading", { name: "问答" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "AI 学习助手对话" })).toBeInTheDocument();
-    expect(screen.getByText("可以询问课程知识、实验现象、复习顺序和错题思路。")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "课程问答" })).toHaveAttribute("aria-selected", "true");
-    fireEvent.click(screen.getByRole("tab", { name: "实验点位" }));
-    expect(await screen.findByText("从实验点位开始")).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("button", { name: /实验 19-1 卤素/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /19-1-01/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /氯水 \+ KBr 溶液 \+ CCl4/ }));
-    fireEvent.click(screen.getByRole("button", { name: /背后原理/ }));
-    fireEvent.click(screen.getByRole("button", { name: "发送点位问题" }));
-    await waitFor(() => expect(apiMocks.streamStudentAssistantAsk).toHaveBeenCalledTimes(1));
-    const pointPayload = apiMocks.streamStudentAssistantAsk.mock.calls[0][0];
-    expect(pointPayload).toEqual(
-      expect.objectContaining({
-        context_type: "learning_point",
-        chapter_id: "CH17",
-        experiment_id: "EXP_19_1_01",
-        point_key: expect.stringContaining("candidate:1:氯水 + KBr 溶液 + CCl4"),
-        context_summary: expect.stringContaining("点位：氯水 + KBr 溶液 + CCl4"),
-        question: expect.stringContaining("背后的化学原理"),
-      }),
-    );
-    await waitFor(() => expect(document.querySelector(".ai-message.assistant .ai-md-list")).not.toBeNull());
-    expect(document.querySelector(".ai-message.assistant .katex")).not.toBeNull();
-    expect(document.querySelector(".ai-chat-status")).toBeNull();
-    expect(screen.getByText("完成")).toBeInTheDocument();
-    expect(screen.getByText("引用来源 1")).toBeInTheDocument();
+    await clickRoot("learn");
+    expect(document.querySelector(".periodic-grid")).not.toBeNull();
+    fireEvent.click(document.querySelector<HTMLButtonElement>(".chapter-entry-card.recommended")!);
+    await waitFor(() => expect(window.location.pathname).toBe("/chapter/halogens-17"));
+    expectBottomNavHidden();
+    await waitFor(() => expect(document.querySelector(".atom-model-card")).not.toBeNull());
 
-    fireEvent.click(within(nav).getByRole("button", { name: "我的" }));
-    expect(await screen.findByRole("heading", { name: "我的" })).toBeInTheDocument();
-    fireEvent.click(within(nav).getByRole("button", { name: "问答" }));
-    expect(await screen.findByRole("heading", { name: "问答" })).toBeInTheDocument();
-    expect(screen.getByText("你想先问哪一类？")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /复习顺序/ })).toBeInTheDocument();
-    expect(screen.getByText("准备提问")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "发送预览问题" }));
-    await waitFor(() => expect(apiMocks.streamStudentAssistantAsk).toHaveBeenCalledTimes(2));
-    expect(apiMocks.streamStudentAssistantAsk).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        context_type: "learning_home",
-        question: expect.stringContaining("复习顺序"),
-      }),
-      expect.any(Function),
-    );
-    await waitFor(() => expect(document.querySelector(".ai-message.assistant .ai-md-list")).not.toBeNull());
-    expect(document.querySelector(".ai-message.assistant .katex")).not.toBeNull();
-    expect(document.querySelector(".ai-chat-status")).toBeNull();
-    expect(screen.getByText("完成")).toBeInTheDocument();
-    expect(screen.getByText("引用来源 1")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "问 AI" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/ai/chat"));
+    expectBottomNavHidden();
+    expect(document.querySelector(".ai-chat-panel")).not.toBeNull();
+    act(() => window.history.back());
+    await waitFor(() => expect(window.location.pathname).toBe("/chapter/halogens-17"));
+    expectBottomNavHidden();
 
-    fireEvent.click(within(nav).getByRole("button", { name: "我的" }));
-    expect(await screen.findByRole("heading", { name: "我的" })).toBeInTheDocument();
-    expect(screen.getByRole("form", { name: "学生端反馈" })).toBeInTheDocument();
+    fireEvent.click(document.querySelectorAll<HTMLButtonElement>(".chapter-view-switcher button")[1]);
+    await waitFor(() => expect(document.querySelector(".learning-point-card")).not.toBeNull());
+    fireEvent.click(document.querySelector<HTMLButtonElement>(".learning-point-card")!);
+    await waitFor(() => expect(window.location.pathname).toBe("/point/EXP_19_1_01"));
+    expectBottomNavHidden();
+
+    fireEvent.click(document.querySelector<HTMLButtonElement>(".context-assistant-action")!);
+    await waitFor(() => expect(window.location.pathname).toBe("/ai/chat"));
+    expectBottomNavHidden();
+    act(() => window.history.back());
+    await waitFor(() => expect(window.location.pathname).toBe("/point/EXP_19_1_01"));
+
+    fireEvent.click(document.querySelector<HTMLButtonElement>(".finish-action")!);
+    await waitFor(() => expect(window.location.pathname).toBe("/assessment/session/posttest-session-e2e"));
+    expectBottomNavHidden();
+    await submitVisibleAssessment();
+    await waitFor(() => expect(window.location.pathname).toBe("/assessment/report/posttest-session-e2e"));
+    expectBottomNavHidden();
+    await waitFor(() => expect(document.querySelector(".summary-ai-text ul.ai-md-list")).not.toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "问 AI" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/ai/chat"));
+    expectBottomNavHidden();
+    act(() => window.history.back());
+    await waitFor(() => expect(window.location.pathname).toBe("/assessment/report/posttest-session-e2e"));
+
+    fireEvent.click(screen.getByRole("button", { name: "继续学习" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/learn"));
+    expect(activeRoot()).toBe("learn");
+
+    await clickRoot("profile");
+    expect(screen.queryByRole("form", { name: "学生端反馈" })).not.toBeInTheDocument();
+    fireEvent.click(document.querySelector<HTMLButtonElement>(".profile-entry-card")!);
+    await waitFor(() => expect(window.location.pathname).toBe("/feedback/new"));
+    expectBottomNavHidden();
     fireEvent.click(screen.getByRole("button", { name: "内容问题" }));
     fireEvent.change(screen.getByPlaceholderText("描述你遇到的问题或建议，可以配一张截图"), {
-      target: { value: "希望移动端导航更清楚" },
+      target: { value: "Route stack feedback" },
     });
     fireEvent.click(screen.getByRole("button", { name: "提交反馈" }));
     await waitFor(() => expect(apiMocks.submitStudentFeedback).toHaveBeenCalledTimes(1));
     expect(apiMocks.submitStudentFeedback).toHaveBeenCalledWith(
       expect.objectContaining({
-        feedback_type: "content",
-        content: "希望移动端导航更清楚",
-        metadata: expect.objectContaining({ screen: "profile_feedback" }),
+        content: "Route stack feedback",
+        page_path: "/feedback/new",
+        metadata: expect.objectContaining({ route: "feedback_new", from: "profile" }),
       }),
     );
-    expect(await screen.findByText("已收到反馈，老师后台可以看到。")).toBeInTheDocument();
-
-    fireEvent.click(within(nav).getByRole("button", { name: "实验" }));
-    expect(await screen.findByRole("heading", { name: "实验" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /卤素/ })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /卤素/ }));
-    expect(await screen.findByRole("heading", { name: "卤素" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "去问答" }));
-    expect(await screen.findByRole("heading", { name: "问答" })).toBeInTheDocument();
-    expect(screen.getAllByRole("heading", { name: "卤素" }).length).toBeGreaterThan(0);
-    expect(screen.getByText("实验组")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /为什么这样设计/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /和其他点位对比/ })).toBeInTheDocument();
-    fireEvent.click(within(nav).getByRole("button", { name: "学习" }));
-
-    const periodic = await screen.findByRole("region", { name: "元素周期表选择区" });
-    expect(within(periodic).getByRole("button", { name: "p区元素，推荐学习区域，推荐17族" })).toHaveTextContent("推荐学习17族");
-    const groupNumber17 = Array.from(periodic.querySelectorAll(".group-number")).find((node) => node.textContent === "17");
-    expect(groupNumber17).toHaveClass("group-number");
-    expect(within(periodic).getByRole("button", { name: "氢和稀有气体" })).toBeInTheDocument();
-    expect(within(periodic).queryByRole("button", { name: "通识资源" })).not.toBeInTheDocument();
-    expect(within(periodic).getByRole("button", { name: "H 氢，选择氢和稀有气体" })).toBeInTheDocument();
-    const recommendedFluorine = within(periodic).getByRole("button", { name: "F 氟，推荐学习，当前选区可学习" });
-    expect(recommendedFluorine).toHaveTextContent("F");
-    expect(recommendedFluorine).toHaveClass("recommended-element");
-    expect(within(periodic).getByRole("button", { name: "He 氦，选择氢和稀有气体" })).toHaveTextContent("");
-    const radon = within(periodic).getByRole("button", { name: "Rn 氡，选择氢和稀有气体" });
-    const oganesson = within(periodic).getByRole("button", { name: "Og 鿫，选择氢和稀有气体" });
-    const lutetium = within(periodic).getByRole("button", { name: "Lu 镥，选择f区" });
-    const lawrencium = within(periodic).getByRole("button", { name: "Lr 铹，选择f区" });
-    expect(radon.style.gridColumn).toBe("19");
-    expect(oganesson.style.gridColumn).toBe("19");
-    expect(oganesson.style.gridRow).toBe("8");
-    expect(lutetium.style.gridColumn).toBe("18");
-    expect(lutetium.style.gridRow).toBe("10");
-    expect(lawrencium.style.gridColumn).toBe("18");
-    expect(lawrencium.style.gridRow).toBe("11");
-    expect(Array.from(periodic.querySelectorAll<HTMLElement>(".period-number")).map((node) => node.style.gridRow).slice(6)).toEqual([
-      "8",
-      "10",
-      "11",
-    ]);
-    fireEvent.click(within(periodic).getByRole("button", { name: "Li 锂，选择s区" }));
-    await waitFor(() => expect(screen.getByRole("heading", { name: "s区", level: 2 })).toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "碱金属和碱土金属" })).toBeInTheDocument();
-    expect(screen.queryByText("s区（碱金属和碱土金属）")).not.toBeInTheDocument();
-    fireEvent.click(within(periodic).getByRole("button", { name: "H 氢，选择氢和稀有气体" }));
-    await waitFor(() => expect(screen.getByRole("heading", { name: "氢和稀有气体", level: 2 })).toBeInTheDocument());
-    fireEvent.click(within(periodic).getByRole("button", { name: "Cl 氯，推荐学习，选择p区" }));
-    await waitFor(() => expect(screen.getByRole("heading", { name: "p区", level: 2 })).toBeInTheDocument());
-    expect(within(periodic).getByRole("button", { name: "Cl 氯，推荐学习，当前选区可学习" })).toHaveTextContent("Cl");
-
-    const recommendedChapter = screen.getByRole("button", { name: /17族（卤素），推荐学习/ });
-    expect(recommendedChapter.querySelector(".chapter-family-badge")).toBeNull();
-    expect(within(recommendedChapter).getByText("17族（卤素）")).toBeInTheDocument();
-    fireEvent.click(recommendedChapter);
-    await waitFor(() => expect(document.querySelector(".atom-model-card")).not.toBeNull());
-    expect(document.querySelector(".atom-model-card")).not.toBeNull();
-    expect(document.querySelector(".atom-canvas")).not.toBeNull();
-    expect(screen.getByRole("tab", { name: "电子层" })).toHaveAttribute("aria-selected", "true");
-    fireEvent.click(screen.getByRole("tab", { name: "轨道" }));
-    const orbitalSelect = screen.getByRole("combobox", { name: "显示轨道" }) as HTMLSelectElement;
-    expect(orbitalSelect.value).toBe("3p:all");
-    expect(orbitalSelect.selectedOptions[0]?.textContent).toBe("3p5 全部");
-    expect(orbitalSelect.textContent).not.toContain("自动");
-    expect(Array.from(orbitalSelect.querySelectorAll("optgroup")).map((group) => group.getAttribute("label"))).toEqual([
-      "s 轨道",
-      "p 轨道",
-    ]);
-    fireEvent.click(screen.getByRole("button", { name: /Br Bromine/ }));
-    await waitFor(() => expect(document.querySelector(".atom-model-card")?.textContent).toContain("Bromine"));
-    fireEvent.click(screen.getByRole("button", { name: /看实验视频/ }));
-    expect(await screen.findByRole("heading", { name: "实验-点位视频" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /卤素置换观察/ }));
-
-    expect((await screen.findAllByText("氯水 + KBr 溶液 + CCl4")).length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "完成学习" }));
-
-    expect(await screen.findByRole("heading", { name: "请完成学习后测" })).toBeInTheDocument();
-    expect(within(screen.getByRole("navigation", { name: "学生端主导航" })).getByRole("button", { name: "测评" })).toHaveClass("active");
-    await submitVisibleAssessment();
-
-    expect(await screen.findByRole("heading", { name: "本轮实验报告" })).toBeInTheDocument();
-    await waitFor(() => expect(document.querySelector(".summary-ai-text ul.ai-md-list")).not.toBeNull());
-    expect(screen.getByText("卤素置换")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "AI 讲解错题" }));
-
-    await waitFor(() => expect(document.querySelector(".mistake-ai-answer hr.ai-md-divider")).not.toBeNull());
-    expect(document.querySelector(".mistake-ai-answer strong.ai-md-strong")).not.toBeNull();
-    expect(document.querySelector(".mistake-ai-answer ol.ai-md-list")).not.toBeNull();
-    expect(document.querySelector(".mistake-ai-answer .katex")).not.toBeNull();
-    expect(screen.queryByText("---")).not.toBeInTheDocument();
   });
 
-  it("hides assistant and profile feedback entries when app config disables them", async () => {
+  it("serves direct root and detail client routes with route-level navigation visibility", async () => {
+    await renderAuthenticatedApp("/learn");
+    await waitFor(() => expect(window.location.pathname).toBe("/learn"));
+    expect(activeRoot()).toBe("learn");
+    cleanup();
+
+    await renderAuthenticatedApp("/ai/chat");
+    await waitFor(() => expect(window.location.pathname).toBe("/ai/chat"));
+    expectBottomNavHidden();
+    expect(document.querySelector(".ai-chat-panel")).not.toBeNull();
+    cleanup();
+
+    await renderAuthenticatedApp("/feedback/new");
+    await waitFor(() => expect(window.location.pathname).toBe("/feedback/new"));
+    expectBottomNavHidden();
+    expect(screen.getByRole("form", { name: "学生端反馈" })).toBeInTheDocument();
+  });
+
+  it("keeps five root routes while feature-disabled pages render disabled centers", async () => {
     apiMocks.getStudentAppConfig.mockResolvedValue({
       features: {
         ai_assistant_enabled: false,
@@ -656,20 +517,19 @@ describe("student app e2e flow", () => {
       },
     });
 
-    render(<App />);
-
-    fireEvent.change(await screen.findByPlaceholderText("请输入学号"), { target: { value: "20249999" } });
-    fireEvent.change(screen.getByPlaceholderText("请输入密码"), { target: { value: "Codex2026!" } });
-    fireEvent.click(screen.getByRole("button", { name: "登录" }));
-
-    expect(await screen.findByRole("heading", { name: "课前摸底暂未接入" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "跳过课前摸底" }));
-
+    await renderAuthenticatedApp("/");
     const nav = await screen.findByRole("navigation", { name: "学生端主导航" });
-    expect(within(nav).queryByRole("button", { name: "问答" })).not.toBeInTheDocument();
-    fireEvent.click(within(nav).getByRole("button", { name: "我的" }));
-    expect(await screen.findByRole("heading", { name: "我的" })).toBeInTheDocument();
-    expect(screen.queryByRole("form", { name: "学生端反馈" })).not.toBeInTheDocument();
+    expect(Array.from(nav.querySelectorAll("button")).map((button) => button.getAttribute("data-root"))).toEqual([
+      "home",
+      "learn",
+      "ai",
+      "assessment",
+      "profile",
+    ]);
+
+    await clickRoot("ai");
+    expect(screen.getByText("AI 学习助手暂未开放")).toBeInTheDocument();
+    await clickRoot("profile");
     expect(screen.getByText("反馈入口已关闭")).toBeInTheDocument();
   });
 });

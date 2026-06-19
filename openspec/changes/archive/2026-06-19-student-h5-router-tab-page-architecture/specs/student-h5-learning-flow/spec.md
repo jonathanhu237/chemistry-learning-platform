@@ -1,39 +1,4 @@
-# student-h5-learning-flow Specification
-
-## Purpose
-TBD - created by archiving change integrate-student-h5-platform. Update Purpose after archive.
-## Requirements
-### Requirement: Student learning home
-The system SHALL provide a student learning home that lists the student's available experiment learning groups and progress context.
-
-#### Scenario: Student opens learning home
-- **WHEN** an authenticated student without a password-change requirement requests the learning home
-- **THEN** the backend SHALL return student class context and available experiment groups
-- **AND** it SHALL avoid exposing teacher-only identifiers or draft-only data.
-
-### Requirement: Experiment group and detail access
-The system SHALL provide student-facing experiment group and experiment detail APIs scoped to active/published learning resources.
-
-#### Scenario: Student opens an experiment group
-- **WHEN** an authenticated student requests an experiment group
-- **THEN** the backend SHALL return the experiments available in that group
-- **AND** unavailable or archived experiment resources SHALL NOT be exposed as playable student materials.
-
-#### Scenario: Student opens an experiment detail
-- **WHEN** an authenticated student requests an available experiment detail
-- **THEN** the backend SHALL return experiment metadata, learning points, and published resource references for that experiment.
-
-### Requirement: Protected media delivery
-The system SHALL protect student media stream and thumbnail access using authenticated student context or equivalent short-lived authorization.
-
-#### Scenario: Student requests protected media
-- **WHEN** an authenticated student requests media that is bound to an available experiment
-- **THEN** the backend SHALL authorize access before serving the stream or thumbnail
-- **AND** unpublished or unready media SHALL remain unavailable.
-
-#### Scenario: Unauthenticated media request
-- **WHEN** a request lacks a valid student authorization token
-- **THEN** the backend SHALL reject protected media access.
+## MODIFIED Requirements
 
 ### Requirement: Periodic-table to chapter handoff
 The student H5 learning flow SHALL support a periodic-table learning root that hands off to one current family or chapter learning detail page.
@@ -94,17 +59,7 @@ The student H5 learning flow SHALL keep facts/common-property viewing and experi
 - **AND** the A/B view split MUST NOT bypass learning event recording or assessment eligibility behavior
 - **AND** root tab identity MUST remain controlled by bottom navigation, not by the completion action.
 
-### Requirement: Local chapter view state
-The student H5 app SHALL preserve local chapter view state across A/B switches where feasible.
-
-#### Scenario: Active view is preserved during local interaction
-- **WHEN** a student switches to the experiments view and opens or closes local overlays
-- **THEN** the app MUST keep the experiments view active unless the student explicitly switches views or leaves the chapter
-
-#### Scenario: Scroll position is restored where feasible
-- **WHEN** a student scrolls within the facts view or experiments view and then switches away and back
-- **THEN** the app SHOULD restore the prior scroll position for that view where feasible
-- **AND** if independent scroll restoration is not reliable, the app MUST at least preserve the active view and selected chapter context
+## ADDED Requirements
 
 ### Requirement: Contextual AI opens shared chat detail
 The student H5 learning flow SHALL open contextual AI as the shared AI chat detail page without changing the active root tab.
@@ -120,4 +75,3 @@ The student H5 learning flow SHALL open contextual AI as the shared AI chat deta
 - **THEN** the app MUST open the shared AI chat detail page with experiment and point context
 - **AND** the bottom navigation MUST remain hidden
 - **AND** returning MUST restore the point detail route.
-

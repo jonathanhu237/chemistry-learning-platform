@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { FlaskConical, LoaderCircle, ChevronRight } from "lucide-react";
 import type { StudentExperimentGroupSummary, StudentLearningPageResponse, StudentLearningProfile, StudentLearningPropertySection } from "../../api";
 import { errorMessage, getStudentLearningPage } from "../../api";
-import type { ChapterLearningView } from "../../app/routes";
+import type { ChapterLearningView } from "../../app/router/routeTypes";
 import { LearningState } from "../../shared/mobile/LearningState";
 import { stripExperimentPrefix } from "../experiments/experimentFormat";
 import { LearningExperimentsView } from "./LearningExperimentsView";

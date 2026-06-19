@@ -177,6 +177,10 @@
   transform: translateX(-50%);
 }
 
+.student-app-shell.detail-route .finish-action {
+  bottom: calc(max(8px, env(safe-area-inset-bottom)) + 12px);
+}
+
 .finish-action:disabled {
   cursor: not-allowed;
   color: var(--muted);

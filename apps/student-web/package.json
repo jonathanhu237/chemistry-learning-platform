@@ -16,6 +16,7 @@
     "test:e2e": "vitest run src/App.e2e.test.tsx"
   },
   "dependencies": {
+    "@tanstack/react-router": "^1.170.16",
     "@types/zdog": "^1.1.7",
     "katex": "^0.17.0",
     "lucide-react": "^0.468.0",

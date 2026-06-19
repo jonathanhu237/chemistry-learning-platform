@@ -6,7 +6,7 @@ import { FinishLearningAction } from "../../shared/learning/FinishLearningAction
 import { LearningState } from "../../shared/mobile/LearningState";
 import { PageBar } from "../../shared/mobile/PageBar";
 import { compactText } from "../../shared/utils/text";
-import type { ChapterLearningView } from "../../app/routes";
+import type { ChapterLearningView } from "../../app/router/routeTypes";
 import type { AssistantContext } from "../assistant/assistantContext";
 import { stripExperimentPrefix } from "./experimentFormat";
 

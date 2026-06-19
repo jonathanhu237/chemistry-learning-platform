@@ -1,6 +1,6 @@
 import { FlaskConical } from "lucide-react";
 import type { StudentLearningChapterExperimentGroup, StudentLearningPointGroup, StudentLearningProfile } from "../../api";
-import type { ChapterLearningView } from "../../app/routes";
+import type { ChapterLearningView } from "../../app/router/routeTypes";
 import { MobileEmptyState } from "../../mobile/primitives";
 import { FinishLearningAction } from "../../shared/learning/FinishLearningAction";
 import { LearningPointGroupView } from "./LearningPointGroupView";

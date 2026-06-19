@@ -13,10 +13,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FRONTENDS = [
     ("admin frontend", ROOT / "apps" / "admin-web", True),
-    ("student H5 frontend", ROOT / "apps" / "student-web", False),
+    ("student H5 frontend", ROOT / "apps" / "student-web", True),
 ]
 ADMIN_FRONTEND_DIR = ROOT / "apps" / "admin-web"
-DEFAULT_CHANGE = "integrate-student-h5-platform"
+STUDENT_FRONTEND_DIR = ROOT / "apps" / "student-web"
+DEFAULT_CHANGE = "student-h5-router-tab-page-architecture"
 
 
 @dataclass
@@ -140,6 +141,7 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
         )
     if args.run_e2e:
         stages.append(Stage("admin frontend e2e smoke", [_npm(), "run", "e2e:smoke"], cwd=ADMIN_FRONTEND_DIR))
+        stages.append(Stage("student H5 mobile route-stack QA", [_npm(), "run", "qa:mobile"], cwd=STUDENT_FRONTEND_DIR))
     return stages
 
 

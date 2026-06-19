@@ -1,35 +1,4 @@
-# student-h5-platform-shell Specification
-
-## Purpose
-TBD - created by archiving change integrate-student-h5-platform. Update Purpose after archive.
-## Requirements
-### Requirement: Student H5 frontend delivery
-The system SHALL build and serve the student H5 frontend as a first-class app alongside the admin console.
-
-#### Scenario: Student frontend build exists
-- **WHEN** the FastAPI service starts with a built `apps/student-web/dist`
-- **THEN** it SHALL serve the student SPA from the site root
-- **AND** it SHALL serve student static assets from `/assets`.
-
-#### Scenario: API route is requested
-- **WHEN** a request path starts with `/api`
-- **THEN** the student SPA fallback SHALL NOT intercept that request.
-
-### Requirement: Admin frontend coexistence
-The system SHALL keep the admin console available under `/admin` while adding student H5 root serving.
-
-#### Scenario: Admin route is requested
-- **WHEN** a request path starts with `/admin`
-- **THEN** the admin SPA or admin static route SHALL handle the request
-- **AND** the student SPA fallback SHALL NOT override it.
-
-### Requirement: Student production readiness validation
-The production readiness script SHALL validate both admin and student frontend build health.
-
-#### Scenario: Readiness validation is run
-- **WHEN** production readiness validation executes
-- **THEN** it SHALL run existing backend, protected-resource, OpenSpec, and admin frontend checks
-- **AND** it SHALL also run student H5 typecheck and build checks.
+## ADDED Requirements
 
 ### Requirement: Student H5 nested route SPA fallback
 The system SHALL serve the student H5 SPA for authenticated app deep links and nested client routes while continuing to exclude API and admin paths from the student fallback.
@@ -61,4 +30,3 @@ The production readiness checks SHALL validate that the route-driven student H5 
 - **WHEN** production readiness validation or student H5 build validation executes
 - **THEN** it MUST run student H5 typecheck and build checks
 - **AND** it SHOULD include a smoke check or documented manual check for direct load of at least one root route and one detail route.
-
