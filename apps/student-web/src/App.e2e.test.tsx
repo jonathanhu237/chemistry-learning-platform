@@ -430,7 +430,23 @@ describe("student app route stack", () => {
     fireEvent.click(document.querySelector<HTMLButtonElement>(".chapter-entry-card.recommended")!);
     await waitFor(() => expect(window.location.pathname).toBe("/chapter/halogens-17"));
     expectBottomNavHidden();
+    await waitFor(() => expect(document.querySelector(".chapter-element-summary")).not.toBeNull());
+    expect(document.querySelector(".atom-model-card")).toBeNull();
+    expect(document.querySelector(".chapter-view-switcher")).toBeNull();
+    expect(document.querySelector(".family-common-panel")).toBeNull();
+    expect(document.querySelector(".property-section-panel")).toBeNull();
+    expect(document.querySelector(".finish-action")).toBeNull();
+    expect(screen.queryByRole("button", { name: "选章节" })).not.toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector(".learning-point-card")).not.toBeNull());
+
+    fireEvent.click(document.querySelector<HTMLButtonElement>(".chapter-element-detail-action")!);
+    await waitFor(() => expect(window.location.pathname).toBe("/chapter/halogens-17/element/Cl"));
+    expectBottomNavHidden();
     await waitFor(() => expect(document.querySelector(".atom-model-card")).not.toBeNull());
+    act(() => window.history.back());
+    await waitFor(() => expect(window.location.pathname).toBe("/chapter/halogens-17"));
+    expectBottomNavHidden();
+    await waitFor(() => expect(screen.getByRole("button", { name: "问 AI" })).not.toBeDisabled());
 
     fireEvent.click(screen.getByRole("button", { name: "问 AI" }));
     await waitFor(() => expect(window.location.pathname).toBe("/ai/chat"));
@@ -440,8 +456,6 @@ describe("student app route stack", () => {
     await waitFor(() => expect(window.location.pathname).toBe("/chapter/halogens-17"));
     expectBottomNavHidden();
 
-    fireEvent.click(document.querySelectorAll<HTMLButtonElement>(".chapter-view-switcher button")[1]);
-    await waitFor(() => expect(document.querySelector(".learning-point-card")).not.toBeNull());
     fireEvent.click(document.querySelector<HTMLButtonElement>(".learning-point-card")!);
     await waitFor(() => expect(window.location.pathname).toBe("/point/EXP_19_1_01"));
     expectBottomNavHidden();
@@ -499,6 +513,12 @@ describe("student app route stack", () => {
     await waitFor(() => expect(window.location.pathname).toBe("/ai/chat"));
     expectBottomNavHidden();
     expect(document.querySelector(".ai-chat-panel")).not.toBeNull();
+    cleanup();
+
+    await renderAuthenticatedApp("/chapter/halogens-17/element/Cl");
+    await waitFor(() => expect(window.location.pathname).toBe("/chapter/halogens-17/element/Cl"));
+    expectBottomNavHidden();
+    await waitFor(() => expect(document.querySelector(".atom-model-card")).not.toBeNull());
     cleanup();
 
     await renderAuthenticatedApp("/feedback/new");

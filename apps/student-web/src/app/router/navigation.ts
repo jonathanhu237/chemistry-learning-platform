@@ -1,7 +1,7 @@
 import type { AssistantContext } from "../../features/assistant/assistantContext";
 import { saveAssistantContext } from "./assistantContextStore";
 import { rootPathById } from "./routeVisibility";
-import type { ChapterLearningView, StudentDetailSource } from "./routeTypes";
+import type { StudentDetailSource } from "./routeTypes";
 
 type NavigateLike = (options: {
   to: string;
@@ -30,7 +30,6 @@ export function navigateToChapter(
     from?: StudentDetailSource;
     propertyKey?: string | null;
     elementSymbol?: string | null;
-    chapterView?: ChapterLearningView | null;
   } = {},
 ): void {
   void navigate({
@@ -40,7 +39,23 @@ export function navigateToChapter(
       from: options.from || "learn",
       propertyKey: options.propertyKey || "",
       elementSymbol: options.elementSymbol || "",
-      chapterView: options.chapterView || "",
+    }),
+  });
+}
+
+export function navigateToElement(
+  navigate: NavigateLike,
+  profileId: string,
+  symbol: string,
+  options: {
+    from?: StudentDetailSource;
+  } = {},
+): void {
+  void navigate({
+    to: "/chapter/$profileId/element/$symbol",
+    params: { profileId, symbol },
+    search: compactSearch({
+      from: options.from || "chapter",
     }),
   });
 }
@@ -54,7 +69,6 @@ export function navigateToPoint(
     propertyKey?: string | null;
     propertyTitle?: string | null;
     elementSymbol?: string | null;
-    chapterView?: ChapterLearningView | null;
     pointKey?: string | null;
     pointTitle?: string | null;
   } = {},
@@ -68,7 +82,6 @@ export function navigateToPoint(
       propertyKey: options.propertyKey || "",
       propertyTitle: options.propertyTitle || "",
       elementSymbol: options.elementSymbol || "",
-      chapterView: options.chapterView || "",
       pointKey: options.pointKey || "",
       pointTitle: options.pointTitle || "",
     }),

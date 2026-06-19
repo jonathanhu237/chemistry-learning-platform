@@ -6,7 +6,14 @@ export type ChapterLearningView = "facts" | "experiments";
 
 export type StudentRootRouteId = "home" | "learn" | "ai" | "assessment" | "profile";
 
-export type StudentDetailSource = StudentRootRouteId | "chapter" | "point" | "assessment-session" | "assessment-report" | "feedback";
+export type StudentDetailSource =
+  | StudentRootRouteId
+  | "chapter"
+  | "element"
+  | "point"
+  | "assessment-session"
+  | "assessment-report"
+  | "feedback";
 
 export type StudentRouteSearch = {
   from?: StudentDetailSource;

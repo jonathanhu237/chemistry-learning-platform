@@ -641,9 +641,32 @@ async function checkAuthenticatedFlows(page, viewportName) {
   await page.locator('.chapter-entry-card').first().click();
   await page.waitForURL(/\/chapter\/halogens-17/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': chapter detail');
-  await page.locator('.chapter-view-switcher').first().waitFor({ state: 'visible', timeout: 10000 });
-  await assertAtomModelRenderable(page, viewportName + ': chapter atom model');
+  await page.locator('.chapter-element-summary').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.learning-point-card').first().waitFor({ state: 'visible', timeout: 10000 });
+  const chapterAtomCount = await page.locator('.atom-model-card').count();
+  if (chapterAtomCount > 0) {
+    throw new Error(viewportName + ': chapter detail should not render the full atom model');
+  }
+  const chapterSwitcherCount = await page.locator('.chapter-view-switcher').count();
+  if (chapterSwitcherCount > 0) {
+    throw new Error(viewportName + ': chapter detail should not render the old view switcher');
+  }
+  const chapterFinishCount = await page.locator('.finish-action').count();
+  if (chapterFinishCount > 0) {
+    throw new Error(viewportName + ': chapter detail should not render finish-learning action');
+  }
   await assertElementChipRowBalanced(page, viewportName + ': chapter element chips');
+
+  await page.locator('.chapter-element-detail-action').first().click();
+  await page.waitForURL(/\/chapter\/halogens-17\/element\/Cl/, { timeout: 10000 });
+  await expectBottomNavHidden(page, viewportName + ': element detail');
+  await assertAtomModelRenderable(page, viewportName + ': element atom model');
+  await page.goBack({ waitUntil: 'networkidle' });
+  await page.waitForURL(/\/chapter\/halogens-17/, { timeout: 10000 });
+  await page.waitForFunction(() => {
+    const action = document.querySelector('.detail-page-actions .student-app-header-action');
+    return action && !action.disabled;
+  }, null, { timeout: 10000 });
 
   await page.locator('.detail-page-actions .student-app-header-action').first().click();
   await page.waitForURL(/\/ai\/chat/, { timeout: 10000 });
@@ -652,7 +675,6 @@ async function checkAuthenticatedFlows(page, viewportName) {
   await page.goBack({ waitUntil: 'networkidle' });
   await page.waitForURL(/\/chapter\/halogens-17/, { timeout: 10000 });
 
-  await page.locator('.chapter-view-switcher button').nth(1).click();
   await page.locator('.learning-point-card').first().waitFor({ state: 'visible', timeout: 10000 });
   await page.locator('.learning-point-card').first().click();
   await page.waitForURL(/\/point\/EXP_19_1_01/, { timeout: 10000 });
@@ -714,7 +736,8 @@ async function checkAuthenticatedFlows(page, viewportName) {
     { path: '/ai', root: 'ai', selector: '.assistant-intro-card' },
     { path: '/assessment', root: 'assessment', selector: '.assessment-home-panel' },
     { path: '/profile', root: 'profile', selector: '.profile-card' },
-    { path: '/chapter/halogens-17', detail: true, selector: '.chapter-view-switcher' },
+    { path: '/chapter/halogens-17', detail: true, selector: '.chapter-element-summary' },
+    { path: '/chapter/halogens-17/element/Cl', detail: true, selector: '.atom-model-card' },
     { path: '/point/EXP_19_1_01', detail: true, selector: '.experiment-detail-card' },
     { path: '/ai/chat', detail: true, selector: '.ai-chat-panel' },
     { path: '/assessment/session/mobile-qa-posttest', detail: true, selector: '.assessment-panel' },

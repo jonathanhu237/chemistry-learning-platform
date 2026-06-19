@@ -3,6 +3,7 @@ import { AuthenticatedAppLayout } from "../shell/AuthenticatedAppLayout";
 import { HomeRootPage } from "../../routes/home/HomeRootPage";
 import { LearnRootPage } from "../../routes/learn/LearnRootPage";
 import { ChapterStudyPage } from "../../routes/learn/ChapterStudyPage";
+import { ElementDetailPage } from "../../routes/learn/ElementDetailPage";
 import { ExperimentPointPage } from "../../routes/learn/ExperimentPointPage";
 import { AiRootPage } from "../../routes/ai/AiRootPage";
 import { AiChatPage } from "../../routes/ai/AiChatPage";
@@ -49,6 +50,13 @@ const chapterRoute = createRoute({
   path: "/chapter/$profileId",
   validateSearch: parseStudentRouteSearch,
   component: ChapterStudyPage,
+});
+
+const elementRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/chapter/$profileId/element/$symbol",
+  validateSearch: parseStudentRouteSearch,
+  component: ElementDetailPage,
 });
 
 const pointRoute = createRoute({
@@ -110,6 +118,7 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     learnRoute,
     chapterRoute,
+    elementRoute,
     pointRoute,
     aiRoute,
     aiChatRoute,

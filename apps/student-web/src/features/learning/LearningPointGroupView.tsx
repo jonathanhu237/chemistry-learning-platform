@@ -1,7 +1,6 @@
 import { FlaskConical, PlayCircle } from "lucide-react";
 import type { StudentLearningChapterExperimentGroup, StudentLearningPointCard, StudentLearningPointGroup, StudentLearningProfile } from "../../api";
 import { studentMediaUrl } from "../../api";
-import type { ChapterLearningView } from "../../app/router/routeTypes";
 import { stripExperimentPrefix } from "../experiments/experimentFormat";
 
 export function LearningPointGroupView({
@@ -18,7 +17,6 @@ export function LearningPointGroupView({
     propertyKey: string;
     propertyTitle: string;
     elementSymbol?: string | null;
-    chapterView?: ChapterLearningView;
     experimentId: string;
     pointKey?: string | null;
     pointTitle?: string | null;
@@ -59,7 +57,6 @@ function LearningPointCardView({
     propertyKey: string;
     propertyTitle: string;
     elementSymbol?: string | null;
-    chapterView?: ChapterLearningView;
     experimentId: string;
     pointKey?: string | null;
     pointTitle?: string | null;
@@ -76,7 +73,6 @@ function LearningPointCardView({
           propertyKey: point.property_key,
           propertyTitle: point.property_title,
           elementSymbol,
-          chapterView: "experiments",
           experimentId: point.id,
           pointKey: point.point_key,
           pointTitle: point.point_title || point.title,

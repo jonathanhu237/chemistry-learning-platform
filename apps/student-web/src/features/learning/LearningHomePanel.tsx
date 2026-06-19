@@ -1,50 +1,40 @@
-import { useEffect, useRef, useState } from "react";
-import { FlaskConical, LoaderCircle, ChevronRight } from "lucide-react";
-import type { StudentExperimentGroupSummary, StudentLearningPageResponse, StudentLearningProfile, StudentLearningPropertySection } from "../../api";
+import type { CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Atom, ChevronRight, FlaskConical, LoaderCircle } from "lucide-react";
+import type { StudentLearningElementBadge, StudentLearningPageResponse, StudentLearningProfile } from "../../api";
 import { errorMessage, getStudentLearningPage } from "../../api";
-import type { ChapterLearningView } from "../../app/router/routeTypes";
+import { MobileEmptyState } from "../../mobile/primitives";
 import { LearningState } from "../../shared/mobile/LearningState";
-import { stripExperimentPrefix } from "../experiments/experimentFormat";
+import { ElementTileContent } from "../periodic-table/PeriodicElementCell";
+import { elementEnglishName, elementTileStyle } from "../periodic-table/periodicHelpers";
+import { LearningElementChips } from "./LearningElementChips";
 import { LearningExperimentsView } from "./LearningExperimentsView";
-import { LearningFactsView } from "./LearningFactsView";
 import { chapterExperimentGroupsForProfile } from "./learningFormat";
 
 export function LearningHomePanel({
   profileId,
-  initialPropertyKey,
   initialElementSymbol,
-  initialChapterView,
   onProfileLoaded,
+  onOpenElementDetail,
   onSelectPoint,
-  onFinishLearning,
-  finishing,
-  finishError,
 }: {
   profileId?: string | null;
-  initialPropertyKey?: string | null;
   initialElementSymbol?: string | null;
-  initialChapterView?: ChapterLearningView | null;
   onProfileLoaded?: (profile: StudentLearningProfile) => void;
+  onOpenElementDetail: (profileId: string, symbol: string) => void;
   onSelectPoint: (point: {
     profileId: string;
     propertyKey: string;
     propertyTitle: string;
     elementSymbol?: string | null;
-    chapterView?: ChapterLearningView;
     experimentId: string;
     pointKey?: string | null;
     pointTitle?: string | null;
   }) => void;
-  onFinishLearning: () => void;
-  finishing: boolean;
-  finishError: string;
 }) {
   const [page, setPage] = useState<StudentLearningPageResponse | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(profileId || null);
-  const [selectedPropertyKey, setSelectedPropertyKey] = useState<string>(initialPropertyKey || "");
   const [selectedElementSymbol, setSelectedElementSymbol] = useState<string>(initialElementSymbol || "");
-  const [activeChapterView, setActiveChapterView] = useState<ChapterLearningView>(initialChapterView || "facts");
-  const chapterScrollPositions = useRef<Record<ChapterLearningView, number>>({ facts: 0, experiments: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -53,16 +43,8 @@ export function LearningHomePanel({
   }, [profileId]);
 
   useEffect(() => {
-    if (initialPropertyKey) setSelectedPropertyKey(initialPropertyKey);
-  }, [initialPropertyKey]);
-
-  useEffect(() => {
     if (initialElementSymbol) setSelectedElementSymbol(initialElementSymbol);
   }, [initialElementSymbol]);
-
-  useEffect(() => {
-    if (initialChapterView) setActiveChapterView(initialChapterView);
-  }, [initialChapterView]);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,18 +70,11 @@ export function LearningHomePanel({
   }, [selectedProfileId]);
 
   const profile = page?.active_profile || null;
+
   useEffect(() => {
     if (profile) onProfileLoaded?.(profile);
   }, [profile, onProfileLoaded]);
 
-  useEffect(() => {
-    if (!profile) return;
-    const keys = profile.property_sections.map((section) => section.key);
-    const preferred = initialPropertyKey && keys.includes(initialPropertyKey) ? initialPropertyKey : selectedPropertyKey;
-    if (!preferred || !keys.includes(preferred)) {
-      setSelectedPropertyKey(keys[0] || "");
-    }
-  }, [profile, initialPropertyKey, selectedPropertyKey]);
   useEffect(() => {
     if (!profile) return;
     const symbols = profile.elements.map((element) => element.symbol);
@@ -112,137 +87,100 @@ export function LearningHomePanel({
     }
   }, [profile, initialElementSymbol, selectedElementSymbol]);
 
-  const changeChapterView = (nextView: ChapterLearningView) => {
-    if (nextView === activeChapterView) return;
-    chapterScrollPositions.current[activeChapterView] = window.scrollY;
-    setActiveChapterView(nextView);
-    window.requestAnimationFrame(() => {
-      window.scrollTo({ top: chapterScrollPositions.current[nextView] || 0, behavior: "auto" });
-    });
-  };
-
-  const selectedSection =
-    profile?.property_sections.find((section) => section.key === selectedPropertyKey) || profile?.property_sections[0] || null;
-  const selectedElement =
-    profile?.elements.find((element) => element.symbol === selectedElementSymbol) ||
-    profile?.elements.find((element) => element.symbol === profile.default_element_symbol) ||
-    profile?.elements[0] ||
-    null;
+  const selectedElement = useMemo(() => {
+    if (!profile) return null;
+    return (
+      profile.elements.find((element) => element.symbol === selectedElementSymbol) ||
+      profile.elements.find((element) => element.symbol === profile.default_element_symbol) ||
+      profile.elements[0] ||
+      null
+    );
+  }, [profile, selectedElementSymbol]);
   const chapterExperimentGroups = profile ? chapterExperimentGroupsForProfile(profile) : [];
   const relatedPointCount = chapterExperimentGroups.reduce((total, group) => total + group.points.length, 0);
+
   return (
-    <section className="learning-panel" aria-label="实验学习">
-      {loading ? <LearningState icon={<LoaderCircle className="spin" size={23} />} text="正在加载学习资源" /> : null}
+    <section className="learning-panel" aria-label="章节学习">
+      {loading ? <LearningState icon={<LoaderCircle className="spin" size={23} />} text="正在加载学习内容" /> : null}
       {error ? <LearningState icon={<FlaskConical size={23} />} text={error} /> : null}
+      {!loading && !error && !profile ? (
+        <MobileEmptyState className="empty-learning-card" icon={<Atom size={20} />}>
+          <span>没有找到学习章节</span>
+        </MobileEmptyState>
+      ) : null}
       {!loading && !error && profile ? (
         <>
-          <ChapterViewSwitcher activeView={activeChapterView} experimentCount={relatedPointCount} onChange={changeChapterView} />
-
-          {activeChapterView === "facts" ? (
-            <LearningFactsView
+          <LearningElementChips
+            elements={profile.elements}
+            activeSymbol={selectedElement?.symbol || ""}
+            onSelectElement={setSelectedElementSymbol}
+          />
+          {selectedElement ? (
+            <ChapterElementSummary
               profile={profile}
-              elements={profile.elements}
-              selectedElement={selectedElement}
-              selectedSection={selectedSection}
+              element={selectedElement}
               experimentCount={relatedPointCount}
-              onSelectElement={setSelectedElementSymbol}
-              onShowExperiments={() => changeChapterView("experiments")}
+              onOpenDetail={() => onOpenElementDetail(profile.profile_id, selectedElement.symbol)}
             />
-          ) : (
-            <LearningExperimentsView
-              profile={profile}
-              groups={chapterExperimentGroups}
-              pointCount={relatedPointCount}
-              elementSymbol={null}
-              onSelectPoint={onSelectPoint}
-              finishing={finishing}
-              finishError={finishError}
-              onFinishLearning={onFinishLearning}
-            />
-          )}
+          ) : null}
+          <LearningExperimentsView
+            profile={profile}
+            groups={chapterExperimentGroups}
+            pointCount={relatedPointCount}
+            elementSymbol={selectedElement?.symbol || null}
+            onSelectPoint={onSelectPoint}
+          />
         </>
       ) : null}
     </section>
   );
 }
 
-function ChapterViewSwitcher({
-  activeView,
+function ChapterElementSummary({
+  profile,
+  element,
   experimentCount,
-  onChange,
+  onOpenDetail,
 }: {
-  activeView: ChapterLearningView;
+  profile: StudentLearningProfile;
+  element: StudentLearningElementBadge;
   experimentCount: number;
-  onChange: (view: ChapterLearningView) => void;
+  onOpenDetail: () => void;
 }) {
-  const options: { key: ChapterLearningView; label: string; count?: number }[] = [
-    { key: "facts", label: "性质通识" },
-    { key: "experiments", label: "实验视频", count: experimentCount },
-  ];
+  const familyLabel = profile.family_name || profile.title;
+  const location = [
+    element.group_label || element.group,
+    typeof element.period === "number" ? `${element.period}周期` : "",
+    element.block ? `${element.block}区` : "",
+  ]
+    .filter(Boolean)
+    .join(" / ");
+  const summary = element.note || [elementEnglishName(element), location || familyLabel].filter(Boolean).join(" · ");
 
   return (
-    <div className="chapter-view-switcher" role="tablist" aria-label="章节学习视图">
-      {options.map((option) => (
-        <button
-          key={option.key}
-          type="button"
-          role="tab"
-          aria-selected={activeView === option.key}
-          className={activeView === option.key ? "active" : ""}
-          onClick={() => onChange(option.key)}
-        >
-          <span>{option.label}</span>
-          {typeof option.count === "number" ? <em>{option.count}</em> : null}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-export function LearningProfileTabs({
-  page,
-  activeProfileId,
-  onSelectProfile,
-}: {
-  page: StudentLearningPageResponse | null;
-  activeProfileId: string;
-  onSelectProfile: (profileId: string) => void;
-}) {
-  const profiles = page?.profiles || [];
-  if (profiles.length <= 1) return null;
-  return (
-    <div className="learning-profile-tabs" aria-label="学习章节">
-      {profiles.map((profile) => (
-        <button
-          key={profile.profile_id}
-          type="button"
-          className={profile.profile_id === activeProfileId ? "active" : ""}
-          onClick={() => onSelectProfile(profile.profile_id)}
-        >
-          <strong>{profile.family_number || profile.title}</strong>
-          <span>{profile.element_symbols.join(" ") || profile.family_name}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-export function ExperimentGroupCard({
-  group,
-  selected,
-  onSelect,
-}: {
-  group: StudentExperimentGroupSummary;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button className={selected ? "family-card active" : "family-card"} type="button" aria-pressed={selected} onClick={onSelect}>
-      {group.recommended ? <em>推荐学习</em> : null}
-      <strong>{stripExperimentPrefix(group.parent_title)}</strong>
-      <small>
-        {group.experiment_count} 个实验点 / {group.question_count} 题
-      </small>
-    </button>
+    <section
+      className="chapter-element-summary"
+      style={elementTileStyle(element) as CSSProperties}
+      aria-label={`${element.name}元素摘要`}
+    >
+      <div className="chapter-element-summary-head">
+        <div className="selected-element-symbol chapter-element-summary-symbol" style={elementTileStyle(element)}>
+          <ElementTileContent element={element} />
+        </div>
+        <div className="chapter-element-summary-copy">
+          <p>当前元素</p>
+          <h2>{element.name}在{familyLabel}中的位置</h2>
+          <span>{summary}</span>
+        </div>
+      </div>
+      <div className="chapter-element-summary-foot">
+        <small>{location || familyLabel}</small>
+        <small>{experimentCount} 个实验入口</small>
+      </div>
+      <button className="chapter-element-detail-action" type="button" onClick={onOpenDetail}>
+        <span>查看元素详情</span>
+        <ChevronRight size={18} />
+      </button>
+    </section>
   );
 }

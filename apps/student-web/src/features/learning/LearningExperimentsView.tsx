@@ -1,8 +1,6 @@
 import { FlaskConical } from "lucide-react";
 import type { StudentLearningChapterExperimentGroup, StudentLearningPointGroup, StudentLearningProfile } from "../../api";
-import type { ChapterLearningView } from "../../app/router/routeTypes";
 import { MobileEmptyState } from "../../mobile/primitives";
-import { FinishLearningAction } from "../../shared/learning/FinishLearningAction";
 import { LearningPointGroupView } from "./LearningPointGroupView";
 
 export function LearningExperimentsView({
@@ -11,9 +9,6 @@ export function LearningExperimentsView({
   pointCount,
   elementSymbol,
   onSelectPoint,
-  finishing,
-  finishError,
-  onFinishLearning,
 }: {
   profile: StudentLearningProfile;
   groups: StudentLearningChapterExperimentGroup[];
@@ -24,14 +19,10 @@ export function LearningExperimentsView({
     propertyKey: string;
     propertyTitle: string;
     elementSymbol?: string | null;
-    chapterView?: ChapterLearningView;
     experimentId: string;
     pointKey?: string | null;
     pointTitle?: string | null;
   }) => void;
-  finishing: boolean;
-  finishError: string;
-  onFinishLearning: () => void;
 }) {
   return (
     <div className="chapter-view-panel experiments-view" data-view="experiments">
@@ -61,7 +52,6 @@ export function LearningExperimentsView({
           </MobileEmptyState>
         )}
       </section>
-      <FinishLearningAction loading={finishing} error={finishError} onClick={onFinishLearning} />
     </div>
   );
 }
