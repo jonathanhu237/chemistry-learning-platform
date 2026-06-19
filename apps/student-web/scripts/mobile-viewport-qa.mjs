@@ -12,6 +12,8 @@ const viewports = [
   { name: "large-phone", width: 430, height: 932 },
 ];
 
+const widePreviewViewports = [{ name: "wide-preview", width: 1024, height: 900 }];
+
 const baseUrl = process.env.STUDENT_H5_URL || "http://127.0.0.1:5173";
 const studentId = process.env.STUDENT_H5_QA_STUDENT_ID || "";
 const password = process.env.STUDENT_H5_QA_PASSWORD || "";
@@ -474,9 +476,16 @@ async function assertAtomModelRenderable(page, label) {
 
   const metrics = await page.evaluate(() => {
     const canvas = document.querySelector(".atom-canvas");
+    const viewer = document.querySelector(".atom-viewer");
+    const visual = document.querySelector(".atom-model-visual");
+    const facts = document.querySelector(".atom-model-facts");
     const modeButtons = Array.from(document.querySelectorAll(".atom-mode-segment button"));
-    if (!(canvas instanceof HTMLCanvasElement)) return null;
+    if (!(canvas instanceof HTMLCanvasElement) || !(viewer instanceof HTMLElement)) return null;
     const rect = canvas.getBoundingClientRect();
+    const viewerRect = viewer.getBoundingClientRect();
+    const visualRect = visual?.getBoundingClientRect();
+    const factsRect = facts?.getBoundingClientRect();
+    const modeButtonRects = modeButtons.map((button) => button.getBoundingClientRect());
     let nonBlankPixelCount = 0;
     try {
       const context = canvas.getContext("2d");
@@ -501,9 +510,15 @@ async function assertAtomModelRenderable(page, label) {
       rectHeight: rect.height,
       canvasWidth: canvas.width,
       canvasHeight: canvas.height,
+      viewerWidth: viewerRect.width,
+      viewerHeight: viewerRect.height,
+      viewerHeightToWidth: viewerRect.width > 0 ? viewerRect.height / viewerRect.width : 0,
+      visualHeight: visualRect?.height || 0,
+      factsHeight: factsRect?.height || 0,
       nonBlankPixelCount,
       modeButtonCount: modeButtons.length,
-      modeButtonHeight: Math.min(...modeButtons.map((button) => button.getBoundingClientRect().height)),
+      modeButtonHeight: modeButtonRects.length ? Math.min(...modeButtonRects.map((rect) => rect.height)) : 0,
+      modeButtonWidth: modeButtonRects.length ? Math.min(...modeButtonRects.map((rect) => rect.width)) : 0,
     };
   });
 
@@ -514,14 +529,19 @@ async function assertAtomModelRenderable(page, label) {
   if (metrics.canvasWidth < 180 || metrics.canvasHeight < 180) {
     throw new Error(`${label}: atom canvas backing size too small ${metrics.canvasWidth}x${metrics.canvasHeight}`);
   }
+  if (metrics.viewerHeight > 430 || metrics.viewerHeightToWidth > 1.35) {
+    throw new Error(`${label}: atom viewer geometry is stretched ${JSON.stringify(metrics)}`);
+  }
   if (metrics.nonBlankPixelCount === 0) {
     throw new Error(`${label}: atom canvas appears blank`);
   }
   if (metrics.modeButtonCount < 2 || metrics.modeButtonHeight < 34) {
     throw new Error(`${label}: atom mode controls are not reachable`);
   }
+  if (metrics.modeButtonWidth < 72) {
+    throw new Error(`${label}: atom mode controls are too narrow ${JSON.stringify(metrics)}`);
+  }
 }
-
 async function waitForAny(page, selectors, timeout = 10000) {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
@@ -902,6 +922,14 @@ async function checkAuthenticatedFlows(page, viewportName) {
   }
 }
 
+async function checkElementDetailPreview(page, viewportName) {
+  await page.goto(baseUrl + '/chapter/halogens-17/element/Cl?from=chapter', { waitUntil: 'networkidle' });
+  await ensureAuthenticatedShell(page);
+  await page.locator('.atom-model-card').first().waitFor({ state: 'visible', timeout: 15000 });
+  await expectBottomNavHidden(page, viewportName + ': direct element detail');
+  await assertNoHorizontalOverflow(page, viewportName + ': direct element detail');
+  await assertAtomModelRenderable(page, viewportName + ': direct element atom model');
+}
 const playwright = await loadPlaywright();
 const chromium = playwright.chromium || playwright.default?.chromium;
 if (!chromium) {
@@ -944,6 +972,31 @@ try {
       const authenticated = await loginIfConfigured(page);
       if (authenticated) {
         await checkAuthenticatedFlows(page, viewport.name);
+      }
+      await context.close();
+      results.push({ ...viewport, authenticated });
+    } catch (error) {
+      throw new Error(`${viewport.name} ${viewport.width}x${viewport.height}: ${error instanceof Error ? error.message : String(error)}`, {
+        cause: error,
+      });
+    }
+  }
+
+  for (const viewport of widePreviewViewports) {
+    try {
+      const context = await browser.newContext({
+        viewport: { width: viewport.width, height: viewport.height },
+        isMobile: false,
+        hasTouch: false,
+        deviceScaleFactor: 1,
+      });
+      const page = await context.newPage();
+      if (useMockApi) {
+        await installMockApi(page);
+      }
+      const authenticated = await loginIfConfigured(page);
+      if (authenticated) {
+        await checkElementDetailPreview(page, viewport.name);
       }
       await context.close();
       results.push({ ...viewport, authenticated });

@@ -52,13 +52,14 @@
 
 .atom-model-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(220px, 0.92fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .atom-model-visual {
   display: grid;
+  align-self: start;
   gap: 10px;
   min-width: 0;
   border: 1px solid rgba(0, 88, 38, 0.12);
@@ -119,7 +120,9 @@
 
 .atom-viewer {
   position: relative;
+  align-self: start;
   min-height: 220px;
+  max-height: 380px;
   aspect-ratio: 1.12;
   margin: 0;
   overflow: hidden;
@@ -263,6 +266,7 @@
 
 .atom-model-facts {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-content: start;
   gap: 8px;
   min-width: 0;
@@ -303,18 +307,8 @@
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 720px) {
-  .atom-model-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .atom-model-facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .atom-teaching-cue {
-    grid-column: 1 / -1;
-  }
+.atom-teaching-cue {
+  grid-column: 1 / -1;
 }
 
 @media (max-width: 420px) {
