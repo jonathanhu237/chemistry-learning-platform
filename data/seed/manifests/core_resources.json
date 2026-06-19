@@ -1,6 +1,6 @@
 {
   "version": "production-core-resources-v1",
-  "generated_at": "2026-06-17T12:13:01.186949+00:00",
+  "generated_at": "2026-06-19T10:02:22.888574+00:00",
   "policy": "These files are the protected current system resources. Destructive cleanup must validate this manifest before deleting or moving historical artifacts.",
   "external_sources_mirrored": true,
   "expected_database_counts": {
@@ -160,15 +160,24 @@
       "source_path": null,
       "required": true,
       "kind": "json",
-      "size_bytes": 60059,
-      "sha256": "f631b58b2f0f5482e46a607a9ec4269c26c5057236c68f1f8ff9a93c76019032",
+      "size_bytes": 88745,
+      "sha256": "e28cea5b211a6dec534b03c3eb7042bc8bf663e8ebf2636bc06a23dc191decd3",
       "count": {
         "profiles": 9,
-        "enabled_profiles": 9
+        "enabled_profiles": 9,
+        "published_experiments": 77,
+        "covered_experiments": 77,
+        "uncovered_experiments": 0,
+        "profiles_without_experiments": 0,
+        "multi_profile_experiments": 17
       },
       "expected_counts": {
         "profiles": 9,
-        "enabled_profiles": 9
+        "enabled_profiles": 9,
+        "published_experiments": 77,
+        "covered_experiments": 77,
+        "uncovered_experiments": 0,
+        "profiles_without_experiments": 0
       }
     },
     {

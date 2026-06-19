@@ -92,6 +92,9 @@ class StudentLearningElementBadge(BaseModel):
     symbol: str
     name: str
     atomic_number: int | None = None
+    card_focus: str | None = None
+    card_relevance: str | None = None
+    card_tags: list[str] = Field(default_factory=list)
     relative_atomic_mass: str | None = None
     group: str | None = None
     period: int | None = None

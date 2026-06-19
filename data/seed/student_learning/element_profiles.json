@@ -40,7 +40,14 @@
           "state_at_20c": "Gas",
           "density": "0.001553 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/9/fluorine",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "电负性最高，氧化性最强",
+          "card_relevance": "作为卤素递变规律的上限，帮助对比氯、溴、碘的置换能力。",
+          "card_tags": [
+            "17族卤素",
+            "气体",
+            "常见-1价"
+          ]
         },
         {
           "symbol": "Cl",
@@ -59,7 +66,14 @@
           "state_at_20c": "Gas",
           "density": "0.002898 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/17/chlorine",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "氧化性强，常用于卤素置换对比",
+          "card_relevance": "氯水能把 Br-、I- 氧化成对应单质，现象直接对应本章实验视频。",
+          "card_tags": [
+            "17族卤素",
+            "气体",
+            "多价态"
+          ]
         },
         {
           "symbol": "Br",
@@ -78,7 +92,14 @@
           "state_at_20c": "Liquid",
           "density": "3.1028 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/35/bromine",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "氧化性居中，颜色变化明显",
+          "card_relevance": "溴和溴水的颜色、有机层显色，能帮助判断卤素置换结果。",
+          "card_tags": [
+            "17族卤素",
+            "液体",
+            "常见-1价"
+          ]
         },
         {
           "symbol": "I",
@@ -97,7 +118,14 @@
           "state_at_20c": "Solid",
           "density": "4.933 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/53/iodine",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "碘离子还原性强，显色清楚",
+          "card_relevance": "I- 容易被 Cl2、Br2 氧化成 I2，是观察还原性递变的典型对象。",
+          "card_tags": [
+            "17族卤素",
+            "固体",
+            "淀粉显色"
+          ]
         },
         {
           "symbol": "At",
@@ -116,7 +144,14 @@
           "state_at_20c": "Solid",
           "density": "Unknown g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/85/astatine",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "放射性卤素，作趋势延伸",
+          "card_relevance": "课堂实验通常不直接使用砹，用来理解卤素族向下递变的边界。",
+          "card_tags": [
+            "17族卤素",
+            "放射性",
+            "延伸认识"
+          ]
         }
       ],
       "property_cards": [
@@ -275,7 +310,14 @@
           "state_at_20c": "Gas",
           "density": "0.001308 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/8/oxygen",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "强氧化性非金属，支撑燃烧",
+          "card_relevance": "氧气参与燃烧和氧化现象，是理解氧族反应活性的起点。",
+          "card_tags": [
+            "16族氧族",
+            "气体",
+            "常见-2价"
+          ]
         },
         {
           "symbol": "S",
@@ -294,7 +336,14 @@
           "state_at_20c": "Solid",
           "density": "2.07 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/16/sulfur",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "多价态转换明显",
+          "card_relevance": "硫的含氧酸盐和硫代硫酸盐实验，直接呈现氧化还原转化。",
+          "card_tags": [
+            "16族氧族",
+            "固体",
+            "多氧化态"
+          ]
         },
         {
           "symbol": "Se",
@@ -313,7 +362,14 @@
           "state_at_20c": "Solid",
           "density": "4.809 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/34/selenium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "性质介于硫和碲之间",
+          "card_relevance": "硒用于横向比较氧族递变，帮助把硫的实验现象放进族趋势。",
+          "card_tags": [
+            "16族氧族",
+            "固体",
+            "趋势对比"
+          ]
         },
         {
           "symbol": "Te",
@@ -332,7 +388,14 @@
           "state_at_20c": "Solid",
           "density": "6.232 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/52/tellurium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "金属性增强的氧族元素",
+          "card_relevance": "碲作为氧族下部代表，用来理解非金属性减弱、金属性增强的趋势。",
+          "card_tags": [
+            "16族氧族",
+            "固体",
+            "趋势延伸"
+          ]
         }
       ],
       "property_cards": [
@@ -487,7 +550,14 @@
           "state_at_20c": "Gas",
           "density": "0.001145 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/7/nitrogen",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "稳定三键，常见价态丰富",
+          "card_relevance": "氮的氧化态变化帮助理解硝酸盐、铵盐等实验中的氧化还原线索。",
+          "card_tags": [
+            "15族氮族",
+            "气体",
+            "多价态"
+          ]
         },
         {
           "symbol": "P",
@@ -506,7 +576,14 @@
           "state_at_20c": "Solid",
           "density": "1.823 (white) g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/15/phosphorus",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "同素异形和含氧酸盐典型",
+          "card_relevance": "磷的燃烧、磷酸盐相关现象适合连接非金属性与化合价变化。",
+          "card_tags": [
+            "15族氮族",
+            "固体",
+            "常见+5价"
+          ]
         },
         {
           "symbol": "As",
@@ -525,7 +602,14 @@
           "state_at_20c": "Solid",
           "density": "5.75 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/33/arsenic",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "从非金属过渡到类金属",
+          "card_relevance": "砷用于比较氮族向下金属性增强，不作为常规课堂实验主角。",
+          "card_tags": [
+            "15族氮族",
+            "类金属",
+            "趋势过渡"
+          ]
         },
         {
           "symbol": "Sb",
@@ -544,7 +628,14 @@
           "state_at_20c": "Solid",
           "density": "6.68 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/51/antimony",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "类金属性明显，+3价更稳定",
+          "card_relevance": "锑帮助解释氮族下部元素化合价和金属性变化的实验背景。",
+          "card_tags": [
+            "15族氮族",
+            "类金属",
+            "+3更稳定"
+          ]
         },
         {
           "symbol": "Bi",
@@ -563,7 +654,14 @@
           "state_at_20c": "Solid",
           "density": "9.79 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/83/bismuth",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "重元素+3价更稳定",
+          "card_relevance": "铋是观察惰性电子对效应和重元素价态稳定性的代表。",
+          "card_tags": [
+            "15族氮族",
+            "金属",
+            "+3价"
+          ]
         }
       ],
       "property_cards": [
@@ -714,7 +812,14 @@
           "state_at_20c": "Solid",
           "density": "3.513 (diamond); 2.2 (graphite) g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/6/carbon",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "成键方式多，结构差异大",
+          "card_relevance": "碳的同素异形和还原性，是理解碳族实验现象的基础。",
+          "card_tags": [
+            "14族碳族",
+            "非金属",
+            "常见+4价"
+          ]
         },
         {
           "symbol": "Si",
@@ -733,7 +838,14 @@
           "state_at_20c": "Solid",
           "density": "2.3296 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/14/silicon",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "类金属性和硅酸盐典型",
+          "card_relevance": "硅连接非金属网络结构和硅酸盐实验，是碳族下移变化的关键。",
+          "card_tags": [
+            "14族碳族",
+            "类金属",
+            "半导体"
+          ]
         },
         {
           "symbol": "Sn",
@@ -752,7 +864,14 @@
           "state_at_20c": "Solid",
           "density": "7.287 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/50/tin",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "两性和变价特征明显",
+          "card_relevance": "锡盐实验能体现 +2/+4 价转化和重元素稳定性变化。",
+          "card_tags": [
+            "14族碳族",
+            "金属",
+            "+2/+4价"
+          ]
         },
         {
           "symbol": "Pb",
@@ -771,7 +890,14 @@
           "state_at_20c": "Solid",
           "density": "11.3 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/82/lead",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "重元素+2价更稳定",
+          "card_relevance": "铅盐沉淀和价态稳定性，用于理解碳族重元素惰性电子对效应。",
+          "card_tags": [
+            "14族碳族",
+            "金属",
+            "+2价"
+          ]
         }
       ],
       "property_cards": [
@@ -911,7 +1037,14 @@
           "state_at_20c": "Solid",
           "density": "2.34 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/5/boron",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "缺电子成键，非金属性强",
+          "card_relevance": "硼用于理解硼族上部元素的缺电子特征，以及它和铝的差异。",
+          "card_tags": [
+            "13族硼族",
+            "类金属",
+            "缺电子"
+          ]
         },
         {
           "symbol": "Al",
@@ -930,7 +1063,14 @@
           "state_at_20c": "Solid",
           "density": "2.70 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/13/aluminium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "两性金属，实验现象丰富",
+          "card_relevance": "铝与酸、碱反应以及氢氧化铝两性，是本章实验核心。",
+          "card_tags": [
+            "13族硼族",
+            "金属",
+            "两性"
+          ]
         },
         {
           "symbol": "Ga",
@@ -949,7 +1089,14 @@
           "state_at_20c": "Solid",
           "density": "5.91 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/31/gallium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "低熔点金属，作趋势参照",
+          "card_relevance": "镓帮助比较硼族下移后的金属性增强和物理性质变化。",
+          "card_tags": [
+            "13族硼族",
+            "金属",
+            "低熔点"
+          ]
         },
         {
           "symbol": "In",
@@ -968,7 +1115,14 @@
           "state_at_20c": "Solid",
           "density": "7.31 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/49/indium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "重硼族金属，+3价常见",
+          "card_relevance": "铟用于延伸理解硼族重元素价态和金属性递变。",
+          "card_tags": [
+            "13族硼族",
+            "金属",
+            "+3价"
+          ]
         },
         {
           "symbol": "Tl",
@@ -987,7 +1141,14 @@
           "state_at_20c": "Solid",
           "density": "11.8 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/81/thallium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "重元素+1价更稳定",
+          "card_relevance": "铊体现惰性电子对效应，是硼族价态稳定性变化的边界例子。",
+          "card_tags": [
+            "13族硼族",
+            "重金属",
+            "+1价"
+          ]
         }
       ],
       "property_cards": [
@@ -1117,7 +1278,14 @@
           "state_at_20c": "Solid",
           "density": "0.534 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/3/lithium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "最轻碱金属，反应相对温和",
+          "card_relevance": "锂用于对比钠、钾与水反应强弱，建立碱金属递变起点。",
+          "card_tags": [
+            "1族碱金属",
+            "固体",
+            "易失电子"
+          ]
         },
         {
           "symbol": "Na",
@@ -1136,7 +1304,14 @@
           "state_at_20c": "Solid",
           "density": "0.97 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/11/sodium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "典型碱金属，现象清楚",
+          "card_relevance": "钠与水反应、焰色和产氢现象，是 s 区实验的核心观察。",
+          "card_tags": [
+            "1族碱金属",
+            "固体",
+            "焰色黄色"
+          ]
         },
         {
           "symbol": "K",
@@ -1155,7 +1330,14 @@
           "state_at_20c": "Solid",
           "density": "0.89 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/19/potassium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "还原性更强，反应更剧烈",
+          "card_relevance": "钾用于和钠对比，观察碱金属向下反应活性增强。",
+          "card_tags": [
+            "1族碱金属",
+            "固体",
+            "焰色紫色"
+          ]
         },
         {
           "symbol": "Mg",
@@ -1174,7 +1356,14 @@
           "state_at_20c": "Solid",
           "density": "1.74 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/12/magnesium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "较活泼碱土金属",
+          "card_relevance": "镁燃烧和与酸反应，帮助连接金属活动性与实验现象。",
+          "card_tags": [
+            "2族碱土金属",
+            "固体",
+            "常见+2价"
+          ]
         },
         {
           "symbol": "Ca",
@@ -1193,7 +1382,14 @@
           "state_at_20c": "Solid",
           "density": "1.54 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/20/calcium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "碱土金属活性代表",
+          "card_relevance": "钙与水或酸的反应，可用于比较碱土金属活动性。",
+          "card_tags": [
+            "2族碱土金属",
+            "固体",
+            "常见+2价"
+          ]
         },
         {
           "symbol": "Ba",
@@ -1212,7 +1408,14 @@
           "state_at_20c": "Solid",
           "density": "3.62 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/56/barium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "沉淀识别常用，BaSO4稳定",
+          "card_relevance": "钡离子常用于硫酸根检验，白色沉淀现象直接服务实验判断。",
+          "card_tags": [
+            "2族碱土金属",
+            "固体",
+            "BaSO4沉淀"
+          ]
         }
       ],
       "property_cards": [
@@ -1351,7 +1554,14 @@
           "state_at_20c": "Solid",
           "density": "8.96 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/29/copper",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "有色离子和氧化还原典型",
+          "card_relevance": "铜及铜离子颜色、置换和络合现象常出现在实验观察中。",
+          "card_tags": [
+            "ds区",
+            "过渡金属",
+            "Cu2+蓝色"
+          ]
         },
         {
           "symbol": "Ag",
@@ -1370,7 +1580,14 @@
           "state_at_20c": "Solid",
           "density": "10.5 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/47/silver",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "沉淀检验代表元素",
+          "card_relevance": "Ag+ 与卤离子生成沉淀，是识别 Cl-、Br-、I- 的核心实验。",
+          "card_tags": [
+            "ds区",
+            "贵金属",
+            "卤化银"
+          ]
         },
         {
           "symbol": "Zn",
@@ -1389,7 +1606,14 @@
           "state_at_20c": "Solid",
           "density": "7.134 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/30/zinc",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "两性和置换反应常见",
+          "card_relevance": "锌与酸反应、置换反应，帮助判断金属活动性顺序。",
+          "card_tags": [
+            "ds区",
+            "金属",
+            "常见+2价"
+          ]
         },
         {
           "symbol": "Cd",
@@ -1408,7 +1632,14 @@
           "state_at_20c": "Solid",
           "density": "8.69 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/48/cadmium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "锌族重金属参照",
+          "card_relevance": "镉用于比较锌族元素向下性质变化，实验中应强调安全边界。",
+          "card_tags": [
+            "ds区",
+            "重金属",
+            "安全提示"
+          ]
         },
         {
           "symbol": "Hg",
@@ -1427,7 +1658,14 @@
           "state_at_20c": "Liquid",
           "density": "13.5336 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/80/mercury",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "液态金属，特殊性强",
+          "card_relevance": "汞用于认识金属物态和锌族特殊性，课堂实验通常只作延伸。",
+          "card_tags": [
+            "ds区",
+            "液态金属",
+            "安全提示"
+          ]
         }
       ],
       "property_cards": [
@@ -1582,7 +1820,14 @@
           "state_at_20c": "Solid",
           "density": "4.506 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/22/titanium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "稳定氧化物，价态变化可见",
+          "card_relevance": "钛用于理解过渡金属多价态与配合物颜色变化。",
+          "card_tags": [
+            "d区过渡金属",
+            "+4常见",
+            "配合物"
+          ]
         },
         {
           "symbol": "V",
@@ -1601,7 +1846,14 @@
           "state_at_20c": "Solid",
           "density": "6.0 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/23/vanadium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "多价态颜色丰富",
+          "card_relevance": "钒的不同氧化态颜色变化，适合观察过渡金属氧化还原。",
+          "card_tags": [
+            "d区过渡金属",
+            "多价态",
+            "颜色变化"
+          ]
         },
         {
           "symbol": "Cr",
@@ -1620,7 +1872,14 @@
           "state_at_20c": "Solid",
           "density": "7.15 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/24/chromium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "铬酸根/重铬酸根颜色典型",
+          "card_relevance": "铬的价态转换和沉淀、颜色变化，常用于氧化还原实验。",
+          "card_tags": [
+            "d区过渡金属",
+            "多价态",
+            "Cr(VI)"
+          ]
         },
         {
           "symbol": "Mn",
@@ -1639,7 +1898,14 @@
           "state_at_20c": "Solid",
           "density": "7.3 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/25/manganese",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "强氧化剂代表",
+          "card_relevance": "高锰酸根褪色和变色，是判断氧化还原反应进行的核心现象。",
+          "card_tags": [
+            "d区过渡金属",
+            "多价态",
+            "KMnO4"
+          ]
         },
         {
           "symbol": "Fe",
@@ -1658,7 +1924,14 @@
           "state_at_20c": "Solid",
           "density": "7.87 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/26/iron",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "Fe2+/Fe3+ 转化典型",
+          "card_relevance": "铁离子价态、沉淀和显色反应，是过渡金属实验主线。",
+          "card_tags": [
+            "d区过渡金属",
+            "多价态",
+            "显色"
+          ]
         },
         {
           "symbol": "Co",
@@ -1677,7 +1950,14 @@
           "state_at_20c": "Solid",
           "density": "8.86 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/27/cobalt",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "配合物颜色变化明显",
+          "card_relevance": "钴配合物颜色变化，帮助观察配位环境对性质的影响。",
+          "card_tags": [
+            "d区过渡金属",
+            "配合物",
+            "颜色变化"
+          ]
         },
         {
           "symbol": "Ni",
@@ -1696,7 +1976,14 @@
           "state_at_20c": "Solid",
           "density": "8.90 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/28/nickel",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "配合和沉淀现象典型",
+          "card_relevance": "镍离子沉淀、配合反应，用于比较过渡金属离子性质。",
+          "card_tags": [
+            "d区过渡金属",
+            "配合物",
+            "Ni2+"
+          ]
         }
       ],
       "property_cards": [
@@ -1850,7 +2137,14 @@
           "state_at_20c": "Gas",
           "density": "0.000082 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/1/hydrogen",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "最简单元素，连接酸碱与还原性",
+          "card_relevance": "氢气制取、燃烧和酸中 H+，是多个实验判断的共同线索。",
+          "card_tags": [
+            "氢",
+            "气体",
+            "H+/H2"
+          ]
         },
         {
           "symbol": "He",
@@ -1869,7 +2163,14 @@
           "state_at_20c": "Gas",
           "density": "0.000164 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/2/helium",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "稳定惰性气体",
+          "card_relevance": "氦用于理解满壳层稳定性，通常不直接参与课堂反应。",
+          "card_tags": [
+            "18族稀有气体",
+            "气体",
+            "稳定"
+          ]
         },
         {
           "symbol": "Ne",
@@ -1888,7 +2189,14 @@
           "state_at_20c": "Gas",
           "density": "0.000825 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/10/neon",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "满壳层稳定，发光应用典型",
+          "card_relevance": "氖帮助认识稀有气体低反应性和放电发光现象。",
+          "card_tags": [
+            "18族稀有气体",
+            "气体",
+            "放电发光"
+          ]
         },
         {
           "symbol": "Ar",
@@ -1907,7 +2215,14 @@
           "state_at_20c": "Gas",
           "density": "0.001633 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/18/argon",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "常用惰性保护气",
+          "card_relevance": "氩用于说明惰性气氛在保护反应或隔绝空气中的作用。",
+          "card_tags": [
+            "18族稀有气体",
+            "气体",
+            "保护气"
+          ]
         },
         {
           "symbol": "Kr",
@@ -1926,7 +2241,14 @@
           "state_at_20c": "Gas",
           "density": "0.003425 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/36/krypton",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "重稀有气体，反应性略增",
+          "card_relevance": "氪用于延伸稀有气体向下极化性增强和少量化合物形成可能性。",
+          "card_tags": [
+            "18族稀有气体",
+            "气体",
+            "趋势延伸"
+          ]
         },
         {
           "symbol": "Xe",
@@ -1945,7 +2267,14 @@
           "state_at_20c": "Gas",
           "density": "0.005366 g/cm3",
           "rsc_url": "https://periodic-table.rsc.org/element/54/xenon",
-          "fact_source": "Royal Society of Chemistry Periodic Table"
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "可形成少量化合物",
+          "card_relevance": "氙打破“完全惰性”的绝对印象，帮助理解重稀有气体反应性。",
+          "card_tags": [
+            "18族稀有气体",
+            "气体",
+            "可成化合物"
+          ]
         }
       ],
       "property_cards": [

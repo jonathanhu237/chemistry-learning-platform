@@ -174,6 +174,9 @@ const learningPage: StudentLearningPageResponse = {
         symbol: "Cl",
         name: "Chlorine",
         atomic_number: 17,
+        card_focus: "Experiment focus: oxidizes bromide",
+        card_relevance: "Links directly to the halogen displacement video.",
+        card_tags: ["Group 17", "Gas", "Common -1"],
         relative_atomic_mass: "35.45",
         group: "17",
         period: 3,
@@ -192,6 +195,9 @@ const learningPage: StudentLearningPageResponse = {
         symbol: "Br",
         name: "Bromine",
         atomic_number: 35,
+        card_focus: "Experiment focus: displaced by chlorine",
+        card_relevance: "The organic-layer color change helps confirm bromine formation.",
+        card_tags: ["Group 17", "Liquid", "Common -1"],
         relative_atomic_mass: "79.904",
         group: "17",
         period: 4,
@@ -548,12 +554,16 @@ describe("student app route stack", () => {
     await waitFor(() => expect(window.location.pathname).toBe("/chapter/halogens-17"));
     expectBottomNavHidden();
     await waitFor(() => expect(document.querySelector(".chapter-element-summary")).not.toBeNull());
+    expect(screen.getByText("Experiment focus: oxidizes bromide")).toBeInTheDocument();
+    expect(screen.getByText("Links directly to the halogen displacement video.")).toBeInTheDocument();
+    expect(screen.queryByText("Chlorine在Halogens中的位置")).not.toBeInTheDocument();
     expect(document.querySelector(".atom-model-card")).toBeNull();
     expect(document.querySelector(".chapter-view-switcher")).toBeNull();
     expect(document.querySelector(".family-common-panel")).toBeNull();
     expect(document.querySelector(".property-section-panel")).toBeNull();
     expect(document.querySelector(".finish-action")).toBeNull();
     expect(screen.queryByRole("button", { name: "选章节" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "问 AI" })).not.toBeInTheDocument();
     await waitFor(() => expect(document.querySelector(".learning-point-card")).not.toBeNull());
 
     fireEvent.click(document.querySelector<HTMLButtonElement>(".chapter-element-detail-action")!);
@@ -563,15 +573,7 @@ describe("student app route stack", () => {
     act(() => window.history.back());
     await waitFor(() => expect(window.location.pathname).toBe("/chapter/halogens-17"));
     expectBottomNavHidden();
-    await waitFor(() => expect(screen.getByRole("button", { name: "问 AI" })).not.toBeDisabled());
-
-    fireEvent.click(screen.getByRole("button", { name: "问 AI" }));
-    await waitFor(() => expect(window.location.pathname).toBe("/ai/chat"));
-    expectBottomNavHidden();
-    expect(document.querySelector(".ai-chat-panel")).not.toBeNull();
-    act(() => window.history.back());
-    await waitFor(() => expect(window.location.pathname).toBe("/chapter/halogens-17"));
-    expectBottomNavHidden();
+    expect(screen.queryByRole("button", { name: "问 AI" })).not.toBeInTheDocument();
 
     fireEvent.click(document.querySelector<HTMLButtonElement>(".learning-point-card")!);
     await waitFor(() => expect(window.location.pathname).toBe("/point/EXP_19_1_01"));

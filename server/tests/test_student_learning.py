@@ -6,6 +6,7 @@ from pathlib import Path
 from sqlalchemy.exc import SQLAlchemyError
 
 from server.app.auth import AuthUser
+from server.app.services import student_learning_service as learning_service
 from server.app.services.student_learning_service import (
     _areas_for_groups,
     _build_parent_groups,
@@ -76,6 +77,93 @@ def test_student_learning_profile_seed_is_valid() -> None:
     assert result["ok"] is True
     assert result["profile_count"] == 9
     assert result["enabled_profile_count"] == 9
+
+
+def test_student_learning_profile_seed_has_element_card_copy() -> None:
+    result = validate_student_learning_profiles()
+
+    assert result["ok"] is True
+    assert not [error for error in result["errors"] if "missing card copy" in error]
+
+
+def test_student_learning_profile_validation_reports_missing_element_card_copy(monkeypatch) -> None:
+    profile = {
+        "profile_id": "test-profile",
+        "chapter_id": "CH_TEST",
+        "title": "Test profile",
+        "hero": {"title": "Test"},
+        "property_cards": [
+            {"key": "atomic_number", "label": "Atomic number", "value": "1"},
+            {"key": "electron_configuration", "label": "Electron configuration", "value": "1s1"},
+            {"key": "group", "label": "Group", "value": "1"},
+            {"key": "common_valence", "label": "Common valence", "value": "+1"},
+            {"key": "elemental_state", "label": "State", "value": "Gas"},
+            {"key": "redox", "label": "Redox", "value": "Reducing"},
+        ],
+        "family_common_properties": [{"key": "group", "label": "Group", "value": "1"}],
+        "property_sections": [{"key": "section", "title": "Section"}],
+        "elements": [
+            {
+                "symbol": "H",
+                "name": "Hydrogen",
+                "atomic_number": 1,
+                "electron_configuration": "1s1",
+                "group_label": "1",
+                "common_valence": "+1",
+                "state": "Gas",
+                "redox_tendency": "Reducing",
+                "relative_atomic_mass": "1.008",
+                "group": "1",
+                "period": 1,
+                "block": "s",
+                "state_at_20c": "Gas",
+                "density": "0.000082 g/cm3",
+                "rsc_url": "https://periodic-table.rsc.org/element/1/hydrogen",
+                "fact_source": "Royal Society of Chemistry Periodic Table",
+            }
+        ],
+    }
+    monkeypatch.setattr(learning_service, "_student_learning_seed", lambda: {"version": "test", "profiles": [profile]})
+
+    result = validate_student_learning_profiles()
+
+    assert result["ok"] is False
+    assert any("test-profile: element H missing card copy card_focus, card_relevance, card_tags" in error for error in result["errors"])
+
+
+def test_element_badges_expose_card_copy_and_preserve_detail_fields() -> None:
+    profile = {
+        "elements": [
+            {
+                "symbol": "Cl",
+                "name": "氯",
+                "atomic_number": 17,
+                "card_focus": "氧化性强，常用于卤素置换对比",
+                "card_relevance": "氯水能把 Br-、I- 氧化成对应单质，现象直接对应本章实验视频。",
+                "card_tags": ["17族卤素", "气体", "常见-1价"],
+                "electron_configuration": "[Ne]3s2 3p5",
+                "common_valence": "-1, 0, +1, +3, +5, +7",
+                "redox_tendency": "Cl2 can oxidize Br- and I-.",
+                "note": "Detailed note stays available.",
+            }
+        ]
+    }
+
+    badge = learning_service._element_badges(profile)[0]
+
+    assert badge.card_focus == "氧化性强，常用于卤素置换对比"
+    assert badge.card_relevance == "氯水能把 Br-、I- 氧化成对应单质，现象直接对应本章实验视频。"
+    assert badge.card_tags == ["17族卤素", "气体", "常见-1价"]
+    assert badge.redox_tendency == "Cl2 can oxidize Br- and I-."
+    assert badge.note == "Detailed note stays available."
+
+
+def test_element_badges_allow_missing_card_copy_during_mapping_migration() -> None:
+    badge = learning_service._element_badges({"elements": [{"symbol": "H", "name": "Hydrogen"}]})[0]
+
+    assert badge.card_focus is None
+    assert badge.card_relevance is None
+    assert badge.card_tags == []
 
 
 def test_student_learning_experiment_coverage_requires_every_profile_chapter() -> None:

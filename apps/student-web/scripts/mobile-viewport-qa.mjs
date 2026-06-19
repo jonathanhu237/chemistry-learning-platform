@@ -84,6 +84,9 @@ const mockLearningPage = {
         symbol: "Cl",
         name: "氯",
         atomic_number: 17,
+        card_focus: "氧化性强，常用于卤素置换对比",
+        card_relevance: "氯水能把 Br-、I- 氧化成对应单质，现象直接对应本章实验视频。",
+        card_tags: ["17族卤素", "气体", "多价态"],
         relative_atomic_mass: "35.45",
         group: "17",
         period: 3,
@@ -102,6 +105,9 @@ const mockLearningPage = {
         symbol: "Br",
         name: "溴",
         atomic_number: 35,
+        card_focus: "氧化性居中，颜色变化明显",
+        card_relevance: "溴和溴水的颜色、有机层显色，能帮助判断卤素置换结果。",
+        card_tags: ["17族卤素", "液体", "常见-1价"],
         relative_atomic_mass: "79.904",
         group: "17",
         period: 4,
@@ -408,6 +414,56 @@ async function assertElementChipRowBalanced(page, label) {
     throw new Error(
       `${label}: element row is not balanced for ${metrics.chipCount} chips, left ${metrics.leftInset.toFixed(1)}px vs right ${metrics.rightInset.toFixed(1)}px`,
     );
+  }
+}
+
+async function assertElementFocusCard(page, label) {
+  const metrics = await page.evaluate(() => {
+    const card = document.querySelector(".chapter-element-summary");
+    const tile = document.querySelector(".chapter-element-summary-symbol");
+    const focus = document.querySelector(".chapter-element-summary-focus");
+    const relevance = document.querySelector(".chapter-element-summary-relevance");
+    const detailAction = document.querySelector(".chapter-element-detail-action");
+    const pointCard = document.querySelector(".learning-point-card");
+    if (!card || !tile || !focus || !relevance || !detailAction || !pointCard) return null;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const cardRect = card.getBoundingClientRect();
+    const tileRect = tile.getBoundingClientRect();
+    const focusRect = focus.getBoundingClientRect();
+    const relevanceRect = relevance.getBoundingClientRect();
+    const detailRect = detailAction.getBoundingClientRect();
+    const pointRect = pointCard.getBoundingClientRect();
+    return {
+      viewportWidth,
+      viewportHeight,
+      tileWidth: tileRect.width,
+      tileHeight: tileRect.height,
+      tileInsideCard: tileRect.left >= cardRect.left && tileRect.right <= cardRect.right && tileRect.top >= cardRect.top,
+      focusText: focus.textContent?.trim() || "",
+      relevanceText: relevance.textContent?.trim() || "",
+      focusRight: focusRect.right,
+      relevanceRight: relevanceRect.right,
+      detailHeight: detailRect.height,
+      pointTop: pointRect.top,
+    };
+  });
+
+  if (!metrics) throw new Error(label + ": element focus card was not fully rendered");
+  if (!metrics.tileInsideCard || metrics.tileWidth < 80 || metrics.tileHeight < 80) {
+    throw new Error(label + ": element tile is clipped or too small " + JSON.stringify(metrics));
+  }
+  if (!metrics.focusText || !metrics.relevanceText) {
+    throw new Error(label + ": focus or relevance copy is empty");
+  }
+  if (metrics.focusRight > metrics.viewportWidth + 1 || metrics.relevanceRight > metrics.viewportWidth + 1) {
+    throw new Error(label + ": focus card text overflows viewport " + JSON.stringify(metrics));
+  }
+  if (metrics.detailHeight < 40) {
+    throw new Error(label + ": detail action touch target is too small " + metrics.detailHeight);
+  }
+  if (metrics.pointTop > metrics.viewportHeight) {
+    throw new Error(label + ": first experiment point is not discoverable in the first viewport " + JSON.stringify(metrics));
   }
 }
 
@@ -733,6 +789,7 @@ async function checkAuthenticatedFlows(page, viewportName) {
   await expectBottomNavHidden(page, viewportName + ': chapter detail');
   await page.locator('.chapter-element-summary').first().waitFor({ state: 'visible', timeout: 10000 });
   await page.locator('.learning-point-card').first().waitFor({ state: 'visible', timeout: 10000 });
+  await assertElementFocusCard(page, viewportName + ': chapter element focus card');
   const chapterAtomCount = await page.locator('.atom-model-card').count();
   if (chapterAtomCount > 0) {
     throw new Error(viewportName + ': chapter detail should not render the full atom model');
@@ -745,6 +802,10 @@ async function checkAuthenticatedFlows(page, viewportName) {
   if (chapterFinishCount > 0) {
     throw new Error(viewportName + ': chapter detail should not render finish-learning action');
   }
+  const chapterAiActionCount = await page.locator('.detail-page-actions .student-app-header-action').count();
+  if (chapterAiActionCount > 0) {
+    throw new Error(viewportName + ': chapter detail should not render a header AI action');
+  }
   await assertElementChipRowBalanced(page, viewportName + ': chapter element chips');
 
   await page.locator('.chapter-element-detail-action').first().click();
@@ -753,17 +814,9 @@ async function checkAuthenticatedFlows(page, viewportName) {
   await assertAtomModelRenderable(page, viewportName + ': element atom model');
   await page.goBack({ waitUntil: 'networkidle' });
   await page.waitForURL(/\/chapter\/halogens-17/, { timeout: 10000 });
-  await page.waitForFunction(() => {
-    const action = document.querySelector('.detail-page-actions .student-app-header-action');
-    return action && !action.disabled;
-  }, null, { timeout: 10000 });
-
-  await page.locator('.detail-page-actions .student-app-header-action').first().click();
-  await page.waitForURL(/\/ai\/chat/, { timeout: 10000 });
-  await expectBottomNavHidden(page, viewportName + ': contextual chapter AI');
-  await page.locator('.ai-chat-panel').first().waitFor({ state: 'visible', timeout: 10000 });
-  await page.goBack({ waitUntil: 'networkidle' });
-  await page.waitForURL(/\/chapter\/halogens-17/, { timeout: 10000 });
+  if ((await page.locator('.detail-page-actions .student-app-header-action').count()) > 0) {
+    throw new Error(viewportName + ': chapter detail should still not render a header AI action after returning from element detail');
+  }
 
   await page.locator('.learning-point-card').first().waitFor({ state: 'visible', timeout: 10000 });
   await page.locator('.learning-point-card').first().click();

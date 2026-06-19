@@ -73,6 +73,11 @@ REQUIRED_ELEMENT_FACT_KEYS = {
     "state",
     "redox_tendency",
 }
+REQUIRED_ELEMENT_CARD_KEYS = {
+    "card_focus",
+    "card_relevance",
+    "card_tags",
+}
 REQUIRED_ELEMENT_PHYSICAL_FACT_KEYS = {
     "relative_atomic_mass",
     "group",
@@ -224,6 +229,11 @@ def validate_student_learning_profiles() -> dict[str, Any]:
             missing_facts = sorted(key for key in REQUIRED_ELEMENT_FACT_KEYS if element.get(key) in (None, ""))
             if missing_facts:
                 errors.append(f"{prefix}: element {symbol} missing facts {', '.join(missing_facts)}")
+            missing_card_fields = sorted(
+                key for key in REQUIRED_ELEMENT_CARD_KEYS if element.get(key) in (None, "", [])
+            )
+            if missing_card_fields:
+                errors.append(f"{prefix}: element {symbol} missing card copy {', '.join(missing_card_fields)}")
             missing_physical_facts = sorted(
                 key for key in REQUIRED_ELEMENT_PHYSICAL_FACT_KEYS if element.get(key) in (None, "")
             )
@@ -322,6 +332,9 @@ def _element_badges(profile: dict[str, Any]) -> list[StudentLearningElementBadge
             symbol=str(element.get("symbol") or ""),
             name=str(element.get("name") or ""),
             atomic_number=int(element["atomic_number"]) if element.get("atomic_number") is not None else None,
+            card_focus=str(element.get("card_focus")) if element.get("card_focus") else None,
+            card_relevance=str(element.get("card_relevance")) if element.get("card_relevance") else None,
+            card_tags=[str(item) for item in element.get("card_tags") or [] if str(item).strip()],
             relative_atomic_mass=str(element.get("relative_atomic_mass")) if element.get("relative_atomic_mass") else None,
             group=str(element.get("group")) if element.get("group") else None,
             period=int(element["period"]) if element.get("period") is not None else None,

@@ -169,6 +169,11 @@ def _student_learning_profile_count(path: Path) -> dict[str, int]:
         "state",
         "redox_tendency",
     }
+    required_element_card_fields = {
+        "card_focus",
+        "card_relevance",
+        "card_tags",
+    }
     required_reference_media = {
         "id",
         "usage",
@@ -211,6 +216,13 @@ def _student_learning_profile_count(path: Path) -> dict[str, int]:
             missing_facts = sorted(key for key in required_element_facts if element.get(key) in (None, ""))
             if missing_facts:
                 raise ValueError(f"{path} profile {profile_id} element {symbol} missing facts: {', '.join(missing_facts)}")
+            missing_card_fields = sorted(
+                key for key in required_element_card_fields if element.get(key) in (None, "", [])
+            )
+            if missing_card_fields:
+                raise ValueError(
+                    f"{path} profile {profile_id} element {symbol} missing card copy: {', '.join(missing_card_fields)}"
+                )
         for media in profile.get("reference_media") or []:
             if not isinstance(media, dict):
                 raise ValueError(f"{path} profile {profile_id} has a non-object reference media entry")

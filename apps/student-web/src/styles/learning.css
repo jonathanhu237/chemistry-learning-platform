@@ -434,18 +434,18 @@
 
 .chapter-element-summary {
   display: grid;
-  gap: 12px;
+  gap: 11px;
   border: 1px solid rgba(0, 88, 38, 0.15);
   border-radius: 8px;
-  padding: 14px;
+  padding: 12px;
   background: rgba(255, 253, 246, 0.94);
   box-shadow: 0 16px 38px rgba(21, 49, 34, 0.1);
 }
 
 .chapter-element-summary-head {
   display: grid;
-  grid-template-columns: 86px minmax(0, 1fr);
-  align-items: center;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: start;
   gap: 12px;
 }
 
@@ -485,8 +485,8 @@
 }
 
 .chapter-element-summary-symbol {
-  width: 86px;
-  min-height: 86px;
+  width: 88px;
+  min-height: 88px;
 }
 
 .chapter-element-summary-symbol strong {
@@ -495,13 +495,15 @@
 
 .chapter-element-summary-copy {
   display: grid;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
 }
 
 .chapter-element-summary-copy p,
 .chapter-element-summary-copy h2,
-.chapter-element-summary-copy span {
+.chapter-element-summary-copy h2 span,
+.chapter-element-summary-copy > span,
+.chapter-element-summary-copy strong {
   margin: 0;
 }
 
@@ -513,34 +515,55 @@
 
 .chapter-element-summary-copy h2 {
   color: var(--ink);
-  font-size: 21px;
+  font-size: 20px;
   line-height: 1.16;
   overflow-wrap: anywhere;
 }
 
-.chapter-element-summary-copy span {
+.chapter-element-summary-copy h2 span {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.chapter-element-summary-focus {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 950;
+  line-height: 1.24;
+  overflow-wrap: anywhere;
+}
+
+.chapter-element-summary-relevance {
+  display: -webkit-box;
   color: var(--muted);
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.42;
+  overflow: hidden;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .chapter-element-summary-foot {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: 6px;
 }
 
 .chapter-element-summary-foot small {
   display: inline-flex;
   align-items: center;
-  min-height: 26px;
-  border-radius: 999px;
-  padding: 0 10px;
+  max-width: 100%;
+  min-height: 24px;
+  border-radius: 8px;
+  padding: 0 9px;
   color: var(--green);
   background: rgba(0, 88, 38, 0.08);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 850;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .chapter-element-detail-action {
@@ -549,7 +572,7 @@
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  min-height: 44px;
+  min-height: 42px;
   border: 1px solid rgba(0, 88, 38, 0.18);
   border-radius: 8px;
   padding: 0 12px;
@@ -559,6 +582,11 @@
   font-size: 14px;
   font-weight: 900;
   cursor: pointer;
+}
+
+.chapter-element-detail-action span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .point-list-panel {

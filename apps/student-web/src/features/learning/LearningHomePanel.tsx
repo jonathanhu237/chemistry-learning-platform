@@ -155,7 +155,12 @@ function ChapterElementSummary({
   ]
     .filter(Boolean)
     .join(" / ");
-  const summary = element.note || [elementEnglishName(element), location || familyLabel].filter(Boolean).join(" · ");
+  const focus = element.card_focus || (element.common_valence ? `常见价态 ${element.common_valence}` : "核心性质待补充");
+  const relevance = element.card_relevance || "查看详情了解它在本章实验中的作用。";
+  const tags = compactElementTags(
+    element.card_tags?.length ? element.card_tags : fallbackElementTags(element, location || familyLabel),
+  );
+  const experimentEntryLabel = experimentCount > 0 ? `${experimentCount} 个实验入口` : "实验关联待补充";
 
   return (
     <section
@@ -168,14 +173,19 @@ function ChapterElementSummary({
           <ElementTileContent element={element} />
         </div>
         <div className="chapter-element-summary-copy">
-          <p>当前元素</p>
-          <h2>{element.name}在{familyLabel}中的位置</h2>
-          <span>{summary}</span>
+          <p>当前观察元素</p>
+          <h2>
+            {element.name} <span>{elementEnglishName(element)}</span>
+          </h2>
+          <strong className="chapter-element-summary-focus">{focus}</strong>
+          <span className="chapter-element-summary-relevance">{relevance}</span>
         </div>
       </div>
       <div className="chapter-element-summary-foot">
-        <small>{location || familyLabel}</small>
-        <small>{experimentCount} 个实验入口</small>
+        {tags.map((tag) => (
+          <small key={tag}>{tag}</small>
+        ))}
+        <small>{experimentEntryLabel}</small>
       </div>
       <button className="chapter-element-detail-action" type="button" onClick={onOpenDetail}>
         <span>查看元素详情</span>
@@ -183,4 +193,25 @@ function ChapterElementSummary({
       </button>
     </section>
   );
+}
+
+function fallbackElementTags(element: StudentLearningElementBadge, location: string): string[] {
+  return [
+    location,
+    element.state_at_20c || element.state || "",
+    element.common_valence ? `常见${element.common_valence}价` : "",
+  ];
+}
+
+function compactElementTags(tags: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const tag of tags) {
+    const text = tag.trim();
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+    result.push(text);
+    if (result.length >= 3) break;
+  }
+  return result;
 }
