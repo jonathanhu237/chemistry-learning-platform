@@ -2,6 +2,19 @@
 
 This document records the operational baseline for turning the admin platform into a maintainable production project. It does not change feature behavior; it defines how to validate, deploy, back up, restore, and extend the current system safely.
 
+## Application Structure Standard
+
+Whole-application structural changes are governed by `docs/application-engineering-structure.md` and the OpenSpec change `standardize-application-engineering-structure`.
+
+The current application is treated as three coupled engineering surfaces plus a validation/service graph:
+
+- student H5 frontend: `apps/student-web`
+- teacher/admin frontend: `apps/admin-web`
+- backend service: `server/app`
+- required Compose and validation scripts: `docker-compose.yml` and `scripts/`
+
+Before moving files across these surfaces, or before splitting a major shell/API/domain owner, create or update an OpenSpec change that names the touched surfaces, owner map, validation gate, and rollback posture. Destructive refactors are allowed when git history, OpenSpec scope, and validation output make rollback clear; do not preserve obsolete wrappers only for old internal compatibility.
+
 ## Protected Resources
 
 Current system data is protected under `data/seed` and validated by:
