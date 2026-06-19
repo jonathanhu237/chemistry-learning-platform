@@ -22,13 +22,13 @@ async def verify(endpoint: str, url: str, screenshot_path: Path) -> int:
 
         context = browser.contexts[0] if browser.contexts else await browser.new_context()
         pages = context.pages
-        page = next((item for item in pages if "localhost" in item.url and "/admin/question-banks" in item.url), None)
+        page = next((item for item in pages if "localhost" in item.url and "/question-banks" in item.url), None)
         if page is None:
             page = await context.new_page()
             await page.goto(url, wait_until="networkidle")
         else:
             await page.bring_to_front()
-            if "/admin/question-banks" not in page.url:
+            if "/question-banks" not in page.url:
                 await page.goto(url, wait_until="networkidle")
 
         await page.wait_for_load_state("networkidle")
@@ -60,7 +60,7 @@ async def verify(endpoint: str, url: str, screenshot_path: Path) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Verify the AI question workbench by attaching to Chrome over CDP.")
     parser.add_argument("--endpoint", default="http://127.0.0.1:9222")
-    parser.add_argument("--url", default="http://localhost:5174/admin/question-banks")
+    parser.add_argument("--url", default="http://localhost:5174/question-banks")
     parser.add_argument("--screenshot", default="artifacts/playwright/question-workbench-cdp.png")
     args = parser.parse_args()
     return asyncio.run(verify(args.endpoint, args.url, Path(args.screenshot)))

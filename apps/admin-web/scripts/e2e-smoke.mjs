@@ -12,11 +12,11 @@ const password = process.env.E2E_ADMIN_PASSWORD || randomBytes(18).toString("bas
 const shouldBootstrap = process.env.E2E_SKIP_BOOTSTRAP !== "1" && !process.env.E2E_ADMIN_PASSWORD;
 
 const smokePaths = [
-  "/admin/overview",
-  "/admin/videos",
-  "/admin/learning-assistant",
-  "/admin/question-banks",
-  "/admin/analytics",
+  "/overview",
+  "/videos",
+  "/learning-assistant",
+  "/question-banks",
+  "/analytics",
 ];
 
 function candidateChromePaths() {
@@ -121,7 +121,7 @@ function isKnownAntdDeprecation(text) {
 
 async function main() {
   await requireHttpOk(`${apiBaseUrl}/health`, "backend");
-  await requireHttpOk(`${baseUrl}/admin/login`, "frontend");
+  await requireHttpOk(`${baseUrl}/login`, "frontend");
   const bootstrap = bootstrapSmokeAdmin();
   const loginResponse = await login();
 

@@ -95,8 +95,6 @@ class Settings:
     video_library_search_timeout_seconds: float = 3.0
     video_library_search_local_fallback: bool = True
     video_library_search_require_es_in_production: bool = True
-    admin_web_dist: Path = ROOT / "apps" / "admin-web" / "dist"
-    student_web_dist: Path = ROOT / "apps" / "student-web" / "dist"
 
     @property
     def is_production(self) -> bool:
@@ -216,6 +214,4 @@ def get_settings() -> Settings:
             "VIDEO_LIBRARY_SEARCH_REQUIRE_ES_IN_PRODUCTION",
             Settings.video_library_search_require_es_in_production,
         ),
-        admin_web_dist=Path(_getenv("ADMIN_WEB_DIST", str(Settings.admin_web_dist))),
-        student_web_dist=Path(_getenv("STUDENT_WEB_DIST", str(Settings.student_web_dist))),
     )

@@ -10,7 +10,7 @@ chemistry-admin
   apps/student-web     Student H5 mobile learning experience
   apps/admin-web       Teacher/admin console
   server/app           Backend runtime, APIs, domains, infrastructure, workers
-  docker-compose.yml   Required local/prod-like service graph
+  docker-compose.yml   Required local/prod-like service graph with separate frontend services
   scripts/             Validation, migrations, imports, rebuilds, maintenance
 ```
 
@@ -94,18 +94,14 @@ Rules:
 
 - Global shell behavior belongs in app-level owners, not feature pages.
 - Route metadata and navigation metadata should be centralized instead of duplicated in page modules.
+- The admin frontend is deployed at its service root. Canonical admin routes are `/login`, `/overview`, `/classes`, `/experiments`, `/videos`, `/question-banks`, `/analytics`, `/feedback`, `/learning-assistant`, `/settings`, and `/ai-config`.
 - Feature pages should split into page orchestration, hooks, panels, forms, tables, adapters, and display helpers when they grow.
 - Cross-feature components must not import feature-specific API clients or data types.
 - Shared request primitives may remain central, but feature/domain schemas and endpoint helpers should not keep expanding one global `api/index.ts`.
 - Shell, auth, navigation, route registry, or top-level lazy-route changes require admin e2e smoke.
 
-Recommended next change:
-
-- Split `apps/admin-web/src/App.tsx` into app providers, auth guard/login owner, route registry, navigation model, and shell layout without changing product behavior.
-
 Current follow-up debt:
 
-- `apps/admin-web/src/App.tsx` owns too many shell responsibilities.
 - `apps/admin-web/src/api/index.ts` is a split candidate.
 - Large feature pages such as learning assistant, experiments, question bank, media resources, and analytics should be decomposed inside their feature folders.
 - `apps/admin-web/src/styles.css` and large feature CSS files should be reduced toward explicit style ownership.
@@ -116,7 +112,7 @@ Canonical shape:
 
 ```text
 server/app/
-  app_runtime/      FastAPI construction, middleware, static mounts, health
+  app_runtime/      FastAPI construction, middleware, health
   api/              auth/admin/student HTTP translation
   domains/          business rules, commands, read models, projections, adapters
   infrastructure/   settings, database, connection primitives
@@ -138,6 +134,7 @@ Rules:
 - API route modules translate domain results and domain errors into HTTP responses; they do not own domain rules.
 - Worker entrypoints import worker-safe domain and infrastructure owners only.
 - Deleted legacy wrappers stay deleted; rollback uses git or deployment rollback.
+- The backend owns `/health` and `/api/*` only. Student and admin SPA assets, deep-route fallbacks, and frontend health endpoints are owned by their frontend runtime containers.
 - Large domain files should split by commands, read models, projections, adapters, and worker-safe helpers when they become structural hotspots.
 
 Current follow-up debt:
@@ -150,7 +147,7 @@ Current follow-up debt:
 Default gates by surface:
 
 - Backend package ownership: `python scripts/validate_backend_architecture.py` and backend tests.
-- Backend service graph or required service changes: Compose smoke through `python scripts/validate_production_readiness.py --run-compose-smoke`.
+- Backend service graph or required service changes: Compose smoke through `python scripts/validate_production_readiness.py --run-compose-smoke`, covering `backend`, `student-web`, `admin-web`, `postgres`, `elasticsearch`, `tusd`, and `video-worker`.
 - Student H5 routing/shell/layout: typecheck, tests, build, and `npm run qa:mobile`.
 - Admin shell/routing/top-level pages: typecheck, tests, build, chunk report, and `npm run e2e:smoke`.
 - Multi-surface structural changes: full production readiness with e2e when the local runtime prerequisites are available.

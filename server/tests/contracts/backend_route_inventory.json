@@ -1,37 +1,7 @@
 {
-  "description": "Canonical FastAPI route inventory for backend-slim-domain-architecture.",
+  "description": "Canonical FastAPI route inventory after split-frontend-deployment-admin-shell; backend owns API and health, not frontend SPA fallbacks.",
   "runtime_entrypoint": "server.app.app_runtime.main:app",
   "routes": [
-    {
-      "method": "GET",
-      "path": "/",
-      "name": "student_web",
-      "owner": "runtime"
-    },
-    {
-      "method": "GET",
-      "path": "/admin",
-      "name": "admin_web",
-      "owner": "runtime"
-    },
-    {
-      "method": "MOUNT",
-      "path": "/admin/assets",
-      "name": "admin-assets",
-      "owner": "runtime"
-    },
-    {
-      "method": "GET",
-      "path": "/admin/sysu-logo.svg",
-      "name": "admin_logo",
-      "owner": "runtime"
-    },
-    {
-      "method": "GET",
-      "path": "/admin/{full_path:path}",
-      "name": "admin_web",
-      "owner": "runtime"
-    },
     {
       "method": "GET",
       "path": "/api/admin/ai-configuration",
@@ -747,12 +717,6 @@
       "owner": "student-api"
     },
     {
-      "method": "MOUNT",
-      "path": "/assets",
-      "name": "student-assets",
-      "owner": "runtime"
-    },
-    {
       "method": "GET",
       "path": "/docs",
       "name": "swagger_ui_html",
@@ -762,12 +726,6 @@
       "method": "GET",
       "path": "/docs/oauth2-redirect",
       "name": "swagger_ui_redirect",
-      "owner": "runtime"
-    },
-    {
-      "method": "GET",
-      "path": "/favicon.ico",
-      "name": "favicon",
       "owner": "runtime"
     },
     {
@@ -786,12 +744,6 @@
       "method": "GET",
       "path": "/redoc",
       "name": "redoc_html",
-      "owner": "runtime"
-    },
-    {
-      "method": "GET",
-      "path": "/{full_path:path}",
-      "name": "student_web",
       "owner": "runtime"
     }
   ],

@@ -11,12 +11,20 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED_SERVICES = {"backend", "elasticsearch", "postgres", "tusd", "video-worker"}
+REQUIRED_SERVICES = {"admin-web", "backend", "elasticsearch", "postgres", "student-web", "tusd", "video-worker"}
 
 
 def _run(command: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
     print("$ " + " ".join(command), flush=True)
-    completed = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, check=False)
+    completed = subprocess.run(
+        command,
+        cwd=ROOT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
+        check=False,
+    )
     if completed.stdout:
         print(completed.stdout, end="")
     if completed.stderr:
@@ -36,6 +44,16 @@ def _json_request(url: str, *, method: str = "GET", payload: object | None = Non
     with urllib.request.urlopen(request, timeout=timeout) as response:
         raw = response.read().decode("utf-8")
     return json.loads(raw) if raw else {}
+
+
+def _request_status(url: str, *, method: str = "GET", timeout: float = 5) -> int:
+    request = urllib.request.Request(url, method=method)
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            response.read()
+            return response.status
+    except urllib.error.HTTPError as exc:
+        return exc.code
 
 
 def _compose_port(service: str, port: int) -> str:
@@ -68,6 +86,24 @@ def _wait_json(url: str, *, label: str, timeout_seconds: int = 120) -> object:
             last_error = str(exc)
             time.sleep(2)
     raise SystemExit(f"{label} did not become healthy within {timeout_seconds}s: {last_error}")
+
+
+def _wait_status(url: str, *, label: str, expected: set[int], timeout_seconds: int = 120) -> int:
+    deadline = time.monotonic() + timeout_seconds
+    last_status: int | None = None
+    last_error = ""
+    while time.monotonic() < deadline:
+        try:
+            last_status = _request_status(url, timeout=5)
+            if last_status in expected:
+                return last_status
+            last_error = f"HTTP {last_status}"
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            last_error = str(exc)
+        time.sleep(2)
+    expected_text = ", ".join(str(status_code) for status_code in sorted(expected))
+    detail = last_error or (f"HTTP {last_status}" if last_status is not None else "no response")
+    raise SystemExit(f"{label} did not return expected status {{{expected_text}}} within {timeout_seconds}s: {detail}")
 
 
 def _assert_ik_analyzer(elasticsearch_base_url: str) -> None:
@@ -111,11 +147,19 @@ def main() -> None:
 
     elasticsearch_url = "http://" + _compose_port("elasticsearch", 9200)
     backend_url = "http://" + _compose_port("backend", 8000)
+    student_web_url = "http://" + _compose_port("student-web", 80)
+    admin_web_url = "http://" + _compose_port("admin-web", 80)
 
     _run(["docker", "compose", "exec", "-T", "postgres", "pg_isready", "-U", "chemistry", "-d", "chemistry_exam"])
     _wait_json(f"{elasticsearch_url}/_cluster/health", label="Elasticsearch")
     _assert_ik_analyzer(elasticsearch_url)
     _wait_json(f"{backend_url}/health", label="backend")
+    _wait_status(f"{student_web_url}/health", label="student frontend health", expected={200})
+    _wait_status(f"{admin_web_url}/health", label="admin frontend health", expected={200})
+    _wait_status(f"{student_web_url}/", label="student frontend root", expected={200})
+    _wait_status(f"{admin_web_url}/login", label="admin frontend login", expected={200})
+    _wait_status(f"{student_web_url}/api/auth/me", label="student frontend API proxy", expected={401})
+    _wait_status(f"{admin_web_url}/api/auth/me", label="admin frontend API proxy", expected={401})
 
     _run(["docker", "compose", "exec", "-T", "backend", "python", "scripts/apply_migrations.py"])
     if not args.skip_index_rebuild:

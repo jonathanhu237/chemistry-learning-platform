@@ -49,7 +49,7 @@ services:
       DATABASE_URL: postgresql+psycopg://chemistry:chemistry@postgres:5432/chemistry_exam
       MEDIA_ROOT: /app/data/media
       API_PUBLIC_BASE_URL: http://127.0.0.1:8000
-      FRONTEND_ALLOWED_ORIGINS: http://localhost:8000,http://127.0.0.1:8000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174
+      FRONTEND_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174
       TUS_UPLOAD_DIR: tus
       TUS_PUBLIC_ENDPOINT: http://127.0.0.1:10980/files/
       RAG_HYBRID_BGE_ENABLED: "true"
@@ -67,8 +67,6 @@ services:
       - "8000:8000"
     volumes:
       - ./data/media:/app/data/media
-      - ./apps/admin-web/dist:/app/apps/admin-web/dist:ro
-      - ./apps/student-web/dist:/app/apps/student-web/dist:ro
       - E:/chemistry-rag:/chemistry-rag:ro
     depends_on:
       postgres:
@@ -77,6 +75,44 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  student-web:
+    build:
+      context: .
+      dockerfile: server/Dockerfile.frontend
+      args:
+        APP_DIR: apps/student-web
+    environment:
+      BACKEND_UPSTREAM: http://backend:8000
+    ports:
+      - "${STUDENT_WEB_HOST_BIND:-127.0.0.1}:${STUDENT_WEB_HOST_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  admin-web:
+    build:
+      context: .
+      dockerfile: server/Dockerfile.frontend
+      args:
+        APP_DIR: apps/admin-web
+    environment:
+      BACKEND_UPSTREAM: http://backend:8000
+    ports:
+      - "${ADMIN_WEB_HOST_BIND:-127.0.0.1}:${ADMIN_WEB_HOST_PORT:-5174}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/health >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 12

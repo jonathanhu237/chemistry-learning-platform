@@ -4,10 +4,8 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 
 from server.app.api.error_translation import domain_http_exception_handler
 from server.app.api.auth.routes import router as auth_router
@@ -84,52 +82,10 @@ app.include_router(student_pretest_router)
 app.include_router(student_platform_router)
 app.include_router(student_video_library_router)
 
-if (settings.admin_web_dist / "assets").exists():
-    app.mount(
-        "/admin/assets",
-        StaticFiles(directory=settings.admin_web_dist / "assets"),
-        name="admin-assets",
-    )
-
-
-if (settings.student_web_dist / "assets").exists():
-    app.mount(
-        "/assets",
-        StaticFiles(directory=settings.student_web_dist / "assets"),
-        name="student-assets",
-    )
-
 
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
-
-
-@app.get("/admin/sysu-logo.svg", include_in_schema=False)
-async def admin_logo() -> FileResponse:
-    logo_path = settings.admin_web_dist / "sysu-logo.svg"
-    if not logo_path.exists():
-        raise HTTPException(status_code=404, detail="Admin logo has not been built")
-    return FileResponse(logo_path, media_type="image/svg+xml")
-
-
-@app.get("/favicon.ico", include_in_schema=False)
-async def favicon() -> FileResponse:
-    logo_path = settings.student_web_dist / "sysu-logo.svg"
-    if not logo_path.exists():
-        logo_path = settings.admin_web_dist / "sysu-logo.svg"
-    if not logo_path.exists():
-        raise HTTPException(status_code=404, detail="Frontend logo has not been built")
-    return FileResponse(logo_path, media_type="image/svg+xml")
-
-
-@app.get("/admin", include_in_schema=False)
-@app.get("/admin/{full_path:path}", include_in_schema=False)
-async def admin_web(full_path: str = "") -> FileResponse:
-    index_path = settings.admin_web_dist / "index.html"
-    if not index_path.exists():
-        raise HTTPException(status_code=404, detail="Admin web has not been built")
-    return FileResponse(index_path)
 
 
 def _experiment_matches_chapter(experiment: dict[str, Any], chapter_id: str) -> bool:
@@ -161,14 +117,3 @@ def _chapter_summary(chapter: dict[str, Any]) -> dict[str, Any]:
 @app.get("/api/chapters")
 async def api_chapters() -> list[dict[str, Any]]:
     return [_chapter_summary(chapter) for chapter in repositories.content.chapters()]
-
-
-@app.get("/", include_in_schema=False)
-@app.get("/{full_path:path}", include_in_schema=False)
-async def student_web(full_path: str = "") -> FileResponse:
-    if full_path.startswith(("api/", "admin/", "assets/")) or full_path in {"api", "admin", "assets"}:
-        raise HTTPException(status_code=404, detail="Not found")
-    index_path = settings.student_web_dist / "index.html"
-    if not index_path.exists():
-        raise HTTPException(status_code=404, detail="Student web has not been built")
-    return FileResponse(index_path)

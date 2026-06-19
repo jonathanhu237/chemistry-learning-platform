@@ -74,7 +74,6 @@ function manualVendorChunk(id: string): string | undefined {
 }
 
 export default defineConfig({
-  base: "/admin/",
   plugins: [react()],
   server: {
     proxy: {

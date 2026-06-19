@@ -61,33 +61,17 @@ Set-Location apps/student-web
 npm run dev
 ```
 
-The admin frontend runs at `http://127.0.0.1:5174/admin/login`, the student H5 runs at `http://127.0.0.1:5173/`, and both proxy `/api` to the backend.
+The admin frontend runs at `http://127.0.0.1:5174/login`, the student H5 runs at `http://127.0.0.1:5173/`, and both proxy `/api` to the backend in local development.
 
 ## Production-Style Local Run
 
-Build both frontends first:
-
-```powershell
-Set-Location apps/admin-web
-npm ci
-npm run build
-Set-Location ../student-web
-npm ci
-npm run build
-Set-Location ..\..
-```
-
-Then run the backend with the built student H5 mounted at `/` and the built admin frontend mounted at `/admin`:
-
-```powershell
-python -m uvicorn server.app.app_runtime.main:app --host 0.0.0.0 --port 8000
-```
-
-For Docker Compose, copy `.env.example` to `.env`, adjust secrets and database settings, then run:
+For Docker Compose, copy `.env.example` to `.env`, adjust secrets and database settings, then run the whole application graph:
 
 ```powershell
 docker compose up --build
 ```
+
+Compose builds and serves the student and admin frontend images separately. The backend remains an API service and does not mount or serve frontend `dist` directories.
 
 ## Bootstrap
 

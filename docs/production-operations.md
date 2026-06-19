@@ -76,30 +76,27 @@ Do not commit real `.env` files or secrets.
 
 ## Docker Expectations
 
-Before starting the backend image, build both frontends:
+Compose owns the production-like application graph. Build and start all required default services together:
 
 ```powershell
-Set-Location apps/admin-web
-npm ci
-npm run build
-Set-Location ../student-web
-npm ci
-npm run build
-Set-Location ..\..
-docker compose up --build
+docker compose up -d --build backend student-web admin-web postgres elasticsearch tusd video-worker
 ```
 
 Default Compose services:
 
 - `postgres`: pgvector Postgres with `pg_isready` health check.
 - `elasticsearch`: Elasticsearch with the IK analyzer plugin. Compose builds `chemistry-admin-elasticsearch-ik:8.11.3` from Elastic's official `docker.elastic.co/elasticsearch/elasticsearch:8.11.3` image and installs INFINI Labs `analysis-ik` `8.11.3`. It disables security for local development, exposes port `9200`, and health-checks the HTTP endpoint.
-- `backend`: FastAPI service, serves `/health`, the student H5 at `/`, and the admin console at `/admin`.
+- `backend`: FastAPI API service. It serves `/health` and `/api/*` only.
+- `student-web`: student H5 frontend service at `http://127.0.0.1:5173`, serving SPA routes from its own nginx runtime and proxying `/api/*` to `backend:8000`.
+- `admin-web`: teacher/admin frontend service at `http://127.0.0.1:5174`, serving canonical root routes such as `/login`, `/overview`, `/experiments`, and `/videos` from its own nginx runtime and proxying `/api/*` to `backend:8000`.
 - `tusd`: resumable upload receiver sharing `data/media`.
 - `video-worker`: local video processing worker sharing `data/media`.
 
-The backend depends on the PostgreSQL and Elasticsearch health checks. If a production-like run swaps the search image, verify the replacement image provides the `ik_max_word` tokenizer before bootstrapping the `student-video-library` index.
+The backend depends on the PostgreSQL and Elasticsearch health checks. The frontend services depend on backend health. If a production-like run swaps the search image, verify the replacement image provides the `ik_max_word` tokenizer before bootstrapping the `student-video-library` index.
 
 The Compose Postgres service is available to other containers as `postgres:5432`. Its host binding defaults to `127.0.0.1:15432` to avoid collisions with a developer's local Postgres. Override `POSTGRES_HOST_PORT` only when the host port is known to be free.
+
+Frontend host bindings default to `127.0.0.1:5173` for `student-web` and `127.0.0.1:5174` for `admin-web`. Override `STUDENT_WEB_HOST_PORT` or `ADMIN_WEB_HOST_PORT` only when the host port is already occupied. Rollback for this topology uses git or deployment rollback; do not restore backend SPA fallbacks as a compatibility layer.
 
 ## Student Video-Library Search Operations
 
@@ -183,7 +180,7 @@ Run the full local validation chain with frontend dependency installation:
 python scripts/validate_production_readiness.py --install-frontend
 ```
 
-The command checks protected resources, video-library ES/IK readiness, experiment point identity validation, OpenSpec strict validation, backend import smoke, backend tests, admin frontend typecheck/tests/build, student H5 typecheck/build, and the admin build chunk report.
+The command checks protected resources, video-library ES/IK readiness, experiment point identity validation, OpenSpec strict validation, backend import smoke, backend tests, admin frontend typecheck/tests/build, student H5 typecheck/tests/build, and the admin build chunk report.
 The default OpenSpec target is `backend-slim-domain-architecture`; use `--change <name>` to validate a different active or historical change.
 The backend stage also runs:
 
@@ -208,7 +205,7 @@ Run the real Docker Compose application smoke check when deployment wiring chang
 python scripts/validate_production_readiness.py --run-compose-smoke --skip-frontend --skip-backend-tests
 ```
 
-This starts or verifies the required default Compose services, verifies backend health, verifies PostgreSQL reachability, verifies `ik_max_word` through Elasticsearch `_analyze`, applies migrations, rebuilds the video-library index, and runs the ES/IK readiness validator with production fallback disabled.
+This starts or verifies the required default Compose services, verifies backend and frontend health, verifies both frontend `/api/*` proxies, verifies PostgreSQL reachability, verifies `ik_max_word` through Elasticsearch `_analyze`, applies migrations, rebuilds the video-library index, and runs the ES/IK readiness validator with production fallback disabled.
 
 To also rebuild images as part of the smoke check, run the lower-level command explicitly:
 
@@ -216,7 +213,7 @@ To also rebuild images as part of the smoke check, run the lower-level command e
 python scripts/validate_compose_stack.py --build
 ```
 
-Browser e2e smoke is opt-in because it requires a running backend, a running frontend dev server on the allowed local origin, and a local browser runtime:
+Browser e2e smoke is opt-in because it requires a running backend, a running admin frontend on the allowed local origin, and a local browser runtime:
 
 ```powershell
 Set-Location apps/admin-web
@@ -228,7 +225,7 @@ Set-Location ..\..
 
 The smoke script defaults to:
 
-- frontend: `http://localhost:5174`
+- admin frontend: `http://localhost:5174`
 - backend API: `http://localhost:8000`
 - local admin: `codex_smoke_admin`
 
@@ -238,7 +235,7 @@ If `E2E_ADMIN_PASSWORD` is not set, the script prepares a disposable local smoke
 python scripts/validate_production_readiness.py --run-e2e
 ```
 
-The student H5 mobile route-stack QA covers direct root routes, nested detail routes, and the video library detail route `/video-library` when run with a student account or `STUDENT_H5_QA_MOCK=1`.
+The student H5 mobile route-stack QA defaults to `http://127.0.0.1:5173` through `STUDENT_H5_URL`. It covers direct root routes, nested detail routes, and the video library detail route `/video-library` when run with a student account or `STUDENT_H5_QA_MOCK=1`.
 
 ## Local Smoke Tests
 
@@ -258,13 +255,13 @@ Invoke-RestMethod http://localhost:8000/api/admin/media/assets?limit=3 -Headers 
 Invoke-RestMethod http://localhost:8000/api/admin/learning-assistant/ask -Method Post -Headers @{ Authorization = "Bearer <token>" } -ContentType "application/json" -Body '{"question":"Explain a representative experiment point.","allow_rag_lookup":false}'
 ```
 
-Browser-smoke the main admin paths after the frontend dev server is running:
+Browser-smoke the main admin paths after the frontend service or dev server is running:
 
-- `/admin/overview`
-- `/admin/videos`
-- `/admin/learning-assistant`
-- `/admin/question-banks`
-- `/admin/analytics`
+- `/overview`
+- `/videos`
+- `/learning-assistant`
+- `/question-banks`
+- `/analytics`
 
 ## Local Smoke Admin Account
 

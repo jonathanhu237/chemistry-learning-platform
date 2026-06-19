@@ -63,7 +63,8 @@ Expected restored counts:
 
 Frontend:
 
-- `apps/admin-web/src/App.tsx` is now the admin shell and route table instead of a monolithic page container.
+- `apps/admin-web/src/app/AdminApp.tsx` is the admin app entrypoint; providers, login, auth guard, route registry, navigation, and shell layout live under `apps/admin-web/src/app/*`.
+- The old root `apps/admin-web/src/App.tsx` has been removed. Admin routes are deployed at the admin frontend service root, not below `/admin`.
 - Admin routes are lazy-loaded from `src/features/*`.
 - Heavy optional modules are behind feature boundaries: charts in AI config, Uppy/tus upload code in media, assistant markdown/KaTeX rendering in the learning assistant.
 - `apps/admin-web/src/styles.css` now holds global tokens, shell layout, shared helpers, Ant Design baseline overrides, and shared responsive rules.
@@ -79,6 +80,7 @@ Backend:
 Operations:
 
 - `.env.example`, Docker expectations, health checks, backup/restore notes, migration discipline, and validation commands are documented in `docs/production-operations.md`.
+- The default Compose application graph now includes separate `student-web` and `admin-web` services; the backend serves API and health routes only.
 - Future migrations must continue from `014_...`; historical duplicate `010_...` migrations are append-only history and should not be renamed.
 
 ## Validation Chain

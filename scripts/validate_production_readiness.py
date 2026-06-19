@@ -17,7 +17,7 @@ FRONTENDS = [
 ]
 ADMIN_FRONTEND_DIR = ROOT / "apps" / "admin-web"
 STUDENT_FRONTEND_DIR = ROOT / "apps" / "student-web"
-DEFAULT_CHANGE = "backend-slim-domain-architecture"
+DEFAULT_CHANGE = "split-frontend-deployment-admin-shell"
 
 
 @dataclass
@@ -26,6 +26,7 @@ class Stage:
     command: list[str]
     cwd: Path = ROOT
     required: bool = True
+    env: dict[str, str] | None = None
 
 
 @dataclass
@@ -69,7 +70,10 @@ def _run(stage: Stage) -> StageResult:
     print(f"\n==> {stage.name}", flush=True)
     print("$ " + " ".join(command), flush=True)
     start = time.perf_counter()
-    completed = subprocess.run(command, cwd=stage.cwd, check=False)
+    env = os.environ.copy()
+    if stage.env:
+        env.update(stage.env)
+    completed = subprocess.run(command, cwd=stage.cwd, env=env, check=False)
     seconds = time.perf_counter() - start
     status = "ok" if completed.returncode == 0 else "failed"
     print(f"<== {stage.name}: {status} ({seconds:.1f}s)")
@@ -104,8 +108,21 @@ def _frontend_dependencies_stage(args: argparse.Namespace) -> list[Stage]:
     return stages
 
 
+def _compose_host_env() -> dict[str, str]:
+    postgres_port = os.environ.get("POSTGRES_HOST_PORT", "15432")
+    elasticsearch_port = os.environ.get("ELASTICSEARCH_HOST_PORT", "9200")
+    return {
+        "DATA_BACKEND": "postgres",
+        "DATABASE_URL": f"postgresql+psycopg://chemistry:chemistry@127.0.0.1:{postgres_port}/chemistry_exam",
+        "VIDEO_LIBRARY_SEARCH_BACKEND": "elasticsearch",
+        "VIDEO_LIBRARY_SEARCH_URL": f"http://127.0.0.1:{elasticsearch_port}",
+        "VIDEO_LIBRARY_SEARCH_LOCAL_FALLBACK": "false",
+    }
+
+
 def _stages(args: argparse.Namespace) -> list[Stage]:
     stages: list[Stage] = []
+    compose_host_env = _compose_host_env() if args.run_compose_smoke else None
     if args.run_compose_smoke:
         stages.append(
             Stage(
@@ -124,12 +141,14 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
             Stage(
                 "video-library ES/IK readiness",
                 [sys.executable, "scripts/validate_video_library_search.py"],
+                env=compose_host_env,
             )
         )
         stages.append(
             Stage(
                 "experiment point identity validation",
                 [sys.executable, "scripts/validate_experiment_points.py"],
+                env=compose_host_env,
             )
         )
     if not args.skip_openspec:
@@ -183,7 +202,7 @@ def main() -> None:
     parser.add_argument(
         "--run-e2e",
         action="store_true",
-        help="Run opt-in browser e2e smoke. Requires backend and frontend to be running.",
+        help="Run opt-in browser e2e smoke. Requires backend, admin frontend, and student frontend origins to be running.",
     )
     parser.add_argument(
         "--run-compose-smoke",

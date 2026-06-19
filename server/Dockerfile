@@ -12,8 +12,6 @@ COPY server ./server
 COPY scripts ./scripts
 COPY data ./data
 COPY docs ./docs
-COPY apps/admin-web/dist ./apps/admin-web/dist
-COPY apps/student-web/dist ./apps/student-web/dist
 
 EXPOSE 8000
 

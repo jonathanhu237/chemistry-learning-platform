@@ -60,39 +60,23 @@ Set-Location apps/student-web
 npm run dev
 ```
 
-The student H5 runs at `http://127.0.0.1:5173/` and the admin frontend runs at `http://127.0.0.1:5174/admin/login`. Both proxy `/api` to the backend.
+The student H5 runs at `http://127.0.0.1:5173/` and the admin frontend runs at `http://127.0.0.1:5174/login`. Both proxy `/api` to the backend.
 
 ## Production-Style Local Run
 
-Copy the example environment and build the frontend first:
+Copy the example environment:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-```powershell
-Set-Location apps/admin-web
-npm ci
-npm run build
-Set-Location ../student-web
-npm ci
-npm run build
-Set-Location ..\..
-```
-
-Then run the backend with the built student H5 mounted at `/` and the built admin frontend mounted at `/admin`:
-
-```powershell
-python -m uvicorn server.app.app_runtime.main:app --host 0.0.0.0 --port 8000
-```
-
-For Docker Compose, copy `.env.example` to `.env`, adjust secrets and database settings, then run:
+For Docker Compose, adjust secrets and database settings, then run:
 
 ```powershell
 docker compose up --build
 ```
 
-The default Compose stack is the production-style application unit: Postgres, Elasticsearch with IK analysis, the FastAPI backend serving both built frontends, tusd uploads, and the local video worker. The optional RAG service is behind the `rag` profile.
+The default Compose stack is the production-style application unit: Postgres, Elasticsearch with IK analysis, the FastAPI backend API, independent `student-web` and `admin-web` frontend services, tusd uploads, and the local video worker. The optional RAG service is behind the `rag` profile.
 
 See `docs/production-operations.md` for health checks, migration discipline, backup/restore, and restore-from-seed instructions.
 
@@ -130,7 +114,7 @@ Run the production-readiness validation chain:
 python scripts/validate_production_readiness.py --install-frontend
 ```
 
-For a real Docker Compose application smoke check, including Postgres, Elasticsearch/IK, backend health, migrations, and video-library index readiness:
+For a real Docker Compose application smoke check, including Postgres, Elasticsearch/IK, backend/frontend health, frontend API proxies, migrations, and video-library index readiness:
 
 ```powershell
 python scripts/validate_production_readiness.py --run-compose-smoke --skip-frontend --skip-backend-tests
@@ -151,15 +135,14 @@ npm test
 npm run build
 Set-Location ../student-web
 npm run typecheck
+npm test
 npm run build
 ```
-
-The student H5 currently has no separate test script; its focused validation is typecheck plus build.
 
 Validate OpenSpec:
 
 ```powershell
-openspec validate experiment-point-learning-content-search-refactor --strict
+openspec validate split-frontend-deployment-admin-shell --strict
 ```
 
 ## GitHub Publishing
