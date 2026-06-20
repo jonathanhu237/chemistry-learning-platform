@@ -3,7 +3,8 @@
     "artifact_type": "experiment_catalog_point_content_examples",
     "version": "catalog-outline-30-examples-v1",
     "source_doc": "docs/30点位例子.txt",
-    "mapping_source": "openspec/changes/replace-legacy-experiment-seeds-with-catalog-outline-seed/design.md",
+    "mapping_source": "openspec/changes/catalog-point-ai-platform-roadmap/design.md",
+    "mapping_method": "semantic title/path/reagent scoring with reviewed target-path overrides for ties",
     "content_status": "published"
   },
   "examples": [
@@ -25,7 +26,133 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 1,
-      "source_line_end": 19
+      "source_line_end": 19,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "reviewed_override",
+        "target_rank": 16,
+        "target_score": 6.0,
+        "ambiguous": true,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch18-856cab2795d200bd",
+            "path": "第18章 碱金属和碱土金属 / 三、碱金属及碱土金属难溶盐 / 碱土金属难溶盐 / Ca/Sr/Ba铬酸盐性质实验 / Ca/Sr/Ba铬酸盐与HAc反应",
+            "score": 13.0,
+            "matched_terms": [
+              "18",
+              "ba",
+              "ca",
+              "sr",
+              "反应",
+              "实验",
+              "金属"
+            ],
+            "matched_formulae": [
+              "ba",
+              "ca",
+              "sr"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-c09a52594e13ffdf",
+            "path": "第18章 碱金属和碱土金属 / 三、碱金属及碱土金属难溶盐 / 碱土金属难溶盐 / Ca/Sr/Ba铬酸盐性质实验 / Ca/Sr/Ba铬酸盐与HCl反应",
+            "score": 13.0,
+            "matched_terms": [
+              "18",
+              "ba",
+              "ca",
+              "sr",
+              "反应",
+              "实验",
+              "金属"
+            ],
+            "matched_formulae": [
+              "ba",
+              "ca",
+              "sr"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-f09fdc8bb349976d",
+            "path": "第18章 碱金属和碱土金属 / 六、未知物及离子鉴别 / K⁺、Mg²⁺、Ca²⁺、Ba²⁺混合溶液中的离子分离检出",
+            "score": 12.0,
+            "matched_terms": [
+              "18",
+              "ba",
+              "ca",
+              "溶液",
+              "离子",
+              "金属"
+            ],
+            "matched_formulae": [
+              "ba",
+              "ca",
+              "k"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-7b4e2e67564c94d9",
+            "path": "第18章 碱金属和碱土金属 / 三、碱金属及碱土金属难溶盐 / 碱土金属难溶盐 / Mg/Ca/Ba硫酸盐性质实验 / Mg/Ca/Ba硫酸盐与(NH4)2SO4反应",
+            "score": 10.0,
+            "matched_terms": [
+              "18",
+              "ba",
+              "ca",
+              "反应",
+              "实验",
+              "金属"
+            ],
+            "matched_formulae": [
+              "ba",
+              "ca"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-c270536a6b453455",
+            "path": "第18章 碱金属和碱土金属 / 三、碱金属及碱土金属难溶盐 / 碱土金属难溶盐 / Mg/Ca/Ba硫酸盐性质实验 / Mg/Ca/Ba硫酸盐与浓HNO3反应",
+            "score": 10.0,
+            "matched_terms": [
+              "18",
+              "ba",
+              "ca",
+              "反应",
+              "实验",
+              "金属"
+            ],
+            "matched_formulae": [
+              "ba",
+              "ca"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-40e11e0b9857d44c",
+            "path": "第18章 碱金属和碱土金属 / 五、焰色反应 / 锂、钠、钾、钙、锶、钡盐的焰色反应",
+            "score": 6.0,
+            "matched_terms": [
+              "18",
+              "反应",
+              "焰色",
+              "焰色反应",
+              "色反",
+              "金属"
+            ],
+            "matched_formulae": []
+          }
+        ],
+        "matched_terms": [
+          "18",
+          "反应",
+          "焰色",
+          "焰色反应",
+          "色反",
+          "金属"
+        ],
+        "matched_formulae": [],
+        "override": {
+          "type": "reviewed_target_path",
+          "reason": "The curated target path resolves the sample when semantic candidates are tied or nearby."
+        }
+      }
     },
     {
       "example_number": 2,
@@ -45,7 +172,105 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 20,
-      "source_line_end": 38
+      "source_line_end": 38,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 14.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch18-1b02c72d04c4aff1",
+            "path": "第18章 碱金属和碱土金属 / 一、碱金属、碱土金属单质活泼性的比较 / 钠加热燃烧实验",
+            "score": 14.0,
+            "matched_terms": [
+              "18",
+              "加热",
+              "实验",
+              "烧实",
+              "热燃",
+              "燃烧",
+              "钠加",
+              "钠加热燃烧实验"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch15-5b0a97ae2f6f227c",
+            "path": "第15章 氮族元素 / 六、砷、锑、铋 / As(V)、Sb(V)、Bi(V)的氧化性 / 与MnSO4的反应 / Na[As(OH)6] + MnSO4 | 酸性体系",
+            "score": 9.0,
+            "matched_terms": [
+              "mnso4",
+              "na",
+              "化性",
+              "反应",
+              "氧化"
+            ],
+            "matched_formulae": [
+              "mnso4",
+              "na"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch20-cbc1ff91142ad461",
+            "path": "第20章 d区过渡金属 / 一、氢氧化物的酸碱性 / MnSO4加NaOH生成的沉淀及其性质",
+            "score": 9.0,
+            "matched_terms": [
+              "mnso4",
+              "naoh",
+              "氧化",
+              "生成",
+              "碱性"
+            ],
+            "matched_formulae": [
+              "mnso4",
+              "naoh"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch14-e498ce225e95b1f9",
+            "path": "第14章 氧族元素 / 三、过氧化氢的制备与性质 / 过氧化氢的性质 / 过氧化氢的还原性 / H₂O₂ + KMnO₄ | 酸性体系",
+            "score": 8.0,
+            "matched_terms": [
+              "h2o2",
+              "kmno4",
+              "氧化",
+              "过氧"
+            ],
+            "matched_formulae": [
+              "h2o2",
+              "kmno4"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-3df40597bcad96bf",
+            "path": "第15章 氮族元素 / 六、砷、锑、铋 / 氢氧化物的性质 / As(OH)3的生成与性质 / As2O₃ + 2mol/L NaOH",
+            "score": 8.0,
+            "matched_terms": [
+              "mol",
+              "naoh",
+              "氧化",
+              "生成"
+            ],
+            "matched_formulae": [
+              "l",
+              "naoh"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "18",
+          "加热",
+          "实验",
+          "烧实",
+          "热燃",
+          "燃烧",
+          "钠加",
+          "钠加热燃烧实验"
+        ],
+        "matched_formulae": []
+      }
     },
     {
       "example_number": 3,
@@ -65,7 +290,111 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 39,
-      "source_line_end": 56
+      "source_line_end": 56,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 14.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch18-8e83644ae6ab6577",
+            "path": "第18章 碱金属和碱土金属 / 一、碱金属、碱土金属单质活泼性的比较 / 镁条燃烧实验",
+            "score": 14.0,
+            "matched_terms": [
+              "18",
+              "单质",
+              "实验",
+              "条燃",
+              "烧实",
+              "燃烧",
+              "镁条",
+              "镁条燃烧实验"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch18-1805a7f728f84360",
+            "path": "第18章 碱金属和碱土金属 / 八、铍、铝性质的相似相异性 / 两性 / Be(OH)2、Al(OH)3的与HCl反应 / Al2(SO4)3 + NH3·H2O + HCl",
+            "score": 11.0,
+            "matched_terms": [
+              "18",
+              "h2o",
+              "nh3",
+              "oh",
+              "反应"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "nh3",
+              "oh"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-d0d4a98ab5e98925",
+            "path": "第18章 碱金属和碱土金属 / 八、铍、铝性质的相似相异性 / 两性 / Be(OH)2、Al(OH)3的与HCl反应 / BeSO4 + NH3·H2O + HCl",
+            "score": 11.0,
+            "matched_terms": [
+              "18",
+              "h2o",
+              "nh3",
+              "oh",
+              "反应"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "nh3",
+              "oh"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-a7f72dff7245504d",
+            "path": "第18章 碱金属和碱土金属 / 八、铍、铝性质的相似相异性 / 两性 / Be(OH)2、Al(OH)3的与NH3·H2O反应 / Al2(SO4)3 + NH3·H2O +（过量）NH3·H2O",
+            "score": 11.0,
+            "matched_terms": [
+              "18",
+              "h2o",
+              "nh3",
+              "oh",
+              "反应"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "nh3",
+              "oh"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-d6dc39baf9895fe0",
+            "path": "第18章 碱金属和碱土金属 / 八、铍、铝性质的相似相异性 / 两性 / Be(OH)2、Al(OH)3的与NH3·H2O反应 / BeSO4 + NH3·H2O +（过量）NH3·H2O",
+            "score": 11.0,
+            "matched_terms": [
+              "18",
+              "h2o",
+              "nh3",
+              "oh",
+              "反应"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "nh3",
+              "oh"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "18",
+          "单质",
+          "实验",
+          "条燃",
+          "烧实",
+          "燃烧",
+          "镁条",
+          "镁条燃烧实验"
+        ],
+        "matched_formulae": []
+      }
     },
     {
       "example_number": 4,
@@ -85,7 +414,125 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 57,
-      "source_line_end": 73
+      "source_line_end": 73,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "reviewed_override",
+        "target_rank": 1,
+        "target_score": 16.0,
+        "ambiguous": true,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch18-77bd43568497dcce",
+            "path": "第18章 碱金属和碱土金属 / 一、碱金属、碱土金属单质活泼性的比较 / 钠与水反应",
+            "score": 16.0,
+            "matched_terms": [
+              "18",
+              "与水",
+              "反应",
+              "土金",
+              "水反",
+              "活泼",
+              "碱土",
+              "金属",
+              "钠与",
+              "钠与水反应"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch18-f09fdc8bb349976d",
+            "path": "第18章 碱金属和碱土金属 / 六、未知物及离子鉴别 / K⁺、Mg²⁺、Ca²⁺、Ba²⁺混合溶液中的离子分离检出",
+            "score": 14.0,
+            "matched_terms": [
+              "18",
+              "ca",
+              "mg",
+              "土金",
+              "混合",
+              "溶液",
+              "碱土",
+              "金属"
+            ],
+            "matched_formulae": [
+              "ca",
+              "k",
+              "mg"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-7b4e2e67564c94d9",
+            "path": "第18章 碱金属和碱土金属 / 三、碱金属及碱土金属难溶盐 / 碱土金属难溶盐 / Mg/Ca/Ba硫酸盐性质实验 / Mg/Ca/Ba硫酸盐与(NH4)2SO4反应",
+            "score": 11.0,
+            "matched_terms": [
+              "18",
+              "ca",
+              "mg",
+              "反应",
+              "土金",
+              "碱土",
+              "金属"
+            ],
+            "matched_formulae": [
+              "ca",
+              "mg"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-c270536a6b453455",
+            "path": "第18章 碱金属和碱土金属 / 三、碱金属及碱土金属难溶盐 / 碱土金属难溶盐 / Mg/Ca/Ba硫酸盐性质实验 / Mg/Ca/Ba硫酸盐与浓HNO3反应",
+            "score": 11.0,
+            "matched_terms": [
+              "18",
+              "ca",
+              "mg",
+              "反应",
+              "土金",
+              "碱土",
+              "金属"
+            ],
+            "matched_formulae": [
+              "ca",
+              "mg"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-73c2f71784cfb40f",
+            "path": "第18章 碱金属和碱土金属 / 三、碱金属及碱土金属难溶盐 / 碱土金属难溶盐 / Mg/Ca/Ba碳酸盐性质实验 / Mg/Ca/Ba氯盐与氯化铵/氨水/碳酸铵反应",
+            "score": 11.0,
+            "matched_terms": [
+              "18",
+              "ca",
+              "mg",
+              "反应",
+              "土金",
+              "碱土",
+              "金属"
+            ],
+            "matched_formulae": [
+              "ca",
+              "mg"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "18",
+          "与水",
+          "反应",
+          "土金",
+          "水反",
+          "活泼",
+          "碱土",
+          "金属",
+          "钠与",
+          "钠与水反应"
+        ],
+        "matched_formulae": [],
+        "override": {
+          "type": "reviewed_target_path",
+          "reason": "The curated target path resolves the sample when semantic candidates are tied or nearby."
+        }
+      }
     },
     {
       "example_number": 5,
@@ -105,7 +552,128 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 74,
-      "source_line_end": 88
+      "source_line_end": 88,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 18.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch18-3d9f4090e3f6d2af",
+            "path": "第18章 碱金属和碱土金属 / 一、碱金属、碱土金属单质活泼性的比较 / 镁与冷／热水反应",
+            "score": 18.0,
+            "matched_terms": [
+              "18",
+              "与冷",
+              "反应",
+              "土金",
+              "水反",
+              "活泼",
+              "热水",
+              "热水反应",
+              "碱土",
+              "金属",
+              "镁与",
+              "镁与冷"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch18-cfc25d3e2e2b208c",
+            "path": "第18章 碱金属和碱土金属 / 三、碱金属及碱土金属难溶盐 / 碱土金属难溶盐 / Mg/Ca/Ba硫酸盐性质实验 / Mg/Ca/Ba硫酸盐的溶解度大小比较",
+            "score": 13.0,
+            "matched_terms": [
+              "18",
+              "ca",
+              "mg",
+              "土金",
+              "溶解",
+              "碱土",
+              "解度",
+              "金属",
+              "难溶"
+            ],
+            "matched_formulae": [
+              "ca",
+              "mg"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-f09fdc8bb349976d",
+            "path": "第18章 碱金属和碱土金属 / 六、未知物及离子鉴别 / K⁺、Mg²⁺、Ca²⁺、Ba²⁺混合溶液中的离子分离检出",
+            "score": 13.0,
+            "matched_terms": [
+              "18",
+              "ca",
+              "mg",
+              "土金",
+              "溶液",
+              "碱土",
+              "金属"
+            ],
+            "matched_formulae": [
+              "ca",
+              "k",
+              "mg"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-7b4e2e67564c94d9",
+            "path": "第18章 碱金属和碱土金属 / 三、碱金属及碱土金属难溶盐 / 碱土金属难溶盐 / Mg/Ca/Ba硫酸盐性质实验 / Mg/Ca/Ba硫酸盐与(NH4)2SO4反应",
+            "score": 12.0,
+            "matched_terms": [
+              "18",
+              "ca",
+              "mg",
+              "反应",
+              "土金",
+              "碱土",
+              "金属",
+              "难溶"
+            ],
+            "matched_formulae": [
+              "ca",
+              "mg"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-c270536a6b453455",
+            "path": "第18章 碱金属和碱土金属 / 三、碱金属及碱土金属难溶盐 / 碱土金属难溶盐 / Mg/Ca/Ba硫酸盐性质实验 / Mg/Ca/Ba硫酸盐与浓HNO3反应",
+            "score": 12.0,
+            "matched_terms": [
+              "18",
+              "ca",
+              "mg",
+              "反应",
+              "土金",
+              "碱土",
+              "金属",
+              "难溶"
+            ],
+            "matched_formulae": [
+              "ca",
+              "mg"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "18",
+          "与冷",
+          "反应",
+          "土金",
+          "水反",
+          "活泼",
+          "热水",
+          "热水反应",
+          "碱土",
+          "金属",
+          "镁与",
+          "镁与冷"
+        ],
+        "matched_formulae": []
+      }
     },
     {
       "example_number": 6,
@@ -125,7 +693,99 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 89,
-      "source_line_end": 102
+      "source_line_end": 102,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 12.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch18-cc4b433dd5ba5dd8",
+            "path": "第18章 碱金属和碱土金属 / 一、碱金属、碱土金属单质活泼性的比较 / 钙与水反应",
+            "score": 12.0,
+            "matched_terms": [
+              "18",
+              "与水",
+              "反应",
+              "水反",
+              "钙与",
+              "钙与水反应"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch18-1805a7f728f84360",
+            "path": "第18章 碱金属和碱土金属 / 八、铍、铝性质的相似相异性 / 两性 / Be(OH)2、Al(OH)3的与HCl反应 / Al2(SO4)3 + NH3·H2O + HCl",
+            "score": 8.0,
+            "matched_terms": [
+              "18",
+              "h2o",
+              "oh",
+              "反应"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "oh"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-d0d4a98ab5e98925",
+            "path": "第18章 碱金属和碱土金属 / 八、铍、铝性质的相似相异性 / 两性 / Be(OH)2、Al(OH)3的与HCl反应 / BeSO4 + NH3·H2O + HCl",
+            "score": 8.0,
+            "matched_terms": [
+              "18",
+              "h2o",
+              "oh",
+              "反应"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "oh"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-a7f72dff7245504d",
+            "path": "第18章 碱金属和碱土金属 / 八、铍、铝性质的相似相异性 / 两性 / Be(OH)2、Al(OH)3的与NH3·H2O反应 / Al2(SO4)3 + NH3·H2O +（过量）NH3·H2O",
+            "score": 8.0,
+            "matched_terms": [
+              "18",
+              "h2o",
+              "oh",
+              "反应"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "oh"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-d6dc39baf9895fe0",
+            "path": "第18章 碱金属和碱土金属 / 八、铍、铝性质的相似相异性 / 两性 / Be(OH)2、Al(OH)3的与NH3·H2O反应 / BeSO4 + NH3·H2O +（过量）NH3·H2O",
+            "score": 8.0,
+            "matched_terms": [
+              "18",
+              "h2o",
+              "oh",
+              "反应"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "oh"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "18",
+          "与水",
+          "反应",
+          "水反",
+          "钙与",
+          "钙与水反应"
+        ],
+        "matched_formulae": []
+      }
     },
     {
       "example_number": 7,
@@ -145,7 +805,111 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 103,
-      "source_line_end": 119
+      "source_line_end": 119,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 16.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch15-c4fe7d0d80c2763d",
+            "path": "第15章 氮族元素 / 二、亚硝酸及其盐的性质 / 亚硝酸的生成与分解",
+            "score": 16.0,
+            "matched_terms": [
+              "15",
+              "与分",
+              "亚硝",
+              "亚硝酸的生成与分解",
+              "分解",
+              "成与",
+              "生成",
+              "的生",
+              "硝酸",
+              "酸的"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch15-21a87562de5f2db2",
+            "path": "第15章 氮族元素 / 二、亚硝酸及其盐的性质 / 亚硝酸根的检验方法 / NaNO₂ + KI + CCl₄ | H₂SO₄酸性体系",
+            "score": 9.0,
+            "matched_terms": [
+              "15",
+              "h2so4",
+              "nano2",
+              "亚硝",
+              "硝酸"
+            ],
+            "matched_formulae": [
+              "h2so4",
+              "nano2"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-20ac5cf40a4851ff",
+            "path": "第15章 氮族元素 / 四、磷酸盐的性质 / 磷酸钙盐的生成与性质 / Na2HPO4 + CaCl2 + NH3·H2O + HCl",
+            "score": 8.0,
+            "matched_terms": [
+              "15",
+              "h2o",
+              "成与",
+              "生成",
+              "的生",
+              "酸盐"
+            ],
+            "matched_formulae": [
+              "h2o"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-1800b68f45d91eb8",
+            "path": "第15章 氮族元素 / 四、磷酸盐的性质 / 磷酸钙盐的生成与性质 / Na3PO4 + CaCl2 + NH3·H2O + HCl",
+            "score": 8.0,
+            "matched_terms": [
+              "15",
+              "h2o",
+              "成与",
+              "生成",
+              "的生",
+              "酸盐"
+            ],
+            "matched_formulae": [
+              "h2o"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-c95a4882f258530e",
+            "path": "第15章 氮族元素 / 四、磷酸盐的性质 / 磷酸钙盐的生成与性质 / NaH2PO4 + CaCl2 + NH3·H2O + HCl",
+            "score": 8.0,
+            "matched_terms": [
+              "15",
+              "h2o",
+              "成与",
+              "生成",
+              "的生",
+              "酸盐"
+            ],
+            "matched_formulae": [
+              "h2o"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "15",
+          "与分",
+          "亚硝",
+          "亚硝酸的生成与分解",
+          "分解",
+          "成与",
+          "生成",
+          "的生",
+          "硝酸",
+          "酸的"
+        ],
+        "matched_formulae": []
+      }
     },
     {
       "example_number": 8,
@@ -165,7 +929,105 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 120,
-      "source_line_end": 135
+      "source_line_end": 135,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 15.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch15-f28700d261463104",
+            "path": "第15章 氮族元素 / 二、亚硝酸及其盐的性质 / 亚硝酸的氧化性",
+            "score": 15.0,
+            "matched_terms": [
+              "15",
+              "亚硝",
+              "亚硝酸的氧化性",
+              "化性",
+              "氧化",
+              "的氧",
+              "盐的",
+              "硝酸",
+              "酸的"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch15-e8ac03d9e1a3dbfa",
+            "path": "第15章 氮族元素 / 三、硝酸及其盐的性质 / 硝酸的氧化性 / 浓硝酸 + Na2S",
+            "score": 8.0,
+            "matched_terms": [
+              "15",
+              "化性",
+              "氧化",
+              "的氧",
+              "盐的",
+              "硝酸",
+              "酸的"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch15-ba89df3d9fa3118c",
+            "path": "第15章 氮族元素 / 三、硝酸及其盐的性质 / 硝酸的氧化性 / 浓硝酸 + 硫粉",
+            "score": 8.0,
+            "matched_terms": [
+              "15",
+              "化性",
+              "氧化",
+              "的氧",
+              "盐的",
+              "硝酸",
+              "酸的"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch15-f712cd6fab94bc46",
+            "path": "第15章 氮族元素 / 三、硝酸及其盐的性质 / 硝酸的氧化性 / 浓硝酸/稀硝酸 + 铜",
+            "score": 8.0,
+            "matched_terms": [
+              "15",
+              "化性",
+              "氧化",
+              "的氧",
+              "盐的",
+              "硝酸",
+              "酸的"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch15-1539d8fd412c7ba7",
+            "path": "第15章 氮族元素 / 三、硝酸及其盐的性质 / 硝酸的氧化性 / 浓硝酸/稀硝酸 + 锌",
+            "score": 8.0,
+            "matched_terms": [
+              "15",
+              "化性",
+              "氧化",
+              "的氧",
+              "盐的",
+              "硝酸",
+              "酸的"
+            ],
+            "matched_formulae": []
+          }
+        ],
+        "matched_terms": [
+          "15",
+          "亚硝",
+          "亚硝酸的氧化性",
+          "化性",
+          "氧化",
+          "的氧",
+          "盐的",
+          "硝酸",
+          "酸的"
+        ],
+        "matched_formulae": []
+      }
     },
     {
       "example_number": 9,
@@ -185,7 +1047,109 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 136,
-      "source_line_end": 147
+      "source_line_end": 147,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 15.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch15-99145d9a1767ad82",
+            "path": "第15章 氮族元素 / 二、亚硝酸及其盐的性质 / 亚硝酸的还原性",
+            "score": 15.0,
+            "matched_terms": [
+              "15",
+              "亚硝",
+              "亚硝酸的还原性",
+              "原性",
+              "的还",
+              "盐的",
+              "硝酸",
+              "还原",
+              "酸的"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch20-8aedb2d89faae147",
+            "path": "第20章 d区过渡金属 / 二、化合物的氧化还原性 / 锰化合物的氧化还原性 / Mn(VII) 的氧化性 / KMnO4+Na2SO3 | 中性体系",
+            "score": 9.0,
+            "matched_terms": [
+              "kmno4",
+              "mn",
+              "中性",
+              "原性",
+              "还原"
+            ],
+            "matched_formulae": [
+              "kmno4",
+              "mn"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-a71e2f85bc6ceda6",
+            "path": "第15章 氮族元素 / 六、砷、锑、铋 / As(III)、Sb(III)、Bi(III)的还原性 / 与[Ag(NH3)2]+反应 / [Ag(NH3)2]+ + Bi(NO3)3",
+            "score": 8.0,
+            "matched_terms": [
+              "15",
+              "no3",
+              "原性",
+              "反应",
+              "的还",
+              "还原"
+            ],
+            "matched_formulae": [
+              "no3"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-47c622e7d1d380ab",
+            "path": "第15章 氮族元素 / 六、砷、锑、铋 / As(III)、Sb(III)、Bi(III)的还原性 / 与卤水反应 / Bi(NO3)3 + NaOH + 氯水",
+            "score": 8.0,
+            "matched_terms": [
+              "15",
+              "no3",
+              "原性",
+              "反应",
+              "的还",
+              "还原"
+            ],
+            "matched_formulae": [
+              "no3"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-867e94a695fc1e78",
+            "path": "第15章 氮族元素 / 四、磷酸盐的性质 / 磷酸盐的酸碱性 / 比较Na3PO4、Na2HPO4和NaH2PO4与硝酸银的反应后溶液的pH / Na2HPO4 + AgNO3",
+            "score": 8.0,
+            "matched_terms": [
+              "15",
+              "反应",
+              "溶液",
+              "盐的",
+              "硝酸",
+              "酸盐"
+            ],
+            "matched_formulae": [
+              "h"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "15",
+          "亚硝",
+          "亚硝酸的还原性",
+          "原性",
+          "的还",
+          "盐的",
+          "硝酸",
+          "还原",
+          "酸的"
+        ],
+        "matched_formulae": []
+      }
     },
     {
       "example_number": 10,
@@ -206,7 +1170,144 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 148,
-      "source_line_end": 159
+      "source_line_end": 159,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 27.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch15-97a2987ba0a476d0",
+            "path": "第15章 氮族元素 / 二、亚硝酸及其盐的性质 / 亚硝酸根的检验方法 / NaNO₂ + 对氨基苯磺酸 + 萘胺 | HAc酸性体系",
+            "score": 27.0,
+            "matched_terms": [
+              "15",
+              "hac",
+              "nano2",
+              "亚硝",
+              "体系",
+              "基苯",
+              "对氨",
+              "对氨基苯磺酸",
+              "性体",
+              "氨基",
+              "盐的",
+              "硝酸",
+              "磺酸",
+              "苯磺",
+              "萘胺",
+              "酸性"
+            ],
+            "matched_formulae": [
+              "hac",
+              "nano2"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-8910d99f70c50820",
+            "path": "第15章 氮族元素 / 四、磷酸盐的性质 / 磷酸根、焦磷酸根和偏磷酸根的鉴别 / 与蛋白溶液的反应 / Na3PO4 + 蛋白溶液 | HAc酸性体系",
+            "score": 12.0,
+            "matched_terms": [
+              "15",
+              "hac",
+              "体系",
+              "反应",
+              "性体",
+              "溶液",
+              "盐的",
+              "酸性",
+              "酸性体系",
+              "酸盐"
+            ],
+            "matched_formulae": [
+              "hac"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-f75eed18f1052cc8",
+            "path": "第15章 氮族元素 / 四、磷酸盐的性质 / 磷酸根、焦磷酸根和偏磷酸根的鉴别 / 与蛋白溶液的反应 / Na4P2O7 + 蛋白溶液 | HAc酸性体系",
+            "score": 12.0,
+            "matched_terms": [
+              "15",
+              "hac",
+              "体系",
+              "反应",
+              "性体",
+              "溶液",
+              "盐的",
+              "酸性",
+              "酸性体系",
+              "酸盐"
+            ],
+            "matched_formulae": [
+              "hac"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-ac921bb2f6adaee9",
+            "path": "第15章 氮族元素 / 四、磷酸盐的性质 / 磷酸根、焦磷酸根和偏磷酸根的鉴别 / 与蛋白溶液的反应 / NaPO3 + 蛋白溶液 | HAc酸性体系",
+            "score": 12.0,
+            "matched_terms": [
+              "15",
+              "hac",
+              "体系",
+              "反应",
+              "性体",
+              "溶液",
+              "盐的",
+              "酸性",
+              "酸性体系",
+              "酸盐"
+            ],
+            "matched_formulae": [
+              "hac"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-21a87562de5f2db2",
+            "path": "第15章 氮族元素 / 二、亚硝酸及其盐的性质 / 亚硝酸根的检验方法 / NaNO₂ + KI + CCl₄ | H₂SO₄酸性体系",
+            "score": 11.0,
+            "matched_terms": [
+              "15",
+              "nano2",
+              "亚硝",
+              "体系",
+              "性体",
+              "盐的",
+              "硝酸",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "nano2"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "15",
+          "hac",
+          "nano2",
+          "亚硝",
+          "体系",
+          "基苯",
+          "对氨",
+          "对氨基苯磺酸",
+          "性体",
+          "氨基",
+          "盐的",
+          "硝酸",
+          "磺酸",
+          "苯磺",
+          "萘胺",
+          "酸性"
+        ],
+        "matched_formulae": [
+          "hac",
+          "nano2"
+        ]
+      }
     },
     {
       "example_number": 11,
@@ -227,7 +1328,125 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 160,
-      "source_line_end": 171
+      "source_line_end": 171,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 23.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch15-21a87562de5f2db2",
+            "path": "第15章 氮族元素 / 二、亚硝酸及其盐的性质 / 亚硝酸根的检验方法 / NaNO₂ + KI + CCl₄ | H₂SO₄酸性体系",
+            "score": 23.0,
+            "matched_terms": [
+              "15",
+              "ccl4",
+              "h2so4",
+              "ki",
+              "nano2",
+              "体系",
+              "性体",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "ccl4",
+              "h2so4",
+              "ki",
+              "nano2"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-932ee7c407bf8d4d",
+            "path": "第15章 氮族元素 / 六、砷、锑、铋 / As(V)、Sb(V)、Bi(V)的氧化性 / 与KI的反应 / K[Sb(OH)6] + KI + 四氯化碳 | 酸性体系",
+            "score": 10.0,
+            "matched_terms": [
+              "15",
+              "ki",
+              "体系",
+              "反应",
+              "性体",
+              "氧化",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-3cf7b3b830d5386c",
+            "path": "第15章 氮族元素 / 六、砷、锑、铋 / As(V)、Sb(V)、Bi(V)的氧化性 / 与KI的反应 / NaBiO3 + KI + 四氯化碳 | 酸性体系",
+            "score": 10.0,
+            "matched_terms": [
+              "15",
+              "ki",
+              "体系",
+              "反应",
+              "性体",
+              "氧化",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-5b927d322f2695c5",
+            "path": "第15章 氮族元素 / 六、砷、锑、铋 / As(V)、Sb(V)、Bi(V)的氧化性 / 与KI的反应 / Na[As(OH)6] + KI + 四氯化碳 | 酸性体系",
+            "score": 10.0,
+            "matched_terms": [
+              "15",
+              "ki",
+              "体系",
+              "反应",
+              "性体",
+              "氧化",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-d5f09a4a1e7e7687",
+            "path": "第13章 卤族元素 / 一、卤素单质在不同溶剂中的溶解性 / I2在水 / 四氯化碳 / KI水溶液中的溶解性",
+            "score": 9.0,
+            "matched_terms": [
+              "i2",
+              "ki",
+              "液中",
+              "溶剂",
+              "溶液"
+            ],
+            "matched_formulae": [
+              "i2",
+              "ki"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "15",
+          "ccl4",
+          "h2so4",
+          "ki",
+          "nano2",
+          "体系",
+          "性体",
+          "酸性",
+          "酸性体系"
+        ],
+        "matched_formulae": [
+          "ccl4",
+          "h2so4",
+          "ki",
+          "nano2"
+        ]
+      }
     },
     {
       "example_number": 12,
@@ -248,7 +1467,95 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 172,
-      "source_line_end": 183
+      "source_line_end": 183,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 12.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch15-ba89df3d9fa3118c",
+            "path": "第15章 氮族元素 / 三、硝酸及其盐的性质 / 硝酸的氧化性 / 浓硝酸 + 硫粉",
+            "score": 12.0,
+            "matched_terms": [
+              "15",
+              "氧化",
+              "浓硝",
+              "浓硝酸",
+              "硝酸",
+              "硫粉"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch13-58eda899283b495f",
+            "path": "第13章 卤族元素 / 七、金属卤化物的性质 / 卤化物的溶解度比较 / 卤化银沉淀的溶解 / KBr + AgNO3 + HNO3 / NH3·H2O / Na2S2O3",
+            "score": 7.0,
+            "matched_terms": [
+              "h2o",
+              "hno3",
+              "溶解"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "hno3"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-302bf6928e5b12ac",
+            "path": "第13章 卤族元素 / 七、金属卤化物的性质 / 卤化物的溶解度比较 / 卤化银沉淀的溶解 / KI + AgNO3 + HNO3 / NH3·H2O / Na2S2O3",
+            "score": 7.0,
+            "matched_terms": [
+              "h2o",
+              "hno3",
+              "溶解"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "hno3"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-d19b8a9ba727f0ff",
+            "path": "第13章 卤族元素 / 七、金属卤化物的性质 / 卤化物的溶解度比较 / 卤化银沉淀的溶解 / NaCl + AgNO3 + HNO3 / NH3·H2O / Na2S2O3",
+            "score": 7.0,
+            "matched_terms": [
+              "h2o",
+              "hno3",
+              "溶解"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "hno3"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-4a9c3631229ee5dd",
+            "path": "第13章 卤族元素 / 七、金属卤化物的性质 / 卤化物的溶解度比较 / 卤化银沉淀的溶解 / NaF + AgNO3 + HNO3 / NH3·H2O / Na2S2O3",
+            "score": 7.0,
+            "matched_terms": [
+              "h2o",
+              "hno3",
+              "溶解"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "hno3"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "15",
+          "氧化",
+          "浓硝",
+          "浓硝酸",
+          "硝酸",
+          "硫粉"
+        ],
+        "matched_formulae": []
+      }
     },
     {
       "example_number": 13,
@@ -269,7 +1576,102 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 184,
-      "source_line_end": 196
+      "source_line_end": 196,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 14.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch15-e8ac03d9e1a3dbfa",
+            "path": "第15章 氮族元素 / 三、硝酸及其盐的性质 / 硝酸的氧化性 / 浓硝酸 + Na2S",
+            "score": 14.0,
+            "matched_terms": [
+              "15",
+              "na2s",
+              "氧化",
+              "浓硝",
+              "浓硝酸",
+              "硝酸"
+            ],
+            "matched_formulae": [
+              "na2s"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-44d3c5cf420ccfdf",
+            "path": "第15章 氮族元素 / 三、硝酸及其盐的性质 / 硝酸根的检验 / FeSO₄·7H₂O + NaNO₃ + 浓硫酸",
+            "score": 8.0,
+            "matched_terms": [
+              "15",
+              "h2o",
+              "nano3",
+              "硝酸"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "nano3"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch17-919bfa1129dba0e2",
+            "path": "第17章 硼族元素 / 三、铍、铝性质的相似相异性 / 两性 / Be(OH)2、Al(OH)3的与NH3·H2O反应 / Al2(SO4)3 + NH3·H2O +（过量）NH3·H2O",
+            "score": 8.0,
+            "matched_terms": [
+              "h2o",
+              "so4",
+              "反应",
+              "过量"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "so4"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-a7f72dff7245504d",
+            "path": "第18章 碱金属和碱土金属 / 八、铍、铝性质的相似相异性 / 两性 / Be(OH)2、Al(OH)3的与NH3·H2O反应 / Al2(SO4)3 + NH3·H2O +（过量）NH3·H2O",
+            "score": 8.0,
+            "matched_terms": [
+              "h2o",
+              "so4",
+              "反应",
+              "过量"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "so4"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-58eda899283b495f",
+            "path": "第13章 卤族元素 / 七、金属卤化物的性质 / 卤化物的溶解度比较 / 卤化银沉淀的溶解 / KBr + AgNO3 + HNO3 / NH3·H2O / Na2S2O3",
+            "score": 7.0,
+            "matched_terms": [
+              "h2o",
+              "hno3",
+              "沉淀"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "hno3"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "15",
+          "na2s",
+          "氧化",
+          "浓硝",
+          "浓硝酸",
+          "硝酸"
+        ],
+        "matched_formulae": [
+          "na2s"
+        ]
+      }
     },
     {
       "example_number": 14,
@@ -290,7 +1692,106 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 197,
-      "source_line_end": 212
+      "source_line_end": 212,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 15.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch15-f712cd6fab94bc46",
+            "path": "第15章 氮族元素 / 三、硝酸及其盐的性质 / 硝酸的氧化性 / 浓硝酸/稀硝酸 + 铜",
+            "score": 15.0,
+            "matched_terms": [
+              "15",
+              "化性",
+              "氧化",
+              "浓硝",
+              "浓硝酸",
+              "的氧",
+              "硝酸",
+              "稀硝",
+              "稀硝酸"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch15-1539d8fd412c7ba7",
+            "path": "第15章 氮族元素 / 三、硝酸及其盐的性质 / 硝酸的氧化性 / 浓硝酸/稀硝酸 + 锌",
+            "score": 9.0,
+            "matched_terms": [
+              "15",
+              "化性",
+              "氧化",
+              "浓硝",
+              "浓硝酸",
+              "的氧",
+              "硝酸",
+              "稀硝",
+              "稀硝酸"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch15-39adcc49fe7bd169",
+            "path": "第15章 氮族元素 / 三、硝酸及其盐的性质 / 硝酸盐的热分解 / Cu(NO₃)₂ | 加热",
+            "score": 8.0,
+            "matched_terms": [
+              "15",
+              "cu",
+              "no3",
+              "硝酸"
+            ],
+            "matched_formulae": [
+              "cu",
+              "no3"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch16-08e988aeb4965c9f",
+            "path": "第16章 碳族元素 / 五、锡、铅 / 氢氧化物的性质 / Pb(OH)2的生成与性质 / Pb(NO3)2 + NaOH + 2 mol/L HNO3",
+            "score": 8.0,
+            "matched_terms": [
+              "hno3",
+              "no3",
+              "氧化",
+              "生成"
+            ],
+            "matched_formulae": [
+              "hno3",
+              "no3"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-58eda899283b495f",
+            "path": "第13章 卤族元素 / 七、金属卤化物的性质 / 卤化物的溶解度比较 / 卤化银沉淀的溶解 / KBr + AgNO3 + HNO3 / NH3·H2O / Na2S2O3",
+            "score": 7.0,
+            "matched_terms": [
+              "h2o",
+              "hno3",
+              "溶解"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "hno3"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "15",
+          "化性",
+          "氧化",
+          "浓硝",
+          "浓硝酸",
+          "的氧",
+          "硝酸",
+          "稀硝",
+          "稀硝酸"
+        ],
+        "matched_formulae": []
+      }
     },
     {
       "example_number": 15,
@@ -311,7 +1812,123 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 213,
-      "source_line_end": 225
+      "source_line_end": 225,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 21.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch15-44d3c5cf420ccfdf",
+            "path": "第15章 氮族元素 / 三、硝酸及其盐的性质 / 硝酸根的检验 / FeSO₄·7H₂O + NaNO₃ + 浓硫酸",
+            "score": 21.0,
+            "matched_terms": [
+              "15",
+              "feso4",
+              "h2o",
+              "nano3",
+              "检验",
+              "浓硫",
+              "浓硫酸",
+              "硝酸",
+              "硫酸"
+            ],
+            "matched_formulae": [
+              "feso4",
+              "h2o",
+              "nano3"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch20-2ffeae7e50d03435",
+            "path": "第20章 d区过渡金属 / 六、某些金属离子配合物 / 氨合物 / (NH₄)₂Fe(SO₄)₂形成氨合物的能力及其氨合物性质",
+            "score": 11.0,
+            "matched_terms": [
+              "fe",
+              "so4",
+              "合物",
+              "属离",
+              "离子",
+              "配合",
+              "金属"
+            ],
+            "matched_formulae": [
+              "fe",
+              "so4"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch20-e91119faf4866770",
+            "path": "第20章 d区过渡金属 / 六、某些金属离子配合物 / 配合物的形成对氧化还原性的影响 / (NH₄)₂Fe(SO₄)₂ + EDTA + AgNO₃",
+            "score": 11.0,
+            "matched_terms": [
+              "fe",
+              "so4",
+              "合物",
+              "属离",
+              "离子",
+              "配合",
+              "金属"
+            ],
+            "matched_formulae": [
+              "fe",
+              "so4"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch20-653895e97fa7cf3d",
+            "path": "第20章 d区过渡金属 / 六、某些金属离子配合物 / 配合物的形成对氧化还原性的影响 / (NH₄)₂Fe(SO₄)₂+AgNO₃",
+            "score": 11.0,
+            "matched_terms": [
+              "fe",
+              "so4",
+              "合物",
+              "属离",
+              "离子",
+              "配合",
+              "金属"
+            ],
+            "matched_formulae": [
+              "fe",
+              "so4"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch20-f2a3845670f288fe",
+            "path": "第20章 d区过渡金属 / 四、过渡金属离子的颜色观察 / 水合阳离子颜色观察:[Ti(H₂O)₆]³⁺、[Cr(H₂O)₆]³⁺、[Mn(H₂O)₆]²⁺、[Fe(H₂O)₆]³⁺、[Co(H₂O)₆]²⁺、[Ni(H₂O)₆]²⁺",
+            "score": 9.0,
+            "matched_terms": [
+              "fe",
+              "h2o",
+              "属离",
+              "离子",
+              "金属"
+            ],
+            "matched_formulae": [
+              "fe",
+              "h2o"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "15",
+          "feso4",
+          "h2o",
+          "nano3",
+          "检验",
+          "浓硫",
+          "浓硫酸",
+          "硝酸",
+          "硫酸"
+        ],
+        "matched_formulae": [
+          "feso4",
+          "h2o",
+          "nano3"
+        ]
+      }
     },
     {
       "example_number": 16,
@@ -331,7 +1948,137 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 226,
-      "source_line_end": 237
+      "source_line_end": 237,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "reviewed_override",
+        "target_rank": 1,
+        "target_score": 20.0,
+        "ambiguous": true,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch17-977997f9b4b8c751",
+            "path": "第17章 硼族元素 / 一、硼、硅的相似相异性 / 难溶性硅酸盐的生成——“水中花园”",
+            "score": 20.0,
+            "matched_terms": [
+              "17",
+              "中花",
+              "性硅",
+              "水中",
+              "水中花园",
+              "溶性",
+              "生成",
+              "的生",
+              "盐的",
+              "硅酸",
+              "花园",
+              "酸盐",
+              "难溶",
+              "难溶性硅酸盐的生成"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch16-36ce8d7d287a77ff",
+            "path": "第16章 碳族元素 / 四、硼、硅的相似相异性 / 难溶性硅酸盐的生成——“水中花园”",
+            "score": 19.0,
+            "matched_terms": [
+              "中花",
+              "性硅",
+              "水中",
+              "水中花园",
+              "溶性",
+              "生成",
+              "的生",
+              "盐的",
+              "硅酸",
+              "花园",
+              "酸盐",
+              "难溶",
+              "难溶性硅酸盐的生成"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch20-f2a3845670f288fe",
+            "path": "第20章 d区过渡金属 / 四、过渡金属离子的颜色观察 / 水合阳离子颜色观察:[Ti(H₂O)₆]³⁺、[Cr(H₂O)₆]³⁺、[Mn(H₂O)₆]²⁺、[Fe(H₂O)₆]³⁺、[Co(H₂O)₆]²⁺、[Ni(H₂O)₆]²⁺",
+            "score": 17.0,
+            "matched_terms": [
+              "co",
+              "fe",
+              "mn",
+              "ni",
+              "子的",
+              "属离",
+              "离子",
+              "金属",
+              "颜色"
+            ],
+            "matched_formulae": [
+              "co",
+              "fe",
+              "mn",
+              "ni"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch20-59eabfa20f8b8a0a",
+            "path": "第20章 d区过渡金属 / 八、小设计实验 / 分离检出含Fe³⁺、Co²⁺、Ni²⁺的混合溶液",
+            "score": 12.0,
+            "matched_terms": [
+              "co",
+              "fe",
+              "ni",
+              "实验",
+              "溶液",
+              "金属"
+            ],
+            "matched_formulae": [
+              "co",
+              "fe",
+              "ni"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch17-7182bce5fbeaee1c",
+            "path": "第17章 硼族元素 / 一、硼、硅的相似相异性 / 硅酸、硼酸及其盐 / 硅酸钠/四硼酸钠与CaCl2和Pb(NO3)2的反应 / Na2SiO3 + CaCl2 + Pb(NO3)2",
+            "score": 10.0,
+            "matched_terms": [
+              "17",
+              "na2sio3",
+              "no3",
+              "反应",
+              "硅酸",
+              "酸钠"
+            ],
+            "matched_formulae": [
+              "na2sio3",
+              "no3"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "17",
+          "中花",
+          "性硅",
+          "水中",
+          "水中花园",
+          "溶性",
+          "生成",
+          "的生",
+          "盐的",
+          "硅酸",
+          "花园",
+          "酸盐",
+          "难溶",
+          "难溶性硅酸盐的生成"
+        ],
+        "matched_formulae": [],
+        "override": {
+          "type": "reviewed_target_path",
+          "reason": "The curated target path resolves the sample when semantic candidates are tied or nearby."
+        }
+      }
     },
     {
       "example_number": 17,
@@ -352,7 +2099,133 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 238,
-      "source_line_end": 249
+      "source_line_end": 249,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 22.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch13-676141c80b619ea2",
+            "path": "第13章 卤族元素 / 三、卤素离子的还原性（通风橱内进行） / 利用浓硫酸比较卤素离子的还原性 / KI + 浓硫酸 | 湿的醋酸铅试纸",
+            "score": 22.0,
+            "matched_terms": [
+              "13",
+              "ki",
+              "浓硫",
+              "浓硫酸",
+              "湿的",
+              "湿的醋酸铅试纸",
+              "的醋",
+              "硫酸",
+              "试纸",
+              "通风",
+              "酸铅",
+              "醋酸",
+              "铅试",
+              "风橱"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-9e5c61ce88d07d97",
+            "path": "第13章 卤族元素 / 三、卤素离子的还原性（通风橱内进行） / 利用浓硫酸比较卤素离子的还原性 / KBr + 浓硫酸 | 湿的KI-淀粉试纸",
+            "score": 13.0,
+            "matched_terms": [
+              "13",
+              "ki",
+              "浓硫",
+              "浓硫酸",
+              "淀粉",
+              "湿的",
+              "硫酸",
+              "粉试",
+              "试纸",
+              "通风",
+              "风橱"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch14-8777b04578a75a7a",
+            "path": "第14章 氧族元素 / 二、臭氧的制备与性质 / BaO₂·2H₂O + 浓硫酸 | KI-淀粉试纸",
+            "score": 12.0,
+            "matched_terms": [
+              "h2o",
+              "ki",
+              "浓硫",
+              "浓硫酸",
+              "淀粉",
+              "硫酸",
+              "粉试",
+              "试纸"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-bc335996943d5515",
+            "path": "第13章 卤族元素 / 三、卤素离子的还原性（通风橱内进行） / 利用浓硫酸比较卤素离子的还原性 / KCl + 浓硫酸 | 湿的pH试纸",
+            "score": 11.0,
+            "matched_terms": [
+              "13",
+              "ph",
+              "浓硫",
+              "浓硫酸",
+              "湿的",
+              "硫酸",
+              "试纸",
+              "通风",
+              "风橱"
+            ],
+            "matched_formulae": [
+              "h"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-302bf6928e5b12ac",
+            "path": "第13章 卤族元素 / 七、金属卤化物的性质 / 卤化物的溶解度比较 / 卤化银沉淀的溶解 / KI + AgNO3 + HNO3 / NH3·H2O / Na2S2O3",
+            "score": 8.0,
+            "matched_terms": [
+              "13",
+              "h2o",
+              "ki",
+              "沉淀"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "ki"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "13",
+          "ki",
+          "浓硫",
+          "浓硫酸",
+          "湿的",
+          "湿的醋酸铅试纸",
+          "的醋",
+          "硫酸",
+          "试纸",
+          "通风",
+          "酸铅",
+          "醋酸",
+          "铅试",
+          "风橱"
+        ],
+        "matched_formulae": [
+          "ki"
+        ]
+      }
     },
     {
       "example_number": 18,
@@ -373,7 +2246,133 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 250,
-      "source_line_end": 260
+      "source_line_end": 260,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 23.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch13-9e5c61ce88d07d97",
+            "path": "第13章 卤族元素 / 三、卤素离子的还原性（通风橱内进行） / 利用浓硫酸比较卤素离子的还原性 / KBr + 浓硫酸 | 湿的KI-淀粉试纸",
+            "score": 23.0,
+            "matched_terms": [
+              "kbr",
+              "ki",
+              "浓硫",
+              "浓硫酸",
+              "淀粉",
+              "淀粉试纸",
+              "湿的",
+              "硫酸",
+              "粉试",
+              "试纸",
+              "还原",
+              "通风",
+              "风橱"
+            ],
+            "matched_formulae": [
+              "kbr",
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch14-8777b04578a75a7a",
+            "path": "第14章 氧族元素 / 二、臭氧的制备与性质 / BaO₂·2H₂O + 浓硫酸 | KI-淀粉试纸",
+            "score": 13.0,
+            "matched_terms": [
+              "h2o",
+              "ki",
+              "浓硫",
+              "浓硫酸",
+              "淀粉",
+              "淀粉试纸",
+              "硫酸",
+              "粉试",
+              "试纸"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-bc335996943d5515",
+            "path": "第13章 卤族元素 / 三、卤素离子的还原性（通风橱内进行） / 利用浓硫酸比较卤素离子的还原性 / KCl + 浓硫酸 | 湿的pH试纸",
+            "score": 11.0,
+            "matched_terms": [
+              "ph",
+              "浓硫",
+              "浓硫酸",
+              "湿的",
+              "硫酸",
+              "试纸",
+              "还原",
+              "通风",
+              "风橱"
+            ],
+            "matched_formulae": [
+              "h"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-676141c80b619ea2",
+            "path": "第13章 卤族元素 / 三、卤素离子的还原性（通风橱内进行） / 利用浓硫酸比较卤素离子的还原性 / KI + 浓硫酸 | 湿的醋酸铅试纸",
+            "score": 11.0,
+            "matched_terms": [
+              "ki",
+              "浓硫",
+              "浓硫酸",
+              "湿的",
+              "硫酸",
+              "试纸",
+              "还原",
+              "通风",
+              "风橱"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-8db7fb83816a5bac",
+            "path": "第13章 卤族元素 / 六、卤化氢的制备与性质（通风橱内进行） / NaCI、KBr、KI与浓磷酸的反应 / KBr + 浓磷酸 | 微热",
+            "score": 9.0,
+            "matched_terms": [
+              "kbr",
+              "ki",
+              "反应",
+              "通风",
+              "风橱"
+            ],
+            "matched_formulae": [
+              "kbr",
+              "ki"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "kbr",
+          "ki",
+          "浓硫",
+          "浓硫酸",
+          "淀粉",
+          "淀粉试纸",
+          "湿的",
+          "硫酸",
+          "粉试",
+          "试纸",
+          "还原",
+          "通风",
+          "风橱"
+        ],
+        "matched_formulae": [
+          "kbr",
+          "ki"
+        ]
+      }
     },
     {
       "example_number": 19,
@@ -394,7 +2393,125 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 261,
-      "source_line_end": 269
+      "source_line_end": 269,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 19.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch13-bc335996943d5515",
+            "path": "第13章 卤族元素 / 三、卤素离子的还原性（通风橱内进行） / 利用浓硫酸比较卤素离子的还原性 / KCl + 浓硫酸 | 湿的pH试纸",
+            "score": 19.0,
+            "matched_terms": [
+              "kcl",
+              "ph",
+              "浓硫",
+              "浓硫酸",
+              "湿的",
+              "硫酸",
+              "试纸",
+              "通风",
+              "风橱"
+            ],
+            "matched_formulae": [
+              "h",
+              "kcl"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-676141c80b619ea2",
+            "path": "第13章 卤族元素 / 三、卤素离子的还原性（通风橱内进行） / 利用浓硫酸比较卤素离子的还原性 / KI + 浓硫酸 | 湿的醋酸铅试纸",
+            "score": 13.0,
+            "matched_terms": [
+              "ki",
+              "浓硫",
+              "浓硫酸",
+              "湿的",
+              "硫酸",
+              "试纸",
+              "通风",
+              "酸铅",
+              "醋酸",
+              "铅试",
+              "风橱"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-9e5c61ce88d07d97",
+            "path": "第13章 卤族元素 / 三、卤素离子的还原性（通风橱内进行） / 利用浓硫酸比较卤素离子的还原性 / KBr + 浓硫酸 | 湿的KI-淀粉试纸",
+            "score": 12.0,
+            "matched_terms": [
+              "ki",
+              "浓硫",
+              "浓硫酸",
+              "淀粉",
+              "湿的",
+              "硫酸",
+              "粉试",
+              "试纸",
+              "通风",
+              "风橱"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch14-8777b04578a75a7a",
+            "path": "第14章 氧族元素 / 二、臭氧的制备与性质 / BaO₂·2H₂O + 浓硫酸 | KI-淀粉试纸",
+            "score": 9.0,
+            "matched_terms": [
+              "ki",
+              "浓硫",
+              "浓硫酸",
+              "淀粉",
+              "硫酸",
+              "粉试",
+              "试纸"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-a7a48444e7cde31c",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 氯酸盐的氧化性 / KClO₃ + 浓盐酸 | 湿 KI-淀粉试纸",
+            "score": 8.0,
+            "matched_terms": [
+              "ki",
+              "化性",
+              "氧化",
+              "淀粉",
+              "粉试",
+              "试纸"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "kcl",
+          "ph",
+          "浓硫",
+          "浓硫酸",
+          "湿的",
+          "硫酸",
+          "试纸",
+          "通风",
+          "风橱"
+        ],
+        "matched_formulae": [
+          "h",
+          "kcl"
+        ]
+      }
     },
     {
       "example_number": 20,
@@ -415,7 +2532,97 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 270,
-      "source_line_end": 279
+      "source_line_end": 279,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 12.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch13-903a60aff825f385",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 次氯酸盐的氧化性 / NaClO + MnSO₄",
+            "score": 12.0,
+            "matched_terms": [
+              "mnso4",
+              "naclo"
+            ],
+            "matched_formulae": [
+              "mnso4",
+              "naclo"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-1805a7f728f84360",
+            "path": "第18章 碱金属和碱土金属 / 八、铍、铝性质的相似相异性 / 两性 / Be(OH)2、Al(OH)3的与HCl反应 / Al2(SO4)3 + NH3·H2O + HCl",
+            "score": 8.0,
+            "matched_terms": [
+              "h2o",
+              "oh",
+              "反应",
+              "金属"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "oh"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-d0d4a98ab5e98925",
+            "path": "第18章 碱金属和碱土金属 / 八、铍、铝性质的相似相异性 / 两性 / Be(OH)2、Al(OH)3的与HCl反应 / BeSO4 + NH3·H2O + HCl",
+            "score": 8.0,
+            "matched_terms": [
+              "h2o",
+              "oh",
+              "反应",
+              "金属"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "oh"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-a7f72dff7245504d",
+            "path": "第18章 碱金属和碱土金属 / 八、铍、铝性质的相似相异性 / 两性 / Be(OH)2、Al(OH)3的与NH3·H2O反应 / Al2(SO4)3 + NH3·H2O +（过量）NH3·H2O",
+            "score": 8.0,
+            "matched_terms": [
+              "h2o",
+              "oh",
+              "反应",
+              "金属"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "oh"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch18-d6dc39baf9895fe0",
+            "path": "第18章 碱金属和碱土金属 / 八、铍、铝性质的相似相异性 / 两性 / Be(OH)2、Al(OH)3的与NH3·H2O反应 / BeSO4 + NH3·H2O +（过量）NH3·H2O",
+            "score": 8.0,
+            "matched_terms": [
+              "h2o",
+              "oh",
+              "反应",
+              "金属"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "oh"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "mnso4",
+          "naclo"
+        ],
+        "matched_formulae": [
+          "mnso4",
+          "naclo"
+        ]
+      }
     },
     {
       "example_number": 21,
@@ -436,7 +2643,102 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 280,
-      "source_line_end": 287
+      "source_line_end": 287,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 15.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch13-e97d7e5395a8f8c6",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 次氯酸盐的氧化性 / NaClO + 品红溶液",
+            "score": 15.0,
+            "matched_terms": [
+              "naclo",
+              "化性",
+              "品红",
+              "品红溶液",
+              "氧化",
+              "溶液",
+              "红溶"
+            ],
+            "matched_formulae": [
+              "naclo"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-5c607884c70ae66e",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 次氯酸盐的氧化性 / NaClO + KI-淀粉 | 酸性体系",
+            "score": 6.0,
+            "matched_terms": [
+              "naclo",
+              "体系",
+              "化性",
+              "氧化"
+            ],
+            "matched_formulae": [
+              "naclo"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-903a60aff825f385",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 次氯酸盐的氧化性 / NaClO + MnSO₄",
+            "score": 5.0,
+            "matched_terms": [
+              "naclo",
+              "化性",
+              "氧化"
+            ],
+            "matched_formulae": [
+              "naclo"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch20-47d552a5f0a45bac",
+            "path": "第20章 d区过渡金属 / 二、化合物的氧化还原性 / 锰化合物的氧化还原性 / Mn(VI)在酸性介质中的歧化反应",
+            "score": 5.0,
+            "matched_terms": [
+              "中的",
+              "化还",
+              "反应",
+              "氧化",
+              "还原"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch20-8aedb2d89faae147",
+            "path": "第20章 d区过渡金属 / 二、化合物的氧化还原性 / 锰化合物的氧化还原性 / Mn(VII) 的氧化性 / KMnO4+Na2SO3 | 中性体系",
+            "score": 5.0,
+            "matched_terms": [
+              "体系",
+              "化性",
+              "化还",
+              "氧化",
+              "还原"
+            ],
+            "matched_formulae": []
+          }
+        ],
+        "matched_terms": [
+          "naclo",
+          "化性",
+          "品红",
+          "品红溶液",
+          "氧化",
+          "溶液",
+          "红溶"
+        ],
+        "matched_formulae": [
+          "naclo"
+        ],
+        "wording_correction": {
+          "corrected": "NaClO + 品红溶液",
+          "reason": "Reviewed source correction for the hypochlorite decolorization sample."
+        }
+      }
     },
     {
       "example_number": 22,
@@ -457,7 +2759,115 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 288,
-      "source_line_end": 296
+      "source_line_end": 296,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 18.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch13-5c607884c70ae66e",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 次氯酸盐的氧化性 / NaClO + KI-淀粉 | 酸性体系",
+            "score": 18.0,
+            "matched_terms": [
+              "ki",
+              "naclo",
+              "体系",
+              "性体",
+              "氧化",
+              "淀粉",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "ki",
+              "naclo"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-21a87562de5f2db2",
+            "path": "第15章 氮族元素 / 二、亚硝酸及其盐的性质 / 亚硝酸根的检验方法 / NaNO₂ + KI + CCl₄ | H₂SO₄酸性体系",
+            "score": 10.0,
+            "matched_terms": [
+              "h2so4",
+              "ki",
+              "体系",
+              "性体",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "h2so4",
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-5a2197ce330eaf92",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 氯酸盐的氧化性 / KClO₃ + KI-淀粉 | 酸性体系",
+            "score": 9.0,
+            "matched_terms": [
+              "ki",
+              "体系",
+              "性体",
+              "氧化",
+              "淀粉",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-8c7ffb19c4d606dc",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 溴酸盐的氧化性 / KBrO3与卤化钾的反应 / KBrO3 + KI | 酸性体系",
+            "score": 8.0,
+            "matched_terms": [
+              "ki",
+              "体系",
+              "性体",
+              "氧化",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch14-e89f8d6aea56953a",
+            "path": "第14章 氧族元素 / 七、过二硫酸盐的氧化性 / KI + K2S2O8 | 酸性体系",
+            "score": 8.0,
+            "matched_terms": [
+              "ki",
+              "体系",
+              "性体",
+              "氧化",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "ki",
+          "naclo",
+          "体系",
+          "性体",
+          "氧化",
+          "淀粉",
+          "酸性",
+          "酸性体系"
+        ],
+        "matched_formulae": [
+          "ki",
+          "naclo"
+        ]
+      }
     },
     {
       "example_number": 23,
@@ -478,7 +2888,118 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 297,
-      "source_line_end": 306
+      "source_line_end": 306,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 20.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch13-a7a48444e7cde31c",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 氯酸盐的氧化性 / KClO₃ + 浓盐酸 | 湿 KI-淀粉试纸",
+            "score": 20.0,
+            "matched_terms": [
+              "kclo3",
+              "ki",
+              "氧化",
+              "浓盐",
+              "浓盐酸",
+              "淀粉",
+              "淀粉试纸",
+              "盐酸",
+              "粉试",
+              "试纸"
+            ],
+            "matched_formulae": [
+              "kclo3",
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-9e5c61ce88d07d97",
+            "path": "第13章 卤族元素 / 三、卤素离子的还原性（通风橱内进行） / 利用浓硫酸比较卤素离子的还原性 / KBr + 浓硫酸 | 湿的KI-淀粉试纸",
+            "score": 10.0,
+            "matched_terms": [
+              "ki",
+              "淀粉",
+              "淀粉试纸",
+              "粉试",
+              "试纸",
+              "还原",
+              "通风",
+              "风橱"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch14-8777b04578a75a7a",
+            "path": "第14章 氧族元素 / 二、臭氧的制备与性质 / BaO₂·2H₂O + 浓硫酸 | KI-淀粉试纸",
+            "score": 10.0,
+            "matched_terms": [
+              "h2o",
+              "ki",
+              "淀粉",
+              "淀粉试纸",
+              "粉试",
+              "试纸"
+            ],
+            "matched_formulae": [
+              "h2o",
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-5a2197ce330eaf92",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 氯酸盐的氧化性 / KClO₃ + KI-淀粉 | 酸性体系",
+            "score": 8.0,
+            "matched_terms": [
+              "kclo3",
+              "ki",
+              "氧化",
+              "淀粉"
+            ],
+            "matched_formulae": [
+              "kclo3",
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-bc335996943d5515",
+            "path": "第13章 卤族元素 / 三、卤素离子的还原性（通风橱内进行） / 利用浓硫酸比较卤素离子的还原性 / KCl + 浓硫酸 | 湿的pH试纸",
+            "score": 7.0,
+            "matched_terms": [
+              "kcl",
+              "试纸",
+              "还原",
+              "通风",
+              "风橱"
+            ],
+            "matched_formulae": [
+              "kcl"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "kclo3",
+          "ki",
+          "氧化",
+          "浓盐",
+          "浓盐酸",
+          "淀粉",
+          "淀粉试纸",
+          "盐酸",
+          "粉试",
+          "试纸"
+        ],
+        "matched_formulae": [
+          "kclo3",
+          "ki"
+        ]
+      }
     },
     {
       "example_number": 24,
@@ -499,7 +3020,101 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 307,
-      "source_line_end": 316
+      "source_line_end": 316,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 15.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch13-a2ede09dc72bc203",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 氯酸盐的氧化性 / KClO₃ + Na₂SO₃ + AgNO₃",
+            "score": 15.0,
+            "matched_terms": [
+              "agno3",
+              "kclo3",
+              "na2so3"
+            ],
+            "matched_formulae": [
+              "agno3",
+              "kclo3",
+              "na2so3"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-58eda899283b495f",
+            "path": "第13章 卤族元素 / 七、金属卤化物的性质 / 卤化物的溶解度比较 / 卤化银沉淀的溶解 / KBr + AgNO3 + HNO3 / NH3·H2O / Na2S2O3",
+            "score": 8.0,
+            "matched_terms": [
+              "agno3",
+              "h2o",
+              "沉淀",
+              "金属"
+            ],
+            "matched_formulae": [
+              "agno3",
+              "h2o"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-302bf6928e5b12ac",
+            "path": "第13章 卤族元素 / 七、金属卤化物的性质 / 卤化物的溶解度比较 / 卤化银沉淀的溶解 / KI + AgNO3 + HNO3 / NH3·H2O / Na2S2O3",
+            "score": 8.0,
+            "matched_terms": [
+              "agno3",
+              "h2o",
+              "沉淀",
+              "金属"
+            ],
+            "matched_formulae": [
+              "agno3",
+              "h2o"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-d19b8a9ba727f0ff",
+            "path": "第13章 卤族元素 / 七、金属卤化物的性质 / 卤化物的溶解度比较 / 卤化银沉淀的溶解 / NaCl + AgNO3 + HNO3 / NH3·H2O / Na2S2O3",
+            "score": 8.0,
+            "matched_terms": [
+              "agno3",
+              "h2o",
+              "沉淀",
+              "金属"
+            ],
+            "matched_formulae": [
+              "agno3",
+              "h2o"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-4a9c3631229ee5dd",
+            "path": "第13章 卤族元素 / 七、金属卤化物的性质 / 卤化物的溶解度比较 / 卤化银沉淀的溶解 / NaF + AgNO3 + HNO3 / NH3·H2O / Na2S2O3",
+            "score": 8.0,
+            "matched_terms": [
+              "agno3",
+              "h2o",
+              "沉淀",
+              "金属"
+            ],
+            "matched_formulae": [
+              "agno3",
+              "h2o"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "agno3",
+          "kclo3",
+          "na2so3"
+        ],
+        "matched_formulae": [
+          "agno3",
+          "kclo3",
+          "na2so3"
+        ]
+      }
     },
     {
       "example_number": 25,
@@ -520,7 +3135,107 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 317,
-      "source_line_end": 329
+      "source_line_end": 329,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 17.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch13-a81e86881db272ec",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 氯酸盐的氧化性 / KClO₃ + KI + CCl₄",
+            "score": 17.0,
+            "matched_terms": [
+              "ccl4",
+              "kclo3",
+              "ki",
+              "化性",
+              "氧化"
+            ],
+            "matched_formulae": [
+              "ccl4",
+              "kclo3",
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-21a87562de5f2db2",
+            "path": "第15章 氮族元素 / 二、亚硝酸及其盐的性质 / 亚硝酸根的检验方法 / NaNO₂ + KI + CCl₄ | H₂SO₄酸性体系",
+            "score": 10.0,
+            "matched_terms": [
+              "ccl4",
+              "h2so4",
+              "ki",
+              "酸性"
+            ],
+            "matched_formulae": [
+              "ccl4",
+              "h2so4",
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-5a2197ce330eaf92",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 氯酸盐的氧化性 / KClO₃ + KI-淀粉 | 酸性体系",
+            "score": 9.0,
+            "matched_terms": [
+              "kclo3",
+              "ki",
+              "化性",
+              "氧化",
+              "酸性"
+            ],
+            "matched_formulae": [
+              "kclo3",
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-f46e14fe54808c3b",
+            "path": "第13章 卤族元素 / 二、卤素的氧化性 / 氯、溴、碘的置换次序 / 氯水 + KI + CCl₄",
+            "score": 8.0,
+            "matched_terms": [
+              "ccl4",
+              "ki",
+              "化性",
+              "氧化"
+            ],
+            "matched_formulae": [
+              "ccl4",
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-347addb9fff588d6",
+            "path": "第13章 卤族元素 / 二、卤素的氧化性 / 氯、溴、碘的置换次序 / 溴水 + KI + CCl₄",
+            "score": 8.0,
+            "matched_terms": [
+              "ccl4",
+              "ki",
+              "化性",
+              "氧化"
+            ],
+            "matched_formulae": [
+              "ccl4",
+              "ki"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "ccl4",
+          "kclo3",
+          "ki",
+          "化性",
+          "氧化"
+        ],
+        "matched_formulae": [
+          "ccl4",
+          "kclo3",
+          "ki"
+        ]
+      }
     },
     {
       "example_number": 26,
@@ -541,7 +3256,119 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 330,
-      "source_line_end": 338
+      "source_line_end": 338,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 19.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch13-5a2197ce330eaf92",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 氯酸盐的氧化性 / KClO₃ + KI-淀粉 | 酸性体系",
+            "score": 19.0,
+            "matched_terms": [
+              "kclo3",
+              "ki",
+              "体系",
+              "化性",
+              "性体",
+              "氧化",
+              "淀粉",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "kclo3",
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-5c607884c70ae66e",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 次氯酸盐的氧化性 / NaClO + KI-淀粉 | 酸性体系",
+            "score": 10.0,
+            "matched_terms": [
+              "ki",
+              "体系",
+              "化性",
+              "性体",
+              "氧化",
+              "淀粉",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-21a87562de5f2db2",
+            "path": "第15章 氮族元素 / 二、亚硝酸及其盐的性质 / 亚硝酸根的检验方法 / NaNO₂ + KI + CCl₄ | H₂SO₄酸性体系",
+            "score": 10.0,
+            "matched_terms": [
+              "h2so4",
+              "ki",
+              "体系",
+              "性体",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "h2so4",
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-a7a48444e7cde31c",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 氯酸盐的氧化性 / KClO₃ + 浓盐酸 | 湿 KI-淀粉试纸",
+            "score": 9.0,
+            "matched_terms": [
+              "kclo3",
+              "ki",
+              "化性",
+              "氧化",
+              "淀粉"
+            ],
+            "matched_formulae": [
+              "kclo3",
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-8c7ffb19c4d606dc",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 溴酸盐的氧化性 / KBrO3与卤化钾的反应 / KBrO3 + KI | 酸性体系",
+            "score": 9.0,
+            "matched_terms": [
+              "ki",
+              "体系",
+              "化性",
+              "性体",
+              "氧化",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "kclo3",
+          "ki",
+          "体系",
+          "化性",
+          "性体",
+          "氧化",
+          "淀粉",
+          "酸性",
+          "酸性体系"
+        ],
+        "matched_formulae": [
+          "kclo3",
+          "ki"
+        ]
+      }
     },
     {
       "example_number": 27,
@@ -561,7 +3388,120 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 339,
-      "source_line_end": 349
+      "source_line_end": 349,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "reviewed_override",
+        "target_rank": 1,
+        "target_score": 14.0,
+        "ambiguous": true,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch13-6efae8caa026c8be",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 高氯酸盐的氧化性",
+            "score": 14.0,
+            "matched_terms": [
+              "化性",
+              "氧化",
+              "氯酸",
+              "的氧",
+              "盐的",
+              "酸盐",
+              "高氯",
+              "高氯酸盐的氧化性"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch13-5a2197ce330eaf92",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 氯酸盐的氧化性 / KClO₃ + KI-淀粉 | 酸性体系",
+            "score": 12.0,
+            "matched_terms": [
+              "ki",
+              "化性",
+              "氧化",
+              "氯酸",
+              "淀粉",
+              "的氧",
+              "盐的",
+              "酸性",
+              "酸盐"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-5c607884c70ae66e",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 次氯酸盐的氧化性 / NaClO + KI-淀粉 | 酸性体系",
+            "score": 11.0,
+            "matched_terms": [
+              "ki",
+              "化性",
+              "氧化",
+              "氯酸",
+              "淀粉",
+              "的氧",
+              "盐的",
+              "酸性",
+              "酸盐"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-a7a48444e7cde31c",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 氯酸盐的氧化性 / KClO₃ + 浓盐酸 | 湿 KI-淀粉试纸",
+            "score": 11.0,
+            "matched_terms": [
+              "ki",
+              "化性",
+              "氧化",
+              "氯酸",
+              "淀粉",
+              "的氧",
+              "盐的",
+              "酸盐"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-a81e86881db272ec",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 氯酸盐的氧化性 / KClO₃ + KI + CCl₄",
+            "score": 10.0,
+            "matched_terms": [
+              "ki",
+              "化性",
+              "氧化",
+              "氯酸",
+              "的氧",
+              "盐的",
+              "酸盐"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "化性",
+          "氧化",
+          "氯酸",
+          "的氧",
+          "盐的",
+          "酸盐",
+          "高氯",
+          "高氯酸盐的氧化性"
+        ],
+        "matched_formulae": [],
+        "override": {
+          "type": "reviewed_target_path",
+          "reason": "The curated target path resolves the sample when semantic candidates are tied or nearby."
+        }
+      }
     },
     {
       "example_number": 28,
@@ -581,7 +3521,97 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 350,
-      "source_line_end": 357
+      "source_line_end": 357,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "reviewed_override",
+        "target_rank": 1,
+        "target_score": 13.0,
+        "ambiguous": true,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch13-743b5609fe0ba5ed",
+            "path": "第13章 卤族元素 / 七、金属卤化物的性质 / 卤化银的感光性",
+            "score": 13.0,
+            "matched_terms": [
+              "光性",
+              "化银",
+              "卤化",
+              "卤化银的感光性",
+              "感光",
+              "的感",
+              "银的"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch19-f239c4daf32258b3",
+            "path": "第19章 铜锌副族金属（ds区元素） / 二、配合物的生成与性质 / 银的配合物 / 比较AgCl、AgBr和AgI溶解度的大小",
+            "score": 11.0,
+            "matched_terms": [
+              "agbr",
+              "agcl",
+              "agi",
+              "生成",
+              "银的"
+            ],
+            "matched_formulae": [
+              "agbr",
+              "agcl",
+              "agi"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch19-0ea2b506509b0f0e",
+            "path": "第19章 铜锌副族金属（ds区元素） / 二、配合物的生成与性质 / 银的配合物 / 比较Ag+与氨水、硫代硫酸根配合物稳定性大小",
+            "score": 5.0,
+            "matched_terms": [
+              "ag",
+              "生成",
+              "银的"
+            ],
+            "matched_formulae": [
+              "ag"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-a71e2f85bc6ceda6",
+            "path": "第15章 氮族元素 / 六、砷、锑、铋 / As(III)、Sb(III)、Bi(III)的还原性 / 与[Ag(NH3)2]+反应 / [Ag(NH3)2]+ + Bi(NO3)3",
+            "score": 3.0,
+            "matched_terms": [
+              "ag"
+            ],
+            "matched_formulae": [
+              "ag"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-2c1b2e229e363dc9",
+            "path": "第15章 氮族元素 / 六、砷、锑、铋 / As(III)、Sb(III)、Bi(III)的还原性 / 与[Ag(NH3)2]+反应 / [Ag(NH3)2]+ + Na3AsO3",
+            "score": 3.0,
+            "matched_terms": [
+              "ag"
+            ],
+            "matched_formulae": [
+              "ag"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "光性",
+          "化银",
+          "卤化",
+          "卤化银的感光性",
+          "感光",
+          "的感",
+          "银的"
+        ],
+        "matched_formulae": [],
+        "override": {
+          "type": "reviewed_target_path",
+          "reason": "The curated target path resolves the sample when semantic candidates are tied or nearby."
+        }
+      }
     },
     {
       "example_number": 29,
@@ -602,7 +3632,106 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 358,
-      "source_line_end": 366
+      "source_line_end": 366,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 13.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch14-ea4cebb448452c01",
+            "path": "第14章 氧族元素 / 三、过氧化氢的制备与性质 / 过氧化氢的性质 / 过氧化氢的酸性",
+            "score": 13.0,
+            "matched_terms": [
+              "化氢",
+              "氢的",
+              "氧化",
+              "的酸",
+              "过氧",
+              "过氧化氢的酸性",
+              "酸性"
+            ],
+            "matched_formulae": []
+          },
+          {
+            "seed_key": "cat-outline-ch14-03a77afdd8fcfadd",
+            "path": "第14章 氧族元素 / 三、过氧化氢的制备与性质 / 过氧化氢的性质 / 介质酸碱性对 H₂O₂ 氧化还原性质的影响",
+            "score": 9.0,
+            "matched_terms": [
+              "h2o2",
+              "介质",
+              "化氢",
+              "氢的",
+              "氧化",
+              "碱性",
+              "过氧"
+            ],
+            "matched_formulae": [
+              "h2o2"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch14-da665ba6f10e2b08",
+            "path": "第14章 氧族元素 / 三、过氧化氢的制备与性质 / 过氧化氢的性质 / 过氧化氢的分解 / H₂O₂ + MnO₂",
+            "score": 8.0,
+            "matched_terms": [
+              "h2o2",
+              "分解",
+              "化氢",
+              "氢的",
+              "氧化",
+              "过氧"
+            ],
+            "matched_formulae": [
+              "h2o2"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch14-e10d6fca1dc05ce1",
+            "path": "第14章 氧族元素 / 三、过氧化氢的制备与性质 / 过氧化氢的性质 / 过氧化氢的分解 / H₂O₂ + 铁粉",
+            "score": 8.0,
+            "matched_terms": [
+              "h2o2",
+              "分解",
+              "化氢",
+              "氢的",
+              "氧化",
+              "过氧"
+            ],
+            "matched_formulae": [
+              "h2o2"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch14-725fac7b395023a6",
+            "path": "第14章 氧族元素 / 三、过氧化氢的制备与性质 / 过氧化氢的性质 / 过氧化氢的分解 / H₂O₂ | 加热",
+            "score": 8.0,
+            "matched_terms": [
+              "h2o2",
+              "分解",
+              "化氢",
+              "氢的",
+              "氧化",
+              "过氧"
+            ],
+            "matched_formulae": [
+              "h2o2"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "化氢",
+          "氢的",
+          "氧化",
+          "的酸",
+          "过氧",
+          "过氧化氢的酸性",
+          "酸性"
+        ],
+        "matched_formulae": []
+      }
     },
     {
       "example_number": 30,
@@ -624,7 +3753,124 @@
       "content_status": "published",
       "source_doc": "docs/30点位例子.txt",
       "source_line_start": 367,
-      "source_line_end": 374
+      "source_line_end": 374,
+      "semantic_mapping": {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": "semantic_match",
+        "target_rank": 1,
+        "target_score": 18.0,
+        "ambiguous": false,
+        "top_candidates": [
+          {
+            "seed_key": "cat-outline-ch14-7edf0ff1576ff1ce",
+            "path": "第14章 氧族元素 / 三、过氧化氢的制备与性质 / 过氧化氢的性质 / 过氧化氢的氧化性 / H₂O₂ + KI | 酸性体系",
+            "score": 18.0,
+            "matched_terms": [
+              "h2o2",
+              "ki",
+              "体系",
+              "化性",
+              "性体",
+              "氧化",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "h2o2",
+              "ki"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-932ee7c407bf8d4d",
+            "path": "第15章 氮族元素 / 六、砷、锑、铋 / As(V)、Sb(V)、Bi(V)的氧化性 / 与KI的反应 / K[Sb(OH)6] + KI + 四氯化碳 | 酸性体系",
+            "score": 12.0,
+            "matched_terms": [
+              "ki",
+              "体系",
+              "化性",
+              "反应",
+              "性体",
+              "氧化",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "ki",
+              "v"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-3cf7b3b830d5386c",
+            "path": "第15章 氮族元素 / 六、砷、锑、铋 / As(V)、Sb(V)、Bi(V)的氧化性 / 与KI的反应 / NaBiO3 + KI + 四氯化碳 | 酸性体系",
+            "score": 12.0,
+            "matched_terms": [
+              "ki",
+              "体系",
+              "化性",
+              "反应",
+              "性体",
+              "氧化",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "ki",
+              "v"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch15-5b927d322f2695c5",
+            "path": "第15章 氮族元素 / 六、砷、锑、铋 / As(V)、Sb(V)、Bi(V)的氧化性 / 与KI的反应 / Na[As(OH)6] + KI + 四氯化碳 | 酸性体系",
+            "score": 12.0,
+            "matched_terms": [
+              "ki",
+              "体系",
+              "化性",
+              "反应",
+              "性体",
+              "氧化",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "ki",
+              "v"
+            ]
+          },
+          {
+            "seed_key": "cat-outline-ch13-5c607884c70ae66e",
+            "path": "第13章 卤族元素 / 五、卤素含氧酸盐的氧化性 / 次氯酸盐的氧化性 / NaClO + KI-淀粉 | 酸性体系",
+            "score": 10.0,
+            "matched_terms": [
+              "ki",
+              "体系",
+              "化性",
+              "性体",
+              "氧化",
+              "淀粉",
+              "酸性",
+              "酸性体系"
+            ],
+            "matched_formulae": [
+              "ki"
+            ]
+          }
+        ],
+        "matched_terms": [
+          "h2o2",
+          "ki",
+          "体系",
+          "化性",
+          "性体",
+          "氧化",
+          "酸性",
+          "酸性体系"
+        ],
+        "matched_formulae": [
+          "h2o2",
+          "ki"
+        ]
+      }
     }
   ]
 }

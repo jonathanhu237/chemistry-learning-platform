@@ -30,6 +30,13 @@ CORRECTED_HYPOCHLORITE_PARENT = (
     "次氯酸盐的氧化性",
 )
 CORRECTED_HYPOCHLORITE_POINTS = {"NaClO + MnSO₄", "NaClO + 品红溶液"}
+CORRECTED_SAMPLE_WORDING = "NaClO + 品红溶液"
+LEGACY_IDENTITY_KEYS = {
+    "experiment_id",
+    "legacy_experiment_id",
+    "point_key",
+    "legacy_point_key",
+}
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -136,7 +143,14 @@ def validate_catalog_seed(
     }
     if examples is not None:
         target_seed_keys: list[str] = []
+        semantic_mapped_examples = 0
+        reviewed_override_examples = 0
+        ambiguous_example_mappings = 0
+        corrected_wording_examples = 0
         for index, example in enumerate(examples, start=1):
+            leaked_keys = sorted(key for key in LEGACY_IDENTITY_KEYS if example.get(key))
+            if leaked_keys:
+                errors.append(f"examples[{index}]: legacy identity keys are not allowed: {', '.join(leaked_keys)}")
             target_seed_key = str(example.get("target_seed_key") or "").strip()
             if not target_seed_key:
                 errors.append(f"examples[{index}]: target_seed_key is required")
@@ -150,12 +164,45 @@ def validate_catalog_seed(
             target_path_titles = example.get("target_path_titles") or []
             if target and list(target.get("path_titles") or []) != list(target_path_titles):
                 errors.append(f"examples[{index}]: target path does not match catalog seed")
+            semantic_mapping = example.get("semantic_mapping")
+            if not isinstance(semantic_mapping, dict):
+                errors.append(f"examples[{index}]: semantic_mapping report is required")
+            else:
+                if semantic_mapping.get("method") != "semantic_title_path_reagent_match":
+                    errors.append(f"examples[{index}]: unsupported semantic mapping method")
+                candidates = semantic_mapping.get("top_candidates")
+                if not isinstance(candidates, list) or not candidates:
+                    errors.append(f"examples[{index}]: semantic_mapping.top_candidates is required")
+                elif target_seed_key not in {str(candidate.get("seed_key") or "") for candidate in candidates if isinstance(candidate, dict)}:
+                    errors.append(f"examples[{index}]: target seed key is missing from semantic candidates")
+                review_status = str(semantic_mapping.get("review_status") or "")
+                if review_status not in {"semantic_match", "reviewed_override"}:
+                    errors.append(f"examples[{index}]: invalid semantic mapping review_status")
+                semantic_mapped_examples += 1
+                if review_status == "reviewed_override":
+                    reviewed_override_examples += 1
+                    override = semantic_mapping.get("override")
+                    if not isinstance(override, dict) or not override.get("reason"):
+                        errors.append(f"examples[{index}]: reviewed_override requires override reason")
+                if bool(semantic_mapping.get("ambiguous")):
+                    ambiguous_example_mappings += 1
+                correction = semantic_mapping.get("wording_correction")
+                if isinstance(correction, dict):
+                    corrected_wording_examples += 1
+            if int(example.get("example_number") or 0) == 21:
+                correction = (example.get("semantic_mapping") or {}).get("wording_correction")
+                if not isinstance(correction, dict) or correction.get("corrected") != CORRECTED_SAMPLE_WORDING:
+                    errors.append(f"examples[{index}]: corrected sample wording must be recorded")
             for field in ["principle_text", "phenomenon_explanation", "safety_note"]:
                 if not str(example.get(field) or "").strip():
                     errors.append(f"examples[{index}]: {field} is required")
         example_counts = {
             "point_content_examples": len(examples),
             "unique_target_seed_keys": len(set(target_seed_keys)),
+            "semantic_mapped_examples": semantic_mapped_examples,
+            "reviewed_override_examples": reviewed_override_examples,
+            "ambiguous_example_mappings": ambiguous_example_mappings,
+            "corrected_wording_examples": corrected_wording_examples,
         }
         if len(examples) != EXPECTED_CATALOG_COUNTS["point_content_examples"]:
             errors.append(
@@ -169,6 +216,7 @@ def validate_catalog_seed(
         "errors": errors,
         "counts": {**counts, **example_counts},
         "corrected_hypochlorite_points": sorted(hypochlorite_titles & CORRECTED_HYPOCHLORITE_POINTS),
+        "corrected_sample_wording": CORRECTED_SAMPLE_WORDING,
     }
 
 

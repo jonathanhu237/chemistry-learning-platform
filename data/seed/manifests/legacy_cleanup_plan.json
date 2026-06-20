@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-20T17:10:54.264865+00:00",
+  "generated_at": "2026-06-20T18:28:42.738478+00:00",
   "manifest": "data/seed/manifests/core_resources.json",
   "mode": "dry_run",
   "media_cleanup": {
@@ -8,10 +8,10 @@
     "reason": "media_assets rows can point to local files, so media deletion is not automatic."
   },
   "summary": {
-    "target_count": 38,
-    "existing_target_count": 33,
-    "delete_file_count": 49539,
-    "delete_size_bytes": 509927124
+    "target_count": 39,
+    "existing_target_count": 34,
+    "delete_file_count": 49547,
+    "delete_size_bytes": 510050303
   },
   "targets": [
     {
@@ -132,29 +132,29 @@
       "exists": true,
       "kind": "directory",
       "file_count": 5,
-      "size_bytes": 27158,
+      "size_bytes": 29970,
       "action": "delete"
     },
     {
-      "path": "apps/admin-web/dist",
+      "path": "apps/web-teacher/dist",
       "source": "target",
       "category": "frontend_build_output",
       "reason": "Vite build output is reproducible.",
       "exists": true,
       "kind": "directory",
       "file_count": 97,
-      "size_bytes": 5178768,
+      "size_bytes": 5179137,
       "action": "delete"
     },
     {
-      "path": "apps/admin-web/node_modules",
+      "path": "apps/web-teacher/node_modules",
       "source": "target",
       "category": "frontend_dependency_directory",
       "reason": "Dependencies are restored from package-lock.json.",
       "exists": true,
       "kind": "directory",
       "file_count": 47725,
-      "size_bytes": 346480377,
+      "size_bytes": 346480385,
       "action": "delete"
     },
     {
@@ -164,8 +164,8 @@
       "reason": "Python bytecode caches are generated locally.",
       "exists": true,
       "kind": "directory",
-      "file_count": 15,
-      "size_bytes": 298264,
+      "file_count": 17,
+      "size_bytes": 336117,
       "action": "delete"
     },
     {
@@ -187,7 +187,7 @@
       "exists": true,
       "kind": "directory",
       "file_count": 31,
-      "size_bytes": 446823,
+      "size_bytes": 447856,
       "action": "delete"
     },
     {
@@ -209,7 +209,7 @@
       "exists": true,
       "kind": "directory",
       "file_count": 16,
-      "size_bytes": 85352,
+      "size_bytes": 85530,
       "action": "delete"
     },
     {
@@ -235,6 +235,17 @@
       "action": "delete"
     },
     {
+      "path": "server/app/api/web_admin/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 3,
+      "size_bytes": 5082,
+      "action": "delete"
+    },
+    {
       "path": "server/app/app_runtime/__pycache__",
       "source": "**/__pycache__",
       "category": "python_bytecode_cache",
@@ -242,7 +253,7 @@
       "exists": true,
       "kind": "directory",
       "file_count": 2,
-      "size_bytes": 7554,
+      "size_bytes": 7715,
       "action": "delete"
     },
     {
@@ -264,7 +275,7 @@
       "exists": true,
       "kind": "directory",
       "file_count": 2,
-      "size_bytes": 48795,
+      "size_bytes": 48899,
       "action": "delete"
     },
     {
@@ -308,7 +319,7 @@
       "exists": true,
       "kind": "directory",
       "file_count": 12,
-      "size_bytes": 114749,
+      "size_bytes": 118133,
       "action": "delete"
     },
     {
@@ -351,8 +362,8 @@
       "reason": "Python bytecode caches are generated locally.",
       "exists": true,
       "kind": "directory",
-      "file_count": 2,
-      "size_bytes": 33803,
+      "file_count": 3,
+      "size_bytes": 44348,
       "action": "delete"
     },
     {
@@ -374,7 +385,7 @@
       "exists": true,
       "kind": "directory",
       "file_count": 2,
-      "size_bytes": 42803,
+      "size_bytes": 42923,
       "action": "delete"
     },
     {
@@ -407,7 +418,7 @@
       "exists": true,
       "kind": "directory",
       "file_count": 3,
-      "size_bytes": 18977,
+      "size_bytes": 19519,
       "action": "delete"
     },
     {
@@ -428,8 +439,8 @@
       "reason": "Python bytecode caches are generated locally.",
       "exists": true,
       "kind": "directory",
-      "file_count": 58,
-      "size_bytes": 522213,
+      "file_count": 60,
+      "size_bytes": 583201,
       "action": "delete"
     }
   ]

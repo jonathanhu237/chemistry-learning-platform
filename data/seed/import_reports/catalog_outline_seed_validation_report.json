@@ -8,12 +8,17 @@
     "chapter_21_nodes": 0,
     "placeholder_nodes": 0,
     "point_content_examples": 30,
-    "unique_target_seed_keys": 30
+    "unique_target_seed_keys": 30,
+    "semantic_mapped_examples": 30,
+    "reviewed_override_examples": 5,
+    "ambiguous_example_mappings": 5,
+    "corrected_wording_examples": 1
   },
   "corrected_hypochlorite_points": [
     "NaClO + MnSO₄",
     "NaClO + 品红溶液"
   ],
+  "corrected_sample_wording": "NaClO + 品红溶液",
   "catalog_seed": "data/seed/experiment_catalog/catalog_tree.json",
   "point_content_examples_seed": "data/seed/experiment_catalog/point_content_examples.json"
 }

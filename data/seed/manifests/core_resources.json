@@ -1,6 +1,6 @@
 {
   "version": "production-core-resources-v1",
-  "generated_at": "2026-06-20T17:10:47.773933+00:00",
+  "generated_at": "2026-06-20T18:28:30.143625+00:00",
   "policy": "These files are the protected current system resources. Destructive cleanup must validate this manifest before deleting or moving historical artifacts.",
   "external_sources_mirrored": true,
   "expected_database_counts": {
@@ -119,15 +119,19 @@
       "source_path": "docs/30点位例子.txt",
       "required": true,
       "kind": "json",
-      "size_bytes": 44643,
-      "sha256": "8526073f91276c1a7c8b3f54c4aaac1dac4f892250ef9df7f46ecae3337c8a16",
+      "size_bytes": 147726,
+      "sha256": "7c1179957a5b070e00221f719c30f55bcbc2b51a57cbd6ebce9dc956e6ed21e8",
       "count": {
         "examples": 30,
-        "unique_target_seed_keys": 30
+        "unique_target_seed_keys": 30,
+        "semantic_mapped_examples": 30,
+        "corrected_wording_examples": 1
       },
       "expected_counts": {
         "examples": 30,
-        "unique_target_seed_keys": 30
+        "unique_target_seed_keys": 30,
+        "semantic_mapped_examples": 30,
+        "corrected_wording_examples": 1
       }
     },
     {
@@ -352,21 +356,25 @@
       "source_path": "data/seed/experiment_catalog/catalog_tree.json",
       "required": true,
       "kind": "json",
-      "size_bytes": 523,
-      "sha256": "f93266d4ab7ae6eeb135d867fe0cceff5311be042b9486356fa77022a5d33238",
+      "size_bytes": 729,
+      "sha256": "60b1c51d805378051849f0701459849466bd84493decd19f729f6d684a4e7a17",
       "count": {
         "ok": true,
         "total_nodes": 569,
         "directory_nodes": 176,
         "point_nodes": 393,
-        "point_content_examples": 30
+        "point_content_examples": 30,
+        "semantic_mapped_examples": 30,
+        "corrected_wording_examples": 1
       },
       "expected_counts": {
         "ok": true,
         "total_nodes": 569,
         "directory_nodes": 176,
         "point_nodes": 393,
-        "point_content_examples": 30
+        "point_content_examples": 30,
+        "semantic_mapped_examples": 30,
+        "corrected_wording_examples": 1
       }
     }
   ]

@@ -34,6 +34,20 @@ class ExampleMapping:
     target_path: tuple[str, ...]
 
 
+SUBSCRIPT_DIGITS = str.maketrans("₀₁₂₃₄₅₆₇₈₉", "0123456789")
+FORMULA_PATTERN = re.compile(r"(?:[A-Z][a-z]?[0-9₀-₉]*){1,}")
+TOKEN_PATTERN = re.compile(r"[\u4e00-\u9fff]{2,}|[A-Za-z][A-Za-z0-9]*[0-9₀-₉]*|[0-9]+")
+SEMANTIC_CANDIDATE_LIMIT = 5
+AMBIGUOUS_SCORE_GAP = 2.0
+
+KNOWN_SAMPLE_WORDING_CORRECTIONS: dict[int, dict[str, str]] = {
+    21: {
+        "corrected": "NaClO + 品红溶液",
+        "reason": "Reviewed source correction for the hypochlorite decolorization sample.",
+    }
+}
+
+
 EXAMPLE_MAPPINGS: tuple[ExampleMapping, ...] = (
     ExampleMapping(1, "第18章 五 焰色反应", ("第18章 碱金属和碱土金属", "五、焰色反应", "锂、钠、钾、钙、锶、钡盐的焰色反应")),
     ExampleMapping(2, "第18章 一 1.钠加热燃烧实验", ("第18章 碱金属和碱土金属", "一、碱金属、碱土金属单质活泼性的比较", "钠加热燃烧实验")),
@@ -232,6 +246,155 @@ def _parse_example_blocks(path: Path) -> dict[int, dict[str, Any]]:
     return blocks
 
 
+def _normalize_match_text(value: str) -> str:
+    return value.translate(SUBSCRIPT_DIGITS).casefold()
+
+
+def _expand_token(token: str) -> set[str]:
+    normalized = _normalize_match_text(token.strip())
+    if not normalized:
+        return set()
+    terms = {normalized}
+    if re.fullmatch(r"[\u4e00-\u9fff]+", token) and len(token) > 2:
+        terms.update(token[index : index + 2] for index in range(len(token) - 1))
+    return terms
+
+
+def _match_tokens(*values: str) -> set[str]:
+    tokens: set[str] = set()
+    for value in values:
+        if not value:
+            continue
+        for match in FORMULA_PATTERN.finditer(value):
+            tokens.update(_expand_token(match.group(0)))
+        normalized = _normalize_match_text(value)
+        for match in TOKEN_PATTERN.finditer(normalized):
+            tokens.update(_expand_token(match.group(0)))
+    return {token for token in tokens if len(token) > 1}
+
+
+def _formula_tokens(*values: str) -> set[str]:
+    tokens: set[str] = set()
+    for value in values:
+        for match in FORMULA_PATTERN.finditer(value or ""):
+            tokens.add(_normalize_match_text(match.group(0)))
+    return tokens
+
+
+def _example_match_text(mapping: ExampleMapping, block: dict[str, Any]) -> str:
+    fields = [
+        mapping.example_title,
+        str(block.get("example_title_from_source") or ""),
+        "\n".join(block.get("principle_text") or []),
+        "\n".join(block.get("phenomenon_explanation") or []),
+        "\n".join(block.get("safety_note") or []),
+    ]
+    correction = KNOWN_SAMPLE_WORDING_CORRECTIONS.get(mapping.example_number)
+    if correction:
+        fields.append(correction["corrected"])
+    return "\n".join(field for field in fields if field)
+
+
+def _score_candidate(
+    *,
+    query_text: str,
+    query_tokens: set[str],
+    query_formulae: set[str],
+    node: dict[str, Any],
+) -> dict[str, Any]:
+    path_titles = [str(part) for part in node.get("path_titles") or []]
+    node_text = " / ".join(path_titles)
+    node_tokens = _match_tokens(node_text)
+    node_formulae = _formula_tokens(node_text)
+    overlap = sorted(query_tokens & node_tokens)
+    formula_overlap = sorted(query_formulae & node_formulae)
+    normalized_query = _normalize_match_text(query_text)
+    normalized_leaf = _normalize_match_text(str(node.get("title") or ""))
+    exact_leaf_bonus = 6.0 if normalized_leaf and normalized_leaf in normalized_query else 0.0
+    path_bonus = sum(1.0 for part in path_titles[:-1] if _normalize_match_text(part) in normalized_query)
+    score = float(len(overlap)) + (2.0 * len(formula_overlap)) + exact_leaf_bonus + path_bonus
+    return {
+        "seed_key": node["seed_key"],
+        "path": node_text,
+        "score": round(score, 3),
+        "matched_terms": overlap[:16],
+        "matched_formulae": formula_overlap,
+    }
+
+
+def _semantic_candidates(nodes: list[dict[str, Any]], mapping: ExampleMapping, block: dict[str, Any]) -> list[dict[str, Any]]:
+    query_text = _example_match_text(mapping, block)
+    query_tokens = _match_tokens(query_text)
+    query_formulae = _formula_tokens(query_text)
+    candidates = [
+        _score_candidate(
+            query_text=query_text,
+            query_tokens=query_tokens,
+            query_formulae=query_formulae,
+            node=node,
+        )
+        for node in nodes
+        if node.get("node_kind") == "point"
+    ]
+    candidates.sort(key=lambda item: (-float(item["score"]), str(item["path"])))
+    return [candidate for candidate in candidates if float(candidate["score"]) > 0]
+
+
+def _report_candidates(candidates: list[dict[str, Any]], target_seed_key: str) -> list[dict[str, Any]]:
+    reported = candidates[:SEMANTIC_CANDIDATE_LIMIT]
+    if target_seed_key not in {str(candidate["seed_key"]) for candidate in reported}:
+        target_candidate = next(
+            (candidate for candidate in candidates if str(candidate["seed_key"]) == target_seed_key),
+            None,
+        )
+        if target_candidate:
+            reported = [*reported, target_candidate]
+    return reported
+
+
+def _build_semantic_mapping_report(
+    *,
+    nodes: list[dict[str, Any]],
+    mapping: ExampleMapping,
+    block: dict[str, Any],
+    target: dict[str, Any],
+    allow_reviewed_override: bool,
+) -> dict[str, Any]:
+    candidates = _semantic_candidates(nodes, mapping, block)
+    target_rank = next(
+        (index for index, candidate in enumerate(candidates, start=1) if candidate["seed_key"] == target["seed_key"]),
+        None,
+    )
+    target_candidate = next((candidate for candidate in candidates if candidate["seed_key"] == target["seed_key"]), None)
+    top_score = float(candidates[0]["score"]) if candidates else 0.0
+    second_score = float(candidates[1]["score"]) if len(candidates) > 1 else 0.0
+    ambiguous = len(candidates) > 1 and second_score > 0 and (top_score - second_score) <= AMBIGUOUS_SCORE_GAP
+    if target_rank is None:
+        raise ValueError(f"example {mapping.example_number}: reviewed target is not in semantic candidates")
+    if (target_rank != 1 or ambiguous) and not allow_reviewed_override:
+        raise ValueError(f"example {mapping.example_number}: semantic mapping is ambiguous and needs a reviewed override")
+    review_status = "reviewed_override" if target_rank != 1 or ambiguous else "semantic_match"
+    report: dict[str, Any] = {
+        "method": "semantic_title_path_reagent_match",
+        "review_status": review_status,
+        "target_rank": target_rank,
+        "target_score": float(target_candidate["score"]) if target_candidate else 0.0,
+        "ambiguous": ambiguous,
+        "top_candidates": _report_candidates(candidates, str(target["seed_key"])),
+        "matched_terms": list(target_candidate.get("matched_terms") or []) if target_candidate else [],
+        "matched_formulae": list(target_candidate.get("matched_formulae") or []) if target_candidate else [],
+    }
+    if review_status == "reviewed_override":
+        report["override"] = {
+            "type": "reviewed_target_path",
+            "reason": "The curated target path resolves the sample when semantic candidates are tied or nearby.",
+        }
+    correction = KNOWN_SAMPLE_WORDING_CORRECTIONS.get(mapping.example_number)
+    if correction:
+        report["wording_correction"] = correction
+    return report
+
+
 def build_point_content_examples(nodes: list[dict[str, Any]], example_source: Path) -> list[dict[str, Any]]:
     blocks = _parse_example_blocks(example_source)
     nodes_by_path = {" / ".join(node["path_titles"]): node for node in nodes}
@@ -246,6 +409,17 @@ def build_point_content_examples(nodes: list[dict[str, Any]], example_source: Pa
         target = nodes_by_path.get(target_path_text)
         if not target:
             errors.append(f"example {mapping.example_number}: target path does not resolve: {target_path_text}")
+            continue
+        try:
+            semantic_mapping = _build_semantic_mapping_report(
+                nodes=nodes,
+                mapping=mapping,
+                block=block,
+                target=target,
+                allow_reviewed_override=True,
+            )
+        except ValueError as exc:
+            errors.append(str(exc))
             continue
         examples.append(
             {
@@ -263,6 +437,7 @@ def build_point_content_examples(nodes: list[dict[str, Any]], example_source: Pa
                 "source_doc": EXAMPLE_SOURCE_LABEL,
                 "source_line_start": block["source_line_start"],
                 "source_line_end": block["source_line_end"],
+                "semantic_mapping": semantic_mapping,
             }
         )
     if errors:
@@ -301,7 +476,8 @@ def generate_catalog_seed(
             "artifact_type": "experiment_catalog_point_content_examples",
             "version": "catalog-outline-30-examples-v1",
             "source_doc": EXAMPLE_SOURCE_LABEL,
-            "mapping_source": "openspec/changes/replace-legacy-experiment-seeds-with-catalog-outline-seed/design.md",
+            "mapping_source": "openspec/changes/catalog-point-ai-platform-roadmap/design.md",
+            "mapping_method": "semantic title/path/reagent scoring with reviewed target-path overrides for ties",
             "content_status": "published",
         },
         "examples": examples,

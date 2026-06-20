@@ -105,6 +105,15 @@ def _catalog_examples_count(path: Path) -> dict[str, int]:
     return {
         "examples": len(examples),
         "unique_target_seed_keys": len({str(item.get("target_seed_key") or "") for item in examples if isinstance(item, dict)}),
+        "semantic_mapped_examples": sum(
+            1 for item in examples if isinstance(item, dict) and isinstance(item.get("semantic_mapping"), dict)
+        ),
+        "corrected_wording_examples": sum(
+            1
+            for item in examples
+            if isinstance(item, dict)
+            and isinstance((item.get("semantic_mapping") or {}).get("wording_correction"), dict)
+        ),
     }
 
 
@@ -117,6 +126,8 @@ def _catalog_validation_report_count(path: Path) -> dict[str, int | bool]:
         "directory_nodes": int(counts.get("directory_nodes") or 0),
         "point_nodes": int(counts.get("point_nodes") or 0),
         "point_content_examples": int(counts.get("point_content_examples") or 0),
+        "semantic_mapped_examples": int(counts.get("semantic_mapped_examples") or 0),
+        "corrected_wording_examples": int(counts.get("corrected_wording_examples") or 0),
     }
 
 
@@ -351,7 +362,12 @@ RESOURCE_SPECS: list[dict[str, Any]] = [
         "path": "data/seed/experiment_catalog/point_content_examples.json",
         "kind": "json",
         "count": _catalog_examples_count,
-        "expected_counts": {"examples": 30, "unique_target_seed_keys": 30},
+        "expected_counts": {
+            "examples": 30,
+            "unique_target_seed_keys": 30,
+            "semantic_mapped_examples": 30,
+            "corrected_wording_examples": 1,
+        },
         "source_path": "docs/30点位例子.txt",
     },
     {
@@ -515,6 +531,8 @@ RESOURCE_SPECS: list[dict[str, Any]] = [
             "directory_nodes": 176,
             "point_nodes": 393,
             "point_content_examples": 30,
+            "semantic_mapped_examples": 30,
+            "corrected_wording_examples": 1,
         },
         "source_path": "data/seed/experiment_catalog/catalog_tree.json",
     },

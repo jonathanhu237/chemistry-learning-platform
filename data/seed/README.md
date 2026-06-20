@@ -17,6 +17,13 @@ Retired legacy groups:
 - `experiment_points/`, `question_bank/`, and `point_evidence/` are no longer protected production seeds for the catalog-outline baseline.
 - Old question banks, old point identities, old video references, and old point-to-chunk bindings are invalid after reset.
 - Canonical chunks and embeddings remain valid corpus data; only the retired point-to-chunk binding layer must be regenerated against catalog node ids or deterministic catalog seed keys.
+- Destructive cleanup may delete retired question-bank seed data, retired point-evidence seed data, and retired video-point seed artifacts. It must not delete `canonical_rag/`, source documents/chunks, embeddings, search dictionaries, or the current `experiment_catalog/` seed.
+
+Catalog seed source of truth:
+
+- Regenerate the seed from `docs/实验目录_整理版.md`; directories stay first-class tree nodes and only leaves become experiment point nodes.
+- The 30 examples from `docs/30点位例子.txt` are smoke content mapped to concrete catalog point nodes. Mapping uses title, path, reagent/formula terms, and source content; ambiguous matches require a reviewed target-path override recorded in each example's `semantic_mapping`.
+- Known source wording corrections, including `NaClO + 品红溶液`, must appear in the semantic mapping report and validation output.
 
 Student learning element focus cards:
 

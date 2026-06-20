@@ -1,17 +1,17 @@
 ## 1. Authoritative Catalog Tree And Legacy Reset
 
-- [ ] 1.1 Audit current catalog seed docs, generated seed files, and import reports to identify the authoritative input path for the updated experiment catalog.
-- [ ] 1.2 Update or verify catalog seed generation so it preserves the full chapter directory hierarchy and only marks leaf experiment items as point nodes.
-- [ ] 1.3 Add validation that directory nodes remain first-class tree nodes and are not collapsed into point-only flat lists.
-- [ ] 1.4 Treat placeholder content such as no corresponding experiment content as empty content during import.
-- [ ] 1.5 Remove or retire legacy point-to-chunk evidence seed rows keyed only by `(experiment_id, point_key)` while preserving canonical `source_chunks` and embeddings.
-- [ ] 1.6 Remove or deactivate old question-bank seed rows that depend on invalid legacy point identity.
-- [ ] 1.7 Implement or verify validation that active point evidence and question seed data target catalog node id or stable catalog seed key.
-- [ ] 1.8 Map the 30 sample point examples to concrete catalog point nodes using semantic title/path/reagent matching.
-- [ ] 1.9 Add explicit override/reporting support for ambiguous 30-sample mappings.
-- [ ] 1.10 Ensure known sample wording corrections such as `NaClO + 品红溶液` are represented in mapping reports and tests.
-- [ ] 1.11 Add tests covering full-tree import, leaf-point semantics, placeholder handling, legacy cleanup, and sample mapping failures.
-- [ ] 1.12 Update seed/operations documentation with the new source-of-truth and destructive reset rules.
+- [x] 1.1 Audit current catalog seed docs, generated seed files, and import reports to identify the authoritative input path for the updated experiment catalog.
+- [x] 1.2 Update or verify catalog seed generation so it preserves the full chapter directory hierarchy and only marks leaf experiment items as point nodes.
+- [x] 1.3 Add validation that directory nodes remain first-class tree nodes and are not collapsed into point-only flat lists.
+- [x] 1.4 Treat placeholder content such as no corresponding experiment content as empty content during import.
+- [x] 1.5 Remove or retire legacy point-to-chunk evidence seed rows keyed only by `(experiment_id, point_key)` while preserving canonical `source_chunks` and embeddings.
+- [x] 1.6 Remove or deactivate old question-bank seed rows that depend on invalid legacy point identity.
+- [x] 1.7 Implement or verify validation that active point evidence and question seed data target catalog node id or stable catalog seed key.
+- [x] 1.8 Map the 30 sample point examples to concrete catalog point nodes using semantic title/path/reagent matching.
+- [x] 1.9 Add explicit override/reporting support for ambiguous 30-sample mappings.
+- [x] 1.10 Ensure known sample wording corrections such as `NaClO + 品红溶液` are represented in mapping reports and tests.
+- [x] 1.11 Add tests covering full-tree import, leaf-point semantics, placeholder handling, legacy cleanup, and sample mapping failures.
+- [x] 1.12 Update seed/operations documentation with the new source-of-truth and destructive reset rules.
 
 ## 2. Teacher Catalog Editor Continuity
 

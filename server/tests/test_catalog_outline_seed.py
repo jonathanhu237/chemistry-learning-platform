@@ -13,6 +13,7 @@ from server.app.domains.catalog_tree.catalog_seed import (
 )
 from server.app.domains.questions.generation import _catalog_node_evidence_ready
 from server.app.domains.video_library.search import _build_documents
+from scripts.generate_experiment_catalog_seed import ExampleMapping, _build_semantic_mapping_report
 
 
 def test_catalog_outline_seed_matches_required_counts_and_corrected_siblings() -> None:
@@ -28,7 +29,76 @@ def test_catalog_outline_seed_matches_required_counts_and_corrected_siblings() -
     assert result["counts"]["chapter_21_nodes"] == 0
     assert result["counts"]["point_content_examples"] == 30
     assert result["counts"]["unique_target_seed_keys"] == 30
+    assert result["counts"]["semantic_mapped_examples"] == 30
+    assert result["counts"]["corrected_wording_examples"] == 1
     assert result["corrected_hypochlorite_points"] == ["NaClO + MnSO₄", "NaClO + 品红溶液"]
+    assert result["corrected_sample_wording"] == "NaClO + 品红溶液"
+    assert all(example.get("semantic_mapping", {}).get("top_candidates") for example in examples)
+    corrected = next(example for example in examples if example["example_number"] == 21)
+    assert corrected["semantic_mapping"]["wording_correction"]["corrected"] == "NaClO + 品红溶液"
+
+
+def test_catalog_seed_validation_rejects_legacy_identity_and_missing_mapping_report() -> None:
+    nodes = load_catalog_seed()
+    examples = load_point_content_examples()
+    broken = dict(examples[0])
+    broken.pop("semantic_mapping", None)
+    broken["experiment_id"] = "EXP_LEGACY"
+    broken["point_key"] = "legacy-point"
+
+    result = validate_catalog_seed(nodes, [broken, *examples[1:]])
+
+    assert result["ok"] is False
+    assert any("legacy identity keys are not allowed" in error for error in result["errors"])
+    assert any("semantic_mapping report is required" in error for error in result["errors"])
+
+
+def test_ambiguous_sample_mapping_requires_reviewed_override() -> None:
+    nodes = [
+        {
+            "seed_key": "cat-a",
+            "node_kind": "point",
+            "title": "NaClO + 品红溶液",
+            "path_titles": ["第13章 卤族元素", "次氯酸盐的氧化性", "NaClO + 品红溶液"],
+        },
+        {
+            "seed_key": "cat-b",
+            "node_kind": "point",
+            "title": "NaClO + 品红溶液",
+            "path_titles": ["第13章 卤族元素", "候选复核", "NaClO + 品红溶液"],
+        },
+    ]
+    mapping = ExampleMapping(
+        21,
+        "NaClO + 品红溶液",
+        ("第13章 卤族元素", "次氯酸盐的氧化性", "NaClO + 品红溶液"),
+    )
+    block = {
+        "example_title_from_source": "NaClO + 品红溶液",
+        "principle_text": ["NaClO + 品红溶液"],
+        "phenomenon_explanation": [],
+        "safety_note": [],
+    }
+
+    with pytest.raises(ValueError, match="needs a reviewed override"):
+        _build_semantic_mapping_report(
+            nodes=nodes,
+            mapping=mapping,
+            block=block,
+            target=nodes[0],
+            allow_reviewed_override=False,
+        )
+
+    report = _build_semantic_mapping_report(
+        nodes=nodes,
+        mapping=mapping,
+        block=block,
+        target=nodes[0],
+        allow_reviewed_override=True,
+    )
+
+    assert report["review_status"] == "reviewed_override"
+    assert report["override"]["type"] == "reviewed_target_path"
 
 
 def test_catalog_outline_reset_deletes_retired_seed_tables_but_preserves_canonical_corpus() -> None:

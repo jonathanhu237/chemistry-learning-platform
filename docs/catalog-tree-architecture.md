@@ -35,6 +35,8 @@ AI-generated chunks/evidence and student search documents remain separate consum
 - Accepted question evidence must be freshly generated against catalog node ids or deterministic catalog seed keys; old `experiment_video_point_evidence` point bindings are retired.
 - This change migrates point identity to stable catalog node ids; it does not make point content a RAG chunk source.
 
+The committed catalog seed is regenerated from `docs/实验目录_整理版.md`. The 30 examples in `docs/30点位例子.txt` are mapped to concrete leaf point nodes through semantic title/path/reagent matching, with reviewed overrides recorded for ambiguous candidates.
+
 ## Deployment Requirements
 
 Elasticsearch with IK analysis is an application service, not an optional fallback. The Compose ES image must include:

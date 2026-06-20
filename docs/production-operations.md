@@ -24,7 +24,7 @@ Current system data is protected under `data/seed` and validated by:
 python scripts/validate_production_resources.py
 ```
 
-The manifest at `data/seed/manifests/core_resources.json` covers the formal experiment catalog, knowledge framework, experiment point inventory, current point-aware question bank, question-bank schema, canonical chunks, canonical embeddings, manually reviewed point evidence bindings, and current import reports.
+The manifest at `data/seed/manifests/core_resources.json` covers the formal experiment catalog, knowledge framework, current catalog-outline seed, semantic 30-example mapping report, canonical chunks, canonical embeddings, search dictionaries, student learning profiles, and current import reports. Retired legacy point inventory, old question-bank seed files, and old point-evidence bindings are intentionally outside the protected baseline.
 
 Destructive cleanup must run only after this validation passes. The cleanup script intentionally excludes `data/media` because uploaded media requires a database/UI consistency plan.
 
@@ -128,7 +128,7 @@ Student video-library search is a PostgreSQL-to-Elasticsearch projection. Postgr
 
 Elasticsearch stores derived published point documents only. Directory nodes contribute ancestor category text to descendant point documents but never become standalone results. Teacher-only notes, raw media-library uploads that are not bound to published points, `source_chunks`, and `experiment_video_point_evidence` must stay out of the student video-library index. Do not edit ES documents by hand and do not treat ES hit sources as student page content.
 
-The current catalog seed comes from `docs/实验目录_整理版.md`: 569 catalog nodes, 176 directory nodes, and 393 point nodes. Chapter 21 has no seeded catalog content. The 30 smoke examples in `docs/30点位例子.txt` are imported as published point content for the mapped catalog point nodes and can be indexed without legacy AI evidence.
+The current catalog seed comes from `docs/实验目录_整理版.md`: 569 catalog nodes, 176 directory nodes, and 393 point nodes. Chapter 21 has no seeded catalog content. The 30 smoke examples in `docs/30点位例子.txt` are imported as published point content for semantically matched catalog point nodes and can be indexed without legacy AI evidence. Each example records a `semantic_mapping` report with title/path/reagent evidence, top candidates, reviewed override details when candidates are ambiguous, and known wording corrections such as `NaClO + 品红溶液`.
 
 Catalog authoring only binds existing media assets to point nodes. New uploads are owned by the media library workflow and then selected from the catalog editor after processing.
 
@@ -315,7 +315,7 @@ Expected protected baseline counts:
 - 77 formal experiments
 - 11 chapters, 133 units, 385 knowledge points
 - 569 catalog nodes: 176 directories and 393 points
-- 30 published catalog point-content smoke examples and queued search documents
+- 30 semantically mapped published catalog point-content smoke examples and queued search documents
 - 0 question banks and 0 questions
 - 3637 canonical chunks and embeddings
 - 0 legacy point evidence bindings
@@ -366,7 +366,7 @@ Before declaring a phase production-ready, run:
 
 ```powershell
 python scripts/validate_production_readiness.py --install-frontend
-openspec validate replace-legacy-experiment-seeds-with-catalog-outline-seed --strict
+openspec validate catalog-point-ai-platform-roadmap --strict
 git status --short
 ```
 
