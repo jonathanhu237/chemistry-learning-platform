@@ -35,24 +35,24 @@ The system SHALL keep display-facing family and element property facts in an exp
 - **AND** it MUST NOT depend on parsing canonical RAG chunk text to produce display facts
 
 ### Requirement: Real student learning page payload
-The backend SHALL expose a student learning payload centered on a family or chapter profile, its display facts, and its chapter-level experiment-point video groups.
+The backend SHALL expose a student learning payload centered on a selected family or chapter profile and its chapter-scoped catalog tree.
 
 #### Scenario: Student opens learning page
 - **WHEN** an authenticated student opens the H5 learning page
 - **THEN** the backend MUST return a recommended, default, or explicitly selected learning profile
-- **AND** the payload MUST include the profile's visible family/element facts and common-property content
-- **AND** it MUST include experiment-point video groups derived from published formal experiments for the current chapter
+- **AND** the payload MUST include the profile's visible family/element facts and common-property content where available
+- **AND** it MUST include the top-level published catalog nodes for the current chapter.
 
-#### Scenario: Student opens the experiment-point video view
-- **WHEN** a student switches to the experiment-point video view
-- **THEN** the H5 app MUST show experiment-point cards grouped by chapter parent experiment and point
-- **AND** the cards MUST include experiment/point title, concise reaction or point summary when available, media availability, and question count
-- **AND** the view MUST NOT depend on selecting a chemical property section such as oxidizing property or reducing property
+#### Scenario: Student opens the catalog learning view
+- **WHEN** a student enters the experiment learning area for a chapter
+- **THEN** the H5 app MUST show catalog nodes according to the authored directory tree
+- **AND** node cards MUST include title, summary or teaching cue, node kind/action, media availability where relevant, and question count where available
+- **AND** the view MUST NOT depend on a fixed parent experiment group level.
 
 #### Scenario: No video exists for a point
-- **WHEN** a related experiment point has no published video media
+- **WHEN** a published point node has no published video media
 - **THEN** the H5 app MUST still show the point and its learning context
-- **AND** it MUST render a graceful empty video state instead of failing navigation
+- **AND** it MUST render a graceful empty video state instead of failing navigation.
 
 ### Requirement: Student H5 mobile-first WebView contract
 The student learning surface SHALL be treated as a phone-first H5 / mini-program WebView experience, not as a desktop admin page or a shrunken desktop layout.
@@ -74,16 +74,18 @@ The student learning surface SHALL be treated as a phone-first H5 / mini-program
 - **BUT** it MUST NOT introduce desktop-only navigation, table-first layouts, hover-only affordances, or admin-console density into the student H5 experience
 
 ### Requirement: Student experiment point detail
-The student H5 app SHALL provide a point detail experience that keeps video learning primary while showing compact explanation context.
+The student H5 app SHALL provide a point detail experience keyed by stable catalog point node identity.
 
 #### Scenario: Student opens a point detail
-- **WHEN** a student opens a related experiment point
-- **THEN** the page MUST show the point title, parent experiment context, available video, observed phenomenon or summary, related reaction or principle when available, and safety/caution notes when available
-- **AND** the app MUST preserve student learning event recording for post-learning behavior
+- **WHEN** a student opens a point node
+- **THEN** the page MUST show the point title, chapter/catalog path context, available video, principle equation or text, phenomenon explanation, safety/caution notes, and related experiment links when available
+- **AND** the app MUST preserve student learning event recording for post-learning behavior.
+- **AND** the page MUST NOT render teacher-only notes.
 
 #### Scenario: Point detail chat context is created
 - **WHEN** a point detail page is open and AI assistant is enabled
-- **THEN** the H5 app MUST pass chapter, experiment, point key or point title, and page summary context to student chat requests
+- **THEN** the H5 app MUST pass chapter, point node id, optional source path, and page summary context to student chat requests
+- **AND** it MUST NOT rely on legacy `experiment_id` plus `point_key` as the primary context.
 
 ### Requirement: Global authenticated H5 feedback
 The student H5 app SHALL provide a global feedback entry for authenticated students when the feedback feature is enabled.
@@ -147,18 +149,18 @@ The student H5 element learning page SHALL distinguish family-wide common proper
 - **AND** the experiment-point group MUST remain the primary actionable learning content.
 
 ### Requirement: Experiment-point primary task area
-The student H5 element learning page SHALL keep related experiment points as the primary learning task after the compact chemistry context.
+The student H5 element learning page SHALL keep catalog point navigation as the primary learning task after compact chemistry context.
 
-#### Scenario: Student reaches related experiment points
-- **WHEN** a selected family or property has related experiment points
-- **THEN** the page MUST show point cards grouped by the relevant property or parent experiment
-- **AND** each point card MUST include the point title, parent experiment context, concise reaction or point summary when available, media availability, and question count
-- **AND** selecting a point card MUST open the point detail learning page.
+#### Scenario: Student reaches catalog points
+- **WHEN** a selected family or chapter has published catalog nodes
+- **THEN** the page MUST show top-level directory and point entries for that chapter
+- **AND** selecting a directory MUST open the next catalog level
+- **AND** selecting a point MUST open the point detail learning page.
 
-#### Scenario: Context area would push points too low
-- **WHEN** selected-element facts and family common properties contain more content than fits comfortably before the point list on a phone viewport
+#### Scenario: Context area would push catalog too low
+- **WHEN** selected-element facts and family common properties contain more content than fits comfortably before the catalog entry area on a phone viewport
 - **THEN** the page MUST prioritize compact summaries, expandable detail, or equivalent progressive disclosure
-- **AND** it MUST keep the experiment-point task area discoverable without requiring excessive scrolling.
+- **AND** it MUST keep the catalog task area discoverable without requiring excessive scrolling.
 
 ### Requirement: Optional licensed reference media
 The student H5 element learning page SHALL treat public images, videos, or external reference resources as optional licensed reference media, not as protected experiment-point resources.
@@ -174,27 +176,22 @@ The student H5 element learning page SHALL treat public images, videos, or exter
 - **THEN** the page MUST still render the selected-element facts, family common properties, experiment-point groups, AI entry, feedback entry, and assessment handoff.
 
 ### Requirement: Two-tab chapter learning composition
-The student H5 chapter learning page SHALL split the selected family/chapter learning experience into two quickly switchable sibling views: a facts/common-property view and an experiment-point video view.
+The student H5 chapter learning page SHALL support the prototype's selected-chapter flow and MUST NOT require a fixed facts-vs-experiments two-tab contract when the authored catalog is the primary navigation.
 
-#### Scenario: Student switches from facts to experiments
-- **WHEN** a student opens a selected family/chapter page
-- **THEN** the H5 app MUST show a visible two-option switcher for facts/common properties and experiment videos
-- **AND** selecting the experiment option MUST show the chapter's experiment-point video learning view without changing the selected chapter or selected element
+#### Scenario: Student opens a selected chapter
+- **WHEN** a student opens a selected family or chapter page from the periodic-table entry
+- **THEN** the page MUST show the selected chapter context and a clear entry into its catalog tree
+- **AND** the catalog tree MUST be available without assuming a fixed experiment group tab.
 
-#### Scenario: Student switches from experiments to facts
-- **WHEN** a student is viewing experiment-point video content for a chapter
-- **THEN** selecting the facts option MUST return to the same chapter's element facts and family common properties
-- **AND** the selected family/chapter MUST remain the current learning context
+#### Scenario: Student navigates catalog depth
+- **WHEN** a student opens a catalog directory from the chapter page
+- **THEN** the app MUST render a catalog page for that node with breadcrumbs or equivalent source context
+- **AND** returning MUST restore the previous chapter or directory page.
 
-#### Scenario: Facts view contains theory content
-- **WHEN** the facts/common-property view is active
-- **THEN** the page MUST show selected-element facts, family-wide common properties or trend summaries, and optional licensed reference media when available
-- **AND** it MUST NOT require the student to interpret experiment-point navigation through chemical property sections
-
-#### Scenario: Experiments view contains task content
-- **WHEN** the experiment-point video view is active
-- **THEN** the page MUST show experiment-point learning content grouped by current chapter, parent experiment, and point
-- **AND** it MUST keep video availability, point title, parent experiment context, and question count visible on point cards where available
+#### Scenario: Facts content remains available
+- **WHEN** the profile has facts, common properties, or element context
+- **THEN** the page MAY show them as compact chapter context
+- **AND** these facts MUST NOT replace the catalog as the path to point video/detail learning.
 
 ### Requirement: Property sections are facts content
 The student H5 learning page SHALL treat property sections as theory/common-property content rather than as the required primary grouping for experiment-point video learning.
@@ -297,3 +294,22 @@ The student H5 element detail page SHALL render the selected element's atom mode
 - **WHEN** unrelated browser extension CORS errors or backend auth errors appear in the developer console while the already-rendered element detail page is visible
 - **THEN** those errors MUST NOT be treated as the rendering cause unless they prevent the atom data or component from loading
 - **AND** layout geometry MUST remain the primary regression signal for this atom-stage failure mode
+
+### Requirement: Prototype-aligned multi-level catalog flow
+The student H5 app SHALL implement the new prototype flow from periodic-table entry to chapter to catalog directories to point video/detail.
+
+#### Scenario: Student enters from periodic table
+- **WHEN** a student taps a chapter/family entry from the periodic-table learning entry
+- **THEN** the app MUST navigate to that chapter's standalone page
+- **AND** the page MUST make the chapter identity clear before showing catalog entries.
+
+#### Scenario: Student opens nested directory
+- **WHEN** a student taps a directory catalog node
+- **THEN** the app MUST open a second-level route for that directory
+- **AND** the page MUST show child directory and point entries according to the authored order.
+
+#### Scenario: Student opens concrete point video
+- **WHEN** a student taps a point catalog node
+- **THEN** the app MUST open the point video/detail page
+- **AND** the page MUST show manually authored principle, phenomenon explanation, safety note, related links, and the fixed test handoff.
+- **AND** teacher-only remarks MUST remain hidden from this page.

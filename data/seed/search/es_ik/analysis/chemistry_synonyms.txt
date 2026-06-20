@@ -1,0 +1,29 @@
+HCl, 盐酸, 氯化氢, hydrochloric acid
+Na2S2O3, 硫代硫酸钠, sodium thiosulfate, thiosulfate
+S2O3^2-, S2O3²⁻, 硫代硫酸根, thiosulfate ion
+SO2, 二氧化硫, sulfur dioxide
+S, 硫, sulfur, 黄色沉淀, sulfur precipitate
+CCl4, 四氯化碳, carbon tetrachloride
+Cl2, 氯气, chlorine
+Br2, 溴, 溴水, bromine, bromine water
+I2, 碘, 碘水, iodine, iodine water
+H2O2, 过氧化氢, 双氧水, hydrogen peroxide
+NaOH, 氢氧化钠, sodium hydroxide
+KOH, 氢氧化钾, potassium hydroxide
+NH3, 氨, ammonia
+NH3·H2O, 氨水, ammonia water
+KMnO4, 高锰酸钾, potassium permanganate
+K2Cr2O7, 重铬酸钾, potassium dichromate
+CuSO4, 硫酸铜, copper sulfate
+AgNO3, 硝酸银, silver nitrate
+Na2CO3, 碳酸钠, sodium carbonate
+CaCO3, 碳酸钙, calcium carbonate
+Cl-, Cl⁻, 氯离子, chloride ion
+Br-, Br⁻, 溴离子, bromide ion
+I-, I⁻, 碘离子, iodide ion
+Fe2+, Fe²⁺, 亚铁离子, ferrous ion
+Fe3+, Fe³⁺, 铁离子, ferric ion
+化学方程式, 反应方程式, reaction equation
+实验原理, 反应原理, principle
+现象解释, 现象分析, phenomenon explanation
+安全提示, 安全注意事项, safety note

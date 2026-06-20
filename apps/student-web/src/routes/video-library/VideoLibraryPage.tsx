@@ -24,12 +24,13 @@ function compactSearch(search: Record<string, string | null | undefined>): Recor
 
 function aiContextFromResult(item: StudentVideoLibraryResultItem, target: StudentVideoLibraryRouteTarget): AssistantContext {
   return {
-    context_type: target.experiment_id ? "learning_point" : "learning_home",
+    context_type: target.node_id ? "learning_point" : "learning_home",
     context_title: target.context_title || item.title,
     context_summary: target.context_summary || item.snippet || item.subtitle,
     chapter_id: target.chapter_id || undefined,
-    experiment_id: target.experiment_id || undefined,
-    point_key: target.point_key || undefined,
+    point_node_id: target.node_id || undefined,
+    source_node_id: target.source_node_id || undefined,
+    catalog_path: target.catalog_path || undefined,
     prompts: [
       target.prompt || `解释“${item.title}”这个实验现象`,
       "这个现象对应哪些反应原理？",
@@ -100,14 +101,16 @@ export function VideoLibraryPage() {
   const openResult = (item: StudentVideoLibraryResultItem) => {
     const target = item.target;
     if (!target) return;
-    if (target.kind === "point_detail" && target.experiment_id) {
-      navigateToPoint(navigate, target.experiment_id, {
+    if (target.kind === "point_detail" && target.node_id) {
+      navigateToPoint(navigate, target.node_id, {
         from: "video-library",
         profileId: target.profile_id,
+        chapterId: target.chapter_id,
+        sourceNodeId: target.source_node_id,
+        catalogPath: target.catalog_path?.join(" / "),
         propertyKey: target.property_key,
         propertyTitle: target.property_title,
         elementSymbol: target.element_symbol,
-        pointKey: target.point_key,
         pointTitle: target.point_title || item.title,
       });
       return;

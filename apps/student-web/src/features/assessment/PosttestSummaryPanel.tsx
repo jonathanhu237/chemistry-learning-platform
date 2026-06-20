@@ -3,7 +3,7 @@ import { BarChart3, Bot, BookOpenCheck, CheckCircle2, FlaskConical, LoaderCircle
 import { StudentPosttestReport, errorMessage, explainPosttestMistakes, generatePosttestAiSummary } from "../../api";
 import { MobileButton, MobileEmptyState } from "../../mobile/primitives";
 import { AiMarkdownBlock } from "../../shared/markdown/AiMarkdownBlock";
-import { stripExperimentPrefix } from "../experiments/experimentFormat";
+import { stripExperimentPrefix } from "./assessmentText";
 import { answerLabel, formatPercent, formatScore } from "./assessmentFormat";
 
 export function PosttestSummaryPanel({ report, onContinue }: { report: StudentPosttestReport; onContinue: () => void }) {

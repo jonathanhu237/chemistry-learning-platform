@@ -33,25 +33,113 @@ const mockUser = {
   class_name: "移动端测试班",
 };
 
-const mockLearningPoint = {
-  id: "EXP_19_1_01",
-  code: "19-1-01",
-  title: "氯、溴、碘的置换次序",
-  summary: "比较卤素单质氧化性强弱。",
-  parent_code: "19-1",
-  parent_title: "实验 19-1 卤素",
-  module_title: "氯水 + KBr 溶液 + CCl4",
-  chapter_ids: ["CH17"],
-  video_candidate_count: 1,
-  published_video_count: 0,
-  question_count: 10,
-  property_key: "oxidation",
-  property_title: "氧化性",
-  point_key: "halogen-displacement",
-  point_title: "卤素置换观察",
-  formula: "Cl2 + 2Br- -> 2Cl- + Br2",
+const mockCatalogDirectoryNode = {
+  node_id: "cat-dir-halogen",
+  chapter_id: "CH17",
+  parent_id: null,
+  node_kind: "directory",
+  title: "卤素置换目录",
+  summary: "按观察对象进入本章点位。",
+  status: "published",
+  display_order: 1,
+  actions: ["open_directory"],
+  has_children: true,
+  has_point_content: false,
+  media_count: 0,
+  published_media_count: 0,
+};
+
+const mockCatalogPointNode = {
+  node_id: "cat-point-halogen",
+  chapter_id: "CH17",
+  parent_id: "cat-dir-halogen",
+  node_kind: "point",
+  title: "卤素置换观察",
+  summary: "氯水把 Br- 氧化为溴单质，CCl4 层出现橙红色。",
+  status: "published",
+  display_order: 1,
+  actions: ["open_point"],
+  has_children: false,
+  has_point_content: true,
+  media_count: 0,
+  published_media_count: 0,
+};
+
+const mockCatalogChapter = {
+  chapter_id: "CH17",
+  chapter_title: "第 17 族 卤族元素",
+  nodes: [mockCatalogDirectoryNode],
+};
+
+const mockCatalogDirectory = {
+  node: mockCatalogDirectoryNode,
+  breadcrumbs: [
+    {
+      node_id: mockCatalogDirectoryNode.node_id,
+      title: mockCatalogDirectoryNode.title,
+      node_kind: mockCatalogDirectoryNode.node_kind,
+      chapter_id: mockCatalogDirectoryNode.chapter_id,
+    },
+  ],
+  children: [mockCatalogPointNode],
+};
+
+const mockCatalogPointDetail = {
+  node_id: "cat-point-halogen",
+  canonical_node_id: "cat-point-halogen",
+  source_node_id: null,
+  chapter_id: "CH17",
+  title: "卤素置换观察",
+  summary: "氯水把 Br- 氧化为溴单质，CCl4 层出现橙红色。",
+  breadcrumbs: [
+    {
+      node_id: mockCatalogDirectoryNode.node_id,
+      title: mockCatalogDirectoryNode.title,
+      node_kind: mockCatalogDirectoryNode.node_kind,
+      chapter_id: mockCatalogDirectoryNode.chapter_id,
+    },
+    {
+      node_id: mockCatalogPointNode.node_id,
+      title: mockCatalogPointNode.title,
+      node_kind: mockCatalogPointNode.node_kind,
+      chapter_id: mockCatalogPointNode.chapter_id,
+    },
+  ],
+  principle_mode: "equation",
+  principle_equation: "Cl2 + 2 KBr = 2 KCl + Br2",
+  principle_text: null,
+  phenomenon_explanation: "氯气将溴离子氧化为溴单质，CCl4 层出现橙红色。",
+  safety_note: "使用氯水和 CCl4 时保持通风，避免直接闻嗅。",
   videos: [],
-  video_candidates: ["氯水 + KBr 溶液 + CCl4"],
+  has_video: false,
+  no_video_reason: "暂无可播放视频",
+  related_points: [
+    {
+      node_id: "cat-point-iodine",
+      title: "碘的置换观察",
+      relation_type: "default",
+      source_node_id: null,
+    },
+  ],
+  assessment_context: {
+    point_node_id: "cat-point-halogen",
+    chapter_id: "CH17",
+    source_node_id: null,
+    catalog_path: [
+      {
+        node_id: mockCatalogDirectoryNode.node_id,
+        title: mockCatalogDirectoryNode.title,
+        node_kind: mockCatalogDirectoryNode.node_kind,
+        chapter_id: mockCatalogDirectoryNode.chapter_id,
+      },
+      {
+        node_id: mockCatalogPointNode.node_id,
+        title: mockCatalogPointNode.title,
+        node_kind: mockCatalogPointNode.node_kind,
+        chapter_id: mockCatalogPointNode.chapter_id,
+      },
+    ],
+  },
 };
 
 const mockLearningPage = {
@@ -142,22 +230,6 @@ const mockLearningPage = {
       },
     ],
     reference_media: [],
-    related_groups: [
-      {
-        property_key: "oxidation",
-        property_title: "氧化性",
-        parent_code: "19-1",
-        parent_title: "实验 19-1 卤素",
-        points: [mockLearningPoint],
-      },
-    ],
-    chapter_experiment_groups: [
-      {
-        parent_code: "19-1",
-        parent_title: "实验 19-1 卤素",
-        points: [mockLearningPoint],
-      },
-    ],
   },
 };
 
@@ -190,14 +262,6 @@ const mockLearningHome = {
   ],
 };
 
-const mockExperimentGroup = {
-  parent_code: "19-1",
-  parent_title: "实验 19-1 卤素",
-  area_id: "p",
-  area_name: "p区元素",
-  experiments: [mockLearningPoint],
-};
-
 const mockVideoLibrary = {
   query: "",
   status: "ok",
@@ -207,7 +271,7 @@ const mockVideoLibrary = {
   browse: {
     recommended: [
       {
-        id: "video_point:EXP_19_1_01:candidate:0",
+        id: "video_point:cat-point-halogen",
         type: "video_point",
         title: "Orange layer observation",
         subtitle: "Halogen displacement",
@@ -217,14 +281,11 @@ const mockVideoLibrary = {
         action_label: "View point",
         target: {
           kind: "point_detail",
-          route: "/point/EXP_19_1_01",
-          experiment_id: "EXP_19_1_01",
+          route: "/point/cat-point-halogen",
+          node_id: "cat-point-halogen",
           profile_id: "halogens-17",
           chapter_id: "CH17",
-          property_key: "oxidation",
-          property_title: "Oxidation",
-          element_symbol: "Cl",
-          point_key: "halogen-displacement",
+          catalog_path: ["卤素置换目录", "卤素置换观察"],
           point_title: "Orange layer observation",
         },
       },
@@ -242,7 +303,7 @@ const mockVideoLibrary = {
       summary: "Open experiment observation points.",
       items: [
         {
-          id: "video_point:EXP_19_1_01:candidate:0",
+          id: "video_point:cat-point-halogen",
           type: "video_point",
           title: "Orange layer observation",
           subtitle: "Halogen displacement",
@@ -252,14 +313,11 @@ const mockVideoLibrary = {
           action_label: "View point",
           target: {
             kind: "point_detail",
-            route: "/point/EXP_19_1_01",
-            experiment_id: "EXP_19_1_01",
+            route: "/point/cat-point-halogen",
+            node_id: "cat-point-halogen",
             profile_id: "halogens-17",
             chapter_id: "CH17",
-            property_key: "oxidation",
-            property_title: "Oxidation",
-            element_symbol: "Cl",
-            point_key: "halogen-displacement",
+            catalog_path: ["卤素置换目录", "卤素置换观察"],
             point_title: "Orange layer observation",
           },
         },
@@ -426,8 +484,8 @@ async function assertElementFocusCard(page, label) {
     const focus = document.querySelector(".chapter-element-summary-focus");
     const relevance = document.querySelector(".chapter-element-summary-relevance");
     const detailAction = document.querySelector(".chapter-element-detail-action");
-    const pointCard = document.querySelector(".learning-point-card");
-    if (!card || !tile || !focus || !relevance || !detailAction || !pointCard) return null;
+    const catalogCard = document.querySelector(".catalog-node-card");
+    if (!card || !tile || !focus || !relevance || !detailAction || !catalogCard) return null;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const cardRect = card.getBoundingClientRect();
@@ -435,7 +493,7 @@ async function assertElementFocusCard(page, label) {
     const focusRect = focus.getBoundingClientRect();
     const relevanceRect = relevance.getBoundingClientRect();
     const detailRect = detailAction.getBoundingClientRect();
-    const pointRect = pointCard.getBoundingClientRect();
+    const catalogRect = catalogCard.getBoundingClientRect();
     return {
       viewportWidth,
       viewportHeight,
@@ -447,7 +505,7 @@ async function assertElementFocusCard(page, label) {
       focusRight: focusRect.right,
       relevanceRight: relevanceRect.right,
       detailHeight: detailRect.height,
-      pointTop: pointRect.top,
+      catalogTop: catalogRect.top,
     };
   });
 
@@ -464,8 +522,8 @@ async function assertElementFocusCard(page, label) {
   if (metrics.detailHeight < 40) {
     throw new Error(label + ": detail action touch target is too small " + metrics.detailHeight);
   }
-  if (metrics.pointTop > metrics.viewportHeight) {
-    throw new Error(label + ": first experiment point is not discoverable in the first viewport " + JSON.stringify(metrics));
+  if (metrics.catalogTop > metrics.viewportHeight) {
+    throw new Error(label + ": first catalog node is not discoverable in the first viewport " + JSON.stringify(metrics));
   }
 }
 
@@ -661,50 +719,13 @@ async function installMockApi(page) {
   );
   await page.route("**/api/student/learning-home", (route) => route.fulfill(jsonResponse(mockLearningHome)));
   await page.route("**/api/student/learning-page**", (route) => route.fulfill(jsonResponse(mockLearningPage)));
-  await page.route("**/api/student/experiment-groups/19-1", (route) => route.fulfill(jsonResponse(mockExperimentGroup)));
-  await page.route("**/api/student/video-library/search**", (route) => route.fulfill(jsonResponse(mockVideoLibrary)));
-  await page.route("**/api/student/experiments/EXP_19_1_01**", (route) =>
-    route.fulfill(
-      jsonResponse({
-        id: mockLearningPoint.id,
-        code: mockLearningPoint.code,
-        title: mockLearningPoint.title,
-        summary: mockLearningPoint.summary,
-        parent_code: mockLearningPoint.parent_code,
-        parent_title: mockLearningPoint.parent_title,
-        module_title: mockLearningPoint.module_title,
-        chapter_ids: mockLearningPoint.chapter_ids,
-        video_candidate_count: mockLearningPoint.video_candidate_count,
-        published_video_count: mockLearningPoint.published_video_count,
-        question_count: mockLearningPoint.question_count,
-        selected_point_key: "halogen-displacement",
-        selected_point_title: "卤素置换观察",
-        point_content_status: "published",
-        principle_mode: "equation",
-        principle_equation: "Cl2 + 2 KBr = 2 KCl + Br2",
-        principle_text: null,
-        phenomenon_explanation: "氯气将溴离子氧化为溴单质，CCl4 层出现橙红色。",
-        safety_note: "使用氯水和 CCl4 时保持通风，避免直接闻嗅。",
-        related_points: [
-          {
-            experiment_id: mockLearningPoint.id,
-            point_key: "iodine-displacement",
-            point_title: "碘的置换观察",
-            experiment_title: mockLearningPoint.title,
-            relation_type: "default",
-          },
-        ],
-        assessment_context: {
-          experiment_id: mockLearningPoint.id,
-          chapter_ids: mockLearningPoint.chapter_ids,
-          parent_code: mockLearningPoint.parent_code,
-          parent_title: mockLearningPoint.parent_title,
-        },
-        video_candidates: mockLearningPoint.video_candidates,
-        videos: [],
-      }),
-    ),
+  await page.route("**/api/student/chapters/CH17/catalog", (route) => route.fulfill(jsonResponse(mockCatalogChapter)));
+  await page.route("**/api/student/catalog/nodes/cat-dir-halogen", (route) => route.fulfill(jsonResponse(mockCatalogDirectory)));
+  await page.route("**/api/student/catalog/points/cat-point-halogen", (route) => route.fulfill(jsonResponse(mockCatalogPointDetail)));
+  await page.route("**/api/student/catalog/points/cat-point-iodine", (route) =>
+    route.fulfill(jsonResponse({ ...mockCatalogPointDetail, node_id: "cat-point-iodine", canonical_node_id: "cat-point-iodine", title: "碘的置换观察" })),
   );
+  await page.route("**/api/student/video-library/search**", (route) => route.fulfill(jsonResponse(mockVideoLibrary)));
   await page.route("**/api/student/posttest/start", (route) => route.fulfill(jsonResponse(mockPosttest)));
   await page.route("**/api/student/posttest/submit", (route) =>
     route.fulfill(jsonResponse({ status: "completed", report: mockReport })),
@@ -827,7 +848,7 @@ async function checkAuthenticatedFlows(page, viewportName) {
   await page.locator('.video-library-results .video-result-card').first().waitFor({ state: 'visible', timeout: 10000 });
   await assertNoHorizontalOverflow(page, viewportName + ': video library results');
   await page.locator('.video-library-results .video-result-card').first().click();
-  await page.waitForURL(/\/point\/EXP_19_1_01/, { timeout: 10000 });
+  await page.waitForURL(/\/point\/cat-point-halogen/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': video-library result point detail');
   await assertStructuredPointDetail(page, viewportName + ': video-library result point detail');
   await page.goBack({ waitUntil: 'networkidle' });
@@ -843,7 +864,7 @@ async function checkAuthenticatedFlows(page, viewportName) {
   await page.waitForURL(/\/chapter\/halogens-17/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': chapter detail');
   await page.locator('.chapter-element-summary').first().waitFor({ state: 'visible', timeout: 10000 });
-  await page.locator('.learning-point-card').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.catalog-node-card').first().waitFor({ state: 'visible', timeout: 10000 });
   await assertElementFocusCard(page, viewportName + ': chapter element focus card');
   const chapterAtomCount = await page.locator('.atom-model-card').count();
   if (chapterAtomCount > 0) {
@@ -873,9 +894,12 @@ async function checkAuthenticatedFlows(page, viewportName) {
     throw new Error(viewportName + ': chapter detail should still not render a header AI action after returning from element detail');
   }
 
-  await page.locator('.learning-point-card').first().waitFor({ state: 'visible', timeout: 10000 });
-  await page.locator('.learning-point-card').first().click();
-  await page.waitForURL(/\/point\/EXP_19_1_01/, { timeout: 10000 });
+  await page.locator('.catalog-node-card-main').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.catalog-node-card-main').first().click();
+  await page.waitForURL(/\/catalog\/cat-dir-halogen/, { timeout: 10000 });
+  await page.locator('.catalog-directory-panel .catalog-node-card-main').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.catalog-directory-panel .catalog-node-card-main').first().click();
+  await page.waitForURL(/\/point\/cat-point-halogen/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': point detail');
   await assertStructuredPointDetail(page, viewportName + ': point detail');
   await assertNoHorizontalOverflow(page, viewportName + ': point detail');
@@ -885,7 +909,7 @@ async function checkAuthenticatedFlows(page, viewportName) {
   await page.waitForURL(/\/ai\/chat/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': contextual point AI');
   await page.goBack({ waitUntil: 'networkidle' });
-  await page.waitForURL(/\/point\/EXP_19_1_01/, { timeout: 10000 });
+  await page.waitForURL(/\/point\/cat-point-halogen/, { timeout: 10000 });
 
   await page.locator('.finish-action').first().click();
   await page.waitForURL(/\/assessment\/session\/mobile-qa-posttest/, { timeout: 10000 });
@@ -937,7 +961,8 @@ async function checkAuthenticatedFlows(page, viewportName) {
     { path: '/profile', root: 'profile', selector: '.profile-card' },
     { path: '/chapter/halogens-17', detail: true, selector: '.chapter-element-summary' },
     { path: '/chapter/halogens-17/element/Cl', detail: true, selector: '.atom-model-card' },
-    { path: '/point/EXP_19_1_01', detail: true, selector: '.experiment-detail-card' },
+    { path: '/catalog/cat-dir-halogen', detail: true, selector: '.catalog-directory-panel' },
+    { path: '/point/cat-point-halogen', detail: true, selector: '.experiment-detail-card' },
     { path: '/video-library', detail: true, selector: '.video-library-page' },
     { path: '/ai/chat', detail: true, selector: '.ai-chat-panel' },
     { path: '/assessment/session/mobile-qa-posttest', detail: true, selector: '.assessment-panel' },

@@ -48,18 +48,25 @@ export function questionPoints(question: Question) {
   if (points.length) {
     return points
       .map((point) => ({
+        point_node_id: String(point.point_node_id || "").trim(),
         point_key: String(point.point_key || "").trim(),
-        point_title: String(point.point_title || point.point_key || "").trim(),
+        point_title: String(point.point_title || point.point_key || point.point_node_id || "").trim(),
       }))
-      .filter((point) => point.point_key || point.point_title);
+      .filter((point) => point.point_node_id || point.point_key || point.point_title);
+  }
+  const nodeIds = question.metadata?.primary_point_node_ids || [];
+  if (nodeIds.length) {
+    return nodeIds
+      .map((id) => ({ point_node_id: String(id), point_key: "", point_title: String(id) }))
+      .filter((point) => point.point_node_id);
   }
   return (question.metadata?.primary_point_keys || [])
-    .map((key) => ({ point_key: String(key), point_title: String(key) }))
+    .map((key) => ({ point_node_id: "", point_key: String(key), point_title: String(key) }))
     .filter((point) => point.point_key);
 }
 
 export function questionPointTitles(question: Question) {
-  return questionPoints(question).map((point) => point.point_title || point.point_key).filter(Boolean);
+  return questionPoints(question).map((point) => point.point_title || point.point_key || point.point_node_id).filter(Boolean);
 }
 
 export function candidatePayload(candidate: QuestionWorkbenchCandidate) {
@@ -80,13 +87,20 @@ export function candidateQuestionPoints(candidate: QuestionWorkbenchCandidate) {
   if (points.length) {
     return points
       .map((point) => ({
+        point_node_id: String(point?.point_node_id || "").trim(),
         point_key: String(point?.point_key || "").trim(),
-        point_title: String(point?.point_title || point?.point_key || "").trim(),
+        point_title: String(point?.point_title || point?.point_key || point?.point_node_id || "").trim(),
       }))
-      .filter((point) => point.point_key || point.point_title);
+      .filter((point) => point.point_node_id || point.point_key || point.point_title);
+  }
+  const nodeIds = Array.isArray(metadata.primary_point_node_ids) ? metadata.primary_point_node_ids : [];
+  if (nodeIds.length) {
+    return nodeIds
+      .map((id) => ({ point_node_id: String(id), point_key: "", point_title: String(id) }))
+      .filter((point) => point.point_node_id);
   }
   const keys = Array.isArray(metadata.primary_point_keys) ? metadata.primary_point_keys : [];
-  return keys.map((key) => ({ point_key: String(key), point_title: String(key) })).filter((point) => point.point_key);
+  return keys.map((key) => ({ point_node_id: "", point_key: String(key), point_title: String(key) })).filter((point) => point.point_key);
 }
 
 export function candidateValidationErrors(candidate: QuestionWorkbenchCandidate) {
@@ -100,7 +114,7 @@ export function candidateValidationErrors(candidate: QuestionWorkbenchCandidate)
 export function questionHasAnyPoint(question: Question, pointKeys: string[]) {
   if (!pointKeys.length) return true;
   const selected = new Set(pointKeys);
-  return questionPoints(question).some((point) => selected.has(point.point_key));
+  return questionPoints(question).some((point) => selected.has(point.point_node_id) || selected.has(point.point_key));
 }
 
 export function evidenceStatusTag(question: Question) {

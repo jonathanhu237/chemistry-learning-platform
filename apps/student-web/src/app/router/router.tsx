@@ -3,6 +3,7 @@ import { AuthenticatedAppLayout } from "../shell/AuthenticatedAppLayout";
 import { HomeRootPage } from "../../routes/home/HomeRootPage";
 import { LearnRootPage } from "../../routes/learn/LearnRootPage";
 import { ChapterStudyPage } from "../../routes/learn/ChapterStudyPage";
+import { CatalogDirectoryPage } from "../../routes/learn/CatalogDirectoryPage";
 import { ElementDetailPage } from "../../routes/learn/ElementDetailPage";
 import { ExperimentPointPage } from "../../routes/learn/ExperimentPointPage";
 import { AiRootPage } from "../../routes/ai/AiRootPage";
@@ -62,9 +63,16 @@ const elementRoute = createRoute({
 
 const pointRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
-  path: "/point/$experimentId",
+  path: "/point/$nodeId",
   validateSearch: parseStudentRouteSearch,
   component: ExperimentPointPage,
+});
+
+const catalogNodeRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/catalog/$nodeId",
+  validateSearch: parseStudentRouteSearch,
+  component: CatalogDirectoryPage,
 });
 
 const videoLibraryRoute = createRoute({
@@ -127,6 +135,7 @@ const routeTree = rootRoute.addChildren([
     learnRoute,
     chapterRoute,
     elementRoute,
+    catalogNodeRoute,
     pointRoute,
     videoLibraryRoute,
     aiRoute,

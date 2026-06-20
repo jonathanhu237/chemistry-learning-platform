@@ -1,6 +1,6 @@
 import type { StudentPosttestResponse } from "../../api";
 import { AssessmentPanel, type AnswerMap } from "../pretest/AssessmentPanel";
-import { stripExperimentPrefix } from "../experiments/experimentFormat";
+import { stripExperimentPrefix } from "./assessmentText";
 
 export function PosttestPanel({
   posttest,

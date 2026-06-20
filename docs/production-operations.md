@@ -100,12 +100,13 @@ Frontend host bindings default to `127.0.0.1:5173` for `student-web` and `127.0.
 
 ## Student Video-Library Search Operations
 
-Student video-library search is a PostgreSQL-to-Elasticsearch projection. PostgreSQL point tables are the fact source:
+Student video-library search is a PostgreSQL-to-Elasticsearch projection. PostgreSQL catalog point tables are the fact source:
 
-- `experiment_video_points`: stable `(experiment_id, point_key)` identities
-- `experiment_point_learning_content`: teacher-authored principle, phenomenon explanation, safety note, publication audit
-- `experiment_point_related_links`: manual related point links and hidden default overrides
-- `experiment_video_point_search_index_state`: retryable desired search actions and sync status
+- `experiment_catalog_nodes`: stable chapter catalog hierarchy and point-capable `node_id` identities
+- `experiment_catalog_point_content`: teacher-authored point title, teacher-only note, principle, phenomenon explanation, safety note, and publication audit
+- `experiment_catalog_point_related_links`: manual related point links and hidden default overrides keyed by `source_node_id` and `target_node_id`
+- `experiment_catalog_point_media_bindings`: point-node video bindings
+- `experiment_catalog_point_search_index_state`: retryable desired search actions and sync status
 
 Elasticsearch stores derived point documents only. Do not edit ES documents by hand and do not treat ES hit sources as student page content.
 
@@ -138,7 +139,7 @@ The chemistry search seed files live under `data/seed/search/`:
 - `chemical_aliases.json`: formula and common-name aliases such as HCl/salt acid and Na2S2O3/sodium thiosulfate
 - `chemical_stopwords.txt`: high-frequency workflow words that should carry less search meaning
 
-Admin point content edits write PostgreSQL first. Saving drafts queues a delete from search; publishing queues an upsert; unpublishing, archiving, or video binding changes queue the affected point for refresh. A failed ES write must leave the PostgreSQL content intact and visible in `experiment_video_point_search_index_state` for retry or full rebuild.
+Admin point content edits write PostgreSQL first. Saving drafts queues a delete from search; publishing queues an upsert; unpublishing, archiving, or video binding changes queue the affected point for refresh. A failed ES write must leave the PostgreSQL content intact and visible in `experiment_catalog_point_search_index_state` for retry or full rebuild.
 
 Optional RAG reranking service:
 
@@ -321,13 +322,13 @@ python scripts/rebuild_video_library_index.py --recreate
 python scripts/validate_video_library_search.py
 ```
 
-If the ES volume is corrupted or intentionally cleared, keep PostgreSQL and protected seed data intact, recreate the index, and run the rebuild command. Do not delete `experiment_video_point_evidence`, `source_chunks`, or `data/seed/point_evidence/manual_reviewed_point_evidence.jsonl`; those resources remain the assistant/RAG evidence path and are separate from teacher-authored point content.
+If the ES volume is corrupted or intentionally cleared, keep PostgreSQL and protected seed data intact, recreate the index, and run the rebuild command. Do not delete `experiment_video_point_evidence`, `source_chunks`, or `data/seed/point_evidence/manual_reviewed_point_evidence.jsonl`; those resources remain the assistant/RAG evidence path and are separate from teacher-authored point content and student search documents.
 
 ## Search Rollback Notes
 
 If the point editor or search projection must be rolled back during a release:
 
-- Disable or hide the admin point editor at the frontend/API routing layer while keeping `experiment_video_points` and point content tables in place.
+- Disable or hide the admin catalog point editor at the frontend/API routing layer while keeping catalog point tables in place.
 - Set `VIDEO_LIBRARY_SEARCH_ENABLED=false` only as an emergency product rollback; production readiness should fail until ES/IK search is restored for normal releases.
 - Clear or recreate the ES index with `python scripts/rebuild_video_library_index.py --recreate` after the issue is fixed.
 - Never roll back by deleting manual-reviewed point evidence or canonical chunks; those are protected assistant resources, not search projection cache.

@@ -7,9 +7,11 @@ import type {
   PublicPosttestQuestion,
   PublicPretestQuestion,
   StudentAppConfigResponse,
-  StudentExperimentDetailResponse,
+  StudentCatalogChapterResponse,
+  StudentCatalogNodeResponse,
   StudentLearningHomeResponse,
   StudentLearningPageResponse,
+  StudentPointDetailResponse,
   StudentPosttestReport,
   StudentPosttestResponse,
   StudentPretestResponse,
@@ -27,8 +29,9 @@ const apiMocks = vi.hoisted(() => ({
   getStudentAppConfig: vi.fn(),
   getStudentLearningHome: vi.fn(),
   getStudentLearningPage: vi.fn(),
-  getStudentExperimentGroup: vi.fn(),
-  getStudentExperimentDetail: vi.fn(),
+  getStudentChapterCatalog: vi.fn(),
+  getStudentCatalogNode: vi.fn(),
+  getStudentCatalogPointDetail: vi.fn(),
   searchStudentVideoLibrary: vi.fn(),
   startStudentPosttest: vi.fn(),
   submitStudentPosttest: vi.fn(),
@@ -52,8 +55,9 @@ vi.mock("./api", () => ({
   getStudentAppConfig: apiMocks.getStudentAppConfig,
   getStudentLearningHome: apiMocks.getStudentLearningHome,
   getStudentLearningPage: apiMocks.getStudentLearningPage,
-  getStudentExperimentGroup: apiMocks.getStudentExperimentGroup,
-  getStudentExperimentDetail: apiMocks.getStudentExperimentDetail,
+  getStudentChapterCatalog: apiMocks.getStudentChapterCatalog,
+  getStudentCatalogNode: apiMocks.getStudentCatalogNode,
+  getStudentCatalogPointDetail: apiMocks.getStudentCatalogPointDetail,
   searchStudentVideoLibrary: apiMocks.searchStudentVideoLibrary,
   startStudentPosttest: apiMocks.startStudentPosttest,
   submitStudentPosttest: apiMocks.submitStudentPosttest,
@@ -110,27 +114,6 @@ const appConfig: StudentAppConfigResponse = {
     student_ai_assistant_enabled: true,
     rag_access_enabled: true,
   },
-};
-
-const learningPoint = {
-  id: "EXP_19_1_01",
-  code: "19-1-01",
-  title: "Halogen displacement",
-  summary: "Chlorine displaces bromide.",
-  parent_code: "19-1",
-  parent_title: "Experiment 19-1 Halogens",
-  module_title: "Chlorine water + KBr + CCl4",
-  chapter_ids: ["CH17"],
-  video_candidate_count: 1,
-  published_video_count: 0,
-  question_count: 2,
-  property_key: "oxidation",
-  property_title: "Oxidation",
-  point_key: "halogen-displacement",
-  point_title: "Halogen displacement observation",
-  formula: "Cl2 + 2Br- -> 2Cl- + Br2",
-  videos: [],
-  video_candidates: ["Chlorine water + KBr + CCl4"],
 };
 
 const learningPage: StudentLearningPageResponse = {
@@ -226,22 +209,6 @@ const learningPage: StudentLearningPageResponse = {
       },
     ],
     reference_media: [],
-    related_groups: [
-      {
-        property_key: "oxidation",
-        property_title: "Oxidation",
-        parent_code: "19-1",
-        parent_title: "Experiment 19-1 Halogens",
-        points: [learningPoint],
-      },
-    ],
-    chapter_experiment_groups: [
-      {
-        parent_code: "19-1",
-        parent_title: "Experiment 19-1 Halogens",
-        points: [learningPoint],
-      },
-    ],
   },
 };
 
@@ -274,51 +241,113 @@ const learningHome: StudentLearningHomeResponse = {
   ],
 };
 
-const experimentGroup = {
-  parent_code: "19-1",
-  parent_title: "Experiment 19-1 Halogens",
-  area_id: "p",
-  area_name: "p-block",
-  experiments: [learningPoint],
+const catalogChapter: StudentCatalogChapterResponse = {
+  chapter_id: "CH17",
+  chapter_title: "Halogen chapter",
+  nodes: [
+    {
+      node_id: "cat-dir-halogen",
+      chapter_id: "CH17",
+      parent_id: null,
+      node_kind: "directory",
+      title: "Halogen displacement catalog",
+      summary: "Open catalog entries for halogen experiments.",
+      status: "published",
+      display_order: 1,
+      actions: ["open_directory"],
+      has_children: true,
+      has_point_content: false,
+      media_count: 0,
+      published_media_count: 0,
+    },
+  ],
 };
 
-const experimentDetail: StudentExperimentDetailResponse = {
-  id: learningPoint.id,
-  code: learningPoint.code,
-  title: learningPoint.title,
-  summary: learningPoint.summary,
-  parent_code: learningPoint.parent_code,
-  parent_title: learningPoint.parent_title,
-  module_title: learningPoint.module_title,
-  chapter_ids: learningPoint.chapter_ids,
-  video_candidate_count: learningPoint.video_candidate_count,
-  published_video_count: learningPoint.published_video_count,
-  question_count: learningPoint.question_count,
-  selected_point_key: "halogen-displacement",
-  selected_point_title: "Orange layer observation",
-  point_content_status: "published",
+const catalogDirectory: StudentCatalogNodeResponse = {
+  node: catalogChapter.nodes[0],
+  breadcrumbs: [
+    {
+      node_id: "cat-dir-halogen",
+      title: "Halogen displacement catalog",
+      node_kind: "directory",
+      chapter_id: "CH17",
+    },
+  ],
+  children: [
+    {
+      node_id: "cat-point-halogen",
+      chapter_id: "CH17",
+      parent_id: "cat-dir-halogen",
+      node_kind: "point",
+      title: "Orange layer observation",
+      summary: "Chlorine water displaces bromide and produces bromine in CCl4.",
+      status: "published",
+      display_order: 1,
+      actions: ["open_point"],
+      has_children: false,
+      has_point_content: true,
+      media_count: 0,
+      published_media_count: 0,
+    },
+  ],
+};
+
+const catalogPointDetail: StudentPointDetailResponse = {
+  node_id: "cat-point-halogen",
+  canonical_node_id: "cat-point-halogen",
+  source_node_id: null,
+  chapter_id: "CH17",
+  title: "Orange layer observation",
+  summary: "Chlorine displaces bromide in the organic layer.",
+  breadcrumbs: [
+    {
+      node_id: "cat-dir-halogen",
+      title: "Halogen displacement catalog",
+      node_kind: "directory",
+      chapter_id: "CH17",
+    },
+    {
+      node_id: "cat-point-halogen",
+      title: "Orange layer observation",
+      node_kind: "point",
+      chapter_id: "CH17",
+    },
+  ],
   principle_mode: "equation",
   principle_equation: "Cl2 + 2 KBr = 2 KCl + Br2",
   principle_text: null,
   phenomenon_explanation: "Chlorine displaces bromine ions, and bromine dissolves into the organic layer.",
   safety_note: "Handle chlorine water in a ventilated space and avoid direct inhalation.",
+  videos: [],
+  has_video: false,
+  no_video_reason: "Video is not bound yet.",
   related_points: [
     {
-      experiment_id: learningPoint.id,
-      point_key: "iodine-displacement",
-      point_title: "Iodine comparison",
-      experiment_title: learningPoint.title,
-      relation_type: "default",
+      node_id: "cat-point-iodine",
+      title: "Iodine comparison",
+      relation_type: "manual",
+      source_node_id: "cat-point-halogen",
     },
   ],
   assessment_context: {
-    experiment_id: learningPoint.id,
-    chapter_ids: learningPoint.chapter_ids,
-    parent_code: learningPoint.parent_code,
-    parent_title: learningPoint.parent_title,
+    point_node_id: "cat-point-halogen",
+    chapter_id: "CH17",
+    source_node_id: null,
+    catalog_path: [
+      {
+        node_id: "cat-dir-halogen",
+        title: "Halogen displacement catalog",
+        node_kind: "directory",
+        chapter_id: "CH17",
+      },
+      {
+        node_id: "cat-point-halogen",
+        title: "Orange layer observation",
+        node_kind: "point",
+        chapter_id: "CH17",
+      },
+    ],
   },
-  video_candidates: learningPoint.video_candidates,
-  videos: [],
 };
 
 const videoLibraryResponse: StudentVideoLibrarySearchResponse = {
@@ -330,7 +359,7 @@ const videoLibraryResponse: StudentVideoLibrarySearchResponse = {
   browse: {
     recommended: [
       {
-        id: "video_point:EXP_19_1_01:candidate:0",
+        id: "video_point:cat-point-halogen",
         type: "video_point",
         title: "Orange layer observation",
         subtitle: "Halogen displacement",
@@ -340,14 +369,14 @@ const videoLibraryResponse: StudentVideoLibrarySearchResponse = {
         action_label: "View point",
         target: {
           kind: "point_detail",
-          route: "/point/EXP_19_1_01",
-          experiment_id: "EXP_19_1_01",
+          route: "/point/cat-point-halogen",
+          node_id: "cat-point-halogen",
           profile_id: "halogens-17",
           chapter_id: "CH17",
+          catalog_path: ["Halogen displacement catalog", "Orange layer observation"],
           property_key: "oxidation",
           property_title: "Oxidation",
           element_symbol: "Cl",
-          point_key: "halogen-displacement",
           point_title: "Orange layer observation",
         },
       },
@@ -365,7 +394,7 @@ const videoLibraryResponse: StudentVideoLibrarySearchResponse = {
       summary: "Open experiment observation points.",
       items: [
         {
-          id: "video_point:EXP_19_1_01:candidate:0",
+          id: "video_point:cat-point-halogen",
           type: "video_point",
           title: "Orange layer observation",
           subtitle: "Halogen displacement",
@@ -373,16 +402,16 @@ const videoLibraryResponse: StudentVideoLibrarySearchResponse = {
           score: 8,
           badges: ["Halogens", "Video point"],
           action_label: "View point",
-          target: {
+        target: {
             kind: "point_detail",
-            route: "/point/EXP_19_1_01",
-            experiment_id: "EXP_19_1_01",
+            route: "/point/cat-point-halogen",
+            node_id: "cat-point-halogen",
             profile_id: "halogens-17",
             chapter_id: "CH17",
+            catalog_path: ["Halogen displacement catalog", "Orange layer observation"],
             property_key: "oxidation",
             property_title: "Oxidation",
             element_symbol: "Cl",
-            point_key: "halogen-displacement",
             point_title: "Orange layer observation",
           },
         },
@@ -405,7 +434,7 @@ const videoLibraryResponse: StudentVideoLibrarySearchResponse = {
           target: {
             kind: "ai_chat",
             route: "/ai/chat",
-            experiment_id: "EXP_19_1_01",
+            node_id: "cat-point-halogen",
             chapter_id: "CH17",
             context_title: "Explain orange layer",
             context_summary: "Explain the observed orange CCl4 layer.",
@@ -524,8 +553,9 @@ describe("student app route stack", () => {
     apiMocks.getStudentAppConfig.mockResolvedValue(appConfig);
     apiMocks.getStudentLearningHome.mockResolvedValue(learningHome);
     apiMocks.getStudentLearningPage.mockResolvedValue(learningPage);
-    apiMocks.getStudentExperimentGroup.mockResolvedValue(experimentGroup);
-    apiMocks.getStudentExperimentDetail.mockResolvedValue(experimentDetail);
+    apiMocks.getStudentChapterCatalog.mockResolvedValue(catalogChapter);
+    apiMocks.getStudentCatalogNode.mockResolvedValue(catalogDirectory);
+    apiMocks.getStudentCatalogPointDetail.mockResolvedValue(catalogPointDetail);
     apiMocks.searchStudentVideoLibrary.mockResolvedValue(videoLibraryResponse);
     apiMocks.startStudentPosttest.mockResolvedValue(posttestResponse);
     apiMocks.submitStudentPosttest.mockResolvedValue({ status: "completed", report });
@@ -562,7 +592,7 @@ describe("student app route stack", () => {
     fireEvent.change(screen.getByLabelText("搜索实验视频库"), { target: { value: "orange" } });
     await waitFor(() => expect(apiMocks.searchStudentVideoLibrary).toHaveBeenLastCalledWith("orange"));
     fireEvent.click(document.querySelector<HTMLButtonElement>(".video-library-results .video-result-card")!);
-    await waitFor(() => expect(window.location.pathname).toBe("/point/EXP_19_1_01"));
+    await waitFor(() => expect(window.location.pathname).toBe("/point/cat-point-halogen"));
     expectBottomNavHidden();
     act(() => window.history.back());
     await waitFor(() => expect(window.location.pathname).toBe("/video-library"));
@@ -587,7 +617,7 @@ describe("student app route stack", () => {
     expect(document.querySelector(".finish-action")).toBeNull();
     expect(screen.queryByRole("button", { name: "选章节" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "问 AI" })).not.toBeInTheDocument();
-    await waitFor(() => expect(document.querySelector(".learning-point-card")).not.toBeNull());
+    await waitFor(() => expect(document.querySelector(".catalog-node-card")).not.toBeNull());
 
     fireEvent.click(document.querySelector<HTMLButtonElement>(".chapter-element-detail-action")!);
     await waitFor(() => expect(window.location.pathname).toBe("/chapter/halogens-17/element/Cl"));
@@ -598,15 +628,19 @@ describe("student app route stack", () => {
     expectBottomNavHidden();
     expect(screen.queryByRole("button", { name: "问 AI" })).not.toBeInTheDocument();
 
-    fireEvent.click(document.querySelector<HTMLButtonElement>(".learning-point-card")!);
-    await waitFor(() => expect(window.location.pathname).toBe("/point/EXP_19_1_01"));
+    await waitFor(() => expect(document.querySelector(".catalog-node-card-main")).not.toBeNull());
+    fireEvent.click(document.querySelector<HTMLButtonElement>(".catalog-node-card-main")!);
+    await waitFor(() => expect(window.location.pathname).toBe("/catalog/cat-dir-halogen"));
+    await waitFor(() => expect(document.querySelector(".catalog-node-card")).not.toBeNull());
+    fireEvent.click(document.querySelector<HTMLButtonElement>(".catalog-node-card-main")!);
+    await waitFor(() => expect(window.location.pathname).toBe("/point/cat-point-halogen"));
     expectBottomNavHidden();
 
     fireEvent.click(document.querySelector<HTMLButtonElement>(".context-assistant-action")!);
     await waitFor(() => expect(window.location.pathname).toBe("/ai/chat"));
     expectBottomNavHidden();
     act(() => window.history.back());
-    await waitFor(() => expect(window.location.pathname).toBe("/point/EXP_19_1_01"));
+    await waitFor(() => expect(window.location.pathname).toBe("/point/cat-point-halogen"));
 
     fireEvent.click(document.querySelector<HTMLButtonElement>(".finish-action")!);
     await waitFor(() => expect(window.location.pathname).toBe("/assessment/session/posttest-session-e2e"));
@@ -646,21 +680,24 @@ describe("student app route stack", () => {
   });
 
   it("renders structured point detail content, related links, and the fixed test handoff", async () => {
-    await renderAuthenticatedApp("/point/EXP_19_1_01?from=chapter&pointKey=halogen-displacement&pointTitle=Orange%20layer%20observation");
+    await renderAuthenticatedApp("/point/cat-point-halogen?from=chapter&chapterId=CH17&pointTitle=Orange%20layer%20observation");
 
-    await waitFor(() => expect(apiMocks.getStudentExperimentDetail).toHaveBeenCalledWith("EXP_19_1_01", "halogen-displacement"));
+    await waitFor(() => expect(apiMocks.getStudentCatalogPointDetail).toHaveBeenCalledWith("cat-point-halogen"));
+    expect(screen.getByText("暂无可播放视频")).toBeInTheDocument();
+    expect(screen.getByText("实验原理")).toBeInTheDocument();
     expect(screen.getByText("暂无可播放视频")).toBeInTheDocument();
     expect(screen.getByText("实验原理")).toBeInTheDocument();
     expect(screen.getByText("Cl2 + 2 KBr = 2 KCl + Br2")).toBeInTheDocument();
     expect(screen.getByText("现象解释")).toBeInTheDocument();
     expect(screen.getByText("安全提示")).toBeInTheDocument();
+    expect(screen.getByText("现象解释")).toBeInTheDocument();
+    expect(screen.getByText("安全提示")).toBeInTheDocument();
     expect(screen.queryByText("Halogen evidence")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Iodine comparison").closest("button")!);
-    await waitFor(() => expect(window.location.search).toContain("iodine-displacement"));
-    expect(apiMocks.getStudentExperimentDetail).toHaveBeenLastCalledWith("EXP_19_1_01", "iodine-displacement");
+    await waitFor(() => expect(window.location.pathname).toBe("/point/cat-point-iodine"));
 
-    fireEvent.click(screen.getByRole("button", { name: "开始测试" }));
+    fireEvent.click(screen.getByRole("button", { name: "开始练习" }));
     await waitFor(() => expect(window.location.pathname).toBe("/assessment/session/posttest-session-e2e"));
     expectBottomNavHidden();
   });

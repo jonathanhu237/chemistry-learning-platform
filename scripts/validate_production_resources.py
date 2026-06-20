@@ -25,10 +25,10 @@ EXPECTED_DATABASE_COUNTS = {
     "source_documents": 2,
     "source_chunks": 3637,
     "chunk_embeddings": 3637,
-    "stable_experiment_video_points": 300,
-    "published_point_learning_content_min": 0,
-    "point_related_links_min": 0,
-    "point_evidence_bindings": 300,
+    "experiment_catalog_point_nodes": 300,
+    "published_catalog_point_content_min": 0,
+    "catalog_point_related_links_min": 0,
+    "point_evidence_bindings_with_node": 300,
 }
 
 
@@ -47,6 +47,10 @@ def _json(path: Path) -> Any:
 def _jsonl_count(path: Path) -> int:
     with path.open("r", encoding="utf-8-sig") as handle:
         return sum(1 for line in handle if line.strip())
+
+
+def _text_line_count(path: Path) -> int:
+    return sum(1 for line in path.read_text(encoding="utf-8-sig").splitlines() if line.strip())
 
 
 def _formal_experiment_count(path: Path) -> int:
@@ -316,6 +320,67 @@ RESOURCE_SPECS: list[dict[str, Any]] = [
         "path": "data/seed/search/chemical_stopwords.txt",
         "kind": "text",
         "source_path": "data/seed/search/chemical_stopwords.txt",
+    },
+    {
+        "id": "es_ik_chemistry_manifest",
+        "role": "Versioned ES/IK chemistry analyzer asset manifest",
+        "path": "data/seed/search/es_ik/manifest.json",
+        "kind": "json",
+        "source_path": "data/seed/search/es_ik/manifest.json",
+    },
+    {
+        "id": "es_ik_analyzer_config",
+        "role": "ES/IK analyzer external dictionary configuration",
+        "path": "data/seed/search/es_ik/analysis-ik/IKAnalyzer.cfg.xml",
+        "kind": "text",
+        "count": _text_line_count,
+        "expected_count": 7,
+        "source_path": "data/seed/search/es_ik/analysis-ik/IKAnalyzer.cfg.xml",
+    },
+    {
+        "id": "es_ik_hit_stopwords",
+        "role": "Harbin Institute of Technology stopword baseline for IK",
+        "path": "data/seed/search/es_ik/analysis-ik/custom/hit_stopwords.dic",
+        "kind": "text",
+        "count": _text_line_count,
+        "expected_count": 59,
+        "source_path": "data/seed/search/es_ik/analysis-ik/custom/hit_stopwords.dic",
+    },
+    {
+        "id": "es_ik_project_chemistry_stopwords",
+        "role": "Project chemistry stopwords for IK",
+        "path": "data/seed/search/es_ik/analysis-ik/custom/project_chemistry_stopwords.dic",
+        "kind": "text",
+        "count": _text_line_count,
+        "expected_count": 22,
+        "source_path": "data/seed/search/es_ik/analysis-ik/custom/project_chemistry_stopwords.dic",
+    },
+    {
+        "id": "es_ik_chemistry_custom_dictionary",
+        "role": "Chemistry custom IK dictionary",
+        "path": "data/seed/search/es_ik/analysis-ik/custom/chemistry_custom.dic",
+        "kind": "text",
+        "count": _text_line_count,
+        "expected_count": 66,
+        "source_path": "data/seed/search/es_ik/analysis-ik/custom/chemistry_custom.dic",
+    },
+    {
+        "id": "es_ik_chemistry_stopwords_filter",
+        "role": "Elasticsearch chemistry analyzer stopword filter list",
+        "path": "data/seed/search/es_ik/analysis/chemistry_stopwords.txt",
+        "kind": "text",
+        "count": _text_line_count,
+        "expected_count": 81,
+        "source_path": "data/seed/search/es_ik/analysis/chemistry_stopwords.txt",
+    },
+    {
+        "id": "es_ik_chemistry_synonyms",
+        "role": "Elasticsearch chemistry synonym graph filter list",
+        "path": "data/seed/search/es_ik/analysis/chemistry_synonyms.txt",
+        "kind": "text",
+        "count": _text_line_count,
+        "expected_count": 29,
+        "source_path": "data/seed/search/es_ik/analysis/chemistry_synonyms.txt",
     },
     {
         "id": "point_aware_question_bank",

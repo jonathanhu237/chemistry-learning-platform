@@ -8,29 +8,17 @@ import { LearningState } from "../../shared/mobile/LearningState";
 import { ElementTileContent } from "../periodic-table/PeriodicElementCell";
 import { elementEnglishName, elementTileStyle } from "../periodic-table/periodicHelpers";
 import { LearningElementChips } from "./LearningElementChips";
-import { LearningExperimentsView } from "./LearningExperimentsView";
-import { chapterExperimentGroupsForProfile } from "./learningFormat";
 
 export function LearningHomePanel({
   profileId,
   initialElementSymbol,
   onProfileLoaded,
   onOpenElementDetail,
-  onSelectPoint,
 }: {
   profileId?: string | null;
   initialElementSymbol?: string | null;
   onProfileLoaded?: (profile: StudentLearningProfile) => void;
   onOpenElementDetail: (profileId: string, symbol: string) => void;
-  onSelectPoint: (point: {
-    profileId: string;
-    propertyKey: string;
-    propertyTitle: string;
-    elementSymbol?: string | null;
-    experimentId: string;
-    pointKey?: string | null;
-    pointTitle?: string | null;
-  }) => void;
 }) {
   const [page, setPage] = useState<StudentLearningPageResponse | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(profileId || null);
@@ -96,8 +84,7 @@ export function LearningHomePanel({
       null
     );
   }, [profile, selectedElementSymbol]);
-  const chapterExperimentGroups = profile ? chapterExperimentGroupsForProfile(profile) : [];
-  const relatedPointCount = chapterExperimentGroups.reduce((total, group) => total + group.points.length, 0);
+  const catalogHintCount = profile?.property_sections.length || 0;
 
   return (
     <section className="learning-panel" aria-label="章节学习">
@@ -119,17 +106,10 @@ export function LearningHomePanel({
             <ChapterElementSummary
               profile={profile}
               element={selectedElement}
-              experimentCount={relatedPointCount}
+              catalogHintCount={catalogHintCount}
               onOpenDetail={() => onOpenElementDetail(profile.profile_id, selectedElement.symbol)}
             />
           ) : null}
-          <LearningExperimentsView
-            profile={profile}
-            groups={chapterExperimentGroups}
-            pointCount={relatedPointCount}
-            elementSymbol={selectedElement?.symbol || null}
-            onSelectPoint={onSelectPoint}
-          />
         </>
       ) : null}
     </section>
@@ -139,12 +119,12 @@ export function LearningHomePanel({
 function ChapterElementSummary({
   profile,
   element,
-  experimentCount,
+  catalogHintCount,
   onOpenDetail,
 }: {
   profile: StudentLearningProfile;
   element: StudentLearningElementBadge;
-  experimentCount: number;
+  catalogHintCount: number;
   onOpenDetail: () => void;
 }) {
   const familyLabel = profile.family_name || profile.title;
@@ -160,7 +140,7 @@ function ChapterElementSummary({
   const tags = compactElementTags(
     element.card_tags?.length ? element.card_tags : fallbackElementTags(element, location || familyLabel),
   );
-  const experimentEntryLabel = experimentCount > 0 ? `${experimentCount} 个实验入口` : "实验关联待补充";
+  const catalogEntryLabel = catalogHintCount > 0 ? `${catalogHintCount} 个目录主题` : "目录待补充";
 
   return (
     <section
@@ -185,7 +165,7 @@ function ChapterElementSummary({
         {tags.map((tag) => (
           <small key={tag}>{tag}</small>
         ))}
-        <small>{experimentEntryLabel}</small>
+        <small>{catalogEntryLabel}</small>
       </div>
       <button className="chapter-element-detail-action" type="button" onClick={onOpenDetail}>
         <span>查看元素详情</span>

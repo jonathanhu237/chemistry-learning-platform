@@ -15,69 +15,99 @@ if str(ROOT) not in sys.path:
 os.environ.setdefault("PGCONNECT_TIMEOUT", "5")
 
 from server.app.infrastructure.database import db_session
-from server.app.domains.experiment_points.canonical_points import candidate_point_key, validate_canonical_point_references
 
 
 def main() -> None:
     try:
         with db_session() as session:
-            candidate_rows = session.execute(
+            row = session.execute(
                 text(
                     """
-                    SELECT fe.id AS experiment_id, candidate.ordinality::int - 1 AS index, candidate.value::text AS title,
-                           evp.point_key
-                    FROM formal_experiments fe
-                    CROSS JOIN LATERAL jsonb_array_elements_text(
-                      CASE
-                        WHEN jsonb_typeof(fe.metadata->'video_candidates') = 'array' THEN fe.metadata->'video_candidates'
-                        ELSE '[]'::jsonb
-                      END
-                    ) WITH ORDINALITY AS candidate(value, ordinality)
-                    LEFT JOIN experiment_video_points evp
-                      ON evp.experiment_id = fe.id
-                     AND evp.point_key = ('candidate-' || candidate.ordinality || '-' || substring(encode(digest(convert_to(btrim(candidate.value::text), 'UTF8'), 'sha1'), 'hex') for 8))
-                    WHERE btrim(candidate.value::text) <> ''
+                    SELECT
+                      COUNT(*) FILTER (WHERE n.node_kind IN ('point', 'hybrid')) AS point_node_count,
+                      COUNT(*) FILTER (
+                        WHERE n.node_kind IN ('point', 'hybrid')
+                          AND pc.node_id IS NOT NULL
+                      ) AS point_content_count,
+                      COUNT(*) FILTER (
+                        WHERE n.node_kind IN ('point', 'hybrid')
+                          AND pc.content_status = 'published'
+                      ) AS published_content_count,
+                      COUNT(*) FILTER (
+                        WHERE n.node_kind IN ('point', 'hybrid')
+                          AND pc.teacher_note IS NOT NULL
+                          AND btrim(pc.teacher_note) <> ''
+                      ) AS teacher_note_count,
+                      COUNT(*) FILTER (
+                        WHERE n.node_kind IN ('point', 'hybrid')
+                          AND si.node_id IS NOT NULL
+                      ) AS search_state_count
+                    FROM experiment_catalog_nodes n
+                    LEFT JOIN experiment_catalog_point_content pc ON pc.node_id = n.id
+                    LEFT JOIN experiment_catalog_point_search_index_state si ON si.node_id = n.id
                     """
                 )
-            ).mappings().all()
-            point_count = int(session.execute(text("SELECT COUNT(*) FROM experiment_video_points")).scalar_one() or 0)
-            published_content_count = int(
-                session.execute(
-                    text("SELECT COUNT(*) FROM experiment_point_learning_content WHERE content_status = 'published'")
-                ).scalar_one()
-                or 0
-            )
+            ).mappings().one()
+            legacy_row = session.execute(
+                text(
+                    """
+                    SELECT
+                      COUNT(*) AS legacy_point_map_count,
+                      COUNT(*) FILTER (WHERE n.id IS NULL) AS broken_legacy_maps
+                    FROM experiment_catalog_legacy_identity_map lm
+                    LEFT JOIN experiment_catalog_nodes n ON n.id = lm.catalog_node_id
+                    WHERE lm.legacy_kind = 'point'
+                       OR lm.legacy_kind = 'experiment_point'
+                    """
+                )
+            ).mappings().one()
+            duplicate_ids = [
+                str(item["id"])
+                for item in session.execute(
+                    text(
+                        """
+                        SELECT id
+                        FROM experiment_catalog_nodes
+                        GROUP BY id
+                        HAVING COUNT(*) > 1
+                        """
+                    )
+                ).mappings().all()
+            ]
     except SQLAlchemyError as exc:
         result = {
             "ok": False,
-            "errors": [f"database unavailable for experiment point validation: {exc}"],
+            "errors": [f"database unavailable for catalog point validation: {exc}"],
         }
         sys.stdout.buffer.write((json.dumps(result, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
         raise SystemExit(1) from exc
-    key_errors = [
-        {
-            "experiment_id": row["experiment_id"],
-            "title": row["title"],
-            "expected": candidate_point_key(int(row["index"]), str(row["title"])),
-            "actual": row["point_key"],
-        }
-        for row in candidate_rows
-        if row["point_key"] != candidate_point_key(int(row["index"]), str(row["title"]))
-    ]
-    refs = validate_canonical_point_references()
+
+    point_node_count = int(row["point_node_count"] or 0)
+    point_content_count = int(row["point_content_count"] or 0)
+    legacy_point_map_count = int(legacy_row["legacy_point_map_count"] or 0)
+    broken_legacy_maps = int(legacy_row["broken_legacy_maps"] or 0)
     errors: list[str] = []
-    if key_errors:
-        errors.append(f"candidate key stability errors: {len(key_errors)}")
-    if not refs["ok"]:
-        errors.extend(refs["errors"])
+    if point_node_count <= 0:
+        errors.append("no catalog point nodes found")
+    if point_content_count < point_node_count:
+        errors.append(f"catalog point content missing: {point_node_count - point_content_count}")
+    if legacy_point_map_count < point_node_count:
+        errors.append(f"legacy-to-catalog point maps missing: {point_node_count - legacy_point_map_count}")
+    if broken_legacy_maps:
+        errors.append(f"broken legacy catalog maps: {broken_legacy_maps}")
+    if duplicate_ids:
+        errors.append(f"duplicate catalog node ids: {', '.join(duplicate_ids[:5])}")
+
     result = {
         "ok": not errors,
         "errors": errors,
-        "point_count": point_count,
-        "published_content_count": published_content_count,
-        "candidate_count": len(candidate_rows),
-        "candidate_key_errors": key_errors[:20],
-        "reference_validation": refs,
+        "point_node_count": point_node_count,
+        "point_content_count": point_content_count,
+        "published_content_count": int(row["published_content_count"] or 0),
+        "teacher_note_count": int(row["teacher_note_count"] or 0),
+        "search_state_count": int(row["search_state_count"] or 0),
+        "legacy_point_map_count": legacy_point_map_count,
+        "broken_legacy_maps": broken_legacy_maps,
     }
     sys.stdout.buffer.write((json.dumps(result, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
     if not result["ok"]:

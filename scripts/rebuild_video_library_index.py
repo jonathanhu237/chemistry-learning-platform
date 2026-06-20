@@ -13,7 +13,6 @@ from server.app.infrastructure.database import db_session
 from server.app.domains.video_library.search import (
     _build_documents,
     _learning_profiles,
-    _load_published_experiments,
     _load_published_point_rows,
 )
 from server.app.domains.video_library.index_client import (
@@ -31,9 +30,8 @@ def main() -> None:
     args = parser.parse_args()
 
     with db_session() as session:
-        experiments = _load_published_experiments(session)
         point_rows = _load_published_point_rows(session)
-    documents = _build_documents(experiments, _learning_profiles(), point_rows=point_rows)
+    documents = _build_documents([], _learning_profiles(), point_rows=point_rows)
     payloads = [document.index_source for document in documents if document.index_source]
 
     if args.dry_run:
@@ -60,21 +58,18 @@ def main() -> None:
     ok = 0
     failed = 0
     for payload in payloads:
-        experiment_id = str(payload["experiment_id"])
-        point_key = str(payload["point_key"])
+        node_id = str(payload["node_id"])
         try:
             client.upsert_document(payload)
             mark_index_sync_success(
-                experiment_id=experiment_id,
-                point_key=point_key,
+                node_id=node_id,
                 document_id=str(payload["id"]),
                 payload_hash=document_hash(payload),
             )
             ok += 1
         except Exception as exc:  # noqa: BLE001 - maintenance command records per-document failures.
             mark_index_sync_failure(
-                experiment_id=experiment_id,
-                point_key=point_key,
+                node_id=node_id,
                 document_id=str(payload["id"]),
                 action="upsert",
                 error=str(exc),

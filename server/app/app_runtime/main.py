@@ -14,6 +14,7 @@ from server.app.infrastructure.settings import get_settings
 from server.app.infrastructure.database import check_database_connection
 from server.app.repositories import get_repositories
 from server.app.api.admin.admin_analytics import router as admin_analytics_router
+from server.app.api.admin.admin_catalog_tree import router as admin_catalog_tree_router
 from server.app.api.admin.admin_classes import router as admin_classes_router
 from server.app.api.admin.admin_curriculum_review import router as admin_curriculum_review_router
 from server.app.api.admin.admin_experiments import router as admin_experiments_router
@@ -27,6 +28,7 @@ from server.app.api.admin.admin_question_drafts import router as admin_question_
 from server.app.api.admin.admin_question_generation import router as admin_question_generation_router
 from server.app.api.admin.admin_question_workbench import router as admin_question_workbench_router
 from server.app.api.admin.admin_point_aware_questions import router as admin_point_aware_questions_router
+from server.app.api.student.student_catalog import router as student_catalog_router
 from server.app.api.student.student_experiment_questions import router as student_experiment_questions_router
 from server.app.api.student.student_assistant import router as student_assistant_router
 from server.app.api.student.student_learning import router as student_learning_router
@@ -61,6 +63,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(admin_analytics_router)
+app.include_router(admin_catalog_tree_router)
 app.include_router(admin_classes_router)
 app.include_router(admin_curriculum_review_router)
 app.include_router(admin_experiments_router)
@@ -74,6 +77,7 @@ app.include_router(admin_question_drafts_router)
 app.include_router(admin_question_generation_router)
 app.include_router(admin_question_workbench_router)
 app.include_router(admin_point_aware_questions_router)
+app.include_router(student_catalog_router)
 app.include_router(student_experiment_questions_router)
 app.include_router(student_assistant_router)
 app.include_router(student_learning_router)

@@ -35,6 +35,31 @@ def _dump(model: Any) -> dict[str, Any]:
 
 CURRENT_BANK_STATUSES = {"draft", "published", "disabled"}
 
+
+def _unique_strings(*groups: Any) -> list[str]:
+    output: list[str] = []
+    seen: set[str] = set()
+    for group in groups:
+        values = group if isinstance(group, list) else [group]
+        for item in values:
+            text_value = str(item or "").strip()
+            if text_value and text_value not in seen:
+                seen.add(text_value)
+                output.append(text_value)
+    return output
+
+
+def _point_node_ids_from_payload(payload: dict[str, Any], metadata: dict[str, Any]) -> list[str]:
+    primary_points = metadata.get("primary_points") if isinstance(metadata.get("primary_points"), list) else []
+    option_links = metadata.get("option_links") if isinstance(metadata.get("option_links"), list) else []
+    return _unique_strings(
+        payload.get("primary_point_node_ids"),
+        metadata.get("primary_point_node_ids"),
+        metadata.get("point_node_ids"),
+        [point.get("point_node_id") or point.get("point_id") or point.get("node_id") for point in primary_points if isinstance(point, dict)],
+        [link.get("point_node_id") or link.get("point_id") or link.get("node_id") for link in option_links if isinstance(link, dict)],
+    )
+
 def _normalize_answer(question_type: str, answer: Any) -> dict[str, Any]:
     if question_type == "single_choice":
         value = str(answer.get("value") if isinstance(answer, dict) else answer).strip()
@@ -81,7 +106,10 @@ def _validate_question_payload(payload: dict[str, Any]) -> tuple[dict[str, Any] 
         answer = {}
     if errors:
         return None, errors
-    metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+    metadata = dict(payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {})
+    primary_point_node_ids = _point_node_ids_from_payload(payload, metadata)
+    if primary_point_node_ids:
+        metadata["primary_point_node_ids"] = primary_point_node_ids
     normalized = {
         "question_type": question_type,
         "stem": stem,
@@ -93,6 +121,7 @@ def _validate_question_payload(payload: dict[str, Any]) -> tuple[dict[str, Any] 
         "related_knowledge_point_ids": list(payload.get("related_knowledge_point_ids") or []),
         "source_chunk_ids": list(payload.get("source_chunk_ids") or []),
         "source_refs": list(payload.get("source_refs") or []),
+        "primary_point_node_ids": primary_point_node_ids,
         "metadata": metadata,
         "status": payload.get("status") or "draft",
     }
@@ -149,13 +178,15 @@ def _insert_question(
                 INSERT INTO experiment_questions (
                   bank_id, experiment_id, generation_id, question_type, stem, options, answer,
                   explanation, difficulty, related_chapter_ids, related_knowledge_point_ids,
-                  source_chunk_ids, source_refs, status, metadata, created_by, published_by, published_at, updated_at
+                  source_chunk_ids, source_refs, primary_point_node_ids, status, metadata,
+                  created_by, published_by, published_at, updated_at
                 )
                 VALUES (
                   CAST(:bank_id AS uuid), :experiment_id, CAST(:generation_id AS uuid),
                   :question_type, :stem, CAST(:options AS jsonb), CAST(:answer AS jsonb),
                   :explanation, :difficulty, :related_chapter_ids, :related_knowledge_point_ids,
-                  :source_chunk_ids, CAST(:source_refs AS jsonb), :status, CAST(:metadata AS jsonb),
+                  :source_chunk_ids, CAST(:source_refs AS jsonb), :primary_point_node_ids,
+                  :status, CAST(:metadata AS jsonb),
                   CAST(:created_by AS uuid),
                   CASE WHEN :status = 'published' THEN CAST(:created_by AS uuid) ELSE NULL END,
                   CASE WHEN :status = 'published' THEN now() ELSE NULL END,
@@ -178,6 +209,7 @@ def _insert_question(
                 "related_knowledge_point_ids": normalized["related_knowledge_point_ids"],
                 "source_chunk_ids": normalized["source_chunk_ids"],
                 "source_refs": _json_array(normalized["source_refs"]),
+                "primary_point_node_ids": normalized["primary_point_node_ids"],
                 "status": normalized["status"],
                 "metadata": _json(normalized["metadata"]),
                 "created_by": actor_user_id,
@@ -739,6 +771,7 @@ def update_question(
                         related_knowledge_point_ids = :related_knowledge_point_ids,
                         source_chunk_ids = :source_chunk_ids,
                         source_refs = CAST(:source_refs AS jsonb),
+                        primary_point_node_ids = :primary_point_node_ids,
                         metadata = CAST(:metadata AS jsonb),
                         status = :status,
                         published_by = CASE WHEN :status = 'published' THEN CAST(:actor AS uuid) ELSE published_by END,
@@ -759,6 +792,7 @@ def update_question(
                     "related_knowledge_point_ids": normalized["related_knowledge_point_ids"],
                     "source_chunk_ids": normalized["source_chunk_ids"],
                     "source_refs": _json_array(normalized["source_refs"]),
+                    "primary_point_node_ids": normalized["primary_point_node_ids"],
                     "metadata": _json(normalized["metadata"]),
                     "status": normalized["status"],
                     "actor": user.id,

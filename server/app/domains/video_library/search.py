@@ -11,22 +11,7 @@ from sqlalchemy import text
 from server.app.chemistry_search import chemistry_terms_for_document, normalize_search_query
 from server.app.infrastructure.settings import get_settings
 from server.app.infrastructure.database import db_session
-from server.app.domains.student_learning.read_models import (
-    build_parent_groups as _build_parent_groups,
-    candidate_point as _candidate_point,
-    experiment_area_id as _experiment_area_id,
-    experiment_chapter_ids as _experiment_chapter_ids,
-    learning_profiles as _learning_profiles,
-    load_published_experiments as _load_published_experiments,
-    media_resources as _media_resources,
-    metadata as _metadata,
-    module_title as _module_title,
-    parent_code as _parent_code,
-    parent_title as _parent_title,
-    profile_experiments as _profile_experiments,
-    student_id as _student_id,
-    video_candidates as _video_candidates,
-)
+from server.app.domains.student_learning.point_detail import _learning_profiles, _student_id
 from server.app.student_video_library_schemas import (
     StudentVideoLibraryBrowseChip,
     StudentVideoLibraryBrowseState,
@@ -103,84 +88,14 @@ def _local_score(document: VideoLibraryDocument, query: str) -> float:
     return score
 
 
-def _profile_context_for_experiment(
-    experiment: dict[str, Any],
-    profiles: list[dict[str, Any]],
-    experiments: list[dict[str, Any]],
-) -> dict[str, Any] | None:
-    experiment_id = _clean_text(experiment.get("id"))
-    for profile in profiles:
-        if not profile.get("enabled", True):
-            continue
-        matches = _profile_experiments(profile, experiments)
-        if any(_clean_text(item.get("id")) == experiment_id for item in matches):
-            return profile
-    chapter_ids = set(_experiment_chapter_ids(experiment))
+def _profile_context_for_chapter(chapter_id: str, profiles: list[dict[str, Any]]) -> dict[str, Any] | None:
     return next(
         (
             profile
             for profile in profiles
-            if profile.get("enabled", True) and _clean_text(profile.get("chapter_id")) in chapter_ids
+            if profile.get("enabled", True) and _clean_text(profile.get("chapter_id")) == chapter_id
         ),
         None,
-    )
-
-
-def _property_context(profile: dict[str, Any] | None, experiment: dict[str, Any]) -> tuple[str | None, str | None]:
-    if not profile:
-        return None, None
-    search_text = " ".join(
-        [
-            _clean_text(experiment.get("title")),
-            _clean_text(experiment.get("summary")),
-            _parent_title(experiment),
-            _module_title(experiment) or "",
-            " ".join(_video_candidates(experiment)),
-        ]
-    ).lower()
-    for section in profile.get("property_sections") or []:
-        if not isinstance(section, dict):
-            continue
-        keywords = [_clean_text(item).lower() for item in section.get("experiment_keywords") or [] if _clean_text(item)]
-        if not keywords or any(keyword in search_text for keyword in keywords):
-            return _clean_text(section.get("key")) or None, _clean_text(section.get("title")) or None
-    return None, None
-
-
-def _chapter_title(experiment: dict[str, Any]) -> str:
-    bindings = experiment.get("chapter_bindings") or []
-    for binding in bindings:
-        if isinstance(binding, dict) and binding.get("chapter_title"):
-            return _clean_text(binding.get("chapter_title"))
-    return ""
-
-
-def _experiment_target(
-    experiment: dict[str, Any],
-    profile: dict[str, Any] | None,
-    *,
-    point_key: str | None = None,
-    point_title: str | None = None,
-) -> StudentVideoLibraryRouteTarget | None:
-    experiment_id = _clean_text(experiment.get("id"))
-    if not experiment_id:
-        return None
-    property_key, property_title = _property_context(profile, experiment)
-    profile_id = _clean_text(profile.get("profile_id")) if profile else None
-    chapter_id = _clean_text(profile.get("chapter_id")) if profile else (_experiment_chapter_ids(experiment)[0] if _experiment_chapter_ids(experiment) else None)
-    return StudentVideoLibraryRouteTarget(
-        kind="point_detail",
-        route=f"/point/{experiment_id}",
-        experiment_id=experiment_id,
-        profile_id=profile_id or None,
-        chapter_id=chapter_id or None,
-        property_key=property_key,
-        property_title=property_title,
-        element_symbol=_clean_text(profile.get("default_element_symbol")) if profile and profile.get("default_element_symbol") else None,
-        point_key=point_key,
-        point_title=point_title,
-        context_title=point_title or _clean_text(experiment.get("title")),
-        context_summary=_clean_text(experiment.get("summary")) or _parent_title(experiment),
     )
 
 
@@ -201,13 +116,11 @@ def _chapter_target(profile: dict[str, Any] | None) -> StudentVideoLibraryRouteT
     )
 
 
-def _ai_target(query: str, title: str, summary: str, experiment: dict[str, Any] | None = None) -> StudentVideoLibraryRouteTarget:
+def _ai_target(query: str, title: str, summary: str) -> StudentVideoLibraryRouteTarget:
     prompt = f"请结合实验视频解释：{query or title}"
     return StudentVideoLibraryRouteTarget(
         kind="ai_chat",
         route="/ai/chat",
-        experiment_id=_clean_text(experiment.get("id")) if experiment else None,
-        chapter_id=(_experiment_chapter_ids(experiment)[0] if experiment and _experiment_chapter_ids(experiment) else None),
         context_title=title,
         context_summary=summary,
         prompt=prompt,
@@ -232,67 +145,80 @@ def _load_published_point_rows(session: Any) -> list[dict[str, Any]]:
             text(
                 """
                 SELECT
-                  fe.id AS experiment_id,
-                  fe.code,
-                  fe.title AS experiment_title,
-                  fe.summary,
-                  fe.status AS experiment_status,
-                  fe.display_order,
-                  fe.metadata AS experiment_metadata,
-                  evp.point_key,
-                  evp.point_title,
-                  evp.display_order AS point_order,
-                  plc.principle_mode,
-                  plc.principle_equation,
-                  plc.principle_text,
-                  plc.phenomenon_explanation,
-                  plc.safety_note,
-                  plc.updated_at AS content_updated_at,
+                  n.id AS node_id,
+                  n.chapter_id,
+                  c.chapter_title,
+                  n.title AS node_title,
+                  n.summary,
+                  n.display_order,
+                  n.updated_at AS node_updated_at,
+                  pc.point_title,
+                  pc.principle_mode,
+                  pc.principle_equation,
+                  pc.principle_text,
+                  pc.phenomenon_explanation,
+                  pc.safety_note,
+                  pc.updated_at AS content_updated_at,
                   COALESCE((
-                    SELECT jsonb_agg(
-                      jsonb_build_object(
-                        'chapter_id', ecb.chapter_id,
-                        'chapter_title', c.chapter_title,
-                        'coverage_type', ecb.coverage_type,
-                        'sort_order', ecb.sort_order
-                      )
-                      ORDER BY ecb.sort_order, ecb.chapter_id
+                    WITH RECURSIVE path AS (
+                      SELECT id, parent_id, title, 0 AS depth
+                      FROM experiment_catalog_nodes
+                      WHERE id = n.id
+                      UNION ALL
+                      SELECT parent.id, parent.parent_id, parent.title, path.depth + 1
+                      FROM experiment_catalog_nodes parent
+                      JOIN path ON path.parent_id = parent.id
                     )
-                    FROM experiment_chapter_bindings ecb
-                    LEFT JOIN chapters c ON c.id = ecb.chapter_id
-                    WHERE ecb.experiment_id = fe.id
-                  ), '[]'::jsonb) AS chapter_bindings,
+                    SELECT jsonb_agg(title ORDER BY depth DESC)
+                    FROM path
+                  ), '[]'::jsonb) AS catalog_path,
+                  jsonb_build_array(
+                    jsonb_build_object(
+                      'chapter_id', n.chapter_id,
+                      'chapter_title', c.chapter_title,
+                      'coverage_type', 'primary',
+                      'sort_order', 0
+                    )
+                  ) AS chapter_bindings,
                   COALESCE((
                     SELECT jsonb_agg(
                       jsonb_build_object(
                         'media_id', ma.id,
-                        'title', COALESCE(mb.title, ma.title),
-                        'point_key', mb.metadata->>'point_key',
-                        'point_title', mb.metadata->>'point_title',
+                        'title', COALESCE(mb.title, ma.title, ma.original_file_name),
                         'upload_status', ma.upload_status,
-                        'binding_status', mb.status,
+                        'binding_status', mb.binding_status,
                         'has_thumbnail', ma.thumbnail_relative_path IS NOT NULL
                       )
-                      ORDER BY mb.sort_order, mb.created_at
+                      ORDER BY mb.display_order, mb.created_at
                     )
-                    FROM media_bindings mb
+                    FROM experiment_catalog_point_media_bindings mb
                     JOIN media_assets ma ON ma.id = mb.media_asset_id
-                    WHERE mb.target_type = 'experiment'
-                      AND mb.target_id = fe.id
-                      AND mb.metadata->>'point_key' = evp.point_key
+                    WHERE mb.node_id = n.id
                       AND ma.upload_status = 'ready'
-                      AND mb.status = 'published'
-                  ), '[]'::jsonb) AS videos
-                FROM experiment_point_learning_content plc
-                JOIN experiment_video_points evp
-                  ON evp.experiment_id = plc.experiment_id
-                 AND evp.point_key = plc.point_key
-                JOIN formal_experiments fe ON fe.id = plc.experiment_id
-                WHERE plc.content_status = 'published'
-                  AND evp.status = 'active'
-                  AND fe.status = 'published'
-                  AND COALESCE(fe.metadata->>'archived_by_catalog_seed', 'false') <> 'true'
-                ORDER BY fe.display_order, evp.display_order, evp.point_key
+                      AND mb.binding_status = 'published'
+                  ), '[]'::jsonb) AS videos,
+                  COALESCE((
+                    SELECT jsonb_agg(
+                      jsonb_build_object(
+                        'node_id', target.id,
+                        'title', COALESCE(l.label, target.title),
+                        'relation_type', l.relation_type
+                      )
+                      ORDER BY l.sort_order, l.created_at
+                    )
+                    FROM experiment_catalog_point_related_links l
+                    JOIN experiment_catalog_nodes target ON target.id = l.target_node_id
+                    WHERE l.source_node_id = n.id
+                      AND l.hidden = false
+                      AND target.status = 'published'
+                  ), '[]'::jsonb) AS related_links
+                FROM experiment_catalog_nodes n
+                JOIN chapters c ON c.id = n.chapter_id
+                JOIN experiment_catalog_point_content pc ON pc.node_id = n.id
+                WHERE n.node_kind IN ('point', 'hybrid')
+                  AND n.status = 'published'
+                  AND pc.content_status = 'published'
+                ORDER BY c.chapter_number NULLS LAST, n.display_order, n.id
                 """
             )
         )
@@ -302,71 +228,64 @@ def _load_published_point_rows(session: Any) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
-def _experiment_from_point_row(row: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "id": row.get("experiment_id"),
-        "code": row.get("code"),
-        "title": row.get("experiment_title"),
-        "summary": row.get("summary"),
-        "status": row.get("experiment_status") or "published",
-        "display_order": row.get("display_order") or 0,
-        "metadata": row.get("experiment_metadata") if isinstance(row.get("experiment_metadata"), dict) else {},
-        "chapter_bindings": row.get("chapter_bindings") if isinstance(row.get("chapter_bindings"), list) else [],
-        "media_resources": row.get("videos") if isinstance(row.get("videos"), list) else [],
-        "published_question_count": 0,
-    }
-
-
-def _point_document(row: dict[str, Any], profiles: list[dict[str, Any]], experiments: list[dict[str, Any]]) -> VideoLibraryDocument | None:
-    experiment = _experiment_from_point_row(row)
-    if _experiment_area_id(experiment) == "f":
-        return None
-    profile = _profile_context_for_experiment(experiment, profiles, experiments)
-    point_key = _clean_text(row.get("point_key"))
+def _point_document(row: dict[str, Any], profiles: list[dict[str, Any]]) -> VideoLibraryDocument | None:
+    node_id = _clean_text(row.get("node_id"))
+    chapter_id = _clean_text(row.get("chapter_id"))
+    profile = _profile_context_for_chapter(chapter_id, profiles)
     point_title = _clean_text(row.get("point_title"))
     principle = _clean_text(row.get("principle_equation") if row.get("principle_mode") == "equation" else row.get("principle_text"))
     phenomenon = _clean_text(row.get("phenomenon_explanation"))
     safety = _clean_text(row.get("safety_note"))
     videos = row.get("videos") if isinstance(row.get("videos"), list) else []
-    chapter_title = _chapter_title(experiment)
+    related_links = row.get("related_links") if isinstance(row.get("related_links"), list) else []
+    catalog_path = [str(item) for item in row.get("catalog_path") or [] if str(item).strip()]
+    chapter_title = _clean_text(row.get("chapter_title"))
     chemistry = chemistry_terms_for_document(point_title, principle, phenomenon, safety)
-    target = _experiment_target(experiment, profile, point_key=point_key, point_title=point_title)
-    if not target:
+    if not node_id:
         return None
+    target = StudentVideoLibraryRouteTarget(
+        kind="point_detail",
+        route=f"/point/{node_id}",
+        node_id=node_id,
+        profile_id=_clean_text(profile.get("profile_id")) if profile else None,
+        chapter_id=chapter_id or None,
+        catalog_path=catalog_path,
+        point_title=point_title,
+        context_title=point_title,
+        context_summary=phenomenon or principle,
+    )
     search_text = _document_search_text(
-        experiment.get("code"),
-        experiment.get("title"),
-        experiment.get("summary"),
-        _parent_code(experiment),
-        _parent_title(experiment),
-        _module_title(experiment),
-        point_key,
+        row.get("chapter_title"),
+        catalog_path,
         point_title,
         principle,
         phenomenon,
         safety,
+        [item.get("title") for item in related_links if isinstance(item, dict)],
+        [item.get("title") for item in videos if isinstance(item, dict)],
         chemistry["formulae"],
         chemistry["aliases"],
         chemistry["reaction_features"],
-        chapter_title,
         profile.get("title") if profile else "",
         profile.get("family_name") if profile else "",
         profile.get("element_symbols") if profile else [],
     )
-    document_id = f"point:{row.get('experiment_id')}:{point_key}"
+    document_id = node_id
     index_source = {
         "id": document_id,
         "result_type": "video_point",
-        "experiment_id": row.get("experiment_id"),
-        "point_key": point_key,
-        "chapter_ids": list(_experiment_chapter_ids(experiment)),
+        "node_id": node_id,
+        "chapter_id": row.get("chapter_id"),
+        "chapter_ids": [row.get("chapter_id")],
+        "catalog_path": catalog_path,
         "title": point_title,
-        "subtitle": _clean_text(experiment.get("title")),
+        "subtitle": " / ".join(catalog_path),
         "snippet": phenomenon or principle,
         "search_text": search_text,
         "principle": principle,
         "phenomenon_explanation": phenomenon,
         "safety_note": safety,
+        "related_text": [item.get("title") for item in related_links if isinstance(item, dict) and item.get("title")],
         "formulae": chemistry["formulae"],
         "aliases": chemistry["aliases"],
         "reaction_features": chemistry["reaction_features"],
@@ -380,7 +299,7 @@ def _point_document(row: dict[str, Any], profiles: list[dict[str, Any]], experim
         id=document_id,
         result_type="video_point",
         title=point_title,
-        subtitle=_clean_text(experiment.get("title")),
+        subtitle=" / ".join(catalog_path),
         snippet=phenomenon or principle,
         search_text=search_text,
         score_boost=6.0 + len(videos),
@@ -391,15 +310,10 @@ def _point_document(row: dict[str, Any], profiles: list[dict[str, Any]], experim
 
 
 def _build_point_documents(
-    experiments: list[dict[str, Any]],
     profiles: list[dict[str, Any]],
     point_rows: list[dict[str, Any]],
 ) -> list[VideoLibraryDocument]:
-    rows_by_experiment = {str(row.get("experiment_id")) for row in point_rows}
-    experiment_context = [experiment for experiment in experiments if str(experiment.get("id")) in rows_by_experiment]
-    if not experiment_context:
-        experiment_context = [_experiment_from_point_row(row) for row in point_rows]
-    documents = [_point_document(row, profiles, experiment_context) for row in point_rows]
+    documents = [_point_document(row, profiles) for row in point_rows]
     return [document for document in documents if document is not None]
 
 
@@ -408,130 +322,8 @@ def _build_documents(
     profiles: list[dict[str, Any]],
     point_rows: list[dict[str, Any]] | None = None,
 ) -> list[VideoLibraryDocument]:
-    if point_rows is not None:
-        return _build_point_documents(experiments, profiles, point_rows)
-    documents: list[VideoLibraryDocument] = []
-    for experiment in experiments:
-        metadata = _metadata(experiment)
-        if _clean_text(experiment.get("status") or "published") != "published":
-            continue
-        if _clean_text(metadata.get("archived_by_catalog_seed")).lower() == "true":
-            continue
-        if _experiment_area_id(experiment) == "f":
-            continue
-        profile = _profile_context_for_experiment(experiment, profiles, experiments)
-        chapter_title = _chapter_title(experiment)
-        base_text = _document_search_text(
-            experiment.get("code"),
-            experiment.get("title"),
-            experiment.get("summary"),
-            _parent_code(experiment),
-            _parent_title(experiment),
-            _module_title(experiment),
-            metadata.get("aliases"),
-            metadata.get("outline_group"),
-            metadata.get("phenomena"),
-            metadata.get("reagents"),
-            metadata.get("apparatus"),
-            _video_candidates(experiment),
-            chapter_title,
-            profile.get("title") if profile else "",
-            profile.get("family_name") if profile else "",
-            profile.get("element_symbols") if profile else [],
-            [
-                section.get("title")
-                for section in profile.get("property_sections") or []
-                if isinstance(section, dict)
-            ]
-            if profile
-            else [],
-            [
-                section.get("formula")
-                for section in profile.get("property_sections") or []
-                if isinstance(section, dict)
-            ]
-            if profile
-            else [],
-        )
-        point_key, point_title = _candidate_point(experiment)
-        target = _experiment_target(experiment, profile, point_key=point_key, point_title=point_title)
-        if target:
-            documents.append(
-                VideoLibraryDocument(
-                    id=f"experiment:{experiment.get('id')}",
-                    result_type="experiment",
-                    title=_clean_text(experiment.get("title")),
-                    subtitle=_parent_title(experiment),
-                    snippet=_clean_text(experiment.get("summary")) or (_module_title(experiment) or ""),
-                    search_text=base_text,
-                    score_boost=2.0 + float(len(_media_resources(experiment, visible_only=True))),
-                    target=target,
-                    badges=tuple(_unique([chapter_title, profile.get("family_name") if profile else "", "实验"])),
-                )
-            )
-        for index, media in enumerate(_media_resources(experiment, visible_only=True)):
-            media_point_key = _clean_text(media.get("point_key")) or None
-            media_point_title = _clean_text(media.get("point_title")) or _clean_text(media.get("title")) or point_title
-            media_target = _experiment_target(
-                experiment,
-                profile,
-                point_key=media_point_key or point_key,
-                point_title=media_point_title,
-            )
-            if not media_target:
-                continue
-            documents.append(
-                VideoLibraryDocument(
-                    id=f"video_point:{experiment.get('id')}:{media.get('media_id') or index}",
-                    result_type="video_point",
-                    title=media_point_title or _clean_text(experiment.get("title")),
-                    subtitle=_clean_text(experiment.get("title")),
-                    snippet=_document_search_text(_module_title(experiment), experiment.get("summary")),
-                    search_text=_document_search_text(base_text, media.get("title"), media.get("point_key"), media.get("point_title")),
-                    score_boost=4.0,
-                    target=media_target,
-                    badges=tuple(_unique([chapter_title, "视频点位"])),
-                )
-            )
-        for index, candidate in enumerate(_video_candidates(experiment)):
-            candidate_key = _clean_text(point_key) or f"candidate-{index + 1}"
-            candidate_target = _experiment_target(
-                experiment,
-                profile,
-                point_key=candidate_key,
-                point_title=candidate,
-            )
-            if not candidate_target:
-                continue
-            documents.append(
-                VideoLibraryDocument(
-                    id=f"video_point:{experiment.get('id')}:candidate:{index}",
-                    result_type="video_point",
-                    title=candidate,
-                    subtitle=_clean_text(experiment.get("title")),
-                    snippet=_clean_text(experiment.get("summary")) or _parent_title(experiment),
-                    search_text=_document_search_text(base_text, candidate),
-                    score_boost=3.5,
-                    target=candidate_target,
-                    badges=tuple(_unique([chapter_title, "候选观察"])),
-                )
-            )
-        chapter_target = _chapter_target(profile)
-        if chapter_target:
-            documents.append(
-                VideoLibraryDocument(
-                    id=f"chapter_experiment:{experiment.get('id')}:{profile.get('profile_id')}",
-                    result_type="chapter_experiment",
-                    title=_clean_text(profile.get("title")) or chapter_title,
-                    subtitle=_parent_title(experiment),
-                    snippet=_document_search_text(profile.get("subtitle"), experiment.get("title")),
-                    search_text=base_text,
-                    score_boost=1.4,
-                    target=chapter_target,
-                    badges=tuple(_unique([chapter_title, profile.get("family_name") or "", "章节"])),
-                )
-            )
-    return documents
+    _ = experiments
+    return _build_point_documents(profiles, point_rows or [])
 
 
 def _result_item(document: VideoLibraryDocument, score: float | None = None) -> StudentVideoLibraryResultItem | None:
@@ -636,20 +428,11 @@ def _adapter() -> VideoLibrarySearchAdapter | None:
     return LocalVideoLibrarySearchAdapter()
 
 
-def _browse_chips(experiments: list[dict[str, Any]], profiles: list[dict[str, Any]]) -> list[StudentVideoLibraryBrowseChip]:
+def _browse_chips(documents: list[VideoLibraryDocument], profiles: list[dict[str, Any]]) -> list[StudentVideoLibraryBrowseChip]:
     chips: list[StudentVideoLibraryBrowseChip] = []
     phenomenon_terms = ["颜色变化", "沉淀", "气体", "分层", "褪色", "火焰", "放热"]
     reagent_terms = ["氯水", "溴水", "碘水", "高锰酸钾", "硫代硫酸钠", "CCl4"]
-    search_corpus = " ".join(
-        _document_search_text(
-            experiment.get("title"),
-            experiment.get("summary"),
-            _parent_title(experiment),
-            _module_title(experiment),
-            _video_candidates(experiment),
-        )
-        for experiment in experiments
-    )
+    search_corpus = " ".join(document.search_text for document in documents)
     for term in phenomenon_terms:
         if term in search_corpus or len(chips) < 4:
             chips.append(StudentVideoLibraryBrowseChip(kind="phenomenon", label=term, query=term))
@@ -674,7 +457,7 @@ def _browse_chips(experiments: list[dict[str, Any]], profiles: list[dict[str, An
     return chips[:14]
 
 
-def _browse_state(documents: list[VideoLibraryDocument], experiments: list[dict[str, Any]], profiles: list[dict[str, Any]]) -> StudentVideoLibraryBrowseState:
+def _browse_state(documents: list[VideoLibraryDocument], profiles: list[dict[str, Any]]) -> StudentVideoLibraryBrowseState:
     recommended_docs = sorted(
         [document for document in documents if document.result_type in {"video_point", "experiment"}],
         key=lambda item: item.score_boost,
@@ -683,7 +466,7 @@ def _browse_state(documents: list[VideoLibraryDocument], experiments: list[dict[
     return StudentVideoLibraryBrowseState(
         recommended=[item for item in (_result_item(document) for document in recommended_docs) if item],
         recent=[],
-        chips=_browse_chips(experiments, profiles),
+        chips=_browse_chips(documents, profiles),
     )
 
 
@@ -731,11 +514,10 @@ def _ai_prompt_item(query: str, documents: list[VideoLibraryDocument]) -> Studen
 def search_student_video_library(user: Any, *, query: str = "", limit: int = 24) -> StudentVideoLibrarySearchResponse:
     settings = get_settings()
     with db_session() as session:
-        experiments = _load_published_experiments(session)
         point_rows = _load_published_point_rows(session)
     profiles = _learning_profiles()
-    documents = _build_documents(experiments, profiles, point_rows=point_rows)
-    browse = _browse_state(documents, experiments, profiles)
+    documents = _build_documents([], profiles, point_rows=point_rows)
+    browse = _browse_state(documents, profiles)
 
     adapter = _adapter()
     if adapter is None:
@@ -792,13 +574,12 @@ def search_student_video_library(user: Any, *, query: str = "", limit: int = 24)
 
 def video_library_index_preview(user: Any) -> dict[str, Any]:
     with db_session() as session:
-        experiments = _load_published_experiments(session)
         point_rows = _load_published_point_rows(session)
     profiles = _learning_profiles()
-    documents = _build_documents(experiments, profiles, point_rows=point_rows)
+    documents = _build_documents([], profiles, point_rows=point_rows)
     return {
         "student_id": _student_id(user),
         "document_count": len(documents),
-        "experiment_count": len({_clean_text(experiment.get("id")) for experiment in experiments}),
+        "point_count": len({_clean_text(row.get("node_id")) for row in point_rows}),
         "hidden_document_count": len([document for document in documents if not document.target]),
     }

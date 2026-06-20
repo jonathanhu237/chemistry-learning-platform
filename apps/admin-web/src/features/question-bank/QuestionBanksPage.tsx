@@ -39,7 +39,7 @@ import {
 } from "@ant-design/icons";
 
 import type { ApiList } from "../../api/common";
-import type { Experiment, ExperimentVideoPointsResponse } from "../../api/experiments";
+import type { Experiment } from "../../api/experiments";
 import type { LearningAssistantRuntime } from "../../api/learningAssistant";
 import type {
   PointAwareSuggestionResponse,
@@ -89,6 +89,13 @@ type QuestionFormValues = {
   explanation?: string;
   difficulty?: string;
   status?: string;
+};
+
+type QuestionPointOption = {
+  value: string;
+  label: string;
+  point_node_id?: string;
+  point_key?: string;
 };
 
 export function QuestionBanksPage() {
@@ -141,12 +148,6 @@ export function QuestionBanksPage() {
     enabled: Boolean(experimentId),
   });
 
-  const experimentPoints = useQuery({
-    queryKey: ["question-bank-video-points", experimentId],
-    queryFn: () => api<ExperimentVideoPointsResponse>(`/api/admin/experiments/${experimentId}/video-points`),
-    enabled: Boolean(experimentId),
-  });
-
   const drafts = useQuery({
     queryKey: ["question-bank-drafts", experimentId],
     queryFn: () => api<ApiList<QuestionDraft>>(`/api/admin/question-banks/drafts?experiment_id=${experimentId}`),
@@ -189,19 +190,27 @@ export function QuestionBanksPage() {
     [bankExperiments],
   );
 
-  const pointOptions = useMemo(() => {
-    const byKey = new Map<string, string>();
-    for (const point of experimentPoints.data?.points || []) {
-      if (point.point_key && point.source !== "legacy") byKey.set(point.point_key, point.point_title || point.point_key);
-    }
+  const pointOptions = useMemo<QuestionPointOption[]>(() => {
+    const byId = new Map<string, QuestionPointOption>();
     for (const question of questions.data?.items || []) {
       for (const point of questionPoints(question)) {
-        const key = point.point_key || point.point_title;
-        if (key && !byKey.has(key)) byKey.set(key, point.point_title || key);
+        const value = point.point_node_id || point.point_key || point.point_title;
+        if (!value || byId.has(value)) continue;
+        byId.set(value, {
+          value,
+          label: point.point_title || point.point_key || point.point_node_id || value,
+          point_node_id: point.point_node_id || undefined,
+          point_key: point.point_key || undefined,
+        });
       }
     }
-    return [...byKey.entries()].map(([value, label]) => ({ value, label }));
-  }, [experimentPoints.data?.points, questions.data?.items]);
+    return [...byId.values()];
+  }, [questions.data?.items]);
+
+  const pointOptionByValue = useMemo(
+    () => new Map(pointOptions.map((option) => [option.value, option] as const)),
+    [pointOptions],
+  );
 
   const visibleQuestions = useMemo(
     () => (questions.data?.items || []).filter((question) => questionHasAnyPoint(question, pointKeys)),
@@ -221,7 +230,14 @@ export function QuestionBanksPage() {
     ? workbenchContext.target_points
     : workbenchContext.selected_point
       ? [workbenchContext.selected_point]
-      : assistantPointKeys.map((key) => ({ point_key: key, point_title: pointOptions.find((option) => option.value === key)?.label || key }))) || [];
+      : assistantPointKeys.map((key) => {
+          const option = pointOptionByValue.get(key);
+          return {
+            point_node_id: option?.point_node_id,
+            point_key: option?.point_key || (!option?.point_node_id ? key : ""),
+            point_title: option?.label || key,
+          };
+        })) || [];
   const workbenchEvidencePackage = workbenchContext.evidence_package;
   const workbenchStatusTone = workbenchRagGate?.healthy === false ? "blocked" : questionWorkbenchGate.tone;
   const workbenchEvidenceSourceCount = workbenchEvidencePackage?.source_count ?? (workbenchContext.source_refs || []).length;
@@ -235,9 +251,11 @@ export function QuestionBanksPage() {
     : questionWorkbenchGate.healthy
       ? "已读取当前实验和点位的来源片段，可以继续用提示细化 AI 建议。"
       : workbenchGateLabel;
-  const createTargetPointKeys = pointKeys.filter(Boolean);
-  const createTargetPointLabel = createTargetPointKeys.length
-    ? `围绕 ${createTargetPointKeys.length} 个点位出题`
+  const createTargetPointOptions = pointKeys.map((key) => pointOptionByValue.get(key)).filter(Boolean) as QuestionPointOption[];
+  const createTargetPointNodeIds = createTargetPointOptions.map((point) => point.point_node_id).filter(Boolean) as string[];
+  const createTargetPointKeys = createTargetPointOptions.map((point) => point.point_key).filter(Boolean) as string[];
+  const createTargetPointLabel = createTargetPointOptions.length
+    ? `围绕 ${createTargetPointOptions.length} 个点位出题`
     : "未选点位时，将从本实验默认点位开始";
 
   const openQuestionWorkbench = (question: Question) => {
@@ -255,12 +273,11 @@ export function QuestionBanksPage() {
       message.warning(questionWorkbenchGate.message);
       return;
     }
-    const primaryPointKey = pointKeys[0];
-    const targetPointKeys = pointKeys.filter(Boolean);
+    const primaryPoint = createTargetPointOptions[0];
     setAssistantIntent("add_questions");
     setAssistantQuestion(null);
-    setAssistantPointKey(primaryPointKey);
-    setAssistantPointKeys(targetPointKeys);
+    setAssistantPointKey(primaryPoint?.value);
+    setAssistantPointKeys(pointKeys.filter(Boolean));
     setWorkbenchPrompt(selectedExperiment ? `为《${selectedExperiment.code} ${selectedExperiment.title}》补充点位诊断题。` : "补充点位诊断题。");
     setWorkbenchQuestionTypes(["single_choice", "true_false"]);
     setWorkbenchCount(3);
@@ -268,8 +285,10 @@ export function QuestionBanksPage() {
       startWorkbench.mutate({
         mode: "create",
         experiment_id: experimentId,
-        point_key: primaryPointKey || null,
-        point_keys: targetPointKeys,
+        point_node_id: primaryPoint?.point_node_id || null,
+        point_node_ids: createTargetPointNodeIds,
+        point_key: primaryPoint?.point_key || null,
+        point_keys: createTargetPointKeys,
       });
     }
   };
@@ -279,12 +298,16 @@ export function QuestionBanksPage() {
       message.warning(questionWorkbenchGate.message);
       return;
     }
-    const questionPointKeys = questionPoints(question).map((point) => point.point_key).filter(Boolean) as string[];
+    const selectedQuestionPoints = questionPoints(question);
+    const questionPointValues = selectedQuestionPoints.map((point) => point.point_node_id || point.point_key).filter(Boolean) as string[];
+    const questionPointNodeIds = selectedQuestionPoints.map((point) => point.point_node_id).filter(Boolean) as string[];
+    const questionPointKeys = selectedQuestionPoints.map((point) => point.point_key).filter(Boolean) as string[];
+    const primaryPoint = selectedQuestionPoints[0];
     setAssistantIntent("repair_question");
     setAssistantQuestion(question);
     setWorkbenchOpen(false);
-    setAssistantPointKey(questionPoints(question)[0]?.point_key);
-    setAssistantPointKeys(questionPointKeys);
+    setAssistantPointKey(primaryPoint?.point_node_id || primaryPoint?.point_key);
+    setAssistantPointKeys(questionPointValues);
     setWorkbenchPrompt("请基于当前实验点位、来源证据和选项诊断链接，给出一版更清晰、更可诊断的修正题。");
     setWorkbenchQuestionTypes([question.question_type]);
     setWorkbenchCount(1);
@@ -292,7 +315,9 @@ export function QuestionBanksPage() {
       mode: "repair",
       experiment_id: question.experiment_id,
       question_id: question.id,
-      point_key: questionPoints(question)[0]?.point_key || null,
+      point_node_id: primaryPoint?.point_node_id || null,
+      point_node_ids: questionPointNodeIds,
+      point_key: primaryPoint?.point_key || null,
       point_keys: questionPointKeys,
     });
   };
@@ -308,6 +333,8 @@ export function QuestionBanksPage() {
       mode: "repair" | "create";
       experiment_id: string;
       question_id?: string | null;
+      point_node_id?: string | null;
+      point_node_ids?: string[];
       point_key?: string | null;
       point_keys?: string[];
     }) => postJson<QuestionWorkbenchSession>("/api/admin/question-banks/workbench-sessions", payload),
@@ -775,7 +802,7 @@ export function QuestionBanksPage() {
                       { title: "角色", dataIndex: "role", width: 120, render: optionDiagnosticRoleLabel },
                       {
                         title: "点位/说明",
-                        render: (_: unknown, row) => row.point_title || row.point_key || row.diagnostic_note || "-",
+                        render: (_: unknown, row) => row.point_title || row.point_key || row.point_node_id || row.diagnostic_note || "-",
                       },
                     ]}
                   />
@@ -889,7 +916,7 @@ export function QuestionBanksPage() {
                   <Descriptions size="small" column={1} className="question-workbench-descriptions">
                     <Descriptions.Item label="目标点位">
                       {workbenchTargetPoints.length
-                        ? workbenchTargetPoints.map((point) => point.point_title || point.point_key).join("、")
+                        ? workbenchTargetPoints.map((point) => point.point_title || point.point_key || point.point_node_id).join("、")
                         : assistantPointKey || "全部点位"}
                     </Descriptions.Item>
                     <Descriptions.Item label="已有题量">{workbenchContext.coverage?.question_count ?? "-"}</Descriptions.Item>
@@ -902,14 +929,14 @@ export function QuestionBanksPage() {
                 <Text strong>点位与证据</Text>
                 <Space wrap className="question-point-list">
                   {workbenchTargetPoints.map((point) => (
-                    <Tag key={point.point_key || point.point_title} color="cyan">
-                      {point.point_title || point.point_key}
+                    <Tag key={point.point_node_id || point.point_key || point.point_title} color="cyan">
+                      {point.point_title || point.point_key || point.point_node_id}
                     </Tag>
                   ))}
                   {!workbenchTargetPoints.length && workbenchOriginalQuestion?.metadata
                     ? questionPoints(workbenchOriginalQuestion as Question).map((point) => (
-                        <Tag key={point.point_key || point.point_title} color="cyan">
-                          {point.point_title || point.point_key}
+                        <Tag key={point.point_node_id || point.point_key || point.point_title} color="cyan">
+                          {point.point_title || point.point_key || point.point_node_id}
                         </Tag>
                       ))
                     : null}
@@ -933,7 +960,7 @@ export function QuestionBanksPage() {
                     columns={[
                       { title: "选项", dataIndex: "label", width: 64 },
                       { title: "角色", dataIndex: "role", width: 110, render: optionDiagnosticRoleLabel },
-                      { title: "说明", render: (_: unknown, row) => row.point_title || row.point_key || row.diagnostic_note || "-" },
+                      { title: "说明", render: (_: unknown, row) => row.point_title || row.point_key || row.point_node_id || row.diagnostic_note || "-" },
                     ]}
                   />
                 </div>
@@ -1053,8 +1080,8 @@ export function QuestionBanksPage() {
                           </Descriptions>
                           <Space size={4} wrap>
                             {candidateQuestionPoints(candidate).slice(0, 3).map((point) => (
-                              <Tag key={point.point_key || point.point_title} color="cyan">
-                                {point.point_title || point.point_key}
+                              <Tag key={point.point_node_id || point.point_key || point.point_title} color="cyan">
+                                {point.point_title || point.point_key || point.point_node_id}
                               </Tag>
                             ))}
                           </Space>

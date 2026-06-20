@@ -17,7 +17,7 @@ export function StudentFeedbackForm({ context }: { context: FeedbackContext }) {
   useEffect(() => {
     setMessage("");
     setError("");
-  }, [context.pagePath, context.experimentId, context.pointKey]);
+  }, [context.pagePath, context.experimentId, context.pointNodeId]);
 
   const selectAttachment = (file: File | null) => {
     setAttachmentError("");
@@ -60,7 +60,8 @@ export function StudentFeedbackForm({ context }: { context: FeedbackContext }) {
         content: trimmed,
         chapter_id: context.chapterId,
         experiment_id: context.experimentId,
-        point_key: context.pointKey,
+        point_node_id: context.pointNodeId,
+        catalog_path: context.catalogPath,
         page_path: context.pagePath,
         metadata: {
           ...context.metadata,

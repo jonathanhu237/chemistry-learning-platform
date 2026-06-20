@@ -17,7 +17,7 @@ FRONTENDS = [
 ]
 ADMIN_FRONTEND_DIR = ROOT / "apps" / "admin-web"
 STUDENT_FRONTEND_DIR = ROOT / "apps" / "student-web"
-DEFAULT_CHANGE = "split-admin-api-and-experiments-feature"
+DEFAULT_CHANGE = "experiment-catalog-tree-point-architecture"
 
 
 @dataclass
@@ -120,6 +120,15 @@ def _compose_host_env() -> dict[str, str]:
     }
 
 
+def _student_mobile_qa_env() -> dict[str, str]:
+    has_credentials = bool(os.environ.get("STUDENT_H5_QA_STUDENT_ID") and os.environ.get("STUDENT_H5_QA_PASSWORD"))
+    has_auth_override = os.environ.get("STUDENT_H5_QA_ALLOW_AUTH_SKIP") == "1"
+    has_mock_override = os.environ.get("STUDENT_H5_QA_MOCK") == "1"
+    if has_credentials or has_auth_override or has_mock_override:
+        return {}
+    return {"STUDENT_H5_QA_MOCK": "1"}
+
+
 def _stages(args: argparse.Namespace) -> list[Stage]:
     stages: list[Stage] = []
     compose_host_env = _compose_host_env() if args.run_compose_smoke else None
@@ -146,7 +155,7 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
         )
         stages.append(
             Stage(
-                "experiment point identity validation",
+                "catalog point identity validation",
                 [sys.executable, "scripts/validate_experiment_points.py"],
                 env=compose_host_env,
             )
@@ -188,7 +197,14 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
         )
     if args.run_e2e:
         stages.append(Stage("admin frontend e2e smoke", [_npm(), "run", "e2e:smoke"], cwd=ADMIN_FRONTEND_DIR))
-        stages.append(Stage("student H5 mobile route-stack QA", [_npm(), "run", "qa:mobile"], cwd=STUDENT_FRONTEND_DIR))
+        stages.append(
+            Stage(
+                "student H5 mobile route-stack QA",
+                [_npm(), "run", "qa:mobile"],
+                cwd=STUDENT_FRONTEND_DIR,
+                env=_student_mobile_qa_env(),
+            )
+        )
     return stages
 
 

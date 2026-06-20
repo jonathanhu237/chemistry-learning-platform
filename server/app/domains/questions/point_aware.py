@@ -23,6 +23,16 @@ from server.app.domains.questions.generation import OBJECTIVE_TYPES, _question_s
 EvidencePackageLoader = Callable[..., dict[str, Any]]
 
 
+def _clean_text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _point_node_id(point: dict[str, Any] | None) -> str:
+    if not isinstance(point, dict):
+        return ""
+    return _clean_text(point.get("point_node_id") or point.get("point_id") or point.get("node_id"))
+
+
 def _source_audit_for_suggestion(
     *,
     source_refs: list[dict[str, Any]],
@@ -54,7 +64,13 @@ def _point_from_metadata(metadata: Any) -> dict[str, str] | None:
                 return {
                     "point_key": str(point.get("point_key") or "").strip(),
                     "point_title": str(point.get("point_title") or point.get("point_key") or "").strip(),
+                    "point_node_id": _point_node_id(point),
                 }
+    node_ids = metadata.get("primary_point_node_ids") or metadata.get("point_node_ids") or []
+    if isinstance(node_ids, list) and node_ids:
+        node_id = _clean_text(node_ids[0])
+        if node_id:
+            return {"point_key": "", "point_title": node_id, "point_node_id": node_id}
     keys = metadata.get("primary_point_keys") or []
     if isinstance(keys, list) and keys:
         key = str(keys[0] or "").strip()
@@ -74,8 +90,18 @@ def _points_from_metadata(metadata: Any) -> list[dict[str, str]]:
                 continue
             key = str(point.get("point_key") or "").strip()
             title = str(point.get("point_title") or key).strip()
-            if key or title:
-                output.append({"point_key": key or title, "point_title": title or key})
+            node_id = _point_node_id(point)
+            if key or title or node_id:
+                output.append({"point_key": key or title, "point_title": title or key or node_id, "point_node_id": node_id})
+    if output:
+        return output
+    node_ids = metadata.get("primary_point_node_ids") or metadata.get("point_node_ids") or []
+    if isinstance(node_ids, list):
+        output = [
+            {"point_key": "", "point_title": node_id, "point_node_id": node_id}
+            for node_id in [_clean_text(item) for item in node_ids]
+            if node_id
+        ]
     if output:
         return output
     keys = metadata.get("primary_point_keys") or []
@@ -101,6 +127,94 @@ def _unique_point_keys(*groups: Any) -> list[str]:
     return output
 
 
+def _unique_point_node_ids(*groups: Any) -> list[str]:
+    output: list[str] = []
+    seen: set[str] = set()
+    for group in groups:
+        values = group if isinstance(group, list) else [group]
+        for item in values:
+            node_id = _point_node_id(item) if isinstance(item, dict) else _clean_text(item)
+            if node_id and node_id not in seen:
+                seen.add(node_id)
+                output.append(node_id)
+    return output
+
+
+def _point_payload(point: dict[str, Any]) -> dict[str, str]:
+    point_key = _clean_text(point.get("point_key"))
+    point_title = _clean_text(point.get("point_title") or point.get("title") or point_key or _point_node_id(point))
+    return {
+        "point_key": point_key,
+        "point_title": point_title,
+        "point_node_id": _point_node_id(point),
+    }
+
+
+def _attach_catalog_point_nodes(session: Any, *, experiment_id: str, points: list[dict[str, str]]) -> list[dict[str, str]]:
+    if not points or not hasattr(session, "execute"):
+        return points
+    point_keys = _unique_point_keys([point.get("point_key") for point in points])
+    requested_node_ids = _unique_point_node_ids(points)
+    legacy_rows = []
+    if point_keys:
+        legacy_rows = [
+            dict(row)
+            for row in session.execute(
+                text(
+                    """
+                    SELECT lm.legacy_point_key, lm.catalog_node_id, n.title, n.chapter_id
+                    FROM experiment_catalog_legacy_identity_map lm
+                    JOIN experiment_catalog_nodes n ON n.id = lm.catalog_node_id
+                    WHERE lm.legacy_kind = 'point'
+                      AND lm.legacy_experiment_id = :experiment_id
+                      AND lm.legacy_point_key = ANY(:point_keys)
+                    """
+                ),
+                {"experiment_id": experiment_id, "point_keys": point_keys},
+            )
+            .mappings()
+            .all()
+        ]
+    node_rows = []
+    if requested_node_ids:
+        node_rows = [
+            dict(row)
+            for row in session.execute(
+                text(
+                    """
+                    SELECT id AS catalog_node_id, title, chapter_id
+                    FROM experiment_catalog_nodes
+                    WHERE id = ANY(:node_ids)
+                      AND node_kind IN ('point', 'hybrid')
+                    """
+                ),
+                {"node_ids": requested_node_ids},
+            )
+            .mappings()
+            .all()
+        ]
+    by_key = {str(row["legacy_point_key"]): row for row in legacy_rows}
+    by_node = {str(row["catalog_node_id"]): row for row in [*legacy_rows, *node_rows]}
+    enriched: list[dict[str, str]] = []
+    for point in points:
+        node_id = _point_node_id(point)
+        mapped = by_node.get(node_id) if node_id else by_key.get(str(point.get("point_key") or ""))
+        if mapped:
+            node_id = str(mapped.get("catalog_node_id") or node_id)
+            enriched.append(
+                {
+                    **point,
+                    "point_node_id": node_id,
+                    "point_id": node_id,
+                    "point_title": _clean_text(point.get("point_title") or mapped.get("title") or node_id),
+                    "chapter_id": _clean_text(mapped.get("chapter_id")),
+                }
+            )
+        else:
+            enriched.append(point)
+    return enriched
+
+
 def _select_suggestion_points(
     *,
     points: list[dict[str, Any]],
@@ -109,17 +223,19 @@ def _select_suggestion_points(
 ) -> list[dict[str, str]]:
     selected: list[dict[str, str]] = []
     by_key = {str(item.get("point_key") or ""): item for item in points if item.get("point_key")}
+    by_node = {_point_node_id(item): item for item in points if _point_node_id(item)}
     for key in _unique_point_keys(point_keys):
-        found = by_key.get(key)
+        found = by_key.get(key) or by_node.get(key)
         if found:
+            selected.append(_point_payload(found))
+        else:
             selected.append(
                 {
-                    "point_key": str(found.get("point_key") or ""),
-                    "point_title": str(found.get("point_title") or found.get("point_key") or ""),
+                    "point_key": "" if key.startswith("cat-") else key,
+                    "point_title": key,
+                    "point_node_id": key if key.startswith("cat-") else "",
                 }
             )
-        else:
-            selected.append({"point_key": key, "point_title": key})
     if selected:
         return selected
     if target_question:
@@ -130,8 +246,7 @@ def _select_suggestion_points(
     if first:
         return [
             {
-                "point_key": str(first.get("point_key") or ""),
-                "point_title": str(first.get("point_title") or first.get("point_key") or ""),
+                **_point_payload(first),
             }
         ]
     return []
@@ -166,6 +281,7 @@ def _default_option_links(options: list[Any], point: dict[str, str] | None) -> l
                     "label": label,
                     "role": "correct_evidence",
                     "point_key": point.get("point_key") if point else None,
+                    "point_node_id": _point_node_id(point),
                     "point_title": point.get("point_title") if point else None,
                     "diagnostic_note": "Correct option tied to the selected experiment point.",
                 }
@@ -201,10 +317,18 @@ def _with_point_aware_metadata(
     primary_point_keys = _unique_point_keys(row.get("primary_point_keys"), existing_metadata.get("primary_point_keys"))
     if not primary_point_keys:
         primary_point_keys = _unique_point_keys(request.point_keys, point.get("point_key") if point else None)
+    primary_point_node_ids = _unique_point_node_ids(
+        row.get("primary_point_node_ids"),
+        existing_metadata.get("primary_point_node_ids"),
+        request.point_node_ids,
+        request.point_node_id,
+        point,
+    )
     primary_points = [
         {
             "point_key": point["point_key"],
             "point_title": point.get("point_title") or point["point_key"],
+            "point_node_id": _point_node_id(point),
         }
         for point in ([point] if point and point.get("point_key") else [])
     ]
@@ -219,11 +343,24 @@ def _with_point_aware_metadata(
         option_links = existing_metadata.get("option_links") if isinstance(existing_metadata.get("option_links"), list) else None
     if question_type == "single_choice" and not option_links:
         option_links = _default_option_links(options, point)
+    if option_links:
+        normalized_links: list[dict[str, Any]] = []
+        for link in option_links:
+            if not isinstance(link, dict):
+                continue
+            link_payload = dict(link)
+            if not link_payload.get("point_node_id") and point:
+                link_key = _clean_text(link_payload.get("point_key"))
+                if not link_key or link_key == _clean_text(point.get("point_key")):
+                    link_payload["point_node_id"] = _point_node_id(point) or None
+            normalized_links.append(link_payload)
+        option_links = normalized_links
     metadata = {
         **existing_metadata,
         "point_aware_question_bank": True,
         "suggestion_intent": request.intent,
         "primary_point_keys": primary_point_keys,
+        "primary_point_node_ids": primary_point_node_ids,
         "primary_points": primary_points,
         "secondary_point_keys": list(row.get("secondary_point_keys") or existing_metadata.get("secondary_point_keys") or []),
         "coverage_tags": list(row.get("coverage_tags") or existing_metadata.get("coverage_tags") or target_metadata.get("coverage_tags") or []),
@@ -413,11 +550,13 @@ def create_point_aware_suggestions(
         points = _experiment_video_points(experiment, _list_experiment_video_resources(payload.experiment_id))
         selected_points = _select_suggestion_points(
             points=points,
-            point_keys=_unique_point_keys(payload.point_keys, payload.point_key),
+            point_keys=_unique_point_keys(payload.point_keys, payload.point_key, payload.point_node_ids, payload.point_node_id),
             target_question=target_question,
         )
+        selected_points = _attach_catalog_point_nodes(session, experiment_id=payload.experiment_id, points=selected_points)
         selected_point = selected_points[0] if selected_points else None
         target_point_keys = _unique_point_keys([point.get("point_key") for point in selected_points], payload.point_key)
+        target_point_node_ids = _unique_point_node_ids(selected_points, payload.point_node_ids, payload.point_node_id)
         evidence_package = evidence_loader(
             session,
             experiment=experiment,
@@ -483,6 +622,8 @@ def create_point_aware_suggestions(
                             "intent": payload.intent,
                             "point_key": selected_point.get("point_key") if selected_point else None,
                             "point_keys": target_point_keys,
+                            "point_node_id": _point_node_id(selected_point),
+                            "point_node_ids": target_point_node_ids,
                             "question_id": payload.question_id,
                             "rag_gate": rag_gate,
                             "evidence_package": evidence_package,
@@ -542,5 +683,6 @@ def create_point_aware_suggestions(
             "question_id": payload.question_id,
             "point": selected_point,
             "points": selected_points,
+            "point_node_ids": target_point_node_ids,
         },
     }

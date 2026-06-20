@@ -1,6 +1,6 @@
 import type { ApiList } from "./common";
 import { api, postJson, postJsonStream } from "./http";
-import type { Experiment, ExperimentVideoPointsResponse } from "./experiments";
+import type { Experiment } from "./experiments";
 import type { AIConfiguration } from "./settings";
 import type { LearningAssistantRuntime } from "./learningAssistant";
 
@@ -31,6 +31,7 @@ export type SourceRef = {
 };
 
 export type QuestionPoint = {
+  point_node_id?: string;
   point_key?: string;
   point_title?: string;
 };
@@ -38,6 +39,7 @@ export type QuestionPoint = {
 export type QuestionOptionLink = {
   label?: string;
   role?: string;
+  point_node_id?: string;
   point_key?: string;
   point_title?: string;
   diagnostic_note?: string;
@@ -65,8 +67,10 @@ export type Question = {
   metadata?: {
     point_aware_question_bank?: boolean;
     suggestion_intent?: "add_questions" | "repair_question" | string;
+    primary_point_node_ids?: string[];
     primary_point_keys?: string[];
     primary_points?: QuestionPoint[];
+    secondary_point_node_ids?: string[];
     secondary_point_keys?: string[];
     option_links?: QuestionOptionLink[];
     coverage_tags?: string[];
@@ -161,6 +165,8 @@ export type PointAwareSuggestionRequest = {
   experiment_id: string;
   prompt: string;
   question_id?: string | null;
+  point_node_id?: string | null;
+  point_node_ids?: string[];
   point_key?: string | null;
   point_keys?: string[];
   question_types?: Question["question_type"][];
@@ -215,6 +221,7 @@ export type QuestionWorkbenchSession = {
   experiment_id: string;
   experiment_code?: string;
   experiment_title?: string;
+  point_node_id?: string | null;
   point_key?: string | null;
   question_id?: string | null;
   original_question_snapshot?: Partial<Question> & Record<string, unknown>;
@@ -227,6 +234,7 @@ export type QuestionWorkbenchSession = {
     };
     selected_point?: QuestionPoint | null;
     target_points?: QuestionPoint[];
+    target_point_node_ids?: string[];
     target_point_keys?: string[];
     source_refs?: SourceRef[];
     rag_gate?: {

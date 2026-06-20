@@ -70,6 +70,11 @@ def _single_choice_label(submitted: Any) -> str | None:
 
 def _attempt_diagnostic_metadata(question: dict[str, Any], submitted: Any, correct: bool) -> dict[str, Any]:
     question_metadata = question.get("metadata") if isinstance(question.get("metadata"), dict) else {}
+    primary_point_node_ids = [
+        str(item)
+        for item in (question.get("primary_point_node_ids") or question_metadata.get("primary_point_node_ids") or [])
+        if str(item).strip()
+    ]
     primary_point_keys = [
         str(item)
         for item in question_metadata.get("primary_point_keys") or []
@@ -78,7 +83,7 @@ def _attempt_diagnostic_metadata(question: dict[str, Any], submitted: Any, corre
     primary_points = [
         item
         for item in question_metadata.get("primary_points") or []
-        if isinstance(item, dict) and item.get("point_key")
+        if isinstance(item, dict) and (item.get("point_node_id") or item.get("point_key"))
     ]
     selected_label = _single_choice_label(submitted) if question.get("question_type") == "single_choice" else None
     option_links = [
@@ -98,6 +103,8 @@ def _attempt_diagnostic_metadata(question: dict[str, Any], submitted: Any, corre
         )
     return {
         "point_aware_question_bank": bool(question_metadata.get("point_aware_question_bank")),
+        "primary_point_node_ids": primary_point_node_ids,
+        "point_node_id": primary_point_node_ids[0] if primary_point_node_ids else None,
         "primary_point_keys": primary_point_keys,
         "primary_points": primary_points,
         "coverage_tags": list(question_metadata.get("coverage_tags") or []),
@@ -182,21 +189,24 @@ def submit_experiment_question_attempt(payload: ExperimentQuestionSubmitRequest)
         ]
         correct_count = 0
         submitted_point_keys: set[str] = set()
+        submitted_point_node_ids: set[str] = set()
         submitted_option_links: list[dict[str, Any]] = []
         mastery_attempt_rows: list[dict[str, Any]] = []
         for question in questions:
             submitted = answer_lookup.get(str(question["id"]))
             correct = _grade_answer(question["question_type"], question["answer"], submitted)
             correct_count += 1 if correct else 0
+            attempt_metadata = _attempt_diagnostic_metadata(question, submitted, correct)
+            submitted_point_keys.update(attempt_metadata.get("primary_point_keys") or [])
+            submitted_point_node_ids.update(str(item) for item in attempt_metadata.get("primary_point_node_ids") or [] if str(item).strip())
             mastery_attempt_rows.append(
                 {
                     "experiment_id": payload.experiment_id,
+                    "point_node_id": attempt_metadata.get("point_node_id"),
                     "question_type": question["question_type"],
                     "correct": correct,
                 }
             )
-            attempt_metadata = _attempt_diagnostic_metadata(question, submitted, correct)
-            submitted_point_keys.update(attempt_metadata.get("primary_point_keys") or [])
             if isinstance(attempt_metadata.get("selected_option_link"), dict):
                 submitted_option_links.append(attempt_metadata["selected_option_link"])
             session.execute(
@@ -204,11 +214,11 @@ def submit_experiment_question_attempt(payload: ExperimentQuestionSubmitRequest)
                     """
                     INSERT INTO experiment_question_attempts (
                       student_id, class_id, experiment_id, question_id, question_type,
-                      submitted_answer, correct, score, attempt_kind, metadata
+                      point_node_id, submitted_answer, correct, score, attempt_kind, metadata
                     )
                     VALUES (
                       :student_id, :class_id, :experiment_id, CAST(:question_id AS uuid), :question_type,
-                      CAST(:submitted_answer AS jsonb), :correct, :score, :attempt_kind, CAST(:metadata AS jsonb)
+                      :point_node_id, CAST(:submitted_answer AS jsonb), :correct, :score, :attempt_kind, CAST(:metadata AS jsonb)
                     )
                     """
                 ),
@@ -218,6 +228,7 @@ def submit_experiment_question_attempt(payload: ExperimentQuestionSubmitRequest)
                     "experiment_id": payload.experiment_id,
                     "question_id": str(question["id"]),
                     "question_type": question["question_type"],
+                    "point_node_id": attempt_metadata.get("point_node_id"),
                     "submitted_answer": _json({"value": submitted}),
                     "correct": correct,
                     "score": 1 if correct else 0,
@@ -278,11 +289,11 @@ def submit_experiment_question_attempt(payload: ExperimentQuestionSubmitRequest)
                 """
                 INSERT INTO student_events (
                   student_id, event_type, chapter_id, experiment_id, difficulty,
-                  correct, metadata, created_at
+                  point_node_id, correct, metadata, created_at
                 )
                 VALUES (
                   :student_id, 'experiment_question_submit', :chapter_id, :experiment_id,
-                  'basic', :correct, CAST(:metadata AS jsonb), now()
+                  'basic', :point_node_id, :correct, CAST(:metadata AS jsonb), now()
                 )
                 """
             ),
@@ -290,6 +301,7 @@ def submit_experiment_question_attempt(payload: ExperimentQuestionSubmitRequest)
                 "student_id": payload.student_id,
                 "chapter_id": primary_chapter,
                 "experiment_id": payload.experiment_id,
+                "point_node_id": next(iter(sorted(submitted_point_node_ids)), None),
                 "correct": score >= 60 if total else None,
                 "metadata": _json(
                     {
@@ -297,6 +309,7 @@ def submit_experiment_question_attempt(payload: ExperimentQuestionSubmitRequest)
                         "correct_count": correct_count,
                         "total_count": total,
                         "point_keys": sorted(submitted_point_keys),
+                        "point_node_ids": sorted(submitted_point_node_ids),
                         "selected_option_links": submitted_option_links,
                     }
                 ),

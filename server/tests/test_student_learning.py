@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import json
-from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
 
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -13,7 +11,6 @@ from server.app.domains.student_learning.point_detail import (
     _areas_for_groups,
     _build_parent_groups,
     _choose_recommendation,
-    _learning_groups_for_chapter,
     _latest_pretest_area_id,
     _lowest_mastery_chapter_id,
     _record_learning_event,
@@ -46,8 +43,8 @@ def _experiment(
         "metadata": {
             "parent_code": parent_code,
             "parent_title": parent_title,
-            "module_display_title": "模块",
-            "video_candidates": ["观察点"],
+            "module_display_title": "Module",
+            "video_candidates": ["Candidate video"],
         },
         "chapter_bindings": [{"chapter_id": chapter_id, "coverage_type": "primary", "sort_order": 1}],
         "media_resources": [],
@@ -66,134 +63,12 @@ class _FailingSession:
         self.rolled_back = True
 
 
-@contextmanager
-def _fake_session():
-    yield object()
-
-
-def _student_user() -> AuthUser:
-    return AuthUser(
-        id="00000000-0000-0000-0000-000000000001",
-        username="20240001",
-        role="student",
-        display_name="Student",
-        status="active",
-        must_change_password=False,
-        student_id="20240001",
-        class_id="class-a",
-    )
-
-
 def test_student_learning_routes_are_registered() -> None:
     assert_route("/api/student/learning-home", "GET")
     assert_route("/api/student/learning-page", "GET")
-    assert_route("/api/student/experiment-groups/{parent_code}", "GET")
-    assert_route("/api/student/experiments/{experiment_id}", "GET")
-
-
-def test_student_experiment_detail_returns_published_point_content_and_selected_video(monkeypatch) -> None:
-    experiment = _experiment(
-        "EXP_POINT",
-        code="19-1-01",
-        title="Halogen displacement",
-        parent_code="19-1",
-        parent_title="Halogens",
-        chapter_id="CH13",
-        display_order=1,
-        questions=2,
-    )
-    experiment["media_resources"] = [
-        {
-            "media_id": "media-orange",
-            "title": "Orange layer video",
-            "point_key": "orange-layer",
-            "point_title": "Orange layer",
-            "mime_type": "video/mp4",
-            "stream_path": "media/orange.mp4",
-            "thumbnail_path": None,
-            "upload_status": "ready",
-            "binding_status": "published",
-        },
-        {
-            "media_id": "media-hidden",
-            "title": "Other point video",
-            "point_key": "other-point",
-            "point_title": "Other point",
-            "mime_type": "video/mp4",
-            "stream_path": "media/other.mp4",
-            "thumbnail_path": None,
-            "upload_status": "ready",
-            "binding_status": "published",
-        },
-    ]
-    events: list[dict[str, Any]] = []
-    monkeypatch.setattr(learning_service, "db_session", _fake_session)
-    monkeypatch.setattr(learning_service, "_load_published_experiments", lambda _session: [experiment])
-    monkeypatch.setattr(learning_service, "_record_learning_event", lambda _session, **payload: events.append(payload))
-    monkeypatch.setattr(
-        learning_service,
-        "student_point_content_payload",
-        lambda _session, experiment_id, point_key=None: {
-            "selected_point_key": point_key,
-            "selected_point_title": "Orange layer",
-            "point_content_status": "published",
-            "principle_mode": "equation",
-            "principle_equation": "Cl2 + 2KBr = 2KCl + Br2",
-            "principle_text": None,
-            "phenomenon_explanation": "Orange organic layer appears.",
-            "safety_note": "Use ventilation.",
-            "related_points": [],
-            "assessment_context": {"experiment_id": experiment_id, "chapter_ids": ["CH13"], "parent_code": "19-1", "parent_title": "Halogens"},
-        },
-    )
-
-    detail = learning_service.get_student_experiment_detail(_student_user(), "EXP_POINT", point_key="orange-layer")
-
-    assert detail.point_content_status == "published"
-    assert detail.principle_equation == "Cl2 + 2KBr = 2KCl + Br2"
-    assert detail.phenomenon_explanation == "Orange organic layer appears."
-    assert detail.safety_note == "Use ventilation."
-    assert [video.point_key for video in detail.videos] == ["orange-layer"]
-    assert events and events[0]["event_type"] == "experiment_detail_opened"
-
-
-def test_student_experiment_detail_missing_content_does_not_expose_body_copy(monkeypatch) -> None:
-    experiment = _experiment(
-        "EXP_POINT",
-        code="19-1-01",
-        title="Halogen displacement",
-        parent_code="19-1",
-        parent_title="Halogens",
-        chapter_id="CH13",
-        display_order=1,
-    )
-    monkeypatch.setattr(learning_service, "db_session", _fake_session)
-    monkeypatch.setattr(learning_service, "_load_published_experiments", lambda _session: [experiment])
-    monkeypatch.setattr(learning_service, "_record_learning_event", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(
-        learning_service,
-        "student_point_content_payload",
-        lambda _session, experiment_id, point_key=None: {
-            "selected_point_key": point_key,
-            "selected_point_title": "Orange layer",
-            "point_content_status": "draft",
-            "principle_mode": "text",
-            "principle_equation": None,
-            "principle_text": None,
-            "phenomenon_explanation": None,
-            "safety_note": None,
-            "related_points": [],
-            "assessment_context": {"experiment_id": experiment_id, "chapter_ids": ["CH13"], "parent_code": "19-1", "parent_title": "Halogens"},
-        },
-    )
-
-    detail = learning_service.get_student_experiment_detail(_student_user(), "EXP_POINT", point_key="orange-layer")
-
-    assert detail.point_content_status == "draft"
-    assert detail.principle_equation is None
-    assert detail.principle_text is None
-    assert detail.phenomenon_explanation is None
-    assert detail.safety_note is None
+    assert_route("/api/student/chapters/{chapter_id}/catalog", "GET")
+    assert_route("/api/student/catalog/nodes/{node_id}", "GET")
+    assert_route("/api/student/catalog/points/{node_id}", "GET")
 
 
 def test_student_learning_profile_seed_is_valid() -> None:
@@ -261,11 +136,11 @@ def test_element_badges_expose_card_copy_and_preserve_detail_fields() -> None:
         "elements": [
             {
                 "symbol": "Cl",
-                "name": "氯",
+                "name": "Chlorine",
                 "atomic_number": 17,
-                "card_focus": "氧化性强，常用于卤素置换对比",
-                "card_relevance": "氯水能把 Br-、I- 氧化成对应单质，现象直接对应本章实验视频。",
-                "card_tags": ["17族卤素", "气体", "常见-1价"],
+                "card_focus": "Strong oxidizer",
+                "card_relevance": "Oxidizes bromide and iodide ions.",
+                "card_tags": ["halogen", "oxidizer"],
                 "electron_configuration": "[Ne]3s2 3p5",
                 "common_valence": "-1, 0, +1, +3, +5, +7",
                 "redox_tendency": "Cl2 can oxidize Br- and I-.",
@@ -276,9 +151,9 @@ def test_element_badges_expose_card_copy_and_preserve_detail_fields() -> None:
 
     badge = learning_service._element_badges(profile)[0]
 
-    assert badge.card_focus == "氧化性强，常用于卤素置换对比"
-    assert badge.card_relevance == "氯水能把 Br-、I- 氧化成对应单质，现象直接对应本章实验视频。"
-    assert badge.card_tags == ["17族卤素", "气体", "常见-1价"]
+    assert badge.card_focus == "Strong oxidizer"
+    assert badge.card_relevance == "Oxidizes bromide and iodide ions."
+    assert badge.card_tags == ["halogen", "oxidizer"]
     assert badge.redox_tendency == "Cl2 can oxidize Br- and I-."
     assert badge.note == "Detailed note stays available."
 
@@ -397,9 +272,9 @@ def test_parent_groups_follow_experiment_parent_titles_and_hide_empty_f_area() -
             _experiment(
                 "EXP_19_1_01",
                 code="19-1-01",
-                title="氯、溴、碘的置换次序",
+                title="Halogen displacement",
                 parent_code="19-1",
-                parent_title="实验 19-1 卤素",
+                parent_title="Experiment 19-1 Halogens",
                 chapter_id="CH13",
                 display_order=1,
                 questions=4,
@@ -407,9 +282,9 @@ def test_parent_groups_follow_experiment_parent_titles_and_hide_empty_f_area() -
             _experiment(
                 "EXP_20_2_01",
                 code="20-2-01",
-                title="氢氧化物的酸碱性",
+                title="Transition metal properties",
                 parent_code="20-2",
-                parent_title="实验 20-2 d 区元素化合物的性质（一）",
+                parent_title="Experiment 20-2 d-block ions",
                 chapter_id="CH20",
                 display_order=20,
                 questions=2,
@@ -417,9 +292,9 @@ def test_parent_groups_follow_experiment_parent_titles_and_hide_empty_f_area() -
             _experiment(
                 "EXP_21_1_01",
                 code="21-1-01",
-                title="镧系性质",
+                title="Lanthanide properties",
                 parent_code="21-1",
-                parent_title="实验 21-1 镧系",
+                parent_title="Experiment 21-1 Lanthanides",
                 chapter_id="CH21",
                 display_order=99,
             ),
@@ -428,7 +303,7 @@ def test_parent_groups_follow_experiment_parent_titles_and_hide_empty_f_area() -
 
     assert [group.parent_code for group in groups] == ["19-1", "20-2"]
     assert groups[0].area_id == "p"
-    assert groups[0].parent_title == "实验 19-1 卤素"
+    assert groups[0].parent_title == "Experiment 19-1 Halogens"
 
     areas = {area.area_id: area for area in _areas_for_groups(groups)}
     assert areas["f"].enabled is False
@@ -441,18 +316,18 @@ def test_recommendation_falls_back_when_pretest_area_has_no_experiments() -> Non
             _experiment(
                 "EXP_19_1_01",
                 code="19-1-01",
-                title="氯、溴、碘的置换次序",
+                title="Halogen displacement",
                 parent_code="19-1",
-                parent_title="实验 19-1 卤素",
+                parent_title="Experiment 19-1 Halogens",
                 chapter_id="CH13",
                 display_order=1,
             ),
             _experiment(
                 "EXP_18_1_01",
                 code="19-6-01",
-                title="焰色反应",
+                title="Flame test",
                 parent_code="19-6",
-                parent_title="实验 19-6 碱金属和碱土金属",
+                parent_title="Experiment 19-6 Metal ions",
                 chapter_id="CH18",
                 display_order=18,
             ),
@@ -461,45 +336,3 @@ def test_recommendation_falls_back_when_pretest_area_has_no_experiments() -> Non
 
     assert _choose_recommendation(groups=groups, pretest_area_id="f", mastery_chapter_id=None) == ("p", "19-1")
     assert _choose_recommendation(groups=groups, pretest_area_id="s", mastery_chapter_id="CH18") == ("s", "19-6")
-
-
-def test_chapter_learning_groups_follow_parent_experiments_not_property_sections() -> None:
-    groups = _learning_groups_for_chapter(
-        profile={"title": "17族（卤素）"},
-        experiments=[
-            _experiment(
-                "EXP_19_1_01",
-                code="19-1-01",
-                title="氯水 + KBr 溶液 + CCl4",
-                parent_code="19-1",
-                parent_title="实验 19-1 卤素",
-                chapter_id="CH13",
-                display_order=2,
-                questions=3,
-            ),
-            _experiment(
-                "EXP_19_1_02",
-                code="19-1-02",
-                title="氯水、溴水、碘水分别与 Na2S2O3 溶液反应",
-                parent_code="19-1",
-                parent_title="实验 19-1 卤素",
-                chapter_id="CH13",
-                display_order=1,
-                questions=2,
-            ),
-            _experiment(
-                "EXP_19_2_01",
-                code="19-2-01",
-                title="卤化银沉淀",
-                parent_code="19-2",
-                parent_title="实验 19-2 卤化银",
-                chapter_id="CH13",
-                display_order=3,
-                questions=1,
-            ),
-        ],
-    )
-
-    assert [group.parent_code for group in groups] == ["19-1", "19-2"]
-    assert [point.code for point in groups[0].points] == ["19-1-02", "19-1-01"]
-    assert {point.property_key for group in groups for point in group.points} == {"chapter"}

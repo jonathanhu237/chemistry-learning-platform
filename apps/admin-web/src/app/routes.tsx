@@ -41,8 +41,8 @@ const VideoResourcesPage = lazy(async () => {
   return { default: module.VideoResourcesPage };
 });
 const ExperimentsPage = lazy(async () => {
-  const module = await import("../features/experiments/ExperimentsPage");
-  return { default: module.ExperimentsPage };
+  const module = await import("../features/catalog-tree/CatalogTreeWorkspacePage");
+  return { default: module.CatalogTreeWorkspacePage };
 });
 const QuestionBanksPage = lazy(async () => {
   const module = await import("../features/question-bank/QuestionBanksPage");

@@ -656,19 +656,6 @@
   gap: 10px;
 }
 
-.learning-point-card {
-  display: grid;
-  gap: 8px;
-  border: 1px solid rgba(0, 88, 38, 0.14);
-  border-radius: 8px;
-  padding: 9px;
-  color: var(--ink);
-  background: rgba(255, 253, 246, 0.96);
-  text-align: left;
-  box-shadow: 0 12px 30px rgba(21, 49, 34, 0.1);
-  cursor: pointer;
-}
-
 .point-thumb {
   position: relative;
   display: grid;

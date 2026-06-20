@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { StudentExperimentGroupSummary, StudentLearningArea, StudentLearningElementBadge, StudentLearningProfileSummary } from "../../api";
+import type { StudentLearningArea, StudentLearningElementBadge, StudentLearningProfileSummary } from "../../api";
 import { periodicElements } from "../../periodic";
 
 export type AreaId = "p" | "s" | "ds" | "d" | "f" | "integrated";
@@ -157,10 +157,6 @@ export function normalizeAreaId(value: string | null | undefined): AreaId | null
 export function firstEnabledArea(areas: StudentLearningArea[]): AreaId | null {
   const match = areas.find((area) => area.enabled && normalizeAreaId(area.area_id));
   return normalizeAreaId(match?.area_id);
-}
-
-export function firstGroupForArea(groups: StudentExperimentGroupSummary[], areaId: AreaId): StudentExperimentGroupSummary | null {
-  return groups.find((group) => group.area_id === areaId) || null;
 }
 
 export function profileAreaId(profile: StudentLearningProfileSummary): AreaId | null {

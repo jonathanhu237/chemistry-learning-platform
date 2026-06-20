@@ -578,7 +578,7 @@ class PostgresLearningRepository:
     def load_events(self) -> list[dict[str, Any]]:
         return _rows(
             """
-            SELECT id, student_id, event_type, chapter_id, unit_id, knowledge_point_id, experiment_id,
+            SELECT id, student_id, event_type, chapter_id, unit_id, knowledge_point_id, experiment_id, point_node_id,
                    question_id, difficulty, correct, metadata, created_at
             FROM student_events
             ORDER BY created_at
@@ -592,11 +592,11 @@ class PostgresLearningRepository:
                     """
                     INSERT INTO student_events (
                       student_id, event_type, chapter_id, unit_id, knowledge_point_id, experiment_id,
-                      question_id, difficulty, correct, metadata, created_at
+                      point_node_id, question_id, difficulty, correct, metadata, created_at
                     )
                     VALUES (
                       :student_id, :event_type, :chapter_id, :unit_id, :knowledge_point_id, :experiment_id,
-                      :question_id, :difficulty, :correct, CAST(:metadata AS jsonb),
+                      :point_node_id, :question_id, :difficulty, :correct, CAST(:metadata AS jsonb),
                       COALESCE(CAST(:created_at AS timestamptz), now())
                     )
                     """
@@ -608,6 +608,7 @@ class PostgresLearningRepository:
                     "unit_id": event.get("unit_id"),
                     "knowledge_point_id": event.get("knowledge_point_id"),
                     "experiment_id": event.get("experiment_id"),
+                    "point_node_id": event.get("point_node_id") or (event.get("metadata") or {}).get("point_node_id"),
                     "question_id": event.get("question_id"),
                     "difficulty": event.get("difficulty"),
                     "correct": event.get("correct"),

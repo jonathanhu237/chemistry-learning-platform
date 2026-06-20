@@ -1,0 +1,258 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import {
+  bindCatalogPointMedia,
+  changeCatalogMediaBindingStatus,
+  changeCatalogNodeStatus,
+  changeCatalogPointContentPublication,
+  createCatalogNode,
+  getCatalogNode,
+  listCatalogCandidateMedia,
+  listCatalogChildren,
+  listCatalogRoots,
+  moveCatalogNode,
+  reorderCatalogNodes,
+  saveCatalogPointContent,
+  saveCatalogRelatedLinks,
+  searchCatalogNodes,
+  updateCatalogNode,
+  uploadCatalogPointMedia,
+  validateCatalogNode,
+} from "../../api/catalogTree";
+import type {
+  CatalogNodeCreatePayload,
+  CatalogNodeDetail,
+  CatalogNodeMovePayload,
+  CatalogNodeUpdatePayload,
+  CatalogPointContentPayload,
+  CatalogRelatedLinksPayload,
+} from "../../api/catalogTree";
+import type { MediaAsset } from "../../api/media";
+import type { Chapter } from "../../api/resources";
+import { listChapters } from "../../api/resources";
+import { errorMessage } from "../../lib/errors";
+
+type MessageApi = {
+  success: (content: string) => void;
+  error: (content: string) => void;
+};
+
+export function useCatalogChapters() {
+  return useQuery<Chapter[]>({ queryKey: ["chapters"], queryFn: listChapters });
+}
+
+export function useCatalogRoots(chapterId?: string, includeArchived = false) {
+  return useQuery({
+    queryKey: ["catalog-roots", chapterId, includeArchived],
+    queryFn: () => listCatalogRoots(chapterId || "", includeArchived),
+    enabled: Boolean(chapterId),
+  });
+}
+
+export function useCatalogChildren(nodeId?: string, enabled = true, includeArchived = false) {
+  return useQuery({
+    queryKey: ["catalog-children", nodeId, includeArchived],
+    queryFn: () => listCatalogChildren(nodeId || "", includeArchived),
+    enabled: Boolean(nodeId) && enabled,
+  });
+}
+
+export function useCatalogNodeDetail(nodeId?: string) {
+  return useQuery({
+    queryKey: ["catalog-node", nodeId],
+    queryFn: () => getCatalogNode(nodeId || ""),
+    enabled: Boolean(nodeId),
+  });
+}
+
+export function useCatalogSearch(query: string, chapterId?: string | null, enabled = true) {
+  return useQuery({
+    queryKey: ["catalog-search", query, chapterId],
+    queryFn: () => searchCatalogNodes(query, chapterId, 80),
+    enabled: enabled && query.trim().length >= 2,
+  });
+}
+
+export function useCatalogValidation(nodeId?: string, includeSubtree = false) {
+  return useQuery({
+    queryKey: ["catalog-validation", nodeId, includeSubtree],
+    queryFn: () => validateCatalogNode(nodeId || "", includeSubtree),
+    enabled: Boolean(nodeId),
+  });
+}
+
+export function useCatalogMediaAssets(enabled: boolean) {
+  return useQuery({
+    queryKey: ["catalog-media-assets"],
+    queryFn: () => listCatalogCandidateMedia(300),
+    enabled,
+  });
+}
+
+export function useCatalogInvalidation() {
+  const queryClient = useQueryClient();
+  const invalidateCatalog = (detail?: CatalogNodeDetail | null) => {
+    void queryClient.invalidateQueries({ queryKey: ["catalog-roots"] });
+    void queryClient.invalidateQueries({ queryKey: ["catalog-children"] });
+    void queryClient.invalidateQueries({ queryKey: ["catalog-search"] });
+    void queryClient.invalidateQueries({ queryKey: ["catalog-validation"] });
+    void queryClient.invalidateQueries({ queryKey: ["catalog-media-assets"] });
+    if (detail?.node.node_id) {
+      void queryClient.invalidateQueries({ queryKey: ["catalog-node", detail.node.node_id] });
+      if (detail.node.parent_id) {
+        void queryClient.invalidateQueries({ queryKey: ["catalog-children", detail.node.parent_id] });
+      }
+      void queryClient.invalidateQueries({ queryKey: ["catalog-roots", detail.node.chapter_id] });
+    }
+  };
+  return { invalidateCatalog };
+}
+
+export function useCatalogMutations(message: MessageApi) {
+  const { invalidateCatalog } = useCatalogInvalidation();
+
+  const createNode = useMutation({
+    mutationFn: (payload: CatalogNodeCreatePayload) => createCatalogNode(payload),
+    onSuccess: (detail) => {
+      message.success("目录节点已创建");
+      invalidateCatalog(detail);
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const updateNode = useMutation({
+    mutationFn: ({ nodeId, payload }: { nodeId: string; payload: CatalogNodeUpdatePayload }) => updateCatalogNode(nodeId, payload),
+    onSuccess: (detail) => {
+      message.success("节点信息已保存");
+      invalidateCatalog(detail);
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const moveNode = useMutation({
+    mutationFn: ({ nodeId, payload }: { nodeId: string; payload: CatalogNodeMovePayload }) => moveCatalogNode(nodeId, payload),
+    onSuccess: (detail) => {
+      message.success("节点位置已更新");
+      invalidateCatalog(detail);
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const reorderNodes = useMutation({
+    mutationFn: reorderCatalogNodes,
+    onSuccess: () => {
+      message.success("同级顺序已更新");
+      invalidateCatalog(null);
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const changeNodeStatus = useMutation({
+    mutationFn: ({
+      nodeId,
+      action,
+      includeSubtree,
+    }: {
+      nodeId: string;
+      action: "archive" | "restore" | "publish" | "unpublish";
+      includeSubtree?: boolean;
+    }) => changeCatalogNodeStatus(nodeId, { action, include_subtree: includeSubtree }),
+    onSuccess: (detail) => {
+      message.success("节点状态已更新");
+      invalidateCatalog(detail);
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const savePointContent = useMutation({
+    mutationFn: ({ nodeId, payload }: { nodeId: string; payload: CatalogPointContentPayload }) => saveCatalogPointContent(nodeId, payload),
+    onSuccess: (detail) => {
+      message.success("点位内容已保存为草稿");
+      invalidateCatalog(detail);
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const changePointPublication = useMutation({
+    mutationFn: ({ nodeId, action }: { nodeId: string; action: "publish" | "unpublish" | "archive" }) =>
+      changeCatalogPointContentPublication(nodeId, action),
+    onSuccess: (detail) => {
+      message.success("点位发布状态已更新");
+      invalidateCatalog(detail);
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const saveRelatedLinks = useMutation({
+    mutationFn: ({ nodeId, payload }: { nodeId: string; payload: CatalogRelatedLinksPayload }) => saveCatalogRelatedLinks(nodeId, payload),
+    onSuccess: (detail) => {
+      message.success("相关实验链接已保存");
+      invalidateCatalog(detail);
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const bindMedia = useMutation({
+    mutationFn: async ({
+      nodeId,
+      assetIds,
+      assetMap,
+      status,
+    }: {
+      nodeId: string;
+      assetIds: string[];
+      assetMap: Map<string, MediaAsset>;
+      status: "draft" | "published";
+    }) => {
+      let detail: CatalogNodeDetail | null = null;
+      for (const assetId of assetIds) {
+        const asset = assetMap.get(assetId);
+        const result = await bindCatalogPointMedia(nodeId, {
+          media_asset_id: assetId,
+          title: asset?.title || asset?.original_file_name || null,
+          status,
+        });
+        detail = result.detail;
+      }
+      return detail;
+    },
+    onSuccess: (detail) => {
+      message.success("视频素材已绑定");
+      invalidateCatalog(detail);
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const uploadMedia = useMutation({
+    mutationFn: ({ nodeId, title, file }: { nodeId: string; title: string; file: File }) => uploadCatalogPointMedia(nodeId, title, file),
+    onSuccess: (result) => {
+      message.success("视频已上传并绑定");
+      invalidateCatalog(result.detail);
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const changeMediaStatus = useMutation({
+    mutationFn: ({ bindingId, action }: { bindingId: string; action: "publish" | "unpublish" | "delete" }) =>
+      changeCatalogMediaBindingStatus(bindingId, action),
+    onSuccess: (detail) => {
+      message.success("视频绑定状态已更新");
+      invalidateCatalog(detail);
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  return {
+    createNode,
+    updateNode,
+    moveNode,
+    reorderNodes,
+    changeNodeStatus,
+    savePointContent,
+    changePointPublication,
+    saveRelatedLinks,
+    bindMedia,
+    uploadMedia,
+    changeMediaStatus,
+  };
+}

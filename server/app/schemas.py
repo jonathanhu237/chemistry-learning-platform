@@ -11,6 +11,9 @@ class RagAskRequest(BaseModel):
     chapter_id: str | None = None
     experiment_id: str | None = None
     point_key: str | None = None
+    point_node_id: str | None = None
+    source_node_id: str | None = None
+    catalog_path: list[str] = Field(default_factory=list)
     knowledge_point_ids: list[str] = Field(default_factory=list)
 
 
@@ -52,6 +55,9 @@ class AgentAskRequest(BaseModel):
     chapter_id: str | None = None
     experiment_id: str | None = None
     point_key: str | None = None
+    point_node_id: str | None = None
+    source_node_id: str | None = None
+    catalog_path: list[str] = Field(default_factory=list)
     knowledge_point_ids: list[str] = Field(default_factory=list)
     allow_progress_lookup: bool = True
     allow_rag_lookup: bool = True
@@ -101,6 +107,8 @@ class StudentEventRequest(BaseModel):
     unit_id: str | None = None
     knowledge_point_id: str | None = None
     experiment_id: str | None = None
+    point_node_id: str | None = None
+    catalog_path: list[str] = Field(default_factory=list)
     metadata: dict = Field(default_factory=dict)
 
 
@@ -113,6 +121,8 @@ class FeedbackSubmitRequest(BaseModel):
     unit_id: str | None = Field(default=None, max_length=128)
     knowledge_point_id: str | None = Field(default=None, max_length=128)
     experiment_id: str | None = Field(default=None, max_length=128)
+    point_node_id: str | None = Field(default=None, max_length=128)
+    catalog_path: list[str] = Field(default_factory=list)
     page_path: str | None = Field(default=None, max_length=500)
     metadata: dict = Field(default_factory=dict)
 
@@ -144,6 +154,7 @@ class FeedbackItem(BaseModel):
     unit_id: str | None = None
     knowledge_point_id: str | None = None
     experiment_id: str | None = None
+    point_node_id: str | None = None
     page_path: str | None = None
     source_event_id: int | None = None
     handler_user_id: str | None = None

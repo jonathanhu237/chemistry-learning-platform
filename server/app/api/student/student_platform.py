@@ -72,7 +72,15 @@ async def _feedback_request_from_http(request: Request) -> tuple[StudentFeedback
     form = await request.form()
     attachment = await _read_optional_attachment(form.get("attachment"))
     metadata = _parse_metadata(_optional_form_value(form.get("metadata")))
-    point_key = _optional_form_value(form.get("point_key"))
+    catalog_path_value = form.get("catalog_path")
+    catalog_path = metadata.get("catalog_path")
+    if isinstance(catalog_path_value, str) and catalog_path_value.strip():
+        try:
+            parsed_catalog_path = json.loads(catalog_path_value)
+            if isinstance(parsed_catalog_path, list):
+                catalog_path = parsed_catalog_path
+        except json.JSONDecodeError:
+            catalog_path = [item.strip() for item in catalog_path_value.split("/") if item.strip()]
     return (
         _validated_feedback_payload(
             {
@@ -82,7 +90,8 @@ async def _feedback_request_from_http(request: Request) -> tuple[StudentFeedback
                 "unit_id": _optional_form_value(form.get("unit_id")),
                 "knowledge_point_id": _optional_form_value(form.get("knowledge_point_id")),
                 "experiment_id": _optional_form_value(form.get("experiment_id")),
-                "point_key": point_key,
+                "point_node_id": _optional_form_value(form.get("point_node_id")),
+                "catalog_path": catalog_path if isinstance(catalog_path, list) else [],
                 "page_path": _optional_form_value(form.get("page_path")),
                 "metadata": metadata,
             }
@@ -118,7 +127,8 @@ def submit_student_feedback(
     metadata = dict(payload.metadata or {})
     metadata.update(
         {
-            "point_key": payload.point_key,
+            "point_node_id": payload.point_node_id,
+            "catalog_path": payload.catalog_path,
             "client_student_id_ignored": metadata.get("student_id"),
             "client_class_id_ignored": metadata.get("class_id"),
         }
@@ -134,6 +144,8 @@ def submit_student_feedback(
         unit_id=payload.unit_id,
         knowledge_point_id=payload.knowledge_point_id,
         experiment_id=payload.experiment_id,
+        point_node_id=payload.point_node_id,
+        catalog_path=payload.catalog_path,
         page_path=payload.page_path,
         metadata={key: value for key, value in metadata.items() if value is not None},
     )

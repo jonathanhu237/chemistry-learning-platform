@@ -27,10 +27,13 @@ from server.app.domains.catalog.experiments import (
     _list_experiment_video_resources,
 )
 from server.app.domains.questions.point_aware import (
+    _attach_catalog_point_nodes,
     _local_point_aware_suggestions,
+    _point_node_id,
     _select_suggestion_points,
     _try_openai_point_aware_suggestions,
     _unique_point_keys,
+    _unique_point_node_ids,
     _with_point_aware_metadata,
 )
 from server.app.domains.questions.bank import (
@@ -197,6 +200,7 @@ def _workbench_context(
 ) -> dict[str, Any]:
     normalized_points = target_points or ([point] if point else [])
     target_point_keys = [item["point_key"] for item in normalized_points if item.get("point_key")]
+    target_point_node_ids = _unique_point_node_ids(normalized_points)
     package = evidence_package or {
         "mode": "canonical_evidence",
         "source_refs": source_refs,
@@ -217,6 +221,7 @@ def _workbench_context(
         "selected_point": point,
         "target_points": normalized_points,
         "target_point_keys": target_point_keys,
+        "target_point_node_ids": target_point_node_ids,
         "original_question": _question_snapshot(target_question),
         "source_refs": source_refs,
         "rag_gate": rag_gate or {},
@@ -231,48 +236,66 @@ def _workbench_context(
     }
 
 
-def _teacher_point_content_context(session: Any, experiment_id: str, point_key: str | None) -> dict[str, Any]:
+def _teacher_point_content_context(
+    session: Any,
+    experiment_id: str,
+    point_key: str | None,
+    point_node_id: str | None = None,
+) -> dict[str, Any]:
+    point_node_id = str(point_node_id or "").strip()
+    if point_node_id:
+        row = (
+            session.execute(
+                text(
+                    """
+                    SELECT point_title, principle_mode, principle_equation, principle_text,
+                           phenomenon_explanation, safety_note, content_status, updated_at
+                    FROM experiment_catalog_point_content
+                    WHERE node_id = :node_id
+                    """
+                ),
+                {"node_id": point_node_id},
+            )
+            .mappings()
+            .first()
+        )
+        if not row:
+            return {"available": False, "content_status": "missing", "source_role": "student_page_context_only"}
+        data = dict(row)
+        return {
+            "available": data.get("content_status") == "published",
+            "point_node_id": point_node_id,
+            "point_title": data.get("point_title"),
+            "content_status": data.get("content_status"),
+            "principle_mode": data.get("principle_mode"),
+            "principle_preview": data.get("principle_equation") if data.get("principle_mode") == "equation" else data.get("principle_text"),
+            "phenomenon_preview": data.get("phenomenon_explanation"),
+            "safety_preview": data.get("safety_note"),
+            "updated_at": data.get("updated_at"),
+            "source_role": "student_page_context_only",
+        }
     if not point_key:
         return {}
-    row = (
-        session.execute(
-            text(
-                """
-                SELECT principle_mode, principle_equation, principle_text,
-                       phenomenon_explanation, safety_note, content_status, updated_at
-                FROM experiment_point_learning_content
-                WHERE experiment_id = :experiment_id
-                  AND point_key = :point_key
-                """
-            ),
-            {"experiment_id": experiment_id, "point_key": point_key},
-        )
-        .mappings()
-        .first()
-    )
-    if not row:
-        return {"available": False, "content_status": "missing", "source_role": "student_page_context_only"}
-    data = dict(row)
     return {
-        "available": data.get("content_status") == "published",
-        "content_status": data.get("content_status"),
-        "principle_mode": data.get("principle_mode"),
-        "principle_preview": data.get("principle_equation") if data.get("principle_mode") == "equation" else data.get("principle_text"),
-        "phenomenon_preview": data.get("phenomenon_explanation"),
-        "safety_preview": data.get("safety_note"),
-        "updated_at": data.get("updated_at"),
+        "available": False,
+        "content_status": "missing_node_id",
         "source_role": "student_page_context_only",
     }
 
 
-def _question_coverage_for_context(session: Any, experiment_id: str, point_key: str | None) -> dict[str, Any]:
+def _question_coverage_for_context(
+    session: Any,
+    experiment_id: str,
+    point_key: str | None,
+    point_node_id: str | None = None,
+) -> dict[str, Any]:
     params = {"experiment_id": experiment_id}
     rows = [
         dict(row)
         for row in session.execute(
             text(
                 """
-                SELECT question_type, status, metadata
+                SELECT question_type, status, metadata, primary_point_node_ids
                 FROM experiment_questions
                 WHERE experiment_id = :experiment_id
                 """
@@ -288,12 +311,16 @@ def _question_coverage_for_context(session: Any, experiment_id: str, point_key: 
         type_counts[str(row.get("question_type") or "")] = type_counts.get(str(row.get("question_type") or ""), 0) + 1
         metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
         point_keys = metadata.get("primary_point_keys") if isinstance(metadata, dict) else []
+        point_node_ids = row.get("primary_point_node_ids") or metadata.get("primary_point_node_ids") or []
+        if point_node_id and isinstance(point_node_ids, list) and point_node_id in point_node_ids:
+            point_question_count += 1
+            continue
         if point_key and isinstance(point_keys, list) and point_key in point_keys:
             point_question_count += 1
     return {
         "question_count": len(rows),
         "type_counts": type_counts,
-        "selected_point_question_count": point_question_count if point_key else None,
+        "selected_point_question_count": point_question_count if (point_key or point_node_id) else None,
     }
 
 
@@ -484,6 +511,7 @@ def _load_workbench_evidence_package(
                 chapter_id=chapter_ids[0] if chapter_ids else None,
                 experiment_id=str(experiment.get("id") or ""),
                 point_key=str((target_points or [{}])[0].get("point_key") or "") or None,
+                point_node_id=_point_node_id((target_points or [{}])[0]),
                 knowledge_point_ids=[str(item) for item in knowledge_point_ids if str(item).strip()],
                 allow_progress_lookup=False,
                 allow_rag_lookup=True,
@@ -535,6 +563,7 @@ def _load_workbench_evidence_package(
             "chapter_ids": chapter_ids,
             "knowledge_point_ids": knowledge_point_ids,
             "target_point_keys": [point.get("point_key") for point in (target_points or []) if point.get("point_key")],
+            "target_point_node_ids": _unique_point_node_ids(target_points or []),
         },
     }
 
@@ -556,14 +585,16 @@ def _create_or_reopen_workbench_session(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Question does not belong to experiment")
 
     points = _experiment_video_points(experiment, _list_experiment_video_resources(request.experiment_id))
-    requested_point_keys = _unique_point_keys(request.point_keys, request.point_key)
+    requested_point_keys = _unique_point_keys(request.point_keys, request.point_key, request.point_node_ids, request.point_node_id)
     selected_points = _select_suggestion_points(
         points=points,
         point_keys=requested_point_keys,
         target_question=target_question,
     )
+    selected_points = _attach_catalog_point_nodes(session, experiment_id=request.experiment_id, points=selected_points)
     selected_point = selected_points[0] if selected_points else None
     point_key = selected_point.get("point_key") if selected_point else request.point_key
+    point_node_id = _point_node_id(selected_point) or str(request.point_node_id or "").strip()
     params = {
         "mode": request.mode,
         "experiment_id": request.experiment_id,
@@ -630,8 +661,8 @@ def _create_or_reopen_workbench_session(
             status_code=status.HTTP_409_CONFLICT,
             detail="No usable evidence was found for this experiment and point context; AI question workbench is blocked.",
         )
-    coverage = _question_coverage_for_context(session, request.experiment_id, point_key)
-    teacher_point_content = _teacher_point_content_context(session, request.experiment_id, point_key)
+    coverage = _question_coverage_for_context(session, request.experiment_id, point_key, point_node_id)
+    teacher_point_content = _teacher_point_content_context(session, request.experiment_id, point_key, point_node_id)
     context = _workbench_context(
         mode=request.mode,
         experiment=experiment,
@@ -650,12 +681,12 @@ def _create_or_reopen_workbench_session(
                 """
                 INSERT INTO experiment_question_workbench_sessions (
                   mode, experiment_id, point_key, question_id, original_question_snapshot,
-                  context_snapshot, status, created_by
+                  context_snapshot, point_node_ids, status, created_by
                 )
                 VALUES (
                   :mode, :experiment_id, :point_key, CAST(:question_id AS uuid),
                   CAST(:original_question_snapshot AS jsonb),
-                  CAST(:context_snapshot AS jsonb), 'open', CAST(:created_by AS uuid)
+                  CAST(:context_snapshot AS jsonb), CAST(:point_node_ids AS jsonb), 'open', CAST(:created_by AS uuid)
                 )
                 RETURNING id
                 """
@@ -663,6 +694,7 @@ def _create_or_reopen_workbench_session(
             {
                 **params,
                 "point_key": point_key,
+                "point_node_ids": _json_array(_unique_point_node_ids(selected_points, point_node_id)),
                 "original_question_snapshot": _json(_question_snapshot(target_question)),
                 "context_snapshot": _json(context),
             },
@@ -863,9 +895,10 @@ def send_question_workbench_message(*, payload: WorkbenchMessageRequest, session
             {
                 "point_key": str(point.get("point_key") or "").strip(),
                 "point_title": str(point.get("point_title") or point.get("point_key") or "").strip(),
+                "point_node_id": str(point.get("point_node_id") or point.get("point_id") or point.get("node_id") or "").strip(),
             }
             for point in raw_target_points
-            if isinstance(point, dict) and (point.get("point_key") or point.get("point_title"))
+            if isinstance(point, dict) and (point.get("point_key") or point.get("point_title") or point.get("point_node_id"))
         ]
         if not target_points and selected_point:
             target_points = [selected_point]
@@ -874,8 +907,16 @@ def send_question_workbench_message(*, payload: WorkbenchMessageRequest, session
             [point.get("point_key") for point in target_points],
             workbench.get("point_key"),
         )
+        target_point_node_ids = _unique_point_node_ids(
+            context_snapshot.get("target_point_node_ids"),
+            workbench.get("point_node_ids") if isinstance(workbench.get("point_node_ids"), list) else [],
+            target_points,
+        )
         if not target_points and target_point_keys:
             target_points = [{"point_key": key, "point_title": key} for key in target_point_keys]
+        if target_points:
+            target_points = _attach_catalog_point_nodes(session, experiment_id=str(workbench["experiment_id"]), points=target_points)
+            target_point_node_ids = _unique_point_node_ids(target_point_node_ids, target_points)
         selected_point = selected_point or (target_points[0] if target_points else None)
 
         user_turn = _insert_workbench_turn(
@@ -883,7 +924,12 @@ def send_question_workbench_message(*, payload: WorkbenchMessageRequest, session
             session_id=session_id,
             role="user",
             content=payload.prompt,
-            metadata={"question_types": payload.question_types, "count": payload.count, "point_keys": target_point_keys},
+            metadata={
+                "question_types": payload.question_types,
+                "count": payload.count,
+                "point_keys": target_point_keys,
+                "point_node_ids": target_point_node_ids,
+            },
         )
         rag_gate = _question_workbench_rag_gate()
         if not rag_gate.get("healthy"):
@@ -960,6 +1006,7 @@ def send_question_workbench_message(*, payload: WorkbenchMessageRequest, session
                             **context_snapshot,
                             "target_points": target_points,
                             "target_point_keys": target_point_keys,
+                            "target_point_node_ids": target_point_node_ids,
                             "rag_gate": rag_gate,
                             "evidence_package": {
                                 "mode": evidence_package.get("mode") or "hybrid_bge_rag",
@@ -979,6 +1026,7 @@ def send_question_workbench_message(*, payload: WorkbenchMessageRequest, session
             "selected_point": selected_point,
             "target_points": target_points,
             "target_point_keys": target_point_keys,
+            "target_point_node_ids": target_point_node_ids,
             "source_refs": source_refs,
             "rag_gate": rag_gate,
             "evidence_package": evidence_package,
@@ -986,6 +1034,7 @@ def send_question_workbench_message(*, payload: WorkbenchMessageRequest, session
                 session,
                 str(experiment.get("id") or context_snapshot.get("experiment", {}).get("id") or ""),
                 target_point_keys[0] if target_point_keys else None,
+                target_point_node_ids[0] if target_point_node_ids else None,
             ),
             "source_boundaries": {
                 "teacher_point_content": "student_page_context_only",
@@ -1012,6 +1061,8 @@ def send_question_workbench_message(*, payload: WorkbenchMessageRequest, session
             question_id=str(workbench.get("question_id")) if workbench.get("question_id") else None,
             point_key=str(workbench.get("point_key") or "") or None,
             point_keys=target_point_keys,
+            point_node_id=target_point_node_ids[0] if target_point_node_ids else None,
+            point_node_ids=target_point_node_ids,
             question_types=payload.question_types,
             count=payload.count,
             difficulty=payload.difficulty,
@@ -1077,6 +1128,8 @@ def send_question_workbench_message(*, payload: WorkbenchMessageRequest, session
                                 "intent": suggestion_request.intent,
                                 "point_key": selected_point.get("point_key") if selected_point else None,
                                 "point_keys": target_point_keys,
+                                "point_node_id": _point_node_id(selected_point),
+                                "point_node_ids": target_point_node_ids,
                                 "question_id": suggestion_request.question_id,
                                 "rag_gate": rag_gate,
                             }

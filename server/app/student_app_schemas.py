@@ -21,6 +21,7 @@ class StudentFeedbackSubmitRequest(BaseModel):
     unit_id: str | None = Field(default=None, max_length=128)
     knowledge_point_id: str | None = Field(default=None, max_length=128)
     experiment_id: str | None = Field(default=None, max_length=128)
-    point_key: str | None = Field(default=None, max_length=256)
+    point_node_id: str | None = Field(default=None, max_length=128)
+    catalog_path: list[str] = Field(default_factory=list)
     page_path: str | None = Field(default=None, max_length=500)
     metadata: dict = Field(default_factory=dict)

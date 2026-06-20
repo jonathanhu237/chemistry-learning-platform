@@ -275,8 +275,40 @@ def _attempt_primary_points(attempt: dict[str, Any]) -> list[dict[str, Any]]:
     metadata = attempt.get("metadata") if isinstance(attempt.get("metadata"), dict) else {}
     question_metadata = attempt.get("question_metadata") if isinstance(attempt.get("question_metadata"), dict) else {}
     points = metadata.get("primary_points") or question_metadata.get("primary_points") or []
+    node_ids = [
+        str(node_id)
+        for node_id in (metadata.get("primary_point_node_ids") or question_metadata.get("primary_point_node_ids") or [])
+        if str(node_id).strip()
+    ]
+    if not node_ids and attempt.get("point_node_id"):
+        node_ids = [str(attempt.get("point_node_id"))]
     if points:
-        return [item for item in points if isinstance(item, dict) and item.get("point_key")]
+        output: list[dict[str, Any]] = []
+        seen_node_ids: set[str] = set()
+        for index, item in enumerate(points):
+            if not isinstance(item, dict) or not (item.get("point_node_id") or item.get("point_key")):
+                continue
+            point = dict(item)
+            node_id = str(point.get("point_node_id") or "").strip()
+            if not node_id and index < len(node_ids):
+                node_id = node_ids[index]
+                point["point_node_id"] = node_id
+            if node_id:
+                seen_node_ids.add(node_id)
+            output.append(point)
+        output.extend(
+            {"point_node_id": node_id, "point_title": node_id, "point_key": ""}
+            for node_id in node_ids
+            if node_id not in seen_node_ids
+        )
+        if output:
+            return output
+    if node_ids:
+        return [
+            {"point_node_id": str(node_id), "point_title": str(node_id), "point_key": ""}
+            for node_id in node_ids
+            if str(node_id).strip()
+        ]
     keys = metadata.get("primary_point_keys") or question_metadata.get("primary_point_keys") or []
     return [{"point_key": str(key), "point_title": str(key)} for key in keys if str(key).strip()]
 
@@ -357,7 +389,7 @@ def get_class_dashboard(
                 for row in session.execute(
                     text(
                         """
-                        SELECT student_id, experiment_id, mastery_score, evidence_count, updated_at
+                        SELECT student_id, experiment_id, point_node_id, mastery_score, evidence_count, updated_at
                         FROM student_experiment_mastery
                         WHERE student_id = ANY(:student_ids)
                         """
@@ -520,6 +552,29 @@ def _shape_attempt_for_teacher(attempt: dict[str, Any]) -> dict[str, Any]:
     shaped["attempt_kind_label"] = _attempt_kind_label(shaped.get("attempt_kind"))
     shaped["primary_points"] = _attempt_primary_points(shaped)
     return shaped
+
+
+def _catalog_point_titles(node_ids: list[str]) -> dict[str, str]:
+    ids = sorted({str(node_id) for node_id in node_ids if str(node_id).strip()})
+    if not ids:
+        return {}
+    with db_session() as session:
+        return {
+            str(row["id"]): str(row.get("title") or row["id"])
+            for row in session.execute(
+                text("SELECT id, title FROM experiment_catalog_nodes WHERE id = ANY(:node_ids)"),
+                {"node_ids": ids},
+            ).mappings()
+        }
+
+
+def _enrich_point_titles(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    titles = _catalog_point_titles([str(item.get("point_node_id") or "") for item in items])
+    for item in items:
+        node_id = str(item.get("point_node_id") or "")
+        if node_id and titles.get(node_id):
+            item["point_title"] = titles[node_id]
+    return items
 
 
 def _attempt_session_id(attempt: dict[str, Any]) -> str | None:
@@ -708,21 +763,23 @@ def get_student_report(
         if attempt.get("correct") is True:
             continue
         for point in _attempt_primary_points(attempt):
-            point_key = str(point.get("point_key") or "")
-            if not point_key:
+            point_node_id = str(point.get("point_node_id") or attempt.get("point_node_id") or "").strip()
+            point_key = str(point.get("point_key") or point_node_id).strip()
+            if not point_key and not point_node_id:
                 continue
             weak_video_points.setdefault(
-                point_key,
+                point_node_id or point_key,
                 {
+                    "point_node_id": point_node_id or None,
                     "point_key": point_key,
-                    "point_title": point.get("point_title") or point_key,
+                    "point_title": point.get("point_title") or point_key or point_node_id,
                     "experiment_id": attempt.get("experiment_id"),
                     "experiment_code": attempt.get("experiment_code"),
                     "experiment_title": attempt.get("experiment_title"),
                     "incorrect_count": 0,
                 },
             )
-            weak_video_points[point_key]["incorrect_count"] += 1
+            weak_video_points[point_node_id or point_key]["incorrect_count"] += 1
         kp_ids = attempt.get("related_knowledge_point_ids") or []
         if not kp_ids:
             weak_points.setdefault("unmapped", {"knowledge_point_id": None, "title": "未映射理论 KP", "incorrect_count": 0})
@@ -739,7 +796,9 @@ def get_student_report(
         "latest_posttest_report": latest_posttest_report,
         "posttest_reports": posttest_reports,
         "weak_points": sorted(weak_points.values(), key=lambda row: row["incorrect_count"], reverse=True),
-        "weak_video_points": sorted(weak_video_points.values(), key=lambda row: row["incorrect_count"], reverse=True),
+        "weak_video_points": _enrich_point_titles(
+            sorted(weak_video_points.values(), key=lambda row: row["incorrect_count"], reverse=True)
+        ),
         "timeline": timeline,
     }
 
@@ -787,6 +846,7 @@ def get_class_weak_points(
                 text(
                     f"""
                     SELECT a.experiment_id,
+                           a.point_node_id,
                            fe.code AS experiment_code,
                            fe.title AS experiment_title,
                            a.question_id,
@@ -828,14 +888,16 @@ def get_class_weak_points(
         if isinstance(metadata.get("selected_option_link"), dict):
             selected_link = metadata["selected_option_link"]
         for point in points:
-            point_key = str(point.get("point_key") or "")
-            if not point_key:
+            point_node_id = str(point.get("point_node_id") or attempt.get("point_node_id") or "").strip()
+            point_key = str(point.get("point_key") or point_node_id).strip()
+            if not point_key and not point_node_id:
                 continue
             item = point_items_by_key.setdefault(
-                point_key,
+                point_node_id or point_key,
                 {
+                    "point_node_id": point_node_id or None,
                     "point_key": point_key,
-                    "point_title": point.get("point_title") or point_key,
+                    "point_title": point.get("point_title") or point_key or point_node_id,
                     "experiment_id": attempt.get("experiment_id"),
                     "experiment_code": attempt.get("experiment_code"),
                     "experiment_title": attempt.get("experiment_title"),
@@ -859,6 +921,7 @@ def get_class_weak_points(
     for item in point_items_by_key.values():
         item["incorrect_rate"] = round(100 * int(item["incorrect_count"]) / max(1, int(item["attempt_count"])), 2)
         point_items.append(item)
+    point_items = _enrich_point_titles(point_items)
     point_items.sort(key=lambda row: (row["incorrect_count"], row["attempt_count"]), reverse=True)
     return {"items": items, "total": len(items), "point_items": point_items, "point_total": len(point_items)}
 

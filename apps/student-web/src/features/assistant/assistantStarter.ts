@@ -29,7 +29,7 @@ function contextSubject(context: AssistantContext): string {
 function hasExperimentContext(context: AssistantContext): boolean {
   return Boolean(
     context.experiment_id ||
-      context.point_key ||
+      context.point_node_id ||
       context.context_type === "experiment_group" ||
       context.context_type === "experiment_detail" ||
       context.context_type === "learning_point",
@@ -140,7 +140,7 @@ export function assistantContextHint(context: AssistantContext): string {
   if (isGlobalAssistantContext(context)) {
     return "可以询问课程知识、实验现象、复习顺序和错题思路。";
   }
-  if (context.point_key) return "已带入实验点位信息，也可以切回全局课程问答。";
+  if (context.point_node_id) return "已带入实验点位信息，也可以切回全局课程问答。";
   if (context.experiment_id || context.context_type === "experiment_group") return "已带入实验上下文，也可以切回全局课程问答。";
   return "已带入当前学习上下文，也可以切回全局课程问答。";
 }

@@ -1,32 +1,8 @@
-import type { StudentLearningChapterExperimentGroup, StudentLearningProfile, StudentLearningProfileSummary } from "../../api";
-import { escapeRegExp } from "../experiments/experimentFormat";
+import type { StudentLearningProfileSummary } from "../../api";
 import { profileAreaId } from "../periodic-table/periodicHelpers";
 
-export function chapterExperimentGroupsForProfile(profile: StudentLearningProfile): StudentLearningChapterExperimentGroup[] {
-  if (profile.chapter_experiment_groups?.length) return profile.chapter_experiment_groups;
-
-  const groups = new Map<string, StudentLearningChapterExperimentGroup>();
-  for (const relatedGroup of profile.related_groups || []) {
-    const groupKey = relatedGroup.parent_code || relatedGroup.parent_title;
-    if (!groupKey) continue;
-    const group =
-      groups.get(groupKey) ||
-      ({
-        parent_code: relatedGroup.parent_code,
-        parent_title: relatedGroup.parent_title,
-        points: [],
-      } satisfies StudentLearningChapterExperimentGroup);
-    const seenPointKeys = new Set(group.points.map((point) => point.id || point.point_key || point.title));
-    for (const point of relatedGroup.points || []) {
-      const pointKey = point.id || point.point_key || point.title;
-      if (!seenPointKeys.has(pointKey)) {
-        group.points.push(point);
-        seenPointKeys.add(pointKey);
-      }
-    }
-    groups.set(groupKey, group);
-  }
-  return Array.from(groups.values()).sort((first, second) => first.parent_code.localeCompare(second.parent_code));
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export function stripFamilyNumberPrefix(title: string, familyNumber?: string | null): string {

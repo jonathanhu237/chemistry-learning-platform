@@ -3,7 +3,8 @@ export type FeedbackContext = {
   contextTitle: string;
   chapterId?: string | null;
   experimentId?: string | null;
-  pointKey?: string | null;
+  pointNodeId?: string | null;
+  catalogPath?: string[];
   metadata?: Record<string, unknown>;
 };
 

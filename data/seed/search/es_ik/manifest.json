@@ -1,0 +1,30 @@
+{
+  "version": "es-ik-chemistry-v1",
+  "description": "Elasticsearch IK analyzer assets for student-visible chemistry point search.",
+  "files": [
+    {
+      "path": "analysis-ik/IKAnalyzer.cfg.xml",
+      "role": "IK analyzer external dictionary configuration"
+    },
+    {
+      "path": "analysis-ik/custom/hit_stopwords.dic",
+      "role": "Harbin Institute of Technology stopword baseline"
+    },
+    {
+      "path": "analysis-ik/custom/project_chemistry_stopwords.dic",
+      "role": "Project chemistry search stopwords"
+    },
+    {
+      "path": "analysis-ik/custom/chemistry_custom.dic",
+      "role": "Chemistry custom IK dictionary"
+    },
+    {
+      "path": "analysis/chemistry_stopwords.txt",
+      "role": "Elasticsearch analyzer stopword filter list"
+    },
+    {
+      "path": "analysis/chemistry_synonyms.txt",
+      "role": "Elasticsearch chemistry synonym graph filter list"
+    }
+  ]
+}

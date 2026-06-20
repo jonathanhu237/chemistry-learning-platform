@@ -20,12 +20,15 @@ export type StudentRouteSearch = {
   from?: StudentDetailSource;
   contextKey?: string;
   profileId?: string;
+  chapterId?: string;
+  nodeId?: string;
+  sourceNodeId?: string;
   propertyKey?: string;
   propertyTitle?: string;
   elementSymbol?: string;
   chapterView?: ChapterLearningView;
-  pointKey?: string;
   pointTitle?: string;
+  catalogPath?: string;
   q?: string;
 };
 
@@ -43,12 +46,15 @@ export function parseStudentRouteSearch(search: Record<string, unknown>): Studen
     from: optionalString(search.from) as StudentDetailSource | undefined,
     contextKey: optionalString(search.contextKey),
     profileId: optionalString(search.profileId),
+    chapterId: optionalString(search.chapterId),
+    nodeId: optionalString(search.nodeId),
+    sourceNodeId: optionalString(search.sourceNodeId),
     propertyKey: optionalString(search.propertyKey),
     propertyTitle: optionalString(search.propertyTitle),
     elementSymbol: optionalString(search.elementSymbol),
     chapterView: chapterView === "facts" || chapterView === "experiments" ? chapterView : undefined,
-    pointKey: optionalString(search.pointKey),
     pointTitle: optionalString(search.pointTitle),
+    catalogPath: optionalString(search.catalogPath),
     q: optionalString(search.q),
   };
 }

@@ -78,7 +78,7 @@ docker compose up --build
 
 The default Compose stack is the production-style application unit: Postgres, Elasticsearch with IK analysis, the FastAPI backend API, independent `student-web` and `admin-web` frontend services, tusd uploads, and the local video worker. The optional RAG service is behind the `rag` profile.
 
-See `docs/production-operations.md` for health checks, migration discipline, backup/restore, and restore-from-seed instructions.
+See `docs/production-operations.md` for health checks, migration discipline, backup/restore, and restore-from-seed instructions. See `docs/catalog-tree-architecture.md` for the chapter catalog tree and point-node authoring model.
 
 ## Bootstrap
 
@@ -142,7 +142,7 @@ npm run build
 Validate OpenSpec:
 
 ```powershell
-openspec validate split-frontend-deployment-admin-shell --strict
+openspec validate experiment-catalog-tree-point-architecture --strict
 ```
 
 ## GitHub Publishing

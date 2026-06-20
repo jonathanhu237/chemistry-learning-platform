@@ -10,8 +10,20 @@ import urllib.request
 from pathlib import Path
 
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_SERVICES = {"admin-web", "backend", "elasticsearch", "postgres", "student-web", "tusd", "video-worker"}
+ES_ANALYZER_ASSET_PATHS = [
+    "/usr/share/elasticsearch/config/analysis-ik/IKAnalyzer.cfg.xml",
+    "/usr/share/elasticsearch/config/analysis-ik/custom/hit_stopwords.dic",
+    "/usr/share/elasticsearch/config/analysis-ik/custom/project_chemistry_stopwords.dic",
+    "/usr/share/elasticsearch/config/analysis-ik/custom/chemistry_custom.dic",
+    "/usr/share/elasticsearch/config/analysis/chemistry_stopwords.txt",
+    "/usr/share/elasticsearch/config/analysis/chemistry_synonyms.txt",
+]
 
 
 def _run(command: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -121,6 +133,7 @@ def _assert_ik_analyzer(elasticsearch_base_url: str) -> None:
     if not tokens:
         raise SystemExit("Elasticsearch responded, but ik_max_word produced no tokens")
     required_tokens = {
+        r"\u786b\u4ee3\u786b\u9178\u94a0".encode("ascii").decode("unicode_escape"),
         r"\u76d0\u9178".encode("ascii").decode("unicode_escape"),
         r"\u4e8c\u6c27\u5316\u786b".encode("ascii").decode("unicode_escape"),
     }
@@ -128,6 +141,12 @@ def _assert_ik_analyzer(elasticsearch_base_url: str) -> None:
         escaped_tokens = json.dumps(tokens[:20], ensure_ascii=True)
         raise SystemExit(f"ik_max_word analyzer did not produce expected chemistry tokens: {escaped_tokens}")
     print("IK analyzer smoke: ok " + json.dumps(tokens[:8], ensure_ascii=True))
+
+
+def _assert_es_analyzer_assets() -> None:
+    for path in ES_ANALYZER_ASSET_PATHS:
+        _run(["docker", "compose", "exec", "-T", "elasticsearch", "sh", "-lc", f"test -s {path}"])
+    print("ES/IK analyzer assets present: ok")
 
 
 def main() -> None:
@@ -152,6 +171,7 @@ def main() -> None:
 
     _run(["docker", "compose", "exec", "-T", "postgres", "pg_isready", "-U", "chemistry", "-d", "chemistry_exam"])
     _wait_json(f"{elasticsearch_url}/_cluster/health", label="Elasticsearch")
+    _assert_es_analyzer_assets()
     _assert_ik_analyzer(elasticsearch_url)
     _wait_json(f"{backend_url}/health", label="backend")
     _wait_status(f"{student_web_url}/health", label="student frontend health", expected={200})

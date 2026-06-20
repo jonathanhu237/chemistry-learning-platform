@@ -27,13 +27,14 @@ class StudentVideoLibrarySearchRequest(BaseModel):
 class StudentVideoLibraryRouteTarget(BaseModel):
     kind: VideoLibraryTargetKind
     route: str
-    experiment_id: str | None = None
+    node_id: str | None = None
+    source_node_id: str | None = None
     profile_id: str | None = None
     chapter_id: str | None = None
+    catalog_path: list[str] = Field(default_factory=list)
     property_key: str | None = None
     property_title: str | None = None
     element_symbol: str | None = None
-    point_key: str | None = None
     point_title: str | None = None
     context_title: str | None = None
     context_summary: str | None = None

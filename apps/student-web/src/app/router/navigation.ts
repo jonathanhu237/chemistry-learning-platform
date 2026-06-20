@@ -62,28 +62,54 @@ export function navigateToElement(
 
 export function navigateToPoint(
   navigate: NavigateLike,
-  experimentId: string,
+  nodeId: string,
   options: {
     from?: StudentDetailSource;
     profileId?: string | null;
+    chapterId?: string | null;
+    sourceNodeId?: string | null;
+    catalogPath?: string | null;
     propertyKey?: string | null;
     propertyTitle?: string | null;
     elementSymbol?: string | null;
-    pointKey?: string | null;
     pointTitle?: string | null;
   } = {},
 ): void {
   void navigate({
-    to: "/point/$experimentId",
-    params: { experimentId },
+    to: "/point/$nodeId",
+    params: { nodeId },
     search: compactSearch({
       from: options.from || "chapter",
       profileId: options.profileId || "",
+      chapterId: options.chapterId || "",
+      sourceNodeId: options.sourceNodeId || "",
+      catalogPath: options.catalogPath || "",
       propertyKey: options.propertyKey || "",
       propertyTitle: options.propertyTitle || "",
       elementSymbol: options.elementSymbol || "",
-      pointKey: options.pointKey || "",
       pointTitle: options.pointTitle || "",
+    }),
+  });
+}
+
+export function navigateToCatalogNode(
+  navigate: NavigateLike,
+  nodeId: string,
+  options: {
+    from?: StudentDetailSource;
+    profileId?: string | null;
+    chapterId?: string | null;
+    catalogPath?: string | null;
+  } = {},
+): void {
+  void navigate({
+    to: "/catalog/$nodeId",
+    params: { nodeId },
+    search: compactSearch({
+      from: options.from || "chapter",
+      profileId: options.profileId || "",
+      chapterId: options.chapterId || "",
+      catalogPath: options.catalogPath || "",
     }),
   });
 }

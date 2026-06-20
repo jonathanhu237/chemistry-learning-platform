@@ -79,7 +79,7 @@ export type StudentLearningArea = {
   question_count: number;
 };
 
-export type StudentExperimentGroupSummary = {
+export type StudentLearningHomeGroupSummary = {
   parent_code: string;
   parent_title: string;
   area_id: string;
@@ -95,7 +95,7 @@ export type StudentLearningHomeResponse = {
   recommended_area_id: string | null;
   recommended_parent_code: string | null;
   areas: StudentLearningArea[];
-  groups: StudentExperimentGroupSummary[];
+  groups: StudentLearningHomeGroupSummary[];
 };
 
 export type StudentLearningHero = {
@@ -156,86 +156,84 @@ export type StudentLearningReferenceMedia = {
   property_keys: string[];
 };
 
-export type StudentExperimentPointSummary = {
-  id: string;
-  code: string;
+export type StudentCatalogNodeKind = "directory" | "point" | "hybrid" | "shortcut";
+
+export type StudentCatalogBreadcrumb = {
+  node_id: string;
   title: string;
-  summary?: string | null;
-  parent_code: string;
-  parent_title: string;
-  module_title?: string | null;
-  chapter_ids: string[];
-  video_candidate_count: number;
-  published_video_count: number;
-  question_count: number;
+  node_kind: StudentCatalogNodeKind;
+  chapter_id: string;
 };
 
-export type StudentExperimentGroupResponse = {
-  parent_code: string;
-  parent_title: string;
-  area_id: string;
-  area_name: string;
-  experiments: StudentExperimentPointSummary[];
+export type StudentCatalogNodeCard = {
+  node_id: string;
+  chapter_id: string;
+  parent_id?: string | null;
+  node_kind: StudentCatalogNodeKind;
+  title: string;
+  summary: string;
+  status: string;
+  display_order: number;
+  shortcut_target_node_id?: string | null;
+  actions: string[];
+  has_children: boolean;
+  has_point_content: boolean;
+  media_count: number;
+  published_media_count: number;
+  validation?: Record<string, unknown>;
+  index_state?: Record<string, unknown> | null;
 };
 
-export type StudentVideoResource = {
+export type StudentCatalogChapterResponse = {
+  chapter_id: string;
+  chapter_title: string;
+  nodes: StudentCatalogNodeCard[];
+};
+
+export type StudentCatalogNodeResponse = {
+  node: StudentCatalogNodeCard;
+  breadcrumbs: StudentCatalogBreadcrumb[];
+  children: StudentCatalogNodeCard[];
+};
+
+export type StudentPointVideo = {
   media_id: string;
   title: string;
-  point_key?: string | null;
-  point_title?: string | null;
   mime_type?: string | null;
   stream_path?: string | null;
   thumbnail_path?: string | null;
 };
 
-export type StudentExperimentDetailResponse = StudentExperimentPointSummary & {
-  selected_point_key?: string | null;
-  selected_point_title?: string | null;
-  point_content_status: "missing" | "draft" | "published" | "archived" | string;
+export type StudentRelatedPoint = {
+  node_id: string;
+  title: string;
+  relation_type?: string | null;
+  source_node_id?: string | null;
+};
+
+export type StudentPointDetailResponse = {
+  node_id: string;
+  canonical_node_id: string;
+  source_node_id?: string | null;
+  chapter_id: string;
+  title: string;
+  summary: string;
+  breadcrumbs: StudentCatalogBreadcrumb[];
   principle_mode: "equation" | "text" | string;
   principle_equation?: string | null;
   principle_text?: string | null;
   phenomenon_explanation?: string | null;
   safety_note?: string | null;
-  related_points: Array<{
-    experiment_id: string;
-    point_key: string;
-    point_title: string;
-    experiment_title?: string | null;
-    relation_type?: string | null;
-  }>;
+  videos: StudentPointVideo[];
+  has_video: boolean;
+  no_video_reason?: string | null;
+  related_points: StudentRelatedPoint[];
   assessment_context: {
-    experiment_id?: string | null;
-    chapter_ids: string[];
-    parent_code?: string | null;
-    parent_title?: string | null;
+    point_node_id: string;
+    chapter_id: string;
+    source_node_id?: string | null;
+    catalog_path: StudentCatalogBreadcrumb[];
   };
-  video_candidates: string[];
-  videos: StudentVideoResource[];
-};
-
-export type StudentLearningPointCard = StudentExperimentPointSummary & {
-  property_key: string;
-  property_title: string;
-  point_key?: string | null;
-  point_title?: string | null;
-  formula?: string | null;
-  videos: StudentVideoResource[];
-  video_candidates: string[];
-};
-
-export type StudentLearningPointGroup = {
-  property_key: string;
-  property_title: string;
-  parent_code: string;
-  parent_title: string;
-  points: StudentLearningPointCard[];
-};
-
-export type StudentLearningChapterExperimentGroup = {
-  parent_code: string;
-  parent_title: string;
-  points: StudentLearningPointCard[];
 };
 
 export type StudentLearningProfileSummary = {
@@ -263,8 +261,6 @@ export type StudentLearningProfile = {
   family_common_properties?: StudentLearningPropertyCard[];
   property_sections: StudentLearningPropertySection[];
   reference_media?: StudentLearningReferenceMedia[];
-  related_groups: StudentLearningPointGroup[];
-  chapter_experiment_groups?: StudentLearningChapterExperimentGroup[];
 };
 
 export type StudentLearningPageResponse = {
@@ -282,13 +278,14 @@ export type VideoLibraryBrowseChipKind = "phenomenon" | "reagent" | "chapter" | 
 export type StudentVideoLibraryRouteTarget = {
   kind: VideoLibraryTargetKind;
   route: string;
-  experiment_id?: string | null;
+  node_id?: string | null;
+  source_node_id?: string | null;
   profile_id?: string | null;
   chapter_id?: string | null;
+  catalog_path?: string[] | null;
   property_key?: string | null;
   property_title?: string | null;
   element_symbol?: string | null;
-  point_key?: string | null;
   point_title?: string | null;
   context_title?: string | null;
   context_summary?: string | null;
@@ -425,7 +422,9 @@ export type StudentAssistantAskRequest = {
   context_summary: string;
   chapter_id?: string | null;
   experiment_id?: string | null;
-  point_key?: string | null;
+  point_node_id?: string | null;
+  source_node_id?: string | null;
+  catalog_path?: string[];
   knowledge_point_ids?: string[];
   conversation_history?: AgentChatMessage[];
 };
@@ -447,7 +446,8 @@ export type StudentFeedbackSubmit = {
   unit_id?: string | null;
   knowledge_point_id?: string | null;
   experiment_id?: string | null;
-  point_key?: string | null;
+  point_node_id?: string | null;
+  catalog_path?: string[];
   metadata?: Record<string, unknown>;
   attachment?: File | null;
 };
@@ -473,7 +473,8 @@ export type StudentFeedbackSubmitRequest = {
   unit_id?: string | null;
   knowledge_point_id?: string | null;
   experiment_id?: string | null;
-  point_key?: string | null;
+  point_node_id?: string | null;
+  catalog_path?: string[];
   page_path?: string | null;
   metadata?: Record<string, unknown>;
   attachment?: File | null;
@@ -490,6 +491,8 @@ export type StudentFeedbackItem = {
   unit_id?: string | null;
   knowledge_point_id?: string | null;
   experiment_id?: string | null;
+  point_node_id?: string | null;
+  catalog_path?: string[];
   page_path?: string | null;
   metadata?: Record<string, unknown>;
   attachment_count?: number;
@@ -690,15 +693,16 @@ export function getStudentLearningPage(profileId?: string | null): Promise<Stude
   return api<StudentLearningPageResponse>(`/api/student/learning-page${query}`);
 }
 
-export function getStudentExperimentGroup(parentCode: string): Promise<StudentExperimentGroupResponse> {
-  return api<StudentExperimentGroupResponse>(`/api/student/experiment-groups/${encodeURIComponent(parentCode)}`);
+export function getStudentChapterCatalog(chapterId: string): Promise<StudentCatalogChapterResponse> {
+  return api<StudentCatalogChapterResponse>(`/api/student/chapters/${encodeURIComponent(chapterId)}/catalog`);
 }
 
-export function getStudentExperimentDetail(experimentId: string, pointKey?: string | null): Promise<StudentExperimentDetailResponse> {
-  const params = new URLSearchParams();
-  if (pointKey) params.set("point_key", pointKey);
-  const query = params.toString() ? `?${params.toString()}` : "";
-  return api<StudentExperimentDetailResponse>(`/api/student/experiments/${encodeURIComponent(experimentId)}${query}`);
+export function getStudentCatalogNode(nodeId: string): Promise<StudentCatalogNodeResponse> {
+  return api<StudentCatalogNodeResponse>(`/api/student/catalog/nodes/${encodeURIComponent(nodeId)}`);
+}
+
+export function getStudentCatalogPointDetail(nodeId: string): Promise<StudentPointDetailResponse> {
+  return api<StudentPointDetailResponse>(`/api/student/catalog/points/${encodeURIComponent(nodeId)}`);
 }
 
 export function searchStudentVideoLibrary(query = "", limit = 24): Promise<StudentVideoLibrarySearchResponse> {
@@ -739,8 +743,12 @@ export function submitStudentFeedback(payload: StudentFeedbackSubmitRequest): Pr
   appendOptionalFormValue(formData, "unit_id", payload.unit_id);
   appendOptionalFormValue(formData, "knowledge_point_id", payload.knowledge_point_id);
   appendOptionalFormValue(formData, "experiment_id", payload.experiment_id);
-  appendOptionalFormValue(formData, "point_key", payload.point_key);
-  if (payload.metadata) formData.append("metadata", JSON.stringify(payload.metadata));
+  appendOptionalFormValue(formData, "point_node_id", payload.point_node_id);
+  if (payload.catalog_path?.length) formData.append("catalog_path", JSON.stringify(payload.catalog_path));
+  const metadata = { ...(payload.metadata || {}) };
+  if (payload.catalog_path?.length) metadata.catalog_path = payload.catalog_path;
+  if (payload.point_node_id) metadata.point_node_id = payload.point_node_id;
+  if (Object.keys(metadata).length) formData.append("metadata", JSON.stringify(metadata));
   if (payload.attachment) formData.append("attachment", payload.attachment);
   return api<StudentFeedbackItem>("/api/student/feedback", { method: "POST", body: formData });
 }

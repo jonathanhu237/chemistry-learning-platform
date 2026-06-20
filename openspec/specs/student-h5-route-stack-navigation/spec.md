@@ -50,17 +50,22 @@ Each first-level root route SHALL own the browsing, list, center, or account wor
 - **AND** answering a test or viewing a report MUST use the matching detail page.
 
 ### Requirement: P0 second-level detail pages
-The authenticated student H5 app SHALL provide P0 second-level detail pages for chapter learning, experiment point/video detail, AI chat, assessment session, assessment report, and feedback.
+The authenticated student H5 app SHALL provide P0 second-level detail pages for chapter learning, catalog directory navigation, point/video detail, AI chat, assessment session, assessment report, and feedback.
 
 #### Scenario: Chapter learning detail is opened
 - **WHEN** a student opens a chapter from the home root recommendation or the learn root chapter entry
 - **THEN** the app MUST render a shared chapter learning detail page
-- **AND** the page MUST support chapter facts/common-property content and experiment-video content for the selected profile.
+- **AND** the page MUST support chapter context and top-level catalog entries for the selected profile.
 
-#### Scenario: Experiment point detail is opened
-- **WHEN** a student opens an experiment point or video from chapter learning or a recent-learning entry
-- **THEN** the app MUST render a shared experiment point/video detail page
-- **AND** the page MUST show the available video, point context, experiment context, and learning completion affordances.
+#### Scenario: Catalog directory detail is opened
+- **WHEN** a student opens a directory node from a chapter or another directory
+- **THEN** the app MUST render a shared catalog directory detail page
+- **AND** the page MUST fetch durable data from the route node id rather than prior in-memory tree state.
+
+#### Scenario: Point detail is opened
+- **WHEN** a student opens a point from chapter learning, catalog navigation, search, recent learning, or related links
+- **THEN** the app MUST render a shared point/video detail page
+- **AND** the page MUST show the available video, point content, chapter/catalog context, and learning completion affordances.
 
 #### Scenario: AI chat detail is opened
 - **WHEN** a student opens AI from the home root, learn root, AI root, point detail, or assessment report
@@ -110,15 +115,20 @@ Root pages SHALL be allowed to temporarily hide or compress the bottom navigatio
 - **AND** returning to a root route MUST restore root-route navigation behavior.
 
 ### Requirement: Shared detail pages preserve source-aware return
-Shared second-level pages SHALL preserve source-aware return behavior when opened from different first-level roots.
+Shared second-level pages SHALL preserve source-aware return behavior when opened from different first-level roots or catalog paths.
 
 #### Scenario: Same detail page is opened from different roots
-- **WHEN** the same chapter, AI chat, report, or point detail page is opened from different root pages
+- **WHEN** the same chapter, catalog node, AI chat, report, or point detail page is opened from different root pages
 - **THEN** the page component MAY be shared
 - **AND** returning MUST go back to the route that opened it rather than switching to a fixed root destination.
 
+#### Scenario: Point is opened through shortcut
+- **WHEN** a point detail page is opened through a shortcut node
+- **THEN** the route context MUST preserve the shortcut source node or path
+- **AND** back navigation MUST return to the shortcut's catalog location.
+
 #### Scenario: Page-local action opens shared detail
-- **WHEN** a page-local action such as contextual AI, chapter recommendation, assessment start, or feedback opens a shared detail page
+- **WHEN** a page-local action such as contextual AI, chapter recommendation, assessment start, feedback, related point, or search result opens a shared detail page
 - **THEN** the app MUST push a detail route
 - **AND** it MUST NOT directly change the active root tab.
 
@@ -147,4 +157,22 @@ The student H5 route-stack refactor SHALL remove the current state-driven authen
 - **WHEN** a developer needs to update a first-level or P0 second-level page after the refactor
 - **THEN** the page owner MUST be discoverable under the route-page structure
 - **AND** the developer MUST NOT need to inspect a monolithic shell component to understand normal page ownership.
+
+### Requirement: Durable catalog node routes
+The student H5 route stack SHALL support durable routes for catalog directories and point nodes.
+
+#### Scenario: Direct catalog URL is opened
+- **WHEN** a student opens a valid catalog directory URL directly
+- **THEN** the app MUST fetch the directory node by route id
+- **AND** it MUST render the directory page without requiring prior chapter-page state.
+
+#### Scenario: Direct point URL is opened
+- **WHEN** a student opens a valid point node URL directly
+- **THEN** the app MUST fetch point detail by stable node id
+- **AND** it MUST render the point detail without requiring legacy experiment id or point key search parameters.
+
+#### Scenario: Invalid node URL is opened
+- **WHEN** a node id is missing, unpublished, archived, or unavailable to the student
+- **THEN** the app MUST render a controlled unavailable state or redirect according to route policy
+- **AND** it MUST NOT crash the authenticated shell.
 

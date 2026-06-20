@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+  <comment>Chemistry Admin IK analyzer dictionaries</comment>
+  <entry key="ext_dict">custom/chemistry_custom.dic</entry>
+  <entry key="ext_stopwords">custom/hit_stopwords.dic;custom/project_chemistry_stopwords.dic</entry>
+</properties>

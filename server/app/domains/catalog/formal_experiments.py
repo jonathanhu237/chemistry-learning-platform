@@ -132,61 +132,11 @@ def seed_formal_experiments(session: Any, experiments: list[dict[str, Any]] | No
         {"catalog_ids": catalog_ids},
     )
     sync_formal_experiments_to_legacy_table(session)
-    sync_formal_experiments_to_video_points(session)
     return {
         "experiment_count": len(experiments),
         "binding_count": binding_count,
         "missing_chapters": sorted(missing_chapters),
     }
-
-
-def sync_formal_experiments_to_video_points(session: Any) -> None:
-    table_exists = session.execute(text("SELECT to_regclass('public.experiment_video_points')")).scalar_one()
-    if not table_exists:
-        return
-    session.execute(
-        text(
-            """
-            WITH candidate_points AS (
-              SELECT
-                fe.id AS experiment_id,
-                ('candidate-' || candidate.ordinality || '-' || substring(encode(digest(convert_to(btrim(candidate.value::text), 'UTF8'), 'sha1'), 'hex') for 8)) AS point_key,
-                btrim(candidate.value::text) AS point_title,
-                candidate.ordinality::int AS display_order
-              FROM formal_experiments fe
-              CROSS JOIN LATERAL jsonb_array_elements_text(
-                CASE
-                  WHEN jsonb_typeof(fe.metadata->'video_candidates') = 'array' THEN fe.metadata->'video_candidates'
-                  ELSE '[]'::jsonb
-                END
-              ) WITH ORDINALITY AS candidate(value, ordinality)
-              WHERE btrim(candidate.value::text) <> ''
-            )
-            INSERT INTO experiment_video_points (
-              experiment_id, point_key, point_title, display_order, source, status, metadata, updated_at
-            )
-            SELECT
-              experiment_id,
-              point_key,
-              point_title,
-              display_order,
-              'seed_candidate',
-              'active',
-              jsonb_build_object('source', 'formal_experiments.metadata.video_candidates'),
-              now()
-            FROM candidate_points
-            ON CONFLICT (experiment_id, point_key) DO UPDATE SET
-              point_title = EXCLUDED.point_title,
-              display_order = LEAST(experiment_video_points.display_order, EXCLUDED.display_order),
-              source = CASE
-                WHEN experiment_video_points.source = 'manual' THEN experiment_video_points.source
-                ELSE EXCLUDED.source
-              END,
-              metadata = experiment_video_points.metadata || EXCLUDED.metadata,
-              updated_at = now()
-            """
-        )
-    )
 
 
 def sync_formal_experiments_to_legacy_table(session: Any) -> None:

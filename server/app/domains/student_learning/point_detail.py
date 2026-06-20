@@ -16,27 +16,18 @@ from server.app.infrastructure.database import db_session
 from server.app.mastery import DEFAULT_EXPERIMENT_MASTERY_SCORE
 from server.app.domains.media.visibility import is_student_visible_media
 from server.app.normalization import CHAPTER_AREA_MAP
-from server.app.domains.experiment_points.canonical_points import candidate_point_key as _candidate_point_key
-from server.app.domains.experiment_points.student_detail import student_point_content_payload
 from server.app.student_learning_schemas import (
-    StudentExperimentDetailResponse,
-    StudentExperimentGroupResponse,
     StudentExperimentGroupSummary,
-    StudentExperimentPointSummary,
     StudentLearningElementBadge,
     StudentLearningArea,
     StudentLearningHero,
     StudentLearningHomeResponse,
     StudentLearningPageResponse,
-    StudentLearningChapterExperimentGroup,
-    StudentLearningPointCard,
-    StudentLearningPointGroup,
     StudentLearningProfile,
     StudentLearningProfileSummary,
     StudentLearningPropertyCard,
     StudentLearningPropertySection,
     StudentLearningReferenceMedia,
-    StudentVideoResource,
 )
 
 AREA_ORDER = ["p", "s", "ds", "d", "f"]
@@ -155,12 +146,6 @@ def _parent_code(experiment: dict[str, Any]) -> str:
 def _parent_title(experiment: dict[str, Any]) -> str:
     metadata = _metadata(experiment)
     return str(metadata.get("parent_title") or experiment.get("title") or _parent_code(experiment))
-
-
-def _module_title(experiment: dict[str, Any]) -> str | None:
-    metadata = _metadata(experiment)
-    value = metadata.get("module_display_title") or metadata.get("module_title")
-    return str(value) if value else None
 
 
 def _video_candidates(experiment: dict[str, Any]) -> list[str]:
@@ -403,22 +388,6 @@ def _experiment_area_id(experiment: dict[str, Any]) -> str | None:
         if area_id in AREA_NAMES:
             return area_id
     return None
-
-
-def _point_summary(experiment: dict[str, Any]) -> StudentExperimentPointSummary:
-    return StudentExperimentPointSummary(
-        id=str(experiment["id"]),
-        code=str(experiment.get("code") or ""),
-        title=str(experiment.get("title") or experiment["id"]),
-        summary=experiment.get("summary"),
-        parent_code=_parent_code(experiment),
-        parent_title=_parent_title(experiment),
-        module_title=_module_title(experiment),
-        chapter_ids=list(_experiment_chapter_ids(experiment)),
-        video_candidate_count=len(_video_candidates(experiment)),
-        published_video_count=_published_video_count(experiment),
-        question_count=_question_count(experiment),
-    )
 
 
 def _group_summary(group: ParentGroup, *, recommended_parent_code: str | None = None) -> StudentExperimentGroupSummary:
@@ -733,6 +702,8 @@ def _record_learning_event(
     parent_code: str | None = None,
     area_id: str | None = None,
     experiment_id: str | None = None,
+    point_node_id: str | None = None,
+    catalog_path: list[str] | None = None,
     chapter_id: str | None = None,
 ) -> None:
     try:
@@ -741,7 +712,7 @@ def _record_learning_event(
             text(
                 """
                 INSERT INTO student_events (
-                  student_id, event_type, chapter_id, experiment_id, metadata, created_at
+                  student_id, event_type, chapter_id, experiment_id, point_node_id, metadata, created_at
                 )
                 VALUES (
                   :student_id,
@@ -753,6 +724,7 @@ def _record_learning_event(
                     THEN CAST(:experiment_id AS text)
                     ELSE NULL
                   END,
+                  :point_node_id,
                   CAST(:metadata AS jsonb),
                   now()
                 )
@@ -763,11 +735,14 @@ def _record_learning_event(
                 "event_type": event_type,
                 "chapter_id": chapter_id,
                 "experiment_id": experiment_id,
+                "point_node_id": point_node_id,
                 "metadata": _json(
                     {
                         "area_id": area_id,
                         "parent_code": parent_code,
                         "experiment_id": experiment_id,
+                        "point_node_id": point_node_id,
+                        "catalog_path": catalog_path or [],
                     }
                 ),
             },
@@ -808,44 +783,6 @@ def get_student_learning_home(user: Any) -> StudentLearningHomeResponse:
     )
 
 
-def get_student_experiment_group(user: Any, parent_code: str) -> StudentExperimentGroupResponse:
-    with db_session() as session:
-        experiments = _load_published_experiments(session)
-        groups = _build_parent_groups(experiments)
-        group = next((item for item in groups if item.parent_code == parent_code), None)
-        if not group:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Experiment group not found")
-        _record_learning_event(
-            session,
-            user=user,
-            event_type="learning_group_opened",
-            parent_code=group.parent_code,
-            area_id=group.area_id,
-            chapter_id=group.chapter_ids[0] if group.chapter_ids else None,
-        )
-    return StudentExperimentGroupResponse(
-        parent_code=group.parent_code,
-        parent_title=group.parent_title,
-        area_id=group.area_id,
-        area_name=group.area_name,
-        experiments=[_point_summary(experiment) for experiment in group.experiments],
-    )
-
-
-def _student_video_resource(media: dict[str, Any]) -> StudentVideoResource:
-    media_id = str(media.get("media_id") or "")
-    has_thumbnail = bool(media.get("has_thumbnail"))
-    return StudentVideoResource(
-        media_id=media_id,
-        title=str(media.get("title") or media_id),
-        point_key=str(media.get("point_key")) if media.get("point_key") else None,
-        point_title=str(media.get("point_title")) if media.get("point_title") else None,
-        mime_type=str(media.get("mime_type")) if media.get("mime_type") else None,
-        stream_path=f"/api/student/media/assets/{media_id}/stream" if media_id else None,
-        thumbnail_path=f"/api/student/media/assets/{media_id}/thumbnail" if media_id and has_thumbnail else None,
-    )
-
-
 def _experiment_search_text(experiment: dict[str, Any]) -> str:
     metadata = _metadata(experiment)
     parts = [
@@ -860,14 +797,6 @@ def _experiment_search_text(experiment: dict[str, Any]) -> str:
         *(_video_candidates(experiment)),
     ]
     return " ".join(str(part or "") for part in parts).lower()
-
-
-def _section_matches_experiment(section: dict[str, Any], experiment: dict[str, Any]) -> bool:
-    keywords = [str(item).strip().lower() for item in section.get("experiment_keywords") or [] if str(item).strip()]
-    if not keywords:
-        return True
-    text_value = _experiment_search_text(experiment)
-    return any(keyword in text_value for keyword in keywords)
 
 
 def _profile_experiments(profile: dict[str, Any], experiments: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -970,90 +899,6 @@ def validate_student_learning_experiment_coverage(experiments: list[dict[str, An
     }
 
 
-def _candidate_point(experiment: dict[str, Any]) -> tuple[str | None, str | None]:
-    for media in _media_resources(experiment, visible_only=True):
-        point_key = str(media.get("point_key") or "").strip()
-        point_title = str(media.get("point_title") or media.get("title") or "").strip()
-        if point_key or point_title:
-            return point_key or point_title, point_title or point_key
-    candidates = _video_candidates(experiment)
-    if candidates:
-        return _candidate_point_key(0, candidates[0]), candidates[0]
-    return None, None
-
-
-def _learning_point_card(
-    experiment: dict[str, Any],
-    *,
-    section: dict[str, Any],
-) -> StudentLearningPointCard:
-    summary = _point_summary(experiment)
-    point_key, point_title = _candidate_point(experiment)
-    return StudentLearningPointCard(
-        **summary.model_dump(),
-        property_key=str(section.get("key") or ""),
-        property_title=str(section.get("title") or ""),
-        point_key=point_key,
-        point_title=point_title,
-        formula=str(section.get("formula")) if section.get("formula") else None,
-        videos=[_student_video_resource(media) for media in _media_resources(experiment, visible_only=True)],
-        video_candidates=_video_candidates(experiment),
-    )
-
-
-def _learning_groups_for_section(
-    *,
-    section: dict[str, Any],
-    experiments: list[dict[str, Any]],
-) -> list[StudentLearningPointGroup]:
-    matches = [experiment for experiment in experiments if _section_matches_experiment(section, experiment)]
-    if not matches:
-        matches = experiments[:]
-    buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for experiment in matches:
-        buckets[_parent_code(experiment)].append(experiment)
-
-    groups: list[StudentLearningPointGroup] = []
-    for parent_code, items in buckets.items():
-        ordered_items = sorted(items, key=lambda item: (int(item.get("display_order") or 999), str(item.get("code") or "")))
-        groups.append(
-            StudentLearningPointGroup(
-                property_key=str(section.get("key") or ""),
-                property_title=str(section.get("title") or ""),
-                parent_code=parent_code,
-                parent_title=_parent_title(ordered_items[0]),
-                points=[_learning_point_card(item, section=section) for item in ordered_items],
-            )
-        )
-    return sorted(groups, key=lambda group: (group.parent_code, group.property_key))
-
-
-def _learning_groups_for_chapter(
-    *,
-    profile: dict[str, Any],
-    experiments: list[dict[str, Any]],
-) -> list[StudentLearningChapterExperimentGroup]:
-    section = {
-        "key": "chapter",
-        "title": str(profile.get("title") or profile.get("family_name") or "Chapter experiments"),
-    }
-    buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for experiment in experiments:
-        buckets[_parent_code(experiment)].append(experiment)
-
-    groups: list[StudentLearningChapterExperimentGroup] = []
-    for parent_code, items in buckets.items():
-        ordered_items = sorted(items, key=lambda item: (int(item.get("display_order") or 999), str(item.get("code") or "")))
-        groups.append(
-            StudentLearningChapterExperimentGroup(
-                parent_code=parent_code,
-                parent_title=_parent_title(ordered_items[0]),
-                points=[_learning_point_card(item, section=section) for item in ordered_items],
-            )
-        )
-    return sorted(groups, key=lambda group: group.parent_code)
-
-
 def _select_learning_profile(
     *,
     profiles: list[dict[str, Any]],
@@ -1097,7 +942,6 @@ def get_student_learning_page(user: Any, profile_id: str | None = None) -> Stude
     profiles = _learning_profiles()
     with db_session() as session:
         active = _select_learning_profile(profiles=profiles, profile_id=profile_id, session=session, user=user)
-        experiments = _load_published_experiments(session)
         if active:
             _record_learning_event(
                 session,
@@ -1108,14 +952,7 @@ def get_student_learning_page(user: Any, profile_id: str | None = None) -> Stude
     if not active:
         return StudentLearningPageResponse(recommended_profile_id=None, profiles=[], active_profile=None)
 
-    profile_experiments = _profile_experiments(active, experiments)
     sections = [section for section in active.get("property_sections") or [] if isinstance(section, dict)]
-    related_groups = [
-        group
-        for section in sections
-        for group in _learning_groups_for_section(section=section, experiments=profile_experiments)
-    ]
-    chapter_experiment_groups = _learning_groups_for_chapter(profile=active, experiments=profile_experiments)
     hero = active.get("hero") if isinstance(active.get("hero"), dict) else {}
     active_profile = StudentLearningProfile(
         profile_id=str(active.get("profile_id") or ""),
@@ -1136,42 +973,11 @@ def get_student_learning_page(user: Any, profile_id: str | None = None) -> Stude
         family_common_properties=_family_common_properties(active),
         property_sections=[_property_section(section) for section in sections],
         reference_media=_reference_media(active),
-        related_groups=related_groups,
-        chapter_experiment_groups=chapter_experiment_groups,
     )
     return StudentLearningPageResponse(
         recommended_profile_id=str(active.get("profile_id") or ""),
         profiles=[_profile_summary(profile) for profile in profiles if profile.get("enabled", True)],
         active_profile=active_profile,
-    )
-
-
-def get_student_experiment_detail(user: Any, experiment_id: str, *, point_key: str | None = None) -> StudentExperimentDetailResponse:
-    with db_session() as session:
-        experiments = _load_published_experiments(session)
-        experiment = next((item for item in experiments if str(item["id"]) == experiment_id), None)
-        if not experiment or _experiment_area_id(experiment) == "f":
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Experiment not found")
-        summary = _point_summary(experiment)
-        visible_videos = _media_resources(experiment, visible_only=True)
-        point_payload = student_point_content_payload(session, experiment_id=experiment_id, point_key=point_key)
-        selected_point_key = str(point_payload.get("selected_point_key") or "").strip()
-        if selected_point_key:
-            visible_videos = [media for media in visible_videos if str(media.get("point_key") or "").strip() == selected_point_key]
-        _record_learning_event(
-            session,
-            user=user,
-            event_type="experiment_detail_opened",
-            parent_code=summary.parent_code,
-            area_id=_experiment_area_id(experiment),
-            experiment_id=summary.id,
-            chapter_id=summary.chapter_ids[0] if summary.chapter_ids else None,
-        )
-    return StudentExperimentDetailResponse(
-        **summary.model_dump(),
-        **point_payload,
-        video_candidates=_video_candidates(experiment),
-        videos=[_student_video_resource(media) for media in visible_videos],
     )
 
 
