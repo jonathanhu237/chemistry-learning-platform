@@ -1,58 +1,12 @@
-import { useEffect, useState } from "react";
-import { BarChart3, Bot, BookOpenCheck, CheckCircle2, FlaskConical, LoaderCircle, Sparkles } from "lucide-react";
-import { StudentPosttestReport, errorMessage, explainPosttestMistakes, generatePosttestAiSummary } from "../../api";
+import { BarChart3, BookOpenCheck, CheckCircle2, FlaskConical, Sparkles } from "lucide-react";
+import type { StudentSmartAssessmentReport } from "../../api";
 import { MobileButton, MobileEmptyState } from "../../mobile/primitives";
 import { AiMarkdownBlock } from "../../shared/markdown/AiMarkdownBlock";
 import { stripExperimentPrefix } from "../experiments/experimentFormat";
 import { answerLabel, formatPercent, formatScore } from "./assessmentFormat";
 
-export function PosttestSummaryPanel({ report, onContinue }: { report: StudentPosttestReport; onContinue: () => void }) {
+export function PosttestSummaryPanel({ report, onContinue }: { report: StudentSmartAssessmentReport; onContinue: () => void }) {
   const masteryChanges = report.mastery_changes.slice(0, 5);
-  const [aiSummary, setAiSummary] = useState(report.next_recommendation);
-  const [aiSummaryLoading, setAiSummaryLoading] = useState(true);
-  const [aiSummarySource, setAiSummarySource] = useState<"ai" | "fallback">("fallback");
-  const [mistakeAnswer, setMistakeAnswer] = useState("");
-  const [mistakeLoading, setMistakeLoading] = useState(false);
-  const [mistakeError, setMistakeError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    setAiSummary(report.next_recommendation);
-    setAiSummarySource("fallback");
-    setAiSummaryLoading(true);
-    generatePosttestAiSummary(report.session_id)
-      .then((response) => {
-        if (cancelled) return;
-        setAiSummary(response.text);
-        setAiSummarySource(response.source);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setAiSummary(report.next_recommendation);
-          setAiSummarySource("fallback");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setAiSummaryLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [report.session_id, report.next_recommendation]);
-
-  const explainMistakes = async () => {
-    if (mistakeLoading || !report.wrong_answers.length) return;
-    setMistakeLoading(true);
-    setMistakeError("");
-    try {
-      const response = await explainPosttestMistakes(report.session_id);
-      setMistakeAnswer(response.text);
-    } catch (requestError) {
-      setMistakeError(errorMessage(requestError));
-    } finally {
-      setMistakeLoading(false);
-    }
-  };
 
   return (
     <section className="learning-panel" aria-label="学习总结">
@@ -62,18 +16,18 @@ export function PosttestSummaryPanel({ report, onContinue }: { report: StudentPo
         </span>
         <div>
           <p>学习总结</p>
-          <h2>本轮实验报告</h2>
-          <AiMarkdownBlock className="summary-ai-text" text={aiSummaryLoading ? "正在生成 AI 学习总结..." : aiSummary} />
+          <h2>智能测评报告</h2>
+          <AiMarkdownBlock className="summary-ai-text" text={report.next_recommendation} />
           <em>
             <Sparkles size={13} />
-            {aiSummarySource === "ai" ? "AI 总结" : "规则总结"}
+            规则总结
           </em>
         </div>
       </section>
 
       <section className="summary-grid">
         <div>
-          <span>后测正确率</span>
+          <span>测评正确率</span>
           <strong>{formatPercent(report.correct_rate)}</strong>
           <small>
             {report.correct_count}/{report.total_count} 题
@@ -88,13 +42,29 @@ export function PosttestSummaryPanel({ report, onContinue }: { report: StudentPo
         </div>
       </section>
 
+      <section className="summary-grid smart-composition-grid">
+        <div>
+          <span>未测实验</span>
+          <strong>{report.composition.untested_question_count}</strong>
+          <small>目标占比 {report.composition.untested_ratio_percent}%</small>
+        </div>
+        <div>
+          <span>薄弱实验</span>
+          <strong>{report.composition.measured_question_count}</strong>
+          <small>薄弱倾向 {report.composition.weak_tendency_percent}%</small>
+        </div>
+      </section>
+
       <section className="detail-section">
-        <h3>本轮实验</h3>
+        <h3>本轮组卷实验</h3>
         <div className="learned-list">
           {report.experiments.map((experiment) => (
             <div key={experiment.id}>
               <FlaskConical size={16} />
               <span>{stripExperimentPrefix(experiment.title)}</span>
+              <small>
+                {experiment.source === "untested" ? "未测" : `掌握度 ${formatScore(experiment.mastery_score)}`}
+              </small>
             </div>
           ))}
         </div>
@@ -135,30 +105,6 @@ export function PosttestSummaryPanel({ report, onContinue }: { report: StudentPo
             <span>本轮没有错题</span>
           </MobileEmptyState>
         )}
-        {report.wrong_answers.length ? (
-          <>
-            <MobileButton
-              variant="secondary"
-              className="secondary-action full ai-mistake-action"
-              type="button"
-              loading={mistakeLoading}
-              onClick={() => void explainMistakes()}
-            >
-              {mistakeLoading ? <LoaderCircle className="spin" size={18} /> : <Bot size={18} />}
-              <span>{mistakeLoading ? "AI 正在讲解" : "AI 讲解错题"}</span>
-            </MobileButton>
-            {mistakeError ? <div className="form-error">{mistakeError}</div> : null}
-            {mistakeAnswer ? (
-              <div className="mistake-ai-answer">
-                <span>
-                  <Sparkles size={13} />
-                  AI 解答
-                </span>
-                <AiMarkdownBlock text={mistakeAnswer} />
-              </div>
-            ) : null}
-          </>
-        ) : null}
       </section>
 
       <MobileButton className="primary-action full" type="button" onClick={onContinue}>

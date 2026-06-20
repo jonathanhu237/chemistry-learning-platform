@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { ClipboardList, LoaderCircle } from "lucide-react";
-import { errorMessage, submitStudentPosttest, type StudentPosttestResponse } from "../../api";
+import { errorMessage, submitStudentSmartAssessment, type StudentSmartAssessmentResponse } from "../../api";
 import { loadPosttestSession, storePosttestReport, storePosttestSession } from "../../app/router/assessmentSessionStore";
 import { navigateToAssessmentReport } from "../../app/router/navigation";
 import type { StudentRouteSearch } from "../../app/router/routeTypes";
@@ -17,7 +17,7 @@ export function AssessmentSessionPage() {
   const search = useSearch({ strict: false }) as StudentRouteSearch;
   const { startAssessmentSession } = useStudentRuntime();
   const sessionId = params.sessionId || "";
-  const [posttest, setPosttest] = useState<StudentPosttestResponse | null>(() => loadPosttestSession(sessionId));
+  const [posttest, setPosttest] = useState<StudentSmartAssessmentResponse | null>(() => loadPosttestSession(sessionId));
   const [loading, setLoading] = useState(!posttest);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -53,7 +53,7 @@ export function AssessmentSessionPage() {
     setSubmitting(true);
     setError("");
     try {
-      const response = await submitStudentPosttest(
+      const response = await submitStudentSmartAssessment(
         posttest.session_id,
         Object.entries(answers).map(([questionId, answer]) => ({ question_id: questionId, answer })),
       );
@@ -71,7 +71,7 @@ export function AssessmentSessionPage() {
       {loading ? (
         <section className="learning-panel">
           <MobileEmptyState className="empty-learning-card" icon={<LoaderCircle className="spin" size={20} />}>
-            <span>正在创建测评</span>
+            <span>正在智能组卷</span>
           </MobileEmptyState>
         </section>
       ) : posttest ? (

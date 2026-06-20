@@ -8,10 +8,13 @@ import {
   Flex,
   Form,
   Input,
+  InputNumber,
   Modal,
   Popconfirm,
+  Slider,
   Space,
   Statistic,
+  Switch,
   Table,
   Tabs,
   Tag,
@@ -31,7 +34,8 @@ import {
   TeamOutlined,
 } from "@ant-design/icons";
 
-import type { ClassItem, RegistrationSettings, RosterImportResult, RosterStudent } from "../../api/classes";
+import type { ClassItem, RegistrationSettings, RosterImportResult, RosterStudent, SmartAssessmentStrategyResponse } from "../../api/classes";
+import type { SmartAssessmentSettings } from "../../api/settings";
 import { api, patchJson, postJson, putJson } from "../../api/http";
 import { PageTitle } from "../../components/PageTitle";
 import { QueryState } from "../../components/QueryState";
@@ -40,6 +44,45 @@ import { statusTag } from "../../lib/status";
 import "./classes.css";
 
 const { Text, Title } = Typography;
+
+const defaultSmartAssessment: SmartAssessmentSettings = {
+  enabled: true,
+  question_count: 10,
+  untested_ratio_percent: 20,
+  weak_tendency_percent: 70,
+  max_questions_per_experiment: 2,
+  weak_curve: 2,
+  weak_max_bonus: 9,
+};
+
+function normalizeSmartAssessment(value: Partial<SmartAssessmentSettings> | undefined): SmartAssessmentSettings {
+  const clean = Object.fromEntries(Object.entries(value || {}).filter(([, item]) => item !== undefined)) as Partial<SmartAssessmentSettings>;
+  return { ...defaultSmartAssessment, ...clean };
+}
+
+function smartTickets(settings: SmartAssessmentSettings, mastery: number) {
+  const weakness = Math.max(0, Math.min(1, (100 - mastery) / 100));
+  return 1 + (settings.weak_tendency_percent / 100) * settings.weak_max_bonus * Math.pow(weakness, settings.weak_curve);
+}
+
+function ClassSmartCurve({ settings }: { settings: SmartAssessmentSettings }) {
+  const marks = [0, 25, 50, 75, 100];
+  const max = Math.max(...marks.map((mastery) => smartTickets(settings, mastery)));
+  return (
+    <div className="class-smart-curve">
+      {marks.map((mastery) => {
+        const tickets = smartTickets(settings, mastery);
+        return (
+          <div key={mastery}>
+            <span>{mastery}</span>
+            <b style={{ width: `${Math.max(8, (tickets / max) * 100)}%` }} />
+            <small>{tickets.toFixed(1)} 票</small>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function ClassesPage() {
   const { message } = AntApp.useApp();
@@ -58,6 +101,7 @@ export function ClassesPage() {
   const [classForm] = Form.useForm();
   const [classSettingsForm] = Form.useForm();
   const [registrationForm] = Form.useForm();
+  const [smartAssessmentForm] = Form.useForm();
   const [studentForm] = Form.useForm();
   const classes = useQuery({ queryKey: ["classes"], queryFn: () => api<ClassItem[]>("/api/admin/classes") });
   const selectedClass = (classes.data || []).find((item) => item.id === selectedClassId) || null;
@@ -71,11 +115,29 @@ export function ClassesPage() {
     queryFn: () => api<RegistrationSettings>(`/api/admin/classes/${selectedClassId}/registration-settings`),
     enabled: Boolean(selectedClassId),
   });
+  const smartAssessment = useQuery({
+    queryKey: ["class-smart-assessment-strategy", selectedClassId],
+    queryFn: () => api<SmartAssessmentStrategyResponse>(`/api/admin/classes/${selectedClassId}/smart-assessment-strategy`),
+    enabled: Boolean(selectedClassId),
+  });
   const defaultPasswordMode =
     Form.useWatch("default_password_mode", registrationForm) ||
     registration.data?.default_password_mode ||
     (registration.data?.has_default_password ? "shared" : "student_id");
   const classStatus = Form.useWatch("status", classSettingsForm) || selectedClass?.status || "active";
+  const watchedSmartQuestionCount = Form.useWatch("question_count", smartAssessmentForm);
+  const watchedSmartUntestedRatio = Form.useWatch("untested_ratio_percent", smartAssessmentForm);
+  const watchedSmartWeakTendency = Form.useWatch("weak_tendency_percent", smartAssessmentForm);
+  const watchedSmartMaxPerExperiment = Form.useWatch("max_questions_per_experiment", smartAssessmentForm);
+  const watchedSmartEnabled = Form.useWatch("enabled", smartAssessmentForm);
+  const smartPreview = normalizeSmartAssessment({
+    ...(smartAssessment.data?.strategy || {}),
+    enabled: watchedSmartEnabled,
+    question_count: watchedSmartQuestionCount,
+    untested_ratio_percent: watchedSmartUntestedRatio,
+    weak_tendency_percent: watchedSmartWeakTendency,
+    max_questions_per_experiment: watchedSmartMaxPerExperiment,
+  });
   const rosterRows = roster.data || [];
   const currentRoster = rosterRows.filter((row) => row.status !== "disabled");
   const disabledRoster = rosterRows.filter((row) => row.status === "disabled");
@@ -113,6 +175,12 @@ export function ClassesPage() {
       });
     }
   }, [registration.data, registrationForm]);
+
+  useEffect(() => {
+    if (smartAssessment.data) {
+      smartAssessmentForm.setFieldsValue(smartAssessment.data.strategy);
+    }
+  }, [smartAssessment.data, smartAssessmentForm]);
 
   useEffect(() => {
     if (!studentOpen) return;
@@ -160,6 +228,30 @@ export function ClassesPage() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["class-registration-settings", selectedClassId] });
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const updateSmartAssessment = useMutation({
+    mutationFn: (values: SmartAssessmentSettings) => {
+      if (!selectedClassId) throw new Error("请先选择班级");
+      return putJson<SmartAssessmentStrategyResponse>(`/api/admin/classes/${selectedClassId}/smart-assessment-strategy`, values);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["class-smart-assessment-strategy", selectedClassId] });
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const resetSmartAssessment = useMutation({
+    mutationFn: () => {
+      if (!selectedClassId) throw new Error("请先选择班级");
+      return api<SmartAssessmentStrategyResponse>(`/api/admin/classes/${selectedClassId}/smart-assessment-strategy`, { method: "DELETE" });
+    },
+    onSuccess: (response) => {
+      message.success("已恢复为全局智能组卷策略");
+      smartAssessmentForm.setFieldsValue(response.strategy);
+      void queryClient.invalidateQueries({ queryKey: ["class-smart-assessment-strategy", selectedClassId] });
     },
     onError: (error) => message.error(errorMessage(error)),
   });
@@ -222,12 +314,14 @@ export function ClassesPage() {
 
   const saveClassConfiguration = async () => {
     try {
-      const [classValues, registrationValues] = await Promise.all([
+      const [classValues, registrationValues, smartValues] = await Promise.all([
         classSettingsForm.validateFields(),
         registrationForm.validateFields(),
+        smartAssessmentForm.validateFields(),
       ]);
       await updateClass.mutateAsync(classValues);
       await updateRegistration.mutateAsync(registrationValues);
+      await updateSmartAssessment.mutateAsync(normalizeSmartAssessment(smartValues as Partial<SmartAssessmentSettings>));
       message.success("班级设置已保存");
       setSettingsOpen(false);
     } catch (error) {
@@ -456,11 +550,11 @@ export function ClassesPage() {
         okText="保存设置"
         cancelText="取消"
         width={720}
-        confirmLoading={updateClass.isPending || updateRegistration.isPending}
+        confirmLoading={updateClass.isPending || updateRegistration.isPending || updateSmartAssessment.isPending}
         onCancel={() => setSettingsOpen(false)}
         onOk={() => void saveClassConfiguration()}
       >
-        <QueryState loading={registration.isLoading} error={registration.error}>
+        <QueryState loading={registration.isLoading || smartAssessment.isLoading} error={registration.error || smartAssessment.error}>
           <Space orientation="vertical" size={18} className="full">
             <div className="modal-section">
               <Text strong>班级基本信息</Text>
@@ -553,6 +647,63 @@ export function ClassesPage() {
                     <Input value="使用学生学号" disabled />
                   </Form.Item>
                 )}
+              </Form>
+            </div>
+
+            <div className="modal-section">
+              <Flex justify="space-between" align="flex-start" gap={12}>
+                <div>
+                  <Text strong>智能组卷策略</Text>
+                  <Text type="secondary" className="block-text">
+                    默认继承系统设置；保存后本班会使用这里的题量、未测比例和薄弱倾向。
+                  </Text>
+                </div>
+                <Space>
+                  <Tag color={smartAssessment.data?.has_override ? "green" : "default"}>
+                    {smartAssessment.data?.has_override ? "本班覆盖" : "全局默认"}
+                  </Tag>
+                  <Button size="small" loading={resetSmartAssessment.isPending} onClick={() => resetSmartAssessment.mutate()}>
+                    恢复默认
+                  </Button>
+                </Space>
+              </Flex>
+              <Form form={smartAssessmentForm} layout="vertical" className="modal-form">
+                <Flex justify="space-between" align="center" gap={12} className="class-smart-switch">
+                  <div>
+                    <Text strong>允许学生智能测评</Text>
+                    <Text type="secondary" className="block-text">
+                      关闭后本班学生无法从测评中心开始智能组卷。
+                    </Text>
+                  </div>
+                  <Form.Item name="enabled" valuePropName="checked" noStyle>
+                    <Switch />
+                  </Form.Item>
+                </Flex>
+                <div className="settings-grid class-smart-grid">
+                  <Form.Item name="question_count" label="测评题数" rules={[{ required: true, message: "请输入测评题数" }]}>
+                    <InputNumber min={1} max={50} precision={0} className="full" />
+                  </Form.Item>
+                  <Form.Item
+                    name="max_questions_per_experiment"
+                    label="每个实验最多题数"
+                    rules={[{ required: true, message: "请输入每个实验最多题数" }]}
+                  >
+                    <InputNumber min={1} max={10} precision={0} className="full" />
+                  </Form.Item>
+                </div>
+                <Form.Item name="untested_ratio_percent" label="未测实验纳入比例">
+                  <Slider min={0} max={100} step={5} tooltip={{ formatter: (value) => `${value || 0}%` }} />
+                </Form.Item>
+                <Form.Item name="weak_tendency_percent" label="薄弱倾向">
+                  <Slider min={0} max={100} step={5} tooltip={{ formatter: (value) => `${value || 0}%` }} />
+                </Form.Item>
+                <Form.Item name="weak_curve" hidden>
+                  <InputNumber />
+                </Form.Item>
+                <Form.Item name="weak_max_bonus" hidden>
+                  <InputNumber />
+                </Form.Item>
+                <ClassSmartCurve settings={smartPreview} />
               </Form>
             </div>
           </Space>

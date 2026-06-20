@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation } from "@tanstack/react-router";
 import { assistantEnabled, defaultStudentAppConfig, feedbackEnabled } from "../appConfig";
-import { errorMessage, getStudentAppConfig, startStudentPosttest, type StudentAppConfigResponse } from "../../api";
+import { errorMessage, getStudentAppConfig, startStudentSmartAssessment, type StudentAppConfigResponse } from "../../api";
 import { storePosttestSession } from "../router/assessmentSessionStore";
 import { rootIdForPath, routeRoleForPath } from "../router/routeVisibility";
 import type { StudentRootRouteId } from "../router/routeTypes";
@@ -88,7 +88,7 @@ export function AuthenticatedAppLayout() {
     setPosttestLoading(true);
     setPosttestError("");
     try {
-      const response = await startStudentPosttest();
+      const response = await startStudentSmartAssessment();
       storePosttestSession(response);
       return response;
     } catch (requestError) {

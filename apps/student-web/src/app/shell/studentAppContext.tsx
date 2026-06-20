@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { AuthUser, StudentAppConfigResponse, StudentPosttestResponse } from "../../api";
+import type { AuthUser, StudentAppConfigResponse, StudentSmartAssessmentResponse } from "../../api";
 
 export type StudentShellBaseContextValue = {
   user: AuthUser;
@@ -11,7 +11,7 @@ export type StudentRuntimeContextValue = StudentShellBaseContextValue & {
   configError: string;
   canUseAssistant: boolean;
   canUseFeedback: boolean;
-  startAssessmentSession: () => Promise<StudentPosttestResponse | null>;
+  startAssessmentSession: () => Promise<StudentSmartAssessmentResponse | null>;
   posttestLoading: boolean;
   posttestError: string;
 };

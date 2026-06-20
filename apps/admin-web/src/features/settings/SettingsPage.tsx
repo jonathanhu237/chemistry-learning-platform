@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
@@ -9,6 +9,7 @@ import {
   Form,
   Input,
   InputNumber,
+  Slider,
   Space,
   Switch,
   Tag,
@@ -20,6 +21,7 @@ import type {
   AIConfigurationUpdate,
   LearningBehaviorSettings,
   PlatformSettingsResponse,
+  SmartAssessmentSettings,
 } from "../../api/settings";
 import { api, putJson } from "../../api/http";
 import { PageTitle } from "../../components/PageTitle";
@@ -27,6 +29,65 @@ import { QueryState } from "../../components/QueryState";
 import "./settings.css";
 
 const { Text } = Typography;
+
+const defaultSmartAssessment: SmartAssessmentSettings = {
+  enabled: true,
+  question_count: 10,
+  untested_ratio_percent: 20,
+  weak_tendency_percent: 70,
+  max_questions_per_experiment: 2,
+  weak_curve: 2,
+  weak_max_bonus: 9,
+};
+
+function normalizeSmartAssessmentSettings(value: Partial<SmartAssessmentSettings> | undefined): SmartAssessmentSettings {
+  const clean = Object.fromEntries(Object.entries(value || {}).filter(([, item]) => item !== undefined)) as Partial<SmartAssessmentSettings>;
+  return { ...defaultSmartAssessment, ...clean };
+}
+
+function smartAssessmentTickets(settings: SmartAssessmentSettings, mastery: number) {
+  const weakness = Math.max(0, Math.min(1, (100 - mastery) / 100));
+  const weakBias = settings.weak_tendency_percent / 100;
+  return 1 + weakBias * settings.weak_max_bonus * Math.pow(weakness, settings.weak_curve);
+}
+
+function SmartAssessmentCurve({ settings }: { settings: SmartAssessmentSettings }) {
+  const data = [0, 20, 40, 60, 80, 100].map((mastery) => ({
+    mastery,
+    tickets: smartAssessmentTickets(settings, mastery),
+  }));
+  const maxTicket = Math.max(1, ...data.map((item) => item.tickets));
+  const points = data
+    .map((item, index) => {
+      const x = 20 + index * 44;
+      const y = 118 - (item.tickets / maxTicket) * 88;
+      return `${x},${y}`;
+    })
+    .join(" ");
+  return (
+    <div className="smart-curve-preview" aria-label="掌握度抽题权重预览">
+      <svg viewBox="0 0 260 146" role="img" aria-label="掌握度越低抽题票数越高">
+        <line x1="20" y1="118" x2="240" y2="118" />
+        <line x1="20" y1="30" x2="20" y2="118" />
+        <polyline points={points} />
+        {data.map((item, index) => {
+          const x = 20 + index * 44;
+          const y = 118 - (item.tickets / maxTicket) * 88;
+          return <circle key={item.mastery} cx={x} cy={y} r="3.5" />;
+        })}
+      </svg>
+      <div className="smart-curve-axis">
+        <span>0 分</span>
+        <span>掌握度</span>
+        <span>100 分</span>
+      </div>
+      <Text type="secondary" className="block-text">
+        当前设置下，掌握度 0 分约 {smartAssessmentTickets(settings, 0).toFixed(1)} 票，50 分约{" "}
+        {smartAssessmentTickets(settings, 50).toFixed(1)} 票，100 分固定 1.0 票。
+      </Text>
+    </div>
+  );
+}
 
 function errorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -130,6 +191,13 @@ export function SettingsPage() {
 
   const canEdit = Boolean(platformSettings.data?.can_edit);
   const canEditAiFeatures = Boolean(aiConfig.data?.can_edit);
+  const watchedSmartAssessment = Form.useWatch(["assessment", "smart_assessment"], form) as
+    | Partial<SmartAssessmentSettings>
+    | undefined;
+  const smartAssessmentSettings = useMemo(
+    () => normalizeSmartAssessmentSettings(watchedSmartAssessment),
+    [watchedSmartAssessment],
+  );
 
   return (
     <Space orientation="vertical" size={18} className="full">
@@ -179,6 +247,56 @@ export function SettingsPage() {
                   >
                     <InputNumber min={1} max={50} precision={0} disabled={!canEdit} className="full" />
                   </Form.Item>
+                </div>
+                <div className="settings-section smart-assessment-section">
+                  <Flex justify="space-between" align="center" gap={12}>
+                    <div>
+                      <Text strong>智能组卷</Text>
+                      <Text type="secondary" className="block-text">
+                        学生可直接进入测评；系统按未测实验比例和掌握薄弱倾向抽取实验。
+                      </Text>
+                    </div>
+                    <Form.Item name={["assessment", "smart_assessment", "enabled"]} valuePropName="checked" noStyle>
+                      <Switch disabled={!canEdit} />
+                    </Form.Item>
+                  </Flex>
+                  <div className="settings-grid smart-settings-grid">
+                    <Form.Item
+                      name={["assessment", "smart_assessment", "question_count"]}
+                      label="测评题数"
+                      rules={[{ required: true, message: "请输入智能测评题数" }]}
+                    >
+                      <InputNumber min={1} max={50} precision={0} disabled={!canEdit} className="full" />
+                    </Form.Item>
+                    <Form.Item
+                      name={["assessment", "smart_assessment", "max_questions_per_experiment"]}
+                      label="每个实验最多题数"
+                      rules={[{ required: true, message: "请输入每个实验最多题数" }]}
+                    >
+                      <InputNumber min={1} max={10} precision={0} disabled={!canEdit} className="full" />
+                    </Form.Item>
+                  </div>
+                  <Form.Item
+                    name={["assessment", "smart_assessment", "untested_ratio_percent"]}
+                    label="未测实验纳入比例"
+                    rules={[{ required: true, message: "请选择未测实验纳入比例" }]}
+                  >
+                    <Slider min={0} max={100} step={5} disabled={!canEdit} tooltip={{ formatter: (value) => `${value || 0}%` }} />
+                  </Form.Item>
+                  <Form.Item
+                    name={["assessment", "smart_assessment", "weak_tendency_percent"]}
+                    label="薄弱倾向"
+                    rules={[{ required: true, message: "请选择薄弱倾向" }]}
+                  >
+                    <Slider min={0} max={100} step={5} disabled={!canEdit} tooltip={{ formatter: (value) => `${value || 0}%` }} />
+                  </Form.Item>
+                  <Form.Item name={["assessment", "smart_assessment", "weak_curve"]} hidden>
+                    <InputNumber />
+                  </Form.Item>
+                  <Form.Item name={["assessment", "smart_assessment", "weak_max_bonus"]} hidden>
+                    <InputNumber />
+                  </Form.Item>
+                  <SmartAssessmentCurve settings={smartAssessmentSettings} />
                 </div>
               </div>
             </Card>

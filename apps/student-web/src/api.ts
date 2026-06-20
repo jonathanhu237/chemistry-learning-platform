@@ -402,6 +402,73 @@ export type StudentPosttestSubmitResponse = {
   report: StudentPosttestReport;
 };
 
+export type SmartAssessmentStrategy = {
+  enabled: boolean;
+  question_count: number;
+  untested_ratio_percent: number;
+  weak_tendency_percent: number;
+  max_questions_per_experiment: number;
+  weak_curve: number;
+  weak_max_bonus: number;
+};
+
+export type PublicSmartAssessmentQuestion = PublicPosttestQuestion;
+
+export type SmartAssessmentExperimentSummary = PosttestExperimentSummary & {
+  mastery_score?: number | null;
+  evidence_count: number;
+  source: "measured" | "untested";
+  draw_tickets?: number | null;
+  question_count: number;
+  reason?: string | null;
+};
+
+export type SmartAssessmentCompositionSummary = {
+  total_questions: number;
+  target_question_count: number;
+  untested_question_count: number;
+  measured_question_count: number;
+  untested_ratio_percent: number;
+  weak_tendency_percent: number;
+  max_questions_per_experiment: number;
+  warnings: Record<string, unknown>;
+};
+
+export type StudentSmartAssessmentResponse = {
+  status: "in_progress" | "completed";
+  session_id: string;
+  strategy: SmartAssessmentStrategy;
+  composition: SmartAssessmentCompositionSummary;
+  experiments: SmartAssessmentExperimentSummary[];
+  questions: PublicSmartAssessmentQuestion[];
+};
+
+export type StudentSmartAssessmentAnswer = StudentPosttestAnswer;
+export type StudentSmartAssessmentWrongAnswer = StudentPosttestWrongAnswer;
+export type StudentSmartAssessmentMasteryChange = StudentPosttestMasteryChange;
+
+export type StudentSmartAssessmentReport = {
+  session_id: string;
+  strategy: SmartAssessmentStrategy;
+  composition: SmartAssessmentCompositionSummary;
+  experiments: SmartAssessmentExperimentSummary[];
+  correct_count: number;
+  total_count: number;
+  score: number;
+  correct_rate: number;
+  mastery_before_average?: number | null;
+  mastery_after_average?: number | null;
+  mastery_delta?: number | null;
+  mastery_changes: StudentSmartAssessmentMasteryChange[];
+  wrong_answers: StudentSmartAssessmentWrongAnswer[];
+  next_recommendation: string;
+};
+
+export type StudentSmartAssessmentSubmitResponse = {
+  status: "completed";
+  report: StudentSmartAssessmentReport;
+};
+
 export type AgentChatMessage = {
   role: "user" | "assistant";
   content: string;
@@ -542,6 +609,9 @@ export function errorMessage(error: unknown): string {
       }
       if (typeof error.detail === "string" && error.detail.includes("Posttest question bank")) {
         return "课后摸底题库暂未配置，请联系教师";
+      }
+      if (typeof error.detail === "string" && error.detail.includes("Smart assessment question bank")) {
+        return "智能组卷题库暂未配置，请联系教师";
       }
       if (typeof error.detail === "string" && error.detail.includes("No learning experiments")) {
         return "请先进入至少一个实验详情页学习";
@@ -713,6 +783,20 @@ export function startStudentPosttest(): Promise<StudentPosttestResponse> {
 
 export function submitStudentPosttest(sessionId: string, answers: StudentPosttestAnswer[]): Promise<StudentPosttestSubmitResponse> {
   return postJson<StudentPosttestSubmitResponse>("/api/student/posttest/submit", {
+    session_id: sessionId,
+    answers,
+  });
+}
+
+export function startStudentSmartAssessment(): Promise<StudentSmartAssessmentResponse> {
+  return postJson<StudentSmartAssessmentResponse>("/api/student/smart-assessment/start", {});
+}
+
+export function submitStudentSmartAssessment(
+  sessionId: string,
+  answers: StudentSmartAssessmentAnswer[],
+): Promise<StudentSmartAssessmentSubmitResponse> {
+  return postJson<StudentSmartAssessmentSubmitResponse>("/api/student/smart-assessment/submit", {
     session_id: sessionId,
     answers,
   });

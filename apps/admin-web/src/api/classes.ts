@@ -1,4 +1,5 @@
 import { api, patchJson, postJson, putJson } from "./http";
+import type { SmartAssessmentSettings } from "./settings";
 
 export type ClassItem = {
   id: string;
@@ -39,6 +40,14 @@ export type RegistrationSettings = {
   source?: "system_default" | "class" | null;
 };
 
+export type SmartAssessmentStrategyResponse = {
+  strategy: SmartAssessmentSettings;
+  inherited_strategy: SmartAssessmentSettings;
+  source: "system_default" | "class";
+  has_override: boolean;
+  can_edit: boolean;
+};
+
 export function listClasses(): Promise<ClassItem[]> {
   return api<ClassItem[]>("/api/admin/classes");
 }
@@ -61,6 +70,21 @@ export function updateClass(classId: string, values: { class_name?: string; desc
 
 export function updateRegistrationSettings(classId: string, values: Partial<RegistrationSettings>): Promise<RegistrationSettings> {
   return putJson<RegistrationSettings>(`/api/admin/classes/${classId}/registration-settings`, values);
+}
+
+export function getSmartAssessmentStrategy(classId: string): Promise<SmartAssessmentStrategyResponse> {
+  return api<SmartAssessmentStrategyResponse>(`/api/admin/classes/${classId}/smart-assessment-strategy`);
+}
+
+export function updateSmartAssessmentStrategy(
+  classId: string,
+  values: SmartAssessmentSettings,
+): Promise<SmartAssessmentStrategyResponse> {
+  return putJson<SmartAssessmentStrategyResponse>(`/api/admin/classes/${classId}/smart-assessment-strategy`, values);
+}
+
+export function clearSmartAssessmentStrategy(classId: string): Promise<SmartAssessmentStrategyResponse> {
+  return api<SmartAssessmentStrategyResponse>(`/api/admin/classes/${classId}/smart-assessment-strategy`, { method: "DELETE" });
 }
 
 export function upsertRosterStudent(classId: string, studentId: string | null, values: unknown): Promise<RosterStudent> {

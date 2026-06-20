@@ -21,7 +21,7 @@ export function AssessmentRootPage() {
         {posttestError ? <div className="form-error">{posttestError}</div> : null}
         <MobileButton className="primary-action full" type="button" loading={posttestLoading} onClick={startAssessment}>
           {posttestLoading ? <LoaderCircle className="spin" size={18} /> : <ClipboardList size={18} />}
-          <span>{posttestLoading ? "正在创建测评" : "开始学习测评"}</span>
+          <span>{posttestLoading ? "正在智能组卷" : "开始智能测评"}</span>
         </MobileButton>
       </section>
     </section>

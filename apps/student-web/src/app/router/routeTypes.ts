@@ -1,4 +1,4 @@
-import type { StudentPosttestReport, StudentPosttestResponse } from "../../api";
+import type { StudentSmartAssessmentReport, StudentSmartAssessmentResponse } from "../../api";
 
 export type ViewState = "checking" | "login" | "password" | "pretest-loading" | "pretest-error" | "pretest" | "home";
 
@@ -29,9 +29,9 @@ export type StudentRouteSearch = {
   q?: string;
 };
 
-export type StoredPosttestSession = StudentPosttestResponse;
+export type StoredPosttestSession = StudentSmartAssessmentResponse;
 
-export type StoredPosttestReport = StudentPosttestReport;
+export type StoredPosttestReport = StudentSmartAssessmentReport;
 
 function optionalString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;

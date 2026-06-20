@@ -5,6 +5,12 @@ from typing import Any
 from fastapi import APIRouter, Depends, File, Form, Path, UploadFile
 
 from server.app.auth import AuthUser, require_roles
+from server.app.domains.assessments.smart_assessment import (
+    clear_class_smart_assessment_strategy,
+    get_class_smart_assessment_strategy,
+    update_class_smart_assessment_strategy,
+)
+from server.app.domains.platform.settings import SmartAssessmentSettings
 from server.app.domains.roster.classes import (
     ClassCreateRequest,
     ClassResponse,
@@ -33,6 +39,7 @@ from server.app.domains.roster.classes import (
     update_registration_settings,
     update_roster_student,
 )
+from server.app.student_smart_assessment_schemas import SmartAssessmentStrategyResponse
 
 
 router = APIRouter(prefix="/api/admin", tags=["admin-classes"])
@@ -73,6 +80,31 @@ async def admin_update_class_registration_settings(
     user: AuthUser = Depends(require_roles("admin", "teacher")),
 ) -> RegistrationSettingsResponse:
     return update_class_registration_settings(payload, class_id, user)
+
+
+@router.get("/classes/{class_id}/smart-assessment-strategy", response_model=SmartAssessmentStrategyResponse)
+async def admin_get_class_smart_assessment_strategy(
+    class_id: str = Path(min_length=1),
+    user: AuthUser = Depends(require_roles("admin", "teacher")),
+) -> SmartAssessmentStrategyResponse:
+    return get_class_smart_assessment_strategy(class_id, user)
+
+
+@router.put("/classes/{class_id}/smart-assessment-strategy", response_model=SmartAssessmentStrategyResponse)
+async def admin_update_class_smart_assessment_strategy(
+    payload: SmartAssessmentSettings,
+    class_id: str = Path(min_length=1),
+    user: AuthUser = Depends(require_roles("admin", "teacher")),
+) -> SmartAssessmentStrategyResponse:
+    return update_class_smart_assessment_strategy(payload, class_id, user)
+
+
+@router.delete("/classes/{class_id}/smart-assessment-strategy", response_model=SmartAssessmentStrategyResponse)
+async def admin_clear_class_smart_assessment_strategy(
+    class_id: str = Path(min_length=1),
+    user: AuthUser = Depends(require_roles("admin", "teacher")),
+) -> SmartAssessmentStrategyResponse:
+    return clear_class_smart_assessment_strategy(class_id, user)
 
 
 @router.post("/classes", response_model=ClassResponse)

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, ClipboardList, LoaderCircle } from "lucide-react";
-import type { PublicPosttestQuestion, PublicPretestQuestion } from "../../api";
+import type { PublicPosttestQuestion, PublicPretestQuestion, PublicSmartAssessmentQuestion } from "../../api";
 import { MobileField } from "../../mobile/primitives";
 
 export type AnswerMap = Record<string, string>;
-export type AssessmentQuestion = PublicPretestQuestion | PublicPosttestQuestion;
+export type AssessmentQuestion = PublicPretestQuestion | PublicPosttestQuestion | PublicSmartAssessmentQuestion;
 
 function optionValue(option: Record<string, unknown>, index: number): string {
   const raw = option.label ?? option.key ?? option.value ?? String.fromCharCode(65 + index);

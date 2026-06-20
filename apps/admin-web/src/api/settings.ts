@@ -6,12 +6,23 @@ export type LearningBehaviorSettings = {
     pretest_question_count: number;
     posttest_enabled: boolean;
     posttest_question_count: number;
+    smart_assessment: SmartAssessmentSettings;
   };
   learning_features: {
     ai_assistant_enabled: boolean;
     feedback_enabled: boolean;
     student_review_preview_enabled: boolean;
   };
+};
+
+export type SmartAssessmentSettings = {
+  enabled: boolean;
+  question_count: number;
+  untested_ratio_percent: number;
+  weak_tendency_percent: number;
+  max_questions_per_experiment: number;
+  weak_curve: number;
+  weak_max_bonus: number;
 };
 
 export type PlatformSettingsResponse = {

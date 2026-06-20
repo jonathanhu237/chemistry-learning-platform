@@ -16,11 +16,22 @@ LEARNING_SETTINGS_KEY = "learning_behavior"
 AI_CONFIGURATION_KEY = "ai_configuration"
 
 
+class SmartAssessmentSettings(BaseModel):
+    enabled: bool = True
+    question_count: int = Field(default=10, ge=1, le=50)
+    untested_ratio_percent: int = Field(default=20, ge=0, le=100)
+    weak_tendency_percent: int = Field(default=70, ge=0, le=100)
+    max_questions_per_experiment: int = Field(default=2, ge=1, le=10)
+    weak_curve: float = Field(default=2.0, ge=0.5, le=4.0)
+    weak_max_bonus: float = Field(default=9.0, ge=1.0, le=20.0)
+
+
 class AssessmentSettings(BaseModel):
     pretest_enabled: bool = True
     pretest_question_count: int = Field(default=8, ge=1, le=50)
     posttest_enabled: bool = True
     posttest_question_count: int = Field(default=8, ge=1, le=50)
+    smart_assessment: SmartAssessmentSettings = Field(default_factory=SmartAssessmentSettings)
 
 
 class LearningFeatureSettings(BaseModel):

@@ -4,15 +4,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import type {
   AuthUser,
-  PublicPosttestQuestion,
   PublicPretestQuestion,
+  PublicSmartAssessmentQuestion,
   StudentAppConfigResponse,
   StudentExperimentDetailResponse,
   StudentLearningHomeResponse,
   StudentLearningPageResponse,
-  StudentPosttestReport,
-  StudentPosttestResponse,
   StudentPretestResponse,
+  StudentSmartAssessmentReport,
+  StudentSmartAssessmentResponse,
   StudentVideoLibrarySearchResponse,
 } from "./api";
 
@@ -32,6 +32,8 @@ const apiMocks = vi.hoisted(() => ({
   searchStudentVideoLibrary: vi.fn(),
   startStudentPosttest: vi.fn(),
   submitStudentPosttest: vi.fn(),
+  startStudentSmartAssessment: vi.fn(),
+  submitStudentSmartAssessment: vi.fn(),
   generatePosttestAiSummary: vi.fn(),
   explainPosttestMistakes: vi.fn(),
   streamStudentAssistantAsk: vi.fn(),
@@ -57,6 +59,8 @@ vi.mock("./api", () => ({
   searchStudentVideoLibrary: apiMocks.searchStudentVideoLibrary,
   startStudentPosttest: apiMocks.startStudentPosttest,
   submitStudentPosttest: apiMocks.submitStudentPosttest,
+  startStudentSmartAssessment: apiMocks.startStudentSmartAssessment,
+  submitStudentSmartAssessment: apiMocks.submitStudentSmartAssessment,
   generatePosttestAiSummary: apiMocks.generatePosttestAiSummary,
   explainPosttestMistakes: apiMocks.explainPosttestMistakes,
   streamStudentAssistantAsk: apiMocks.streamStudentAssistantAsk,
@@ -417,7 +421,7 @@ const videoLibraryResponse: StudentVideoLibrarySearchResponse = {
   ],
 };
 
-const posttestQuestions: PublicPosttestQuestion[] = [
+const posttestQuestions: PublicSmartAssessmentQuestion[] = [
   {
     id: "post-q-1",
     experiment_id: "EXP_19_1_01",
@@ -433,15 +437,54 @@ const posttestQuestions: PublicPosttestQuestion[] = [
   },
 ];
 
-const posttestResponse: StudentPosttestResponse = {
+const smartAssessmentStrategy = {
+  enabled: true,
+  question_count: 1,
+  untested_ratio_percent: 50,
+  weak_tendency_percent: 80,
+  max_questions_per_experiment: 2,
+  weak_curve: 2,
+  weak_max_bonus: 9,
+};
+
+const smartAssessmentComposition = {
+  total_questions: 1,
+  target_question_count: 1,
+  untested_question_count: 1,
+  measured_question_count: 0,
+  untested_ratio_percent: 50,
+  weak_tendency_percent: 80,
+  max_questions_per_experiment: 2,
+  warnings: {},
+};
+
+const posttestResponse: StudentSmartAssessmentResponse = {
   status: "in_progress",
   session_id: "posttest-session-e2e",
-  experiments: [{ id: "EXP_19_1_01", code: "19-1-01", title: "Halogen displacement", parent_code: "19-1", parent_title: "Experiment 19-1 Halogens" }],
+  strategy: smartAssessmentStrategy,
+  composition: smartAssessmentComposition,
+  experiments: [
+    {
+      id: "EXP_19_1_01",
+      code: "19-1-01",
+      title: "Halogen displacement",
+      parent_code: "19-1",
+      parent_title: "Experiment 19-1 Halogens",
+      mastery_score: 42,
+      evidence_count: 0,
+      source: "untested",
+      draw_tickets: null,
+      question_count: 1,
+      reason: "未测实验按老师设置的比例纳入",
+    },
+  ],
   questions: posttestQuestions,
 };
 
-const report: StudentPosttestReport = {
+const report: StudentSmartAssessmentReport = {
   session_id: "posttest-session-e2e",
+  strategy: smartAssessmentStrategy,
+  composition: smartAssessmentComposition,
   experiments: posttestResponse.experiments,
   correct_count: 1,
   total_count: 1,
@@ -464,7 +507,7 @@ const report: StudentPosttestReport = {
       explanation: "Bromine dissolves in CCl4 and appears orange.",
     },
   ],
-  next_recommendation: "Review halogen displacement.",
+  next_recommendation: "### Study summary\n\n- Review halogen displacement.",
 };
 
 function rootButton(root: string): HTMLButtonElement {
@@ -529,6 +572,8 @@ describe("student app route stack", () => {
     apiMocks.searchStudentVideoLibrary.mockResolvedValue(videoLibraryResponse);
     apiMocks.startStudentPosttest.mockResolvedValue(posttestResponse);
     apiMocks.submitStudentPosttest.mockResolvedValue({ status: "completed", report });
+    apiMocks.startStudentSmartAssessment.mockResolvedValue(posttestResponse);
+    apiMocks.submitStudentSmartAssessment.mockResolvedValue({ status: "completed", report });
     apiMocks.generatePosttestAiSummary.mockResolvedValue({ text: "### Study summary\n\n- Review **halogens**.", source: "ai", mode: "test", cached: true });
     apiMocks.explainPosttestMistakes.mockResolvedValue({ text: "### Mistake explanation\n\n- $\\ce{Br2}$ is orange.", source: "ai", mode: "test", cached: true });
     apiMocks.streamStudentAssistantAsk.mockImplementation(async (_payload, onEvent) => {
@@ -643,6 +688,33 @@ describe("student app route stack", () => {
         metadata: expect.objectContaining({ route: "feedback_new", from: "profile" }),
       }),
     );
+  });
+
+  it("starts a smart assessment directly from the assessment center and reports composition", async () => {
+    await renderAuthenticatedApp("/assessment");
+
+    await waitFor(() => expect(window.location.pathname).toBe("/assessment"));
+    expect(screen.getByText("随时开始智能测评")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "开始智能测评" }));
+    await waitFor(() => expect(apiMocks.startStudentSmartAssessment).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(window.location.pathname).toBe("/assessment/session/posttest-session-e2e"));
+    expectBottomNavHidden();
+    expect(screen.getByText("智能组卷")).toBeInTheDocument();
+    expect(screen.getByText("1 题未测实验")).toBeInTheDocument();
+    expect(screen.getByText("薄弱倾向 80%")).toBeInTheDocument();
+    expect(screen.getAllByText("Halogen displacement").length).toBeGreaterThan(0);
+
+    await submitVisibleAssessment();
+    await waitFor(() =>
+      expect(apiMocks.submitStudentSmartAssessment).toHaveBeenCalledWith("posttest-session-e2e", [
+        { question_id: "post-q-1", answer: "A" },
+      ]),
+    );
+    await waitFor(() => expect(window.location.pathname).toBe("/assessment/report/posttest-session-e2e"));
+    expect(screen.getByText("智能测评报告")).toBeInTheDocument();
+    expect(screen.getByText("目标占比 50%")).toBeInTheDocument();
+    expect(screen.getByText("薄弱倾向 80%")).toBeInTheDocument();
   });
 
   it("renders structured point detail content, related links, and the fixed test handoff", async () => {

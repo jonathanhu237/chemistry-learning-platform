@@ -18,8 +18,58 @@
   min-height: 92px;
 }
 
+.smart-assessment-section {
+  grid-column: 1 / -1;
+  min-height: 0;
+}
+
+.smart-settings-grid {
+  margin-top: 16px;
+}
+
 .settings-section .ant-form-item {
   margin: 16px 0 0;
+}
+
+.smart-curve-preview {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: rgba(246, 249, 247, 0.92);
+}
+
+.smart-curve-preview svg {
+  width: 100%;
+  height: 150px;
+}
+
+.smart-curve-preview line {
+  stroke: rgba(46, 91, 66, 0.26);
+  stroke-width: 2;
+}
+
+.smart-curve-preview polyline {
+  fill: none;
+  stroke: #0f7b4f;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.smart-curve-preview circle {
+  fill: #ffffff;
+  stroke: #0f7b4f;
+  stroke-width: 3;
+}
+
+.smart-curve-axis {
+  display: flex;
+  justify-content: space-between;
+  color: var(--sysu-muted);
+  font-size: 12px;
 }
 
 .settings-ai-config-card {
