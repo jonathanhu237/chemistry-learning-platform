@@ -103,6 +103,99 @@ export type CatalogPointJobState = {
   recent_jobs: CatalogPointJob[];
 };
 
+export type CatalogStaticEvidenceBinding = {
+  binding_id: string;
+  chunk_id: string;
+  evidence_role: string;
+  selection_status: string;
+  freshness_status: string;
+  rank: number;
+  score?: number | null;
+  rerank_score?: number | null;
+  source_title?: string | null;
+  source_file?: string | null;
+  document_id?: string | null;
+  document_kind?: string | null;
+  document_type?: string | null;
+  page_number?: number | string | null;
+  section_title?: string | null;
+  chunk_index?: number | null;
+  text_preview?: string | null;
+  content_type?: string | null;
+  source_metadata?: Record<string, unknown>;
+  diagnostics?: Record<string, unknown>;
+  updated_at?: string | null;
+};
+
+export type CatalogStaticEvidencePayload = {
+  node_id: string;
+  status: "missing_fallback_evidence" | "stale_fallback_evidence" | "available_static_fallback" | string;
+  state: CatalogPointEvidenceState;
+  bindings: CatalogStaticEvidenceBinding[];
+  selected_chunk_ids: string[];
+  binding_count: number;
+  static_fallback_available: boolean;
+  static_fallback_missing: boolean;
+  dynamic_rag_primary: boolean;
+  ai_consumable_without_static_binding: boolean;
+  message: string;
+};
+
+export type CatalogPointAiContext = {
+  teacher_only: true;
+  node_id: string;
+  point_title: string;
+  catalog_path: CatalogBreadcrumb[];
+  catalog_path_text: string;
+  publication_state: Record<string, unknown>;
+  student_facing_content: {
+    principle_mode: CatalogPrincipleMode | string;
+    principle_text?: string | null;
+    principle_equation?: string | null;
+    reaction_equations?: CatalogReactionEquationNormalized[];
+    phenomenon_explanation?: string | null;
+    safety_note?: string | null;
+  };
+  teacher_only_notes: {
+    node_teacher_note?: string | null;
+    point_teacher_note?: string | null;
+  };
+  related_points: CatalogRelatedLink[];
+  videos: Array<Record<string, unknown>>;
+  content_freshness: Record<string, unknown>;
+  static_evidence: CatalogStaticEvidencePayload;
+  dynamic_rag: {
+    primary_path: boolean;
+    probe_available: boolean;
+    runtime_health: Record<string, unknown>;
+    note: string;
+  };
+  job_state: CatalogPointJobState;
+};
+
+export type CatalogPointRagProbe = {
+  ok: boolean;
+  node_id: string;
+  failed_stage?: string | null;
+  reason?: string | null;
+  runtime_health: Record<string, unknown>;
+  generated_queries: string[];
+  query_strategy: {
+    status?: string;
+    provider?: string;
+    generated_queries?: string[];
+    fields_used?: string[];
+    fallback_reason?: string | null;
+    field_policy?: string[];
+  };
+  recall_source?: string | null;
+  candidate_counts: Record<string, number>;
+  final_evidence: Array<Record<string, unknown>>;
+  rerank_scores: Array<Record<string, unknown>>;
+  fallbacks: Array<Record<string, unknown>>;
+  trace: Record<string, unknown>;
+};
+
 export type CatalogReactionEquationInput = {
   raw_text: string;
   row_order?: number | null;
@@ -368,6 +461,14 @@ export function getCatalogPointJobState(nodeId: string): Promise<CatalogPointJob
 
 export function triggerCatalogPointJob(nodeId: string, action: CatalogPointJobAction): Promise<CatalogPointJobState> {
   return postJson<CatalogPointJobState>(`/api/admin/catalog/nodes/${encodeURIComponent(nodeId)}/jobs/${action}`, {});
+}
+
+export function getCatalogPointAiContext(nodeId: string): Promise<CatalogPointAiContext> {
+  return api<CatalogPointAiContext>(`/api/admin/catalog/nodes/${encodeURIComponent(nodeId)}/ai-context`);
+}
+
+export function runCatalogPointRagProbe(nodeId: string): Promise<CatalogPointRagProbe> {
+  return postJson<CatalogPointRagProbe>(`/api/admin/catalog/nodes/${encodeURIComponent(nodeId)}/rag-probe`, {});
 }
 
 export function searchCatalogNodes(query: string, chapterId?: string | null, limit = 80): Promise<CatalogSearchResponse> {

@@ -5,6 +5,7 @@ import { FlaskConical, Folder } from "lucide-react";
 import type { CatalogNodeCard, CatalogNodeDetail, CatalogNodeKind } from "../../api/catalogTree";
 import { QueryState } from "../../components/QueryState";
 import { CatalogAdvancedPanel } from "./CatalogAdvancedPanel";
+import { CatalogAiContextPanel } from "./CatalogAiContextPanel";
 import { CatalogEditorHeader } from "./CatalogEditorHeader";
 import { CatalogNodeContentPanel } from "./CatalogNodeContentPanel";
 import { CatalogPublishChecksPanel } from "./CatalogPublishChecksPanel";
@@ -27,7 +28,7 @@ import {
 const { Text, Title } = Typography;
 
 export const directoryCatalogEditorTabKeys = ["content", "student-card", "publish", "advanced"] as const;
-export const pointCatalogEditorTabKeys = ["content", "video", "related", "student-card", "publish", "advanced"] as const;
+export const pointCatalogEditorTabKeys = ["content", "video", "related", "student-card", "ai-context", "publish", "advanced"] as const;
 
 export type CatalogEditorTabKey = (typeof pointCatalogEditorTabKeys)[number];
 
@@ -83,7 +84,7 @@ export function CatalogTreeEditor({
   }, [detail, linksForm, nodeForm, pointForm]);
 
   useEffect(() => {
-    if (!pointCapable && (activeTab === "video" || activeTab === "related")) {
+    if (!pointCapable && (activeTab === "video" || activeTab === "related" || activeTab === "ai-context")) {
       setActiveTab("content");
     }
   }, [activeTab, pointCapable]);
@@ -193,6 +194,12 @@ export function CatalogTreeEditor({
       label: "学生卡片",
       forceRender: true,
       children: <CatalogStudentCardPanel detail={detail} nodeForm={nodeForm} mutations={mutations} />,
+    },
+    {
+      key: "ai-context",
+      label: "AI Context",
+      forceRender: true,
+      children: <CatalogAiContextPanel detail={detail} mutations={mutations} />,
     },
     {
       key: "publish",

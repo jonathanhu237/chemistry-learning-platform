@@ -51,6 +51,10 @@ from server.app.domains.assistant.rag_sources import (
     _source_from_chunk,
     source_to_dict,
 )
+from server.app.domains.catalog_tree.ai_context import (
+    catalog_point_static_evidence_package,
+    hydrate_static_evidence_sources,
+)
 
 
 def _experiment_title(experiment: dict[str, Any] | None) -> str:
@@ -155,7 +159,96 @@ def _point_source_payloads(
     return payloads
 
 
+def _catalog_node_source_payloads(sources: list[RagSource], role_by_chunk_id: dict[str, str]) -> list[dict[str, Any]]:
+    payloads: list[dict[str, Any]] = []
+    for source in sources:
+        payload = _source_evidence_payload(source)
+        payload["evidence_kind"] = role_by_chunk_id.get(source.chunk_id, "supplemental")
+        payload["source_boundary"] = "catalog_node_static_evidence"
+        payloads.append(payload)
+    return payloads
+
+
+def _build_catalog_node_evidence_package(context: AgentRunContext) -> bool:
+    point_node_id = str(context.request.point_node_id or "").strip()
+    if not point_node_id:
+        return False
+    try:
+        package = catalog_point_static_evidence_package(point_node_id=point_node_id)
+    except Exception as exc:
+        package = {
+            "enabled": True,
+            "evidence_source": "catalog_node_static_evidence",
+            "static_evidence_role": "fallback_or_supplemental",
+            "point_node_id": point_node_id,
+            "chunk_ids": [],
+            "chunk_roles": {},
+            "static_fallback_missing": True,
+            "static_evidence_status": "missing_fallback_evidence",
+            "source_count": 0,
+            "bindings": [],
+            "dynamic_rag_available": bool(context.request.allow_rag_lookup),
+            "message": "Static catalog-node evidence lookup failed; dynamic RAG may still run when allowed.",
+            "lookup_error": f"{exc.__class__.__name__}: {str(exc)[:240]}",
+        }
+    if not package:
+        context.point_evidence = {
+            "enabled": True,
+            "evidence_source": "catalog_node_static_evidence",
+            "static_evidence_role": "fallback_or_supplemental",
+            "point_node_id": point_node_id,
+            "chunk_ids": [],
+            "sources": [],
+            "source_count": 0,
+            "static_fallback_missing": True,
+            "static_evidence_status": "missing_fallback_evidence",
+            "dynamic_rag_available": bool(context.request.allow_rag_lookup),
+        }
+        return True
+
+    chunk_ids = _unique_texts(list(package.get("chunk_ids") or []))
+    role_by_chunk_id = {
+        str(key): str(value or "supplemental")
+        for key, value in (package.get("chunk_roles") or {}).items()
+    }
+    fixed_sources, missing_chunk_ids = hydrate_static_evidence_sources(context.repositories, chunk_ids=chunk_ids)
+    if fixed_sources:
+        context.sources = _merge_sources(fixed_sources, context.sources)
+    source_payloads = _catalog_node_source_payloads(fixed_sources[:10], role_by_chunk_id)
+    context.point_evidence = {
+        **package,
+        "chunk_ids": chunk_ids,
+        "missing_chunk_ids": missing_chunk_ids,
+        "sources": source_payloads,
+        "source_count": len(fixed_sources),
+        "static_source_count": len(fixed_sources),
+        "supplemental_dynamic_rag_allowed": bool(context.request.allow_rag_lookup),
+    }
+    if package.get("static_fallback_missing"):
+        context.add_guardrail(
+            "catalog_node_static_evidence_missing",
+            "use_dynamic_rag_when_available",
+            "catalog-node static fallback evidence is absent; keep structured point context and allow supplemental dynamic RAG when policy permits",
+        )
+    elif fixed_sources:
+        context.add_guardrail(
+            "catalog_node_static_evidence_loaded",
+            "use_static_then_dynamic",
+            "catalog-node static evidence loaded as fallback or supplemental evidence",
+        )
+    else:
+        context.add_guardrail(
+            "catalog_node_static_evidence_unhydrated",
+            "use_dynamic_rag_when_available",
+            "catalog-node evidence bindings exist but source_chunks did not hydrate any static evidence",
+        )
+    return True
+
+
 def _build_point_evidence_package(context: AgentRunContext) -> None:
+    if _build_catalog_node_evidence_package(context):
+        return
+
     point_context = _resolve_point_context(context)
     if not point_context:
         context.point_evidence = {}

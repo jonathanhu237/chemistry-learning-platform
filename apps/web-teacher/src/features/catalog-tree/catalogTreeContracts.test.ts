@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import catalogTreeApiSource from "../../api/catalogTree.ts?raw";
 import advancedPanelSource from "./CatalogAdvancedPanel.tsx?raw";
+import aiContextPanelSource from "./CatalogAiContextPanel.tsx?raw";
 import editorHeaderSource from "./CatalogEditorHeader.tsx?raw";
 import contentPanelSource from "./CatalogNodeContentPanel.tsx?raw";
 import editorSource from "./CatalogTreeEditor.tsx?raw";
@@ -21,8 +22,14 @@ describe("catalog tree UI contracts", () => {
     expect(editorSource).toContain('key: "video"');
     expect(editorSource).toContain('key: "related"');
     expect(editorSource).toContain('key: "student-card"');
+    expect(editorSource).toContain('key: "ai-context"');
     expect(editorSource).toContain('key: "publish"');
     expect(editorSource).toContain('key: "advanced"');
+    expect(aiContextPanelSource).toContain("Static fallback evidence");
+    expect(aiContextPanelSource).toContain("Dynamic RAG probe");
+    expect(aiContextPanelSource).toContain("Teacher-only teaching notes");
+    expect(catalogTreeApiSource).toContain("getCatalogPointAiContext");
+    expect(catalogTreeApiSource).toContain("runCatalogPointRagProbe");
     expect(contentPanelSource).toContain('name="point_title"');
     expect(contentPanelSource).toContain('name="teacher_note"');
     expect(contentPanelSource).toContain('label="教学备注"');
@@ -135,7 +142,7 @@ describe("catalog tree UI contracts", () => {
 
   it("gates directory-only editor queries and tabs", () => {
     expect(editorSource).toContain('["content", "student-card", "publish", "advanced"]');
-    expect(editorSource).toContain('["content", "video", "related", "student-card", "publish", "advanced"]');
+    expect(editorSource).toContain('["content", "video", "related", "student-card", "ai-context", "publish", "advanced"]');
     expect(editorSource).toContain("useCatalogMediaAssets(pointCapable)");
     expect(editorSource).toContain("pointCapable && relatedQuery.trim().length >= 2");
   });

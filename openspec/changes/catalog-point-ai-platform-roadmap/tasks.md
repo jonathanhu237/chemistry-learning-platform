@@ -75,18 +75,18 @@
 
 ## 6. Point AI Context Workbench
 
-- [ ] 6.1 Add backend API to return teacher-only AI context summary for a selected catalog point.
-- [ ] 6.2 Include node id, full catalog path, point title, normalized equations, phenomenon explanation, safety note, related points, videos, publication state, and content freshness in the context summary.
-- [ ] 6.3 Add static catalog-node evidence binding lookup and display payload with chunk ids, source metadata, roles, review/selection status, and freshness.
-- [ ] 6.4 Mark missing static evidence as missing fallback evidence rather than "not AI-consumable".
-- [ ] 6.5 Add dynamic RAG probe API that generates point-context queries and returns recall/rerank diagnostics.
-- [ ] 6.6 Show generated query variants, fallback query reasons, candidate counts, final evidence, rerank scores, and runtime health in teacher diagnostics.
-- [ ] 6.7 Add teacher UI tab/panel for AI context in the catalog point workbench.
-- [ ] 6.8 Show ES and RAG job state with refresh/retry actions where allowed.
-- [ ] 6.9 Ensure static evidence, dynamic RAG evidence, student-facing content, and teacher-only teaching notes are visually separated.
-- [ ] 6.10 Ensure student APIs and pages do not expose chunk ids, rerank scores, generated queries, job payloads, or teacher-only diagnostics.
-- [ ] 6.11 Align learning-assistant point context diagnostics with the same fixed/static evidence versus supplemental dynamic RAG distinction.
-- [ ] 6.12 Add tests for missing binding, stale binding, successful RAG probe, RAG failure, student non-leakage, and teacher UI rendering.
+- [x] 6.1 Add backend API to return teacher-only AI context summary for a selected catalog point.
+- [x] 6.2 Include node id, full catalog path, point title, normalized equations, phenomenon explanation, safety note, related points, videos, publication state, and content freshness in the context summary.
+- [x] 6.3 Add static catalog-node evidence binding lookup and display payload with chunk ids, source metadata, roles, review/selection status, and freshness.
+- [x] 6.4 Mark missing static evidence as missing fallback evidence rather than "not AI-consumable".
+- [x] 6.5 Add dynamic RAG probe API that generates point-context queries and returns recall/rerank diagnostics.
+- [x] 6.6 Show generated query variants, fallback query reasons, candidate counts, final evidence, rerank scores, and runtime health in teacher diagnostics.
+- [x] 6.7 Add teacher UI tab/panel for AI context in the catalog point workbench.
+- [x] 6.8 Show ES and RAG job state with refresh/retry actions where allowed.
+- [x] 6.9 Ensure static evidence, dynamic RAG evidence, student-facing content, and teacher-only teaching notes are visually separated.
+- [x] 6.10 Ensure student APIs and pages do not expose chunk ids, rerank scores, generated queries, job payloads, or teacher-only diagnostics.
+- [x] 6.11 Align learning-assistant point context diagnostics with the same fixed/static evidence versus supplemental dynamic RAG distinction.
+- [x] 6.12 Add tests for missing binding, stale binding, successful RAG probe, RAG failure, student non-leakage, and teacher UI rendering.
 
 ## 7. Question Bank Reset And Generation Gate
 

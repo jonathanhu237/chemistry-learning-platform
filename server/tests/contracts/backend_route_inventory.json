@@ -135,6 +135,18 @@
       "owner": "admin-api"
     },
     {
+      "method": "GET",
+      "path": "/api/admin/catalog/nodes/{node_id}/ai-context",
+      "name": "admin_catalog_point_ai_context",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/rag-probe",
+      "name": "admin_catalog_point_rag_probe",
+      "owner": "admin-api"
+    },
+    {
       "method": "POST",
       "path": "/api/admin/catalog/nodes/{node_id}/jobs/{action}",
       "name": "admin_catalog_trigger_point_job",

@@ -7,11 +7,13 @@ import {
   changeCatalogPointContentPublication,
   createCatalogNode,
   getCatalogNode,
+  getCatalogPointAiContext,
   listCatalogCandidateMedia,
   listCatalogChildren,
   listCatalogRoots,
   moveCatalogNode,
   reorderCatalogNodes,
+  runCatalogPointRagProbe,
   saveCatalogPointContent,
   saveCatalogRelatedLinks,
   searchCatalogNodes,
@@ -24,6 +26,7 @@ import type {
   CatalogNodeDetail,
   CatalogNodeMovePayload,
   CatalogPointJobAction,
+  CatalogPointRagProbe,
   CatalogNodeUpdatePayload,
   CatalogPointContentPayload,
   CatalogRelatedLinksPayload,
@@ -79,6 +82,14 @@ export function useCatalogValidation(nodeId?: string, includeSubtree = false) {
     queryKey: ["catalog-validation", nodeId, includeSubtree],
     queryFn: () => validateCatalogNode(nodeId || "", includeSubtree),
     enabled: Boolean(nodeId),
+  });
+}
+
+export function useCatalogPointAiContext(nodeId?: string, enabled = true) {
+  return useQuery({
+    queryKey: ["catalog-point-ai-context", nodeId],
+    queryFn: () => getCatalogPointAiContext(nodeId || ""),
+    enabled: Boolean(nodeId) && enabled,
   });
 }
 
@@ -242,11 +253,17 @@ export function useCatalogMutations(message: MessageApi) {
       void queryClient.invalidateQueries({ queryKey: ["catalog-node", variables.nodeId] });
       void queryClient.invalidateQueries({ queryKey: ["catalog-validation", variables.nodeId] });
       void queryClient.invalidateQueries({ queryKey: ["catalog-search"] });
+      void queryClient.invalidateQueries({ queryKey: ["catalog-point-ai-context", variables.nodeId] });
       if (state.es_state?.sync_status === "synced") {
         void queryClient.invalidateQueries({ queryKey: ["catalog-roots"] });
         void queryClient.invalidateQueries({ queryKey: ["catalog-children"] });
       }
     },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const runRagProbe = useMutation<CatalogPointRagProbe, unknown, { nodeId: string }>({
+    mutationFn: ({ nodeId }) => runCatalogPointRagProbe(nodeId),
     onError: (error) => message.error(errorMessage(error)),
   });
 
@@ -262,6 +279,7 @@ export function useCatalogMutations(message: MessageApi) {
     bindMedia,
     changeMediaStatus,
     triggerPointJob,
+    runRagProbe,
   };
 }
 

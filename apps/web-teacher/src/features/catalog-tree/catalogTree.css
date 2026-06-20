@@ -1081,6 +1081,68 @@
   background: var(--sysu-panel);
 }
 
+.catalog-ai-context-panel,
+.catalog-ai-band,
+.catalog-ai-probe-result,
+.catalog-ai-evidence-list {
+  display: grid;
+  gap: 12px;
+}
+
+.catalog-ai-band {
+  padding: 12px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: var(--sysu-panel);
+}
+
+.catalog-ai-equations,
+.catalog-ai-split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.catalog-ai-split > section {
+  min-width: 260px;
+  flex: 1 1 320px;
+}
+
+.catalog-ai-evidence-row,
+.catalog-ai-probe-evidence {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: #fbfdfc;
+  min-width: 0;
+}
+
+.catalog-ai-evidence-row {
+  grid-template-columns: minmax(220px, 1.1fr) auto minmax(120px, 0.45fr) minmax(220px, 1fr);
+  align-items: start;
+}
+
+.catalog-ai-evidence-row p,
+.catalog-ai-probe-evidence p,
+.catalog-ai-probe-result li {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.catalog-ai-evidence-row small {
+  color: var(--sysu-muted);
+}
+
+.catalog-ai-score-grid {
+  display: grid;
+  gap: 4px;
+  color: var(--sysu-muted);
+  font-size: 12px;
+}
+
 .catalog-validation-node-list > div {
   display: grid;
   gap: 4px;
@@ -1101,7 +1163,8 @@
   .catalog-form-grid,
   .catalog-media-bind-toolbar,
   .catalog-media-row,
-  .catalog-related-row {
+  .catalog-related-row,
+  .catalog-ai-evidence-row {
     grid-template-columns: 1fr;
   }
 

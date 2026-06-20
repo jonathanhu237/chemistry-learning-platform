@@ -19,6 +19,7 @@ from server.app.catalog_tree_schemas import (
     CatalogPointRelatedLinksRequest,
 )
 from server.app.domains.catalog_tree.equations import normalize_reaction_equations
+from server.app.domains.catalog_tree.ai_context import catalog_point_ai_context, catalog_point_rag_probe
 from server.app.domains.catalog_tree.jobs import catalog_point_job_state, trigger_catalog_point_job
 from server.app.domains.catalog_tree.tree import (
     bind_existing_media,
@@ -185,6 +186,22 @@ async def admin_catalog_point_job_state(
     user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     return catalog_point_job_state(node_id=node_id)
+
+
+@router.get("/nodes/{node_id}/ai-context")
+async def admin_catalog_point_ai_context(
+    node_id: str = Path(min_length=1),
+    user: AuthUser = Depends(require_teacher_console_user),
+) -> dict[str, Any]:
+    return catalog_point_ai_context(node_id=node_id)
+
+
+@router.post("/nodes/{node_id}/rag-probe")
+async def admin_catalog_point_rag_probe(
+    node_id: str = Path(min_length=1),
+    user: AuthUser = Depends(require_teacher_console_user),
+) -> dict[str, Any]:
+    return catalog_point_rag_probe(node_id=node_id)
 
 
 @router.post("/nodes/{node_id}/jobs/{action}")
