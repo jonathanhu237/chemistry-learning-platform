@@ -15,18 +15,18 @@
 
 ## 2. Teacher Catalog Editor Continuity
 
-- [ ] 2.1 Audit the current `web-teacher` catalog editor against the title-card, tabbed workbench, and modern tree behavior requirements.
-- [ ] 2.2 Move chapter switching into the chapter/title area and remove any redundant left-sidebar chapter dropdown.
-- [ ] 2.3 Ensure chapter switching refreshes tree, selection, validation summary, and right workspace without stale actionable node details.
-- [ ] 2.4 Verify directory and point title cards show identity, path/status summary, and actions without duplicated label-style tags.
-- [ ] 2.5 Polish the no-selection empty state so it visually belongs to the current workbench surface.
-- [ ] 2.6 Ensure point and directory panels remain inside a coherent tabbed workbench below the title card.
-- [ ] 2.7 Verify drag preview, drop hover feedback, invalid-drop feedback, and collapse/expand behavior for tree moves.
-- [ ] 2.8 Ensure hovering over a collapsed directory during drag can expand the target without losing drop intent.
-- [ ] 2.9 Ensure successful move/reorder operations refresh or patch local tree state and keep the moved node visible when possible.
-- [ ] 2.10 Fix tree connector geometry so first-level and deeper rows use short aligned horizontal branches without overlapping expand controls.
-- [ ] 2.11 Rename overlapping management-summary/teacher-note concepts to one teacher-only teaching note across create and edit flows.
-- [ ] 2.12 Add component/unit tests and Playwright screenshots for chapter switching, drag/drop, connector geometry, empty state, and teaching-note wording.
+- [x] 2.1 Audit the current `web-teacher` catalog editor against the title-card, tabbed workbench, and modern tree behavior requirements.
+- [x] 2.2 Move chapter switching into the chapter/title area and remove any redundant left-sidebar chapter dropdown.
+- [x] 2.3 Ensure chapter switching refreshes tree, selection, validation summary, and right workspace without stale actionable node details.
+- [x] 2.4 Verify directory and point title cards show identity, path/status summary, and actions without duplicated label-style tags.
+- [x] 2.5 Polish the no-selection empty state so it visually belongs to the current workbench surface.
+- [x] 2.6 Ensure point and directory panels remain inside a coherent tabbed workbench below the title card.
+- [x] 2.7 Verify drag preview, drop hover feedback, invalid-drop feedback, and collapse/expand behavior for tree moves.
+- [x] 2.8 Ensure hovering over a collapsed directory during drag can expand the target without losing drop intent.
+- [x] 2.9 Ensure successful move/reorder operations refresh or patch local tree state and keep the moved node visible when possible.
+- [x] 2.10 Fix tree connector geometry so first-level and deeper rows use short aligned horizontal branches without overlapping expand controls.
+- [x] 2.11 Rename overlapping management-summary/teacher-note concepts to one teacher-only teaching note across create and edit flows.
+- [x] 2.12 Add component/unit tests and Playwright screenshots for chapter switching, drag/drop, connector geometry, empty state, and teaching-note wording.
 
 ## 3. Web Console Role Boundaries
 

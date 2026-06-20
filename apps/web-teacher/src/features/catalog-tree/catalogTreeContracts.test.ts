@@ -43,6 +43,17 @@ describe("catalog tree UI contracts", () => {
     );
   });
 
+  it("keeps chapter switching in the heading and resets stale node detail on chapter change", () => {
+    expect(workspaceSource).toContain('className="catalog-chapter-switcher"');
+    expect(workspaceSource).toContain("setSelectedNodeId(null);");
+    expect(workspaceSource).toContain("}, [chapterId]);");
+    expect(workspaceSource).not.toContain("chapter-select");
+    expect(workspaceSource).not.toMatch(/import\s*\{[^}]*\bSelect\b[^}]*\}\s*from\s*"antd"/);
+    expect(editorSource).toContain("catalog-editor-empty-state");
+    expect(editorSource).toContain("<CatalogEditorHeader");
+    expect(editorSource).toContain('className="catalog-editor-tabs"');
+  });
+
   it("keeps operational/debug fields out of default content panels", () => {
     expect(contentPanelSource).not.toContain("Node ID");
     expect(contentPanelSource).not.toContain("search_preview");
