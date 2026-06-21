@@ -1136,3 +1136,548 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+.ai-es-card .ant-card-body {
+  padding: 18px;
+}
+
+.ai-es-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 16px;
+}
+
+.ai-es-health-panel,
+.ai-es-query-panel {
+  min-width: 0;
+}
+
+.ai-es-field-grid,
+.ai-es-dictionary-grid,
+.ai-es-term-groups,
+.ai-es-route-list,
+.ai-es-results {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ai-es-field-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.ai-es-dictionary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.ai-es-dictionary-grid > div,
+.ai-es-term-groups > div,
+.ai-es-route-list > div,
+.ai-es-result-item {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: var(--sysu-panel);
+}
+
+.ai-es-dictionary-grid span,
+.ai-es-term-groups span,
+.ai-es-route-list span,
+.ai-es-result-item span {
+  display: block;
+  color: var(--sysu-muted);
+  font-size: 12px;
+}
+
+.ai-es-dictionary-grid strong,
+.ai-es-route-list strong,
+.ai-es-result-item strong {
+  display: block;
+  overflow: hidden;
+  color: var(--sysu-text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-es-term-groups > div {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  align-items: start;
+}
+
+.ai-es-result-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.ai-es-result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.ai-es-search-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 1100px) {
+  .ai-es-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-es-result-item {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-es-result-meta {
+    justify-content: flex-start;
+  }
+}
+
+.ai-monitor-page {
+  min-width: 0;
+}
+
+.ai-monitor-console {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.ai-monitor-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 20px rgba(13, 31, 23, 0.04);
+  backdrop-filter: blur(12px);
+}
+
+.ai-monitor-tab {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--sysu-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ai-monitor-tab:hover,
+.ai-monitor-tab:focus-visible {
+  background: #f0f6f2;
+  color: var(--sysu-primary);
+  outline: none;
+}
+
+.ai-monitor-tab-active {
+  background: #e5f1ea;
+  color: var(--sysu-primary);
+}
+
+.ai-monitor-overview,
+.ai-monitor-module {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.ai-monitor-overview-head,
+.ai-monitor-module-head,
+.ai-monitor-section-title {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ai-monitor-overview-head h2,
+.ai-monitor-section-title h3,
+.ai-monitor-workbench-panel h3,
+.ai-monitor-subpanel h3 {
+  margin: 0;
+  color: var(--sysu-ink);
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.ai-monitor-module-head h3 {
+  margin: 2px 0 4px;
+  color: var(--sysu-ink);
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.ai-monitor-module-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ai-monitor-health-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ai-monitor-health-tile,
+.ai-monitor-attention-item,
+.ai-monitor-top-result {
+  min-width: 0;
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ai-monitor-health-tile:hover,
+.ai-monitor-attention-item:hover,
+.ai-monitor-top-result:hover {
+  border-color: rgba(0, 88, 38, 0.28);
+  background: #f8fbf8;
+}
+
+.ai-monitor-health-tile span,
+.ai-monitor-attention-item span,
+.ai-monitor-top-result span,
+.ai-monitor-metric-tile span,
+.ai-monitor-long-value span,
+.ai-monitor-dictionary-list span {
+  display: block;
+  overflow: hidden;
+  color: var(--sysu-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-monitor-health-tile strong,
+.ai-monitor-attention-item strong,
+.ai-monitor-top-result strong,
+.ai-monitor-metric-tile strong,
+.ai-monitor-long-value strong,
+.ai-monitor-dictionary-list strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: var(--sysu-ink);
+  font-size: 15px;
+  font-weight: 850;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-monitor-health-tile em,
+.ai-monitor-health-tile small,
+.ai-monitor-metric-tile small,
+.ai-monitor-long-value .ant-typography {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: var(--sysu-muted);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-monitor-tone-good {
+  border-color: rgba(0, 88, 38, 0.18);
+  background: #f7fbf8;
+}
+
+.ai-monitor-tone-warn,
+.ai-monitor-tone-legacy {
+  border-color: rgba(184, 137, 47, 0.26);
+  background: #fffaf0;
+}
+
+.ai-monitor-tone-bad {
+  border-color: rgba(180, 35, 24, 0.24);
+  background: #fff7f6;
+}
+
+.ai-monitor-tone-idle,
+.ai-monitor-tone-muted {
+  background: #fafafa;
+}
+
+.ai-monitor-overview-grid,
+.ai-monitor-two-column {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: 14px;
+}
+
+.ai-monitor-attention-panel,
+.ai-monitor-quick-diagnosis,
+.ai-monitor-subpanel,
+.ai-monitor-workbench-panel {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: var(--sysu-panel);
+}
+
+.ai-monitor-attention-list,
+.ai-monitor-result-list,
+.ai-monitor-route-list,
+.ai-monitor-term-list,
+.ai-monitor-dictionary-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ai-monitor-quick-diagnosis .ant-input-search {
+  margin-top: 10px;
+}
+
+.ai-monitor-quiet-state,
+.ai-monitor-empty-note {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px dashed var(--sysu-line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--sysu-muted);
+}
+
+.ai-monitor-top-result {
+  margin-top: 10px;
+}
+
+.ai-monitor-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ai-monitor-metric-grid-compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ai-monitor-metric-tile,
+.ai-monitor-long-value,
+.ai-monitor-dictionary-list > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.ai-monitor-note-row,
+.ai-monitor-tag-list {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-monitor-tag-list .ant-tag {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-monitor-alert {
+  margin: 0;
+}
+
+.ai-monitor-workbench-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(240px, 0.9fr) minmax(300px, 1.3fr);
+  gap: 14px;
+}
+
+.ai-monitor-search-row {
+  max-width: 720px;
+}
+
+.ai-monitor-term-row,
+.ai-monitor-route-row {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.ai-monitor-term-row {
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: start;
+}
+
+.ai-monitor-term-row > span,
+.ai-monitor-route-row span {
+  color: var(--sysu-muted);
+  font-size: 12px;
+}
+
+.ai-monitor-route-row strong {
+  overflow: hidden;
+  color: var(--sysu-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-monitor-result-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.ai-monitor-result-rank {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #e5f1ea;
+  color: var(--sysu-primary);
+  font-weight: 850;
+}
+
+.ai-monitor-result-main {
+  min-width: 0;
+}
+
+.ai-monitor-result-main strong {
+  display: block;
+  overflow: hidden;
+  color: var(--sysu-ink);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-monitor-result-main > span {
+  display: block;
+  overflow: hidden;
+  margin: 3px 0 8px;
+  color: var(--sysu-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-monitor-raw-collapse {
+  border-radius: 8px;
+}
+
+.ai-monitor-policy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.ai-monitor-policy-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.ai-monitor-policy-grid strong {
+  color: var(--sysu-ink);
+}
+
+.ai-monitor-local-state {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+}
+
+@media (max-width: 1360px) {
+  .ai-monitor-health-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ai-monitor-workbench-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1100px) {
+  .ai-monitor-overview-grid,
+  .ai-monitor-two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-monitor-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .ai-monitor-overview,
+  .ai-monitor-module {
+    padding: 14px;
+  }
+
+  .ai-monitor-overview-head,
+  .ai-monitor-module-head,
+  .ai-monitor-section-title {
+    display: grid;
+  }
+
+  .ai-monitor-module-actions {
+    justify-content: flex-start;
+  }
+
+  .ai-monitor-health-strip,
+  .ai-monitor-metric-grid,
+  .ai-monitor-metric-grid-compact {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-monitor-term-row {
+    grid-template-columns: 1fr;
+  }
+}
