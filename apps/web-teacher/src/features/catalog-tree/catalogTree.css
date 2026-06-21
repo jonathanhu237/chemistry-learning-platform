@@ -1948,11 +1948,11 @@
 
 .catalog-video-current {
   display: grid;
-  grid-template-columns: minmax(280px, 42%) minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(360px, 52%) minmax(260px, 1fr);
+  gap: 22px;
   align-items: stretch;
   width: 100%;
-  padding: 16px;
+  padding: 18px;
   border: 1px solid var(--sysu-line);
   border-radius: 8px;
   background: var(--sysu-panel);
@@ -2024,9 +2024,9 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 4px 2px;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 2px;
 }
 
 .catalog-video-current-main .ant-typography,
@@ -2039,8 +2039,8 @@
 .catalog-video-current-main strong {
   display: -webkit-box;
   overflow: hidden;
-  font-size: 20px;
-  line-height: 28px;
+  font-size: 21px;
+  line-height: 30px;
   white-space: normal;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -2064,6 +2064,44 @@
 
 .catalog-video-current-actions {
   justify-content: flex-start;
+  gap: 10px;
+  width: fit-content;
+  padding: 6px;
+  border: 1px solid rgba(0, 105, 55, 0.08);
+  border-radius: 8px;
+  background: rgba(0, 105, 55, 0.035);
+}
+
+.catalog-video-current-actions .catalog-video-card-action.ant-btn {
+  min-width: 88px;
+  height: 38px;
+  padding: 0 15px;
+  border-color: rgba(18, 79, 58, 0.14);
+  border-radius: 7px;
+  color: var(--sysu-ink);
+  font-weight: 700;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.catalog-video-current-actions .catalog-video-card-action.ant-btn:hover,
+.catalog-video-current-actions .catalog-video-card-action.ant-btn:focus-visible {
+  border-color: rgba(0, 105, 55, 0.3);
+  color: var(--sysu-primary);
+  background: #f7fbf8;
+}
+
+.catalog-video-current-actions .catalog-video-card-action.is-danger.ant-btn {
+  border-color: rgba(180, 35, 24, 0.16);
+  color: #b42318;
+  background: #fffafa;
+}
+
+.catalog-video-current-actions .catalog-video-card-action.is-danger.ant-btn:hover,
+.catalog-video-current-actions .catalog-video-card-action.is-danger.ant-btn:focus-visible {
+  border-color: rgba(180, 35, 24, 0.34);
+  color: #9f1f15;
+  background: #fff4f2;
 }
 
 .catalog-video-preview-player {
