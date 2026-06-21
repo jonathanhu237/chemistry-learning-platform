@@ -22,12 +22,19 @@ export type MediaAsset = {
   video_codec?: string | null;
   audio_codec?: string | null;
   upload_status: string;
+  lifecycle_status?: "active" | "archived" | "tombstoned" | string;
+  archived_at?: string | null;
+  archived_by?: string | null;
+  archive_reason?: string | null;
+  archive_metadata?: Record<string, unknown>;
   processing_phase?: string | null;
   processing_progress?: number | null;
   error_reason?: string | null;
   created_at?: string;
   updated_at?: string;
   association_count?: number;
+  legacy_association_count?: number;
+  catalog_binding_count?: number;
   file_state?: "available" | "partial" | "missing" | "pending" | "untracked" | string;
   primary_file_available?: boolean;
   existing_file_count?: number;
@@ -87,6 +94,51 @@ export type MediaDuplicatePrecheck = {
   asset?: MediaAsset | null;
 };
 
+export type MediaArchiveCatalogBinding = {
+  binding_id: string;
+  placement_node_id?: string | null;
+  canonical_point_id?: string | null;
+  point_title?: string | null;
+  catalog_path?: string[];
+  placement_status?: string | null;
+  canonical_point_status?: string | null;
+  content_status?: string | null;
+  student_visible?: boolean;
+  has_other_ready_video?: boolean;
+};
+
+export type MediaAssetArchivePlan = {
+  asset: MediaAsset;
+  can_archive: boolean;
+  already_archived: boolean;
+  catalog_binding_count: number;
+  student_visible_catalog_binding_count: number;
+  legacy_generic_binding_count: number;
+  processing_job_count: number;
+  active_processing_job_count: number;
+  rendition_count: number;
+  fingerprint_count: number;
+  duplicate_candidate_count: number;
+  catalog_bindings: MediaArchiveCatalogBinding[];
+  message: string;
+};
+
+export type MediaAssetArchiveResult = {
+  archived: boolean;
+  already_archived: boolean;
+  asset_id: string;
+  lifecycle_status?: string;
+  cancelled_processing_jobs?: number;
+  plan: MediaAssetArchivePlan;
+  catalog_cleanup?: {
+    status?: string;
+    archived_binding_count?: number;
+    affected_placement_count?: number;
+    affected_placement_node_ids?: string[];
+    error?: string;
+  };
+};
+
 export function listMediaAssets(limit = 200): Promise<ApiList<MediaAsset>> {
   return api<ApiList<MediaAsset>>(`/api/admin/media/assets?limit=${limit}`);
 }
@@ -125,6 +177,14 @@ export function completeMediaUpload(payload: unknown): Promise<MediaAsset> {
 
 export function retryMediaProcessing(assetId: string): Promise<unknown> {
   return postJson("/api/admin/media/assets/" + assetId + "/retry-processing", {});
+}
+
+export function getMediaAssetArchivePlan(assetId: string): Promise<MediaAssetArchivePlan> {
+  return api<MediaAssetArchivePlan>("/api/admin/media/assets/" + assetId + "/archive-plan");
+}
+
+export function archiveMediaAsset(assetId: string, reason?: string): Promise<MediaAssetArchiveResult> {
+  return postJson<MediaAssetArchiveResult>("/api/admin/media/assets/" + assetId + "/archive", { reason });
 }
 
 export function updateMediaDuplicateCandidate(id: string, status: string): Promise<unknown> {

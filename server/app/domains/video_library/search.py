@@ -235,24 +235,16 @@ def _load_published_point_rows(session: Any) -> list[dict[str, Any]]:
                       'sort_order', 0
                     )
                   ) AS chapter_bindings,
-                  COALESCE((
-                    SELECT jsonb_agg(
-                      jsonb_build_object(
-                        'media_id', ma.id,
-                        'title', COALESCE(mb.title, ma.title, ma.original_file_name),
-                        'upload_status', ma.upload_status,
-                        'binding_status', mb.binding_status,
-                        'has_thumbnail', ma.thumbnail_relative_path IS NOT NULL
-                      )
-                      ORDER BY mb.display_order, mb.created_at
-                    )
+                  (
+                    SELECT COUNT(*)
                     FROM experiment_catalog_point_media_bindings mb
                     JOIN media_assets ma ON ma.id = mb.media_asset_id
                     WHERE ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
                         OR mb.node_id = n.id)
                       AND ma.upload_status = 'ready'
+                      AND COALESCE(ma.lifecycle_status, 'active') = 'active'
                       AND mb.binding_status <> 'archived'
-                  ), '[]'::jsonb) AS videos,
+                  ) AS video_count,
                   COALESCE((
                     SELECT jsonb_agg(
                       jsonb_build_object(
@@ -330,7 +322,7 @@ def _point_document(row: dict[str, Any], profiles: list[dict[str, Any]]) -> Vide
     principle = _clean_text(row.get("principle_equation") if row.get("principle_mode") == "equation" else row.get("principle_text"))
     phenomenon = _clean_text(row.get("phenomenon_explanation"))
     safety = _clean_text(row.get("safety_note"))
-    videos = row.get("videos") if isinstance(row.get("videos"), list) else []
+    video_count = int(row.get("video_count") or 0)
     related_links = row.get("related_links") if isinstance(row.get("related_links"), list) else []
     directory_context = row.get("directory_context") if isinstance(row.get("directory_context"), list) else []
     catalog_path = [str(item) for item in row.get("catalog_path") or [] if str(item).strip()]
@@ -373,7 +365,6 @@ def _point_document(row: dict[str, Any], profiles: list[dict[str, Any]]) -> Vide
         phenomenon,
         safety,
         [item.get("title") for item in related_links if isinstance(item, dict)],
-        [item.get("title") for item in videos if isinstance(item, dict)],
         chemistry["formulae"],
         title_chemistry["formulae"],
         title_formula_pairs,
@@ -423,8 +414,8 @@ def _point_document(row: dict[str, Any], profiles: list[dict[str, Any]]) -> Vide
         "phenomenon_tags": chemistry.get("phenomenon_tags", []),
         "property_tags": chemistry.get("property_tags", []),
         "reaction_features": chemistry["reaction_features"],
-        "has_video": bool(videos),
-        "video_count": len(videos),
+        "has_video": video_count > 0,
+        "video_count": video_count,
         "badges": _unique([chapter_title, *chemistry["reaction_features"]]),
         "target": target.model_dump(),
         "updated_at": row.get("content_updated_at"),
@@ -436,7 +427,7 @@ def _point_document(row: dict[str, Any], profiles: list[dict[str, Any]]) -> Vide
         subtitle=" / ".join(catalog_path),
         snippet=phenomenon or principle,
         search_text=search_text,
-        score_boost=6.0 + len(videos),
+        score_boost=6.0 + min(video_count, 1),
         target=target,
         badges=tuple(_unique([chapter_title, "实验点位", *chemistry["formulae"][:2]])),
         index_source=index_source,

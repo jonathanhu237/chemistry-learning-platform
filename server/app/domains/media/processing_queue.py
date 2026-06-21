@@ -56,11 +56,13 @@ def claim_next_job(worker_id: str) -> WorkerJob | None:
                         started_at = now(),
                         updated_at = now()
                     WHERE id = (
-                      SELECT id
-                      FROM media_processing_jobs
-                      WHERE status = 'queued'
-                        AND attempts < max_attempts
-                      ORDER BY created_at
+                      SELECT mpj.id
+                      FROM media_processing_jobs mpj
+                      JOIN media_assets ma ON ma.id = mpj.media_asset_id
+                      WHERE mpj.status = 'queued'
+                        AND mpj.attempts < mpj.max_attempts
+                        AND COALESCE(ma.lifecycle_status, 'active') = 'active'
+                      ORDER BY mpj.created_at
                       FOR UPDATE SKIP LOCKED
                       LIMIT 1
                     )
@@ -417,6 +419,7 @@ def queue_legacy_backfill(limit: int = 200) -> int:
                       SELECT ma.id
                       FROM media_assets ma
                       WHERE ma.upload_status = 'ready'
+                        AND COALESCE(ma.lifecycle_status, 'active') = 'active'
                         AND (
                           ma.thumbnail_relative_path IS NULL
                           OR ma.playback_relative_path IS NULL
@@ -518,6 +521,7 @@ def active_media_processing_status(limit: int = 200) -> dict[str, Any]:
                       LIMIT 1
                     ) mpj ON true
                     WHERE ma.upload_status IN ('pending', 'processing', 'failed')
+                      AND COALESCE(ma.lifecycle_status, 'active') = 'active'
                     ORDER BY ma.updated_at DESC
                     LIMIT :limit
                     """
@@ -534,7 +538,14 @@ def retry_media_processing(asset_id: str) -> dict[str, Any]:
     with db_session() as session:
         asset = (
             session.execute(
-                text("SELECT id FROM media_assets WHERE id = CAST(:asset_id AS uuid)"),
+                text(
+                    """
+                    SELECT id
+                    FROM media_assets
+                    WHERE id = CAST(:asset_id AS uuid)
+                      AND COALESCE(lifecycle_status, 'active') = 'active'
+                    """
+                ),
                 {"asset_id": asset_id},
             )
             .mappings()

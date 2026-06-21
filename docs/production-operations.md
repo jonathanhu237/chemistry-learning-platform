@@ -127,17 +127,19 @@ Student video-library search is a PostgreSQL-to-Elasticsearch projection. Postgr
 - `experiment_catalog_point_media_bindings`: video bindings keyed by canonical point identity with source placement context
 - `experiment_catalog_point_search_index_state`: retryable desired search actions and sync status for placement documents
 
-Elasticsearch stores derived published placement documents only. Directory nodes contribute ancestor category text to descendant point documents but never become standalone results. A canonical experiment with multiple published placements produces multiple ES documents that share `canonical_point_id` and differ by `placement_node_id`, chapter, and path. Teacher-only notes, raw media-library uploads that are not bound to published points, `source_chunks`, and `experiment_video_point_evidence` must stay out of the student video-library index. Do not edit ES documents by hand and do not treat ES hit sources as student page content.
+Elasticsearch stores derived published placement documents only. Directory nodes contribute ancestor category text to descendant point documents but never become standalone results. A canonical experiment with multiple published placements produces multiple ES documents that share `canonical_point_id` and differ by `placement_node_id`, chapter, and path. Teacher-only notes, raw media-library uploads that are not bound to published points, video resource titles, media asset titles, original file names, media ids, playback paths, thumbnail paths, upload/processing status, `source_chunks`, and `experiment_video_point_evidence` must stay out of the student video-library index. The only allowed media-derived readiness signals are `has_video` and `video_count`. Do not edit ES documents by hand and do not treat ES hit sources as student page content.
 
 The current catalog seed comes from `docs/实验目录_整理版.md`: 569 visible catalog nodes, 176 directory nodes, 393 point placements, and 357 canonical experiment points. Chapter 21 has no seeded catalog content. Reviewed exact duplicate leaves such as `Na2SiO3 + CO2`, `Al2(SO4)3 + NH3·H2O + NaOH`, and `BeSO4 + NH3·H2O + NaOH` are represented as multiple placements targeting one canonical point. The corrected sibling points `NaClO + MnSO₄` and `NaClO + 品红溶液` remain distinct canonical points. The 30 smoke examples in `docs/30点位例子.txt` are imported as published point content for semantically matched catalog point placements and canonical points, and can be indexed without legacy AI evidence. Each example records a `semantic_mapping` report with title/path/reagent evidence, top candidates, reviewed override details when candidates are ambiguous, and known wording corrections such as `NaClO + 品红溶液`.
 
 Catalog authoring only binds existing media assets to canonical experiment points through the selected placement. New uploads are owned by the media library workflow and then selected from the catalog editor after processing.
 
-Bootstrap or rebuild the search index from PostgreSQL:
+Bootstrap or destructively rebuild the search index from PostgreSQL:
 
 ```powershell
 python scripts/rebuild_video_library_index.py --recreate
 ```
+
+This recreates the index with the current pure mapping and refuses to write generated documents that contain forbidden video-resource fields. Use this after deploying code that changes index shape, after clearing stale ES data, or after any migration that changes point readiness semantics.
 
 Preview the document count without writing to ES:
 
@@ -151,6 +153,8 @@ Validate ES/IK readiness in production mode:
 python scripts/validate_video_library_search.py
 ```
 
+The validator checks the mapping version, generated document purity, and indexed `_source` purity. A production readiness run must fail if stale ES documents still contain video resource labels or metadata.
+
 Inspect admin-facing index state through the backend:
 
 ```powershell
@@ -162,7 +166,7 @@ The chemistry search seed files live under `data/seed/search/`:
 - `chemical_aliases.json`: formula and common-name aliases such as HCl/salt acid and Na2S2O3/sodium thiosulfate
 - `chemical_stopwords.txt`: high-frequency workflow words that should carry less search meaning
 
-Admin point content edits write PostgreSQL first. Saving drafts queues a delete from search; publishing queues an upsert; unpublishing, archiving, or video binding changes queue the affected point for refresh. A failed ES write must leave the PostgreSQL content intact and visible in `experiment_catalog_point_search_index_state` for retry or full rebuild.
+Admin point content edits write PostgreSQL first. Saving drafts queues a delete from search; publishing queues an upsert; unpublishing, archiving, video binding changes, or media asset archival queue the affected point for refresh. A failed ES write must leave the PostgreSQL content intact and visible in `experiment_catalog_point_search_index_state` for retry or full rebuild.
 
 Optional RAG reranking service:
 
@@ -174,7 +178,9 @@ The `rag` profile expects local BGE model files mounted at `E:/models/BAAI` and 
 
 ## Media Lifecycle Operations
 
-`data/media` is operational upload state, not protected seed data. It can be backed up, archived, or cleaned only with database consistency in mind because `media_assets`, `media_bindings`, processing jobs, and review rows may still reference local files.
+`data/media` is operational upload state, not protected seed data. It can be backed up, archived, or cleaned only with database consistency in mind because `media_assets`, catalog point video bindings, legacy `media_bindings`, processing jobs, and review rows may still reference local files.
+
+Teacher deletion in `/videos` is a DB lifecycle archive: the asset becomes `lifecycle_status='archived'`, a `media_asset_archived` event is recorded, and the catalog-owned handler archives affected point video bindings while leaving point content, equations, related links, questions, assessments, and publication state intact. Upload/processing status remains separate from lifecycle status.
 
 Inspect the current media lifecycle state with a dry run:
 
@@ -182,11 +188,13 @@ Inspect the current media lifecycle state with a dry run:
 python scripts/media_lifecycle_cleanup.py --json --limit 500 --orphan-limit 200
 ```
 
-The script reports asset dependency counts, missing files, existing referenced files, and unreferenced orphan files. Database-backed asset deletion intentionally refuses by default:
+The script reports asset dependency counts, missing files, existing referenced files, and unreferenced orphan files. Database-backed asset file deletion is allowed only for archived or tombstoned asset rows:
 
 ```powershell
 python scripts/media_lifecycle_cleanup.py --delete-asset-files
 ```
+
+If an active asset still references files, the command reports `refused_active_asset_file_asset_ids` and does not delete those files.
 
 Only unreferenced orphan files under `MEDIA_ROOT` may be removed directly:
 
@@ -194,7 +202,7 @@ Only unreferenced orphan files under `MEDIA_ROOT` may be removed directly:
 python scripts/media_lifecycle_cleanup.py --delete-orphans --limit 500 --orphan-limit 200
 ```
 
-Before deleting media for production, back up any media that should remain available and confirm the admin UI shows missing or partial files intentionally instead of broken playback links. See `docs/production-media-cleanup.md` for the detailed cleanup procedure.
+Before deleting media for production, back up any media that should remain available, archive assets through the media lifecycle path, confirm affected point bindings were archived, and confirm the admin UI shows missing or partial files intentionally instead of broken playback links. See `docs/production-media-cleanup.md` for the detailed cleanup procedure.
 
 ## One-Command Validation
 

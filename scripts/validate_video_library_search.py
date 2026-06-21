@@ -10,7 +10,14 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from server.app.infrastructure.settings import get_settings
-from server.app.domains.video_library.index_client import configured_index_client, video_library_analyzer_assets
+from server.app.infrastructure.database import db_session
+from server.app.domains.video_library.index_client import (
+    VIDEO_LIBRARY_INDEX_MAPPING_VERSION,
+    configured_index_client,
+    forbidden_video_library_document_violations,
+    video_library_analyzer_assets,
+)
+from server.app.domains.video_library.search import _build_documents, _learning_profiles, _load_published_point_rows
 
 
 def _token_list(payload: object) -> list[str]:
@@ -51,6 +58,30 @@ def main() -> None:
         errors.append("VIDEO_LIBRARY_SEARCH_URL is required in production")
     if required and settings.video_library_search_local_fallback:
         errors.append("VIDEO_LIBRARY_SEARCH_LOCAL_FALLBACK must be false in production")
+    try:
+        with db_session() as session:
+            point_rows = _load_published_point_rows(session)
+        generated_payloads = [
+            document.index_source
+            for document in _build_documents([], _learning_profiles(), point_rows=point_rows)
+            if document.index_source
+        ]
+        generated_violations = [
+            {"id": payload.get("id"), "violations": violations}
+            for payload in generated_payloads
+            if (violations := forbidden_video_library_document_violations(payload))
+        ]
+        details["generated_document_purity"] = {
+            "document_count": len(generated_payloads),
+            "violation_count": len(generated_violations),
+            "violations": generated_violations[:20],
+        }
+        if generated_violations:
+            errors.append("Generated video-library documents contain forbidden video resource fields")
+    except Exception as exc:  # noqa: BLE001 - readiness should report DB/generator failures without hiding ES checks.
+        details["generated_document_purity_error"] = str(exc)
+        if required:
+            errors.append(f"Generated video-library document purity check failed: {exc}")
     client = configured_index_client()
     if client is None:
         result = {"ok": not errors and not required, "errors": errors, "details": details}
@@ -80,6 +111,14 @@ def main() -> None:
             )
             details["index_analyzers"] = sorted(analyzer_settings)
             details["index_filters"] = sorted(filter_settings)
+            index_mapping = mapping.get(client.index, {}).get("mappings", {}) if isinstance(mapping, dict) else {}
+            mapping_version = (index_mapping.get("_meta") or {}).get("mapping_version")
+            details["mapping_version"] = mapping_version
+            details["desired_mapping_version"] = VIDEO_LIBRARY_INDEX_MAPPING_VERSION
+            if required and mapping_version != VIDEO_LIBRARY_INDEX_MAPPING_VERSION:
+                errors.append(
+                    "Video-library index mapping is stale; run scripts/rebuild_video_library_index.py --recreate"
+                )
             if required and "chemistry_ik" not in analyzer_settings:
                 errors.append("Video-library index is missing chemistry_ik analyzer; run scripts/rebuild_video_library_index.py --recreate")
             if required and "chemistry_ik_search" not in analyzer_settings:
@@ -88,6 +127,36 @@ def main() -> None:
                 errors.append("Video-library index is missing chemistry_stop filter; run scripts/rebuild_video_library_index.py --recreate")
             if required and "chemistry_synonyms" not in filter_settings:
                 errors.append("Video-library index is missing chemistry_synonyms filter; run scripts/rebuild_video_library_index.py --recreate")
+            try:
+                source_scan = client.request(
+                    "POST",
+                    f"/{client.index}/_search",
+                    {
+                        "size": 1000,
+                        "_source": True,
+                        "query": {"match_all": {}},
+                    },
+                )
+                source_hits = source_scan.get("hits", {}).get("hits", []) if isinstance(source_scan, dict) else []
+                source_violations = []
+                for hit in source_hits:
+                    source = hit.get("_source", {}) if isinstance(hit, dict) else {}
+                    if not isinstance(source, dict):
+                        continue
+                    violations = forbidden_video_library_document_violations(source)
+                    if violations:
+                        source_violations.append({"id": source.get("id") or hit.get("_id"), "violations": violations})
+                details["indexed_document_purity"] = {
+                    "scanned_count": len(source_hits),
+                    "violation_count": len(source_violations),
+                    "violations": source_violations[:20],
+                }
+                if source_violations:
+                    errors.append("Indexed video-library documents contain forbidden video resource fields")
+            except Exception as exc:  # noqa: BLE001 - readiness should keep reporting other ES checks.
+                if required:
+                    errors.append(f"Indexed document purity scan failed: {exc}")
+                details["indexed_document_purity_error"] = str(exc)
             try:
                 analyze_payload = client.request(
                     "POST",

@@ -704,6 +704,7 @@ class PostgresMediaRepository:
               AND mb.target_id = :target_id
               AND mb.status = 'published'
               AND ma.upload_status = 'ready'
+              AND COALESCE(ma.lifecycle_status, 'active') = 'active'
             ORDER BY mb.sort_order, mb.created_at
             """,
             {"target_type": target_type, "target_id": target_id},

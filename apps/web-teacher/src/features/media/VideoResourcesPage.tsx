@@ -40,6 +40,7 @@ import type Uppy from "@uppy/core";
 
 import type { ApiList } from "../../api/common";
 import type { MediaAsset, MediaDuplicatePrecheck } from "../../api/media";
+import { archiveMediaAsset, getMediaAssetArchivePlan } from "../../api/media";
 import { getAuthToken } from "../../api/auth";
 import { api, apiBase, patchJson, postJson } from "../../api/http";
 import { AuthenticatedImage } from "../../components/AuthenticatedImage";
@@ -90,7 +91,7 @@ function MediaThumbnail({ asset, compact = false }: { asset: MediaAsset; compact
 }
 
 export function VideoResourcesPage() {
-  const { message } = AntApp.useApp();
+  const { message, modal } = AntApp.useApp();
   const queryClient = useQueryClient();
   const assets = useQuery({
     queryKey: ["media-assets"],
@@ -591,6 +592,68 @@ export function VideoResourcesPage() {
     onError: (error) => message.error(errorMessage(error)),
   });
 
+  const archiveAsset = useMutation({
+    mutationFn: ({ assetId, reason }: { assetId: string; reason?: string }) => archiveMediaAsset(assetId, reason),
+    onSuccess: (result) => {
+      const removed = result.catalog_cleanup?.archived_binding_count ?? result.plan.catalog_binding_count ?? 0;
+      message.success(removed ? `视频资源已归档，已移除 ${removed} 个点位视频绑定` : "视频资源已归档");
+      if (previewAsset?.id === result.asset_id) setPreviewAsset(null);
+      invalidateVideoData();
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const confirmArchiveAsset = async (asset: MediaAsset) => {
+    const hide = message.loading("正在检查点位绑定影响...", 0);
+    try {
+      const plan = await getMediaAssetArchivePlan(asset.id);
+      const examples = (plan.catalog_bindings || []).slice(0, 5);
+      modal.confirm({
+        title: `归档视频资源：${asset.title}`,
+        icon: <DeleteOutlined />,
+        okText: plan.catalog_binding_count ? "归档并移除绑定" : "归档资源",
+        okButtonProps: { danger: true, loading: archiveAsset.isPending },
+        cancelText: "取消",
+        width: 640,
+        content: (
+          <Space orientation="vertical" size={12} className="full">
+            <Alert
+              type={plan.catalog_binding_count ? "warning" : "info"}
+              showIcon
+              title={plan.catalog_binding_count ? `将移除 ${plan.catalog_binding_count} 个点位视频绑定` : "没有发现点位视频绑定"}
+              description={
+                plan.catalog_binding_count
+                  ? `点位文字内容、题目、发布状态不会被删除。${plan.student_visible_catalog_binding_count ? `${plan.student_visible_catalog_binding_count} 个学生可见点位将不再播放这个视频。` : ""}`
+                  : "归档只会让该视频资源从默认资源库和点位选择器中隐藏。"
+              }
+            />
+            {plan.active_processing_job_count ? (
+              <Alert type="warning" showIcon title={`有 ${plan.active_processing_job_count} 个处理任务会被取消`} />
+            ) : null}
+            {examples.length ? (
+              <div className="video-archive-impact-list">
+                {examples.map((item) => (
+                  <div key={item.binding_id} className="video-archive-impact-item">
+                    <Text strong>{item.point_title || item.placement_node_id}</Text>
+                    <Text type="secondary" className="block-text">{(item.catalog_path || []).join(" / ")}</Text>
+                  </div>
+                ))}
+                {plan.catalog_binding_count > examples.length ? (
+                  <Text type="secondary">另有 {plan.catalog_binding_count - examples.length} 个点位会受影响</Text>
+                ) : null}
+              </div>
+            ) : null}
+          </Space>
+        ),
+        onOk: () => archiveAsset.mutateAsync({ assetId: asset.id, reason: "teacher_video_resource_archive" }),
+      });
+    } catch (error) {
+      message.error(errorMessage(error));
+    } finally {
+      hide();
+    }
+  };
+
   const uploadBusy = batchRunning || ["hashing", "uploading", "paused", "finalizing"].includes(uploadState.stage);
   const canStartUpload = uploadItems.length > 0 && !batchRunning && uploadItems.some((item) => ["pending", "ready", "error"].includes(item.status)) && (uploadItems.length > 1 || Boolean(uploadItems[0].title.trim()));
   const canPause = Boolean(tusEndpoint && uppyRef.current && uppyFileIdRef.current && ["uploading", "paused"].includes(uploadState.stage));
@@ -648,6 +711,28 @@ export function VideoResourcesPage() {
       </Tooltip>
     );
   };
+
+  const renderAssetActions = (asset: MediaAsset) => (
+    <Space size={6}>
+      {asset.upload_status === "failed" ? (
+        <Button size="small" icon={<ReloadOutlined />} loading={retryProcessing.isPending} onClick={() => retryProcessing.mutate(asset.id)}>重试</Button>
+      ) : null}
+      {renderPreviewButton(asset)}
+      {asset.lifecycle_status === "archived" ? (
+        <Tag>已归档</Tag>
+      ) : (
+        <Button
+          size="small"
+          danger
+          icon={<DeleteOutlined />}
+          loading={archiveAsset.isPending}
+          onClick={() => void confirmArchiveAsset(asset)}
+        >
+          归档
+        </Button>
+      )}
+    </Space>
+  );
 
   const renderVersionPanel = (asset: MediaAsset) => {
     const { rendition, savedPercent } = renditionSavings(asset);
@@ -768,14 +853,14 @@ export function VideoResourcesPage() {
                     {renderAssetBadges(asset)}
                     <Flex justify="space-between" align="center" gap={8}>
                       <Text type="secondary">{mediaAssetTime(asset)}</Text>
-                      <Space size={6}>{asset.upload_status === "failed" ? <Button size="small" icon={<ReloadOutlined />} loading={retryProcessing.isPending} onClick={() => retryProcessing.mutate(asset.id)}>重试</Button> : null}{renderPreviewButton(asset)}</Space>
+                      {renderAssetActions(asset)}
                     </Flex>
                   </Space>
                 </div>
               ))}
             </div>
           ) : (
-            <Table rowKey="id" dataSource={filteredAssets} pagination={{ pageSize: 12, showSizeChanger: false }} columns={[{ title: "文件名", render: (_: unknown, asset: MediaAsset) => renderAssetName(asset) }, { title: "处理", width: 190, render: (_: unknown, asset: MediaAsset) => renderProcessingLine(asset) }, { title: "大小", width: 110, render: (_: unknown, asset: MediaAsset) => formatBytes(asset.file_size_bytes) }, { title: "状态", width: 110, render: (_: unknown, asset: MediaAsset) => mediaStatusTag(asset.upload_status) }, { title: "引用", width: 90, render: (_: unknown, asset: MediaAsset) => asset.association_count || 0 }, { title: "更新时间", width: 170, render: (_: unknown, asset: MediaAsset) => mediaAssetTime(asset) }, { title: "操作", width: 170, render: (_: unknown, asset: MediaAsset) => <Space size={6}>{asset.upload_status === "failed" ? <Button size="small" icon={<ReloadOutlined />} onClick={() => retryProcessing.mutate(asset.id)}>重试</Button> : null}{renderPreviewButton(asset)}</Space> }]} />
+            <Table rowKey="id" dataSource={filteredAssets} pagination={{ pageSize: 12, showSizeChanger: false }} columns={[{ title: "文件名", render: (_: unknown, asset: MediaAsset) => renderAssetName(asset) }, { title: "处理", width: 190, render: (_: unknown, asset: MediaAsset) => renderProcessingLine(asset) }, { title: "大小", width: 110, render: (_: unknown, asset: MediaAsset) => formatBytes(asset.file_size_bytes) }, { title: "状态", width: 110, render: (_: unknown, asset: MediaAsset) => mediaStatusTag(asset.upload_status) }, { title: "引用", width: 90, render: (_: unknown, asset: MediaAsset) => asset.association_count || 0 }, { title: "更新时间", width: 170, render: (_: unknown, asset: MediaAsset) => mediaAssetTime(asset) }, { title: "操作", width: 210, render: (_: unknown, asset: MediaAsset) => renderAssetActions(asset) }]} />
           )}
         </QueryState>
       </div>

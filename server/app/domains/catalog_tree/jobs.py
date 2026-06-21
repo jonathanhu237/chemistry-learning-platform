@@ -949,7 +949,7 @@ def _mark_evidence_failure(*, node_id: str, error: str, evidence_status: str) ->
 
 
 def _catalog_point_context(session: Any, *, node_id: str) -> dict[str, Any]:
-    from server.app.domains.catalog_tree.media_bindings import student_videos
+    from server.app.domains.catalog_tree.media_bindings import student_video_readiness
     from server.app.domains.catalog_tree.related_links import related_links
 
     node = get_node(session, node_id)
@@ -959,7 +959,7 @@ def _catalog_point_context(session: Any, *, node_id: str) -> dict[str, Any]:
     if not content:
         raise RuntimeError("Catalog-node evidence refresh requires saved point content")
     path = breadcrumbs(session, node_id)
-    videos = student_videos(session, node_id)
+    video_readiness = student_video_readiness(session, node_id)
     related = related_links(session, node_id, include_hidden=False, include_defaults=True)
     principle = reaction_principle_text(content) if content.get("principle_mode") == "equation" else clean(content.get("principle_text"))
     equation_terms = reaction_derived_terms(content) if content.get("principle_mode") == "equation" else {
@@ -979,7 +979,7 @@ def _catalog_point_context(session: Any, *, node_id: str) -> dict[str, Any]:
             "normalized_equations": content.get("reaction_equations") or [],
             "phenomenon_explanation": content.get("phenomenon_explanation"),
             "safety_note": content.get("safety_note"),
-            "videos": videos,
+            "video_readiness": video_readiness if video_readiness.get("has_video") else None,
             "related_points": related,
         }.items()
         if value
@@ -1001,7 +1001,7 @@ def _catalog_point_context(session: Any, *, node_id: str) -> dict[str, Any]:
         "annotation_formulae": equation_terms.get("annotation_formulae") or [],
         "annotation_aliases": equation_terms.get("annotation_aliases") or [],
         "condition_tags": equation_terms.get("condition_tags") or [],
-        "videos": videos,
+        "video_readiness": video_readiness,
         "related_points": related,
         "field_contributors": field_contributors,
     }
@@ -1014,7 +1014,6 @@ def _catalog_point_queries(context: dict[str, Any]) -> tuple[list[str], dict[str
         for row in context.get("normalized_equations") or []
         if isinstance(row, dict)
     )
-    video_text = " ".join(str(item.get("title") or "") for item in context.get("videos") or [] if isinstance(item, dict))
     related_text = " ".join(str(item.get("target_title") or item.get("title") or "") for item in context.get("related_points") or [] if isinstance(item, dict))
     base_parts = [
         path_text,
@@ -1036,7 +1035,7 @@ def _catalog_point_queries(context: dict[str, Any]) -> tuple[list[str], dict[str
     raw_queries = [
         " ".join(item for item in base_parts if item),
         " ".join(item for item in [str(context.get("title") or ""), chemistry_terms, str(context.get("phenomenon_explanation") or "")] if item),
-        " ".join(item for item in [path_text, str(context.get("title") or ""), video_text, related_text] if item),
+        " ".join(item for item in [path_text, str(context.get("title") or ""), related_text] if item),
     ]
     queries: list[str] = []
     seen: set[str] = set()

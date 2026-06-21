@@ -27,6 +27,7 @@ def asset_id() -> str:
 
 def row_dict(row: Any) -> dict[str, Any]:
     item = dict(row)
+    item["lifecycle_status"] = item.get("lifecycle_status") or "active"
     for key in ("renditions", "duplicate_candidates", "processing_job"):
         if item.get(key) is None:
             item[key] = [] if key != "processing_job" else None
@@ -119,13 +120,14 @@ def find_exact_asset(checksum: str, file_size_bytes: int) -> dict[str, Any] | No
                     SELECT id, title, original_file_name, relative_path, source_relative_path,
                            thumbnail_relative_path, playback_relative_path, playback_mime_type,
                            checksum_sha256, mime_type, file_size_bytes, duration_seconds,
-                           upload_status, processing_phase, processing_progress,
+                           upload_status, lifecycle_status, processing_phase, processing_progress,
                            error_reason, created_at, updated_at
                     FROM media_assets
                     WHERE checksum_sha256 = :checksum
                       AND file_size_bytes = :file_size_bytes
                       AND upload_status <> 'failed'
                       AND upload_status <> 'replaced'
+                      AND COALESCE(lifecycle_status, 'active') = 'active'
                     ORDER BY created_at ASC
                     LIMIT 1
                     """
@@ -368,12 +370,23 @@ def complete_resumable_upload(
     )
 
 
-def list_media_assets(upload_status: str | None = None, limit: int = 200) -> dict[str, Any]:
+def list_media_assets(
+    upload_status: str | None = None,
+    limit: int = 200,
+    *,
+    include_archived: bool = False,
+    lifecycle_status: str | None = None,
+) -> dict[str, Any]:
     filters = []
     params: dict[str, Any] = {"limit": limit}
     if upload_status:
         filters.append("upload_status = :upload_status")
         params["upload_status"] = upload_status
+    if lifecycle_status:
+        filters.append("lifecycle_status = :lifecycle_status")
+        params["lifecycle_status"] = lifecycle_status
+    elif not include_archived:
+        filters.append("COALESCE(lifecycle_status, 'active') = 'active'")
     where_clause = "WHERE " + " AND ".join(filters) if filters else ""
     with db_session() as session:
         rows = [
@@ -385,14 +398,40 @@ def list_media_assets(upload_status: str | None = None, limit: int = 200) -> dic
                            source_relative_path, thumbnail_relative_path, playback_relative_path,
                            playback_mime_type, mime_type, file_size_bytes, duration_seconds,
                            width, height, fps, bitrate, video_codec, audio_codec,
-                           upload_status, processing_phase, processing_progress,
+                           upload_status, lifecycle_status, archived_at, archived_by,
+                           archive_reason, archive_metadata,
+                           processing_phase, processing_progress,
                            error_reason, created_at, updated_at,
+                           (
+                             SELECT
+                               (
+                                 SELECT COUNT(*)
+                                 FROM media_bindings mb
+                                 WHERE mb.media_asset_id = media_assets.id
+                                   AND mb.status <> 'archived'
+                               )
+                               +
+                               (
+                                 SELECT COUNT(*)
+                                 FROM experiment_catalog_point_media_bindings cmb
+                                 WHERE cmb.media_asset_id = media_assets.id
+                                   AND cmb.binding_status <> 'archived'
+                               )
+                           ) AS association_count
+                           ,
                            (
                              SELECT COUNT(*)
                              FROM media_bindings mb
                              WHERE mb.media_asset_id = media_assets.id
                                AND mb.status <> 'archived'
-                           ) AS association_count
+                           ) AS legacy_association_count
+                           ,
+                           (
+                             SELECT COUNT(*)
+                             FROM experiment_catalog_point_media_bindings cmb
+                             WHERE cmb.media_asset_id = media_assets.id
+                               AND cmb.binding_status <> 'archived'
+                           ) AS catalog_binding_count
                            ,
                            (
                              SELECT jsonb_build_object(
@@ -437,10 +476,14 @@ def list_media_assets(upload_status: str | None = None, limit: int = 200) -> dic
                                'candidate_title', candidate.title,
                                'candidate_thumbnail_relative_path', candidate.thumbnail_relative_path
                              ) ORDER BY mdc.created_at DESC)
-                             FROM media_duplicate_candidates mdc
-                             LEFT JOIN media_assets candidate ON candidate.id = mdc.candidate_asset_id
-                             WHERE mdc.media_asset_id = media_assets.id
-                           ), '[]'::jsonb) AS duplicate_candidates
+                              FROM media_duplicate_candidates mdc
+                              LEFT JOIN media_assets candidate ON candidate.id = mdc.candidate_asset_id
+                              WHERE mdc.media_asset_id = media_assets.id
+                                AND (
+                                  mdc.candidate_asset_id IS NULL
+                                  OR COALESCE(candidate.lifecycle_status, 'active') = 'active'
+                                )
+                            ), '[]'::jsonb) AS duplicate_candidates
                     FROM media_assets
                     {where_clause}
                     ORDER BY created_at DESC

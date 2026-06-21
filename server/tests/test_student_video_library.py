@@ -16,14 +16,17 @@ from server.app.domains.video_library.index_client import (
     ANALYZER_ASSET_ROOT,
     VideoLibraryIndexClient,
     document_hash,
+    forbidden_video_library_document_violations,
     video_library_analyzer_assets,
     video_library_index_mapping,
 )
 from server.app.domains.video_library import search as student_video_library_service
 from server.app.domains.video_library.search import (
     ElasticsearchVideoLibrarySearchAdapter,
+    LocalVideoLibrarySearchAdapter,
     _build_documents,
     _build_elasticsearch_search_payload,
+    _source_route_matches,
     search_student_video_library,
 )
 from server.tests.route_helpers import assert_route
@@ -115,6 +118,7 @@ def _point_row(
     safety_note: str = "Handle chlorine water in a ventilated space.",
     videos: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    video_resources = videos if videos is not None else experiment["media_resources"]
     return {
         "node_id": node_id,
         "chapter_id": "CH13",
@@ -137,7 +141,8 @@ def _point_row(
         "safety_note": safety_note,
         "teacher_note": "Teacher-only note must never be indexed or shown to students.",
         "content_updated_at": "2026-06-19T00:00:00Z",
-        "videos": videos if videos is not None else experiment["media_resources"],
+        "video_count": len(video_resources),
+        "videos": video_resources,
         "related_links": [{"node_id": "cat-point-related", "title": "Related published point"}],
     }
 
@@ -224,12 +229,60 @@ def test_video_library_point_documents_use_teacher_content_without_ai_evidence()
     assert "precipitation" in document.index_source["reaction_features"]
 
 
+def test_video_library_documents_do_not_index_video_resource_semantics() -> None:
+    experiment = _experiment("EXP_PRIVATE_VIDEO", title="Visible experiment")
+    private_title = "Teacher internal deletion checklist title"
+    private_filename = "teacher-only-original-filename.mp4"
+    documents = _build_documents(
+        [experiment],
+        _profiles(),
+        point_rows=[
+            _point_row(
+                experiment,
+                point_title="Copper flame color observation",
+                principle_text="Copper salts color a flame green.",
+                principle_mode="text",
+                phenomenon_explanation="The flame appears green.",
+                videos=[
+                    {
+                        "media_id": "media-private-991",
+                        "title": private_title,
+                        "original_file_name": private_filename,
+                        "thumbnail_relative_path": "thumbs/private.jpg",
+                        "source_relative_path": "originals/private.mp4",
+                        "playback_relative_path": "playback/private.mp4",
+                    }
+                ],
+            )
+        ],
+    )
+
+    assert len(documents) == 1
+    document = documents[0]
+    source = document.index_source or {}
+    assert document.search_text
+    assert source["has_video"] is True
+    assert source["video_count"] == 1
+    assert "videos" not in source
+    assert forbidden_video_library_document_violations(source) == []
+    for forbidden_text in [private_title, private_filename, "media-private-991", "private.mp4"]:
+        assert forbidden_text not in document.search_text
+        assert forbidden_text not in json.dumps(source, ensure_ascii=False)
+
+    assert LocalVideoLibrarySearchAdapter().search(private_title, documents, 10) == []
+    assert _source_route_matches(source, {"query_text": private_title, "normalized_query": private_title}) == []
+
+
 def test_video_library_es_mapping_uses_chemistry_ik_stopwords_and_synonyms() -> None:
     mapping = video_library_index_mapping()
     analysis = mapping["settings"]["analysis"]
     properties = mapping["mappings"]["properties"]
 
-    assert mapping["mappings"]["_meta"]["mapping_version"] == "chemistry-point-placement-v4"
+    assert mapping["mappings"]["_meta"]["mapping_version"] == "chemistry-point-placement-v5"
+    assert "videos" not in properties
+    assert "media_id" not in properties
+    assert "media_title" not in properties
+    assert "original_file_name" not in properties
     assert analysis["analyzer"]["chemistry_ik"]["tokenizer"] == "ik_max_word"
     assert analysis["analyzer"]["chemistry_ik"]["filter"] == ["lowercase", "chemistry_stop"]
     assert analysis["analyzer"]["chemistry_ik_search"]["tokenizer"] == "ik_smart"

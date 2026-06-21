@@ -12,6 +12,7 @@
     "build:report": "node scripts/report-build-chunks.mjs",
     "e2e:smoke": "node scripts/e2e-smoke.mjs",
     "e2e:catalog-preview": "node scripts/e2e-catalog-preview.mjs",
+    "e2e:media-archive": "node scripts/e2e-media-archive.mjs",
     "test": "vitest run",
     "validate:boundaries": "node scripts/validate-import-boundaries.mjs",
     "preview": "vite preview --host 0.0.0.0 --port 4174",

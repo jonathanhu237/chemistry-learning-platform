@@ -151,6 +151,7 @@ def _experiment_select_sql(where_clause: str = "") -> str:
             WHERE mb.target_type = 'experiment'
               AND mb.target_id = fe.id
               AND mb.status <> 'archived'
+              AND COALESCE(ma.lifecycle_status, 'active') = 'active'
           ), '[]'::jsonb) AS media_resources,
           (SELECT COUNT(*) FROM experiment_questions q WHERE q.experiment_id = fe.id AND q.status = 'published') AS published_question_count,
           (SELECT COUNT(*) FROM experiment_questions q WHERE q.experiment_id = fe.id AND q.status = 'draft') AS draft_question_count,
@@ -192,6 +193,7 @@ def _list_experiments(
               SELECT 1 FROM media_bindings mb
               JOIN media_assets ma ON ma.id = mb.media_asset_id
               WHERE mb.target_type = 'experiment' AND mb.target_id = fe.id AND mb.status <> 'archived'
+                AND COALESCE(ma.lifecycle_status, 'active') = 'active'
             )
             """
         )
@@ -204,6 +206,7 @@ def _list_experiments(
               WHERE mb.target_type = 'experiment'
                 AND mb.target_id = fe.id
                 AND mb.status <> 'archived'
+                AND COALESCE(ma.lifecycle_status, 'active') = 'active'
                 AND (ma.upload_status = :video_status OR mb.status = :video_status)
             )
             """
@@ -227,7 +230,7 @@ def _list_experiments(
 
 def _list_experiment_video_resources(experiment_id: str | None = None) -> list[dict[str, Any]]:
     params: dict[str, Any] = {}
-    filters = ["mb.target_type = 'experiment'", "mb.status <> 'archived'"]
+    filters = ["mb.target_type = 'experiment'", "mb.status <> 'archived'", "COALESCE(ma.lifecycle_status, 'active') = 'active'"]
     if experiment_id:
         filters.append("mb.target_id = :experiment_id")
         params["experiment_id"] = experiment_id

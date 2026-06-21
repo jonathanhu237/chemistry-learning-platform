@@ -109,13 +109,13 @@ The system SHALL represent related experiment links between stable point nodes.
 - **AND** it MUST allow links to points outside the current directory when selected intentionally.
 
 ### Requirement: Published point-node search documents
-The system SHALL build student video-library search documents from published point nodes and their bound learning resources.
+The system SHALL build student video-library search documents from published point nodes and their student-facing point knowledge.
 
 #### Scenario: Published point is indexed
 - **WHEN** a point node is published or its searchable content changes
 - **THEN** the system MUST queue an ES document upsert keyed by point node id
-- **AND** the document MUST include chapter path, ancestor directory category/path text, point title, principle, phenomenon explanation, safety note, student-facing related link text, extracted formulae, aliases, reaction features, and published video metadata where available.
-- **AND** the document MUST NOT include teacher-only notes, raw AI source chunks, `experiment_video_point_evidence` payloads, or standalone directory-only documents.
+- **AND** the document MUST include chapter path, ancestor directory category/path text, point title, principle, phenomenon explanation, safety note, student-facing related link text, extracted formulae, aliases, reaction features, and video readiness signals where available.
+- **AND** the document MUST NOT include teacher-only notes, raw AI source chunks, `experiment_video_point_evidence` payloads, standalone directory-only documents, video resource titles, original file names, media asset ids, thumbnail paths, stream paths, or other video resource metadata.
 
 #### Scenario: Point is unpublished or archived
 - **WHEN** a point node becomes unpublished or archived
@@ -129,6 +129,11 @@ The system SHALL build student video-library search documents from published poi
 #### Scenario: Raw media asset exists
 - **WHEN** a teacher uploads a media asset that is not bound to a published point node
 - **THEN** the media asset MUST NOT appear in student video-library search.
+
+#### Scenario: Bound video has a teacher-only title
+- **WHEN** a published point has an active ready video binding whose media asset title or file name contains text absent from point content
+- **THEN** that text MUST NOT be added to the student search document or searchable text
+- **AND** search recall MUST depend on the point's authored learning content and catalog context instead.
 
 ### Requirement: Chemistry ES analyzer dictionaries
 The system SHALL provide a production-ready ES/IK analyzer stack for student video-library search.
@@ -344,13 +349,13 @@ The system SHALL treat student catalog card display as a read-model projection r
 
 #### Scenario: Point card projection is needed
 - **WHEN** a student catalog response needs to render a point card
-- **THEN** the read model MUST derive title from point/catalog title, derive optional summary from point learning content when available, and derive visual media from bound video thumbnail when available
+- **THEN** the read model MUST derive title from point/catalog title, derive optional summary from point learning content when available, and MAY derive visual media from the active ready bound video thumbnail
 - **AND** it MUST NOT depend on stored point-card override fields.
 
 #### Scenario: Search documents are built
 - **WHEN** student search or video-library documents are built
-- **THEN** searchable student-facing text MUST come from directory titles/path, point title, point learning content, related experiment titles, and video metadata
-- **AND** it MUST NOT include removed manual student-card description or presentation fields.
+- **THEN** searchable student-facing text MUST come from directory titles/path, point title, point learning content, and related experiment titles
+- **AND** searchable text MUST NOT include removed manual student-card description, presentation fields, video resource titles, original file names, media asset titles, or other teacher-only video labels.
 
 ### Requirement: Related experiment titles are canonical target titles
 The catalog related-link model SHALL keep ordering, hidden/default override state, and manual additions without supporting teacher-authored student-facing short display names.
@@ -444,4 +449,27 @@ Catalog tree node summaries SHALL report video readiness from active non-archive
 - **WHEN** a catalog point has no active binding to a ready media asset
 - **THEN** node summaries and validation MUST count the point as missing a student-visible video
 - **AND** status labels MUST remain accurate for teacher repair workflows.
+
+### Requirement: Catalog point bindings respond to archived media assets
+The catalog tree service SHALL archive point video bindings that reference an archived media asset without deleting point content.
+
+#### Scenario: Archived asset has active point bindings
+- **WHEN** the catalog domain handles a `media_asset_archived` lifecycle event for a media asset with active point video bindings
+- **THEN** it MUST archive every non-archived `experiment_catalog_point_media_bindings` row for that asset
+- **AND** it MUST record archive reason metadata including the media asset id and lifecycle event id.
+
+#### Scenario: Binding cleanup affects published points
+- **WHEN** archived bindings belonged to published point placements
+- **THEN** the affected points MUST remain published if their point content is still published
+- **AND** their video readiness MUST be recomputed as missing unless another active ready video binding exists.
+
+#### Scenario: Binding cleanup completes
+- **WHEN** catalog point bindings are archived due to media asset archive
+- **THEN** the service MUST queue or update derived search/evidence jobs for affected active point placements
+- **AND** student detail reads MUST no longer expose the archived media asset for playback.
+
+#### Scenario: Asset archive event is repeated
+- **WHEN** the same media asset archive event is handled more than once
+- **THEN** binding cleanup MUST be idempotent
+- **AND** it MUST NOT create duplicate jobs or corrupt archived binding metadata.
 

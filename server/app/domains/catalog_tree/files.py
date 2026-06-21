@@ -33,6 +33,7 @@ def student_media_asset_file(asset_id: str) -> tuple[Path, str, str]:
                 JOIN experiment_catalog_nodes n ON n.id = mb.node_id
                 WHERE ma.id = CAST(:asset_id AS uuid)
                   AND ma.upload_status = 'ready'
+                  AND COALESCE(ma.lifecycle_status, 'active') = 'active'
                   AND mb.binding_status <> 'archived'
                   AND n.node_kind = 'point'
                   AND n.status = 'published'
@@ -60,6 +61,7 @@ def student_media_thumbnail_file(asset_id: str) -> tuple[Path, str, str]:
                 JOIN experiment_catalog_nodes n ON n.id = mb.node_id
                 WHERE ma.id = CAST(:asset_id AS uuid)
                   AND ma.upload_status = 'ready'
+                  AND COALESCE(ma.lifecycle_status, 'active') = 'active'
                   AND mb.binding_status <> 'archived'
                   AND n.node_kind = 'point'
                   AND n.status = 'published'
@@ -89,6 +91,7 @@ def preview_media_asset_file(asset_id: str, *, node_id: str) -> tuple[Path, str,
                 JOIN experiment_catalog_nodes n ON n.id = :node_id
                 WHERE ma.id = CAST(:asset_id AS uuid)
                   AND ma.upload_status = 'ready'
+                  AND COALESCE(ma.lifecycle_status, 'active') = 'active'
                   AND mb.binding_status <> 'archived'
                   AND n.node_kind = 'point'
                   AND ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
@@ -117,6 +120,7 @@ def preview_media_thumbnail_file(asset_id: str, *, node_id: str) -> tuple[Path, 
                 JOIN experiment_catalog_nodes n ON n.id = :node_id
                 WHERE ma.id = CAST(:asset_id AS uuid)
                   AND ma.upload_status = 'ready'
+                  AND COALESCE(ma.lifecycle_status, 'active') = 'active'
                   AND mb.binding_status <> 'archived'
                   AND n.node_kind = 'point'
                   AND ma.thumbnail_relative_path IS NOT NULL

@@ -94,6 +94,7 @@ def _experiment_select_sql(where_clause: str = "") -> str:
             WHERE mb.target_type = 'experiment'
               AND mb.target_id = fe.id
               AND mb.status <> 'archived'
+              AND COALESCE(ma.lifecycle_status, 'active') = 'active'
           ), '[]'::jsonb) AS media_resources,
           (SELECT COUNT(*) FROM experiment_questions q WHERE q.experiment_id = fe.id AND q.status = 'published') AS published_question_count,
           (SELECT COUNT(*) FROM experiment_questions q WHERE q.experiment_id = fe.id AND q.status = 'draft') AS draft_question_count,

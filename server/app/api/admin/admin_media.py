@@ -17,6 +17,7 @@ from server.app.domains.media.assets import (
     list_media_assets,
     precheck_exact_duplicate,
 )
+from server.app.domains.media.lifecycle import archive_media_asset, media_asset_archive_plan
 from server.app.domains.media.bindings import (
     create_media_binding,
     delete_media_binding,
@@ -58,6 +59,10 @@ class MediaDuplicateDecisionRequest(BaseModel):
     status: str = Field(pattern="^(kept|reused|ignored)$")
 
 
+class MediaAssetArchiveRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)
+
+
 def _media_asset_file_response(asset_id: str) -> FileResponse:
     with db_session() as session:
         row = (
@@ -68,7 +73,8 @@ def _media_asset_file_response(asset_id: str) -> FileResponse:
                            COALESCE(playback_relative_path, relative_path) AS relative_path,
                            COALESCE(playback_mime_type, mime_type) AS mime_type,
                            original_file_name,
-                           upload_status
+                           upload_status,
+                           COALESCE(lifecycle_status, 'active') AS lifecycle_status
                     FROM media_assets
                     WHERE id = CAST(:asset_id AS uuid)
                     """
@@ -82,6 +88,8 @@ def _media_asset_file_response(asset_id: str) -> FileResponse:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media asset not found")
     if row["upload_status"] != "ready":
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Media asset is not ready for preview")
+    if row.get("lifecycle_status") != "active":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media asset is archived")
     root = get_settings().media_root.resolve()
     file_path = (root / row["relative_path"]).resolve()
     if root != file_path and root not in file_path.parents:
@@ -99,9 +107,16 @@ def _media_asset_file_response(asset_id: str) -> FileResponse:
 async def admin_list_media_assets(
     upload_status: str | None = None,
     limit: int = 200,
+    include_archived: bool = False,
+    lifecycle_status: str | None = Query(default=None, pattern="^(active|archived|tombstoned)$"),
     user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
-    return list_media_assets(upload_status=upload_status, limit=limit)
+    return list_media_assets(
+        upload_status=upload_status,
+        limit=limit,
+        include_archived=include_archived,
+        lifecycle_status=lifecycle_status,
+    )
 
 
 @router.post("/media/assets/precheck")
@@ -171,6 +186,7 @@ def _media_asset_thumbnail_response(asset_id: str) -> FileResponse:
                     SELECT thumbnail_relative_path, original_file_name
                     FROM media_assets
                     WHERE id = CAST(:asset_id AS uuid)
+                      AND COALESCE(lifecycle_status, 'active') = 'active'
                     """
                 ),
                 {"asset_id": asset_id},
@@ -215,6 +231,29 @@ async def admin_retry_media_asset_processing(
 ) -> dict[str, Any]:
     try:
         return retry_media_processing(asset_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.get("/media/assets/{asset_id}/archive-plan")
+async def admin_media_asset_archive_plan(
+    asset_id: str = Path(min_length=1),
+    user: AuthUser = Depends(require_teacher_console_user),
+) -> dict[str, Any]:
+    try:
+        return media_asset_archive_plan(asset_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post("/media/assets/{asset_id}/archive")
+async def admin_archive_media_asset(
+    payload: MediaAssetArchiveRequest,
+    asset_id: str = Path(min_length=1),
+    user: AuthUser = Depends(require_teacher_console_user),
+) -> dict[str, Any]:
+    try:
+        return archive_media_asset(asset_id=asset_id, actor_user_id=user.id, reason=payload.reason)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 

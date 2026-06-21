@@ -135,6 +135,12 @@
       "owner": "admin-api"
     },
     {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/preview-token",
+      "name": "admin_catalog_point_preview_token",
+      "owner": "admin-api"
+    },
+    {
       "method": "GET",
       "path": "/api/admin/catalog/nodes/{node_id}/validation",
       "name": "admin_catalog_validate_node",
@@ -393,6 +399,18 @@
       "owner": "admin-api"
     },
     {
+      "method": "POST",
+      "path": "/api/admin/media/assets/{asset_id}/archive",
+      "name": "admin_archive_media_asset",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/media/assets/{asset_id}/archive-plan",
+      "name": "admin_media_asset_archive_plan",
+      "owner": "admin-api"
+    },
+    {
       "method": "GET",
       "path": "/api/admin/media/assets/{asset_id}/file",
       "name": "admin_get_media_asset_file",
@@ -420,6 +438,12 @@
       "method": "GET",
       "path": "/api/admin/media/assets/{asset_id}/thumbnail",
       "name": "admin_get_media_asset_thumbnail",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/media/assets/{asset_id}/thumbnail-stream",
+      "name": "admin_stream_media_asset_thumbnail",
       "owner": "admin-api"
     },
     {
@@ -645,6 +669,12 @@
       "owner": "admin-api"
     },
     {
+      "method": "GET",
+      "path": "/api/admin/video-library/search/diagnostics",
+      "name": "admin_video_library_search_diagnostics",
+      "owner": "admin-api"
+    },
+    {
       "method": "POST",
       "path": "/api/auth/login",
       "name": "login",
@@ -679,6 +709,24 @@
       "path": "/api/auth/student/password",
       "name": "change_student_password",
       "owner": "runtime"
+    },
+    {
+      "method": "GET",
+      "path": "/api/preview/catalog/points/{node_id}",
+      "name": "preview_catalog_point_detail_route",
+      "owner": "student-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/preview/media/assets/{asset_id}/stream",
+      "name": "preview_media_stream",
+      "owner": "student-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/preview/media/assets/{asset_id}/thumbnail",
+      "name": "preview_media_thumbnail",
+      "owner": "student-api"
     },
     {
       "method": "GET",

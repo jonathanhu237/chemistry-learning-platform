@@ -14,7 +14,48 @@ from server.app.infrastructure.settings import ROOT, get_settings
 from server.app.infrastructure.database import db_session
 
 
-VIDEO_LIBRARY_INDEX_MAPPING_VERSION = "chemistry-point-placement-v4"
+VIDEO_LIBRARY_INDEX_MAPPING_VERSION = "chemistry-point-placement-v5"
+VIDEO_LIBRARY_FORBIDDEN_SOURCE_FIELDS = {
+    "videos",
+    "media_id",
+    "media_ids",
+    "media_asset_id",
+    "media_asset_ids",
+    "media_title",
+    "media_titles",
+    "binding_title",
+    "binding_titles",
+    "original_file_name",
+    "original_file_names",
+    "thumbnail_path",
+    "thumbnail_paths",
+    "thumbnail_relative_path",
+    "thumbnail_relative_paths",
+    "stream_path",
+    "stream_paths",
+    "playback_relative_path",
+    "playback_relative_paths",
+    "source_relative_path",
+    "source_relative_paths",
+    "relative_path",
+    "relative_paths",
+    "upload_status",
+    "processing_status",
+    "processing_phase",
+    "processing_progress",
+    "binding_status",
+    "duplicate_candidates",
+    "duration_seconds",
+    "video_codec",
+    "audio_codec",
+    "playback_mime_type",
+    "mime_type",
+    "file_size_bytes",
+    "width",
+    "height",
+    "fps",
+    "bitrate",
+}
 ANALYZER_ASSET_ROOT = ROOT / "data" / "seed" / "search" / "es_ik"
 ANALYZER_ASSET_FILES = [
     ("manifest", ANALYZER_ASSET_ROOT / "manifest.json"),
@@ -39,6 +80,24 @@ def _json_bytes(value: Any, *, sort_keys: bool = True) -> bytes:
 
 def document_hash(document: dict[str, Any]) -> str:
     return hashlib.sha256(_json_bytes(document)).hexdigest()
+
+
+def forbidden_video_library_document_violations(document: dict[str, Any]) -> list[str]:
+    violations: list[str] = []
+
+    def visit(value: Any, path: str) -> None:
+        if isinstance(value, dict):
+            for key, child in value.items():
+                child_path = f"{path}.{key}" if path else str(key)
+                if key in VIDEO_LIBRARY_FORBIDDEN_SOURCE_FIELDS:
+                    violations.append(child_path)
+                visit(child, child_path)
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                visit(child, f"{path}[{index}]")
+
+    visit(document, "")
+    return violations
 
 
 def _asset_sha256(path: Any) -> str:
@@ -127,7 +186,8 @@ def video_library_index_mapping(
         "mappings": {
             "_meta": {
                 "mapping_version": VIDEO_LIBRARY_INDEX_MAPPING_VERSION,
-                "retrieval_model": "point-placement-with-chemistry-facets",
+                "retrieval_model": "point-placement-with-chemistry-facets-video-readiness-only",
+                "forbidden_video_resource_fields": sorted(VIDEO_LIBRARY_FORBIDDEN_SOURCE_FIELDS),
             },
             "dynamic": "false",
             "properties": {

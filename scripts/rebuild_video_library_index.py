@@ -18,6 +18,7 @@ from server.app.domains.video_library.search import (
 from server.app.domains.video_library.index_client import (
     configured_index_client,
     document_hash,
+    forbidden_video_library_document_violations,
     mark_index_sync_failure,
     mark_index_sync_success,
 )
@@ -33,6 +34,28 @@ def main() -> None:
         point_rows = _load_published_point_rows(session)
     documents = _build_documents([], _learning_profiles(), point_rows=point_rows)
     payloads = [document.index_source for document in documents if document.index_source]
+    purity_violations = [
+        {"id": payload.get("id"), "violations": forbidden_video_library_document_violations(payload)}
+        for payload in payloads
+        if forbidden_video_library_document_violations(payload)
+    ]
+    if purity_violations:
+        sys.stdout.buffer.write(
+            (
+                json.dumps(
+                    {
+                        "ok": False,
+                        "error": "video_library_document_purity_failed",
+                        "violations": purity_violations[:20],
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                    default=str,
+                )
+                + "\n"
+            ).encode("utf-8")
+        )
+        raise SystemExit(1)
 
     if args.dry_run:
         sys.stdout.buffer.write(

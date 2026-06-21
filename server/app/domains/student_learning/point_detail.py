@@ -351,7 +351,11 @@ def _media_resources(experiment: dict[str, Any], *, visible_only: bool = False) 
     return [
         item
         for item in items
-        if is_student_visible_media(str(item.get("upload_status") or ""), str(item.get("binding_status") or ""))
+        if is_student_visible_media(
+            str(item.get("upload_status") or ""),
+            str(item.get("binding_status") or ""),
+            str(item.get("lifecycle_status") or "active"),
+        )
     ]
 
 
@@ -469,6 +473,7 @@ def _student_experiment_sql(where_clause: str = "") -> str:
                 'title', COALESCE(mb.title, ma.title),
                 'mime_type', COALESCE(ma.playback_mime_type, ma.mime_type),
                 'upload_status', ma.upload_status,
+                'lifecycle_status', COALESCE(ma.lifecycle_status, 'active'),
                 'binding_status', mb.status,
                 'point_key', mb.metadata->>'point_key',
                 'point_title', mb.metadata->>'point_title',
@@ -481,6 +486,7 @@ def _student_experiment_sql(where_clause: str = "") -> str:
             WHERE mb.target_type = 'experiment'
               AND mb.target_id = fe.id
               AND mb.status <> 'archived'
+              AND COALESCE(ma.lifecycle_status, 'active') = 'active'
           ), '[]'::jsonb) AS media_resources,
           (SELECT COUNT(*) FROM experiment_questions q WHERE q.experiment_id = fe.id AND q.status = 'published') AS published_question_count
         FROM formal_experiments fe
@@ -997,6 +1003,7 @@ def _published_student_media_row(asset_id: str) -> dict[str, Any]:
                     JOIN formal_experiments fe ON fe.id = mb.target_id
                     WHERE ma.id = CAST(:asset_id AS uuid)
                       AND ma.upload_status = 'ready'
+                      AND COALESCE(ma.lifecycle_status, 'active') = 'active'
                       AND mb.target_type = 'experiment'
                       AND mb.status = 'published'
                       AND fe.status = 'published'

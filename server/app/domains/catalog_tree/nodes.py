@@ -578,8 +578,10 @@ def _copy_point_resources(
               CAST(:user_id AS uuid),
               now()
             FROM experiment_catalog_point_media_bindings mb
+            JOIN media_assets ma ON ma.id = mb.media_asset_id
             WHERE (mb.canonical_point_id = :source_canonical_point_id OR mb.node_id = :source_node_id)
               AND mb.binding_status <> 'archived'
+              AND COALESCE(ma.lifecycle_status, 'active') = 'active'
             ORDER BY mb.display_order, mb.created_at
             ON CONFLICT (node_id, media_asset_id) DO NOTHING
             """

@@ -136,7 +136,7 @@ def student_search_document_for_node(session: Any, *, node_id: str, require_publ
     published_content = content if content and content.get("content_status") == "published" else None
     content_for_search = (published_content if require_published else content) or {"point_title": node["title"], "principle_mode": "text"}
 
-    from server.app.domains.catalog_tree.media_bindings import student_videos
+    from server.app.domains.catalog_tree.media_bindings import student_video_readiness
     from server.app.domains.catalog_tree.related_links import related_links
 
     path = breadcrumbs(session, node["node_id"])
@@ -151,7 +151,7 @@ def student_search_document_for_node(session: Any, *, node_id: str, require_publ
         if clean(value)
     )
     related = related_links(session, node["node_id"], include_hidden=False, include_defaults=True)
-    videos = student_videos(session, node["node_id"])
+    video_readiness = student_video_readiness(session, node["node_id"])
     principle = (
         reaction_principle_text(content_for_search)
         if content_for_search.get("principle_mode") == "equation"
@@ -193,7 +193,6 @@ def student_search_document_for_node(session: Any, *, node_id: str, require_publ
             phenomenon,
             safety,
             " ".join(clean(link.get("target_title")) for link in related),
-            " ".join(clean(video.get("title")) for video in videos),
             " ".join(formulae),
             " ".join(title_formulae),
             " ".join(title_formula_pairs),
@@ -249,9 +248,8 @@ def student_search_document_for_node(session: Any, *, node_id: str, require_publ
         "phenomenon_tags": phenomenon_tags,
         "property_tags": property_tags,
         "related_text": [clean(link.get("target_title")) for link in related if clean(link.get("target_title"))],
-        "has_video": bool(videos),
-        "video_count": len(videos),
-        "videos": [{"media_id": video["media_id"], "title": video["title"]} for video in videos],
+        "has_video": bool(video_readiness["has_video"]),
+        "video_count": int(video_readiness["video_count"]),
         "target": {
             "kind": "point_detail",
             "route": f"/point/{node['node_id']}",

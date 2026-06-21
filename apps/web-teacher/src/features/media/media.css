@@ -516,6 +516,19 @@
   background: var(--sysu-panel);
 }
 
+.video-archive-impact-list {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.video-archive-impact-item {
+  padding: 8px 10px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: var(--sysu-panel);
+}
 
 .video-preview-player {
   width: 100%;
