@@ -1,5 +1,5 @@
-import { Alert, Button, Empty, Popconfirm, Select, Space, Tag, Typography } from "antd";
-import { DeleteOutlined, EyeOutlined, VideoCameraOutlined } from "@ant-design/icons";
+import { Button, Empty, Popconfirm, Select, Space, Tag, Typography } from "antd";
+import { ArrowRightOutlined, DeleteOutlined, EyeOutlined, VideoCameraOutlined } from "@ant-design/icons";
 import type { UseQueryResult } from "@tanstack/react-query";
 
 import type { ApiList } from "../../api/common";
@@ -38,9 +38,21 @@ export function CatalogVideoPanel({
 
   return (
     <section className="catalog-editor-section catalog-editor-panel-section">
-      <div>
-        <Title level={4}>视频绑定</Title>
-        <Text type="secondary">这里只绑定已有素材；新视频请先到视频资源页上传。</Text>
+      <div className="catalog-video-panel-heading">
+        <div>
+          <Title level={4}>视频绑定</Title>
+          <Text type="secondary">这里只绑定已有素材；新视频请先到视频资源页上传。</Text>
+        </div>
+        <a className="catalog-video-shortcut-card" href="/videos">
+          <span className="catalog-video-shortcut-icon">
+            <VideoCameraOutlined />
+          </span>
+          <span>
+            <strong>视频资源入口</strong>
+            <small>上传后回到这里绑定</small>
+          </span>
+          <ArrowRightOutlined />
+        </a>
       </div>
       <div className="catalog-media-bind-toolbar">
         <Select
@@ -65,16 +77,6 @@ export function CatalogVideoPanel({
           绑定素材
         </Button>
       </div>
-      <Alert
-        type="info"
-        showIcon
-        title="需要新视频素材时，请先在视频资源页上传，再回到这里绑定。"
-        action={
-          <Button size="small" href="/videos">
-            去上传
-          </Button>
-        }
-      />
       <div className="catalog-media-list">
         {detail.media_bindings.length ? (
           detail.media_bindings.map((binding) => (

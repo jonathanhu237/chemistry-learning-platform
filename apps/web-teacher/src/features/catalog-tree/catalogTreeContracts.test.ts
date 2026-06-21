@@ -26,7 +26,8 @@ describe("catalog tree UI contracts", () => {
     expect(editorSource).toContain('key: "publish"');
     expect(editorSource).toContain('key: "advanced"');
     expect(aiContextPanelSource).toContain("静态兜底证据");
-    expect(aiContextPanelSource).toContain("动态 RAG 探测");
+    expect(aiContextPanelSource).toContain("静态证据状态流");
+    expect(aiContextPanelSource).toContain("真实 RAG 搜索");
     expect(aiContextPanelSource).toContain("仅教师可见教学备注");
     expect(catalogTreeApiSource).toContain("getCatalogPointAiContext");
     expect(catalogTreeApiSource).toContain("runCatalogPointRagProbe");
@@ -65,8 +66,8 @@ describe("catalog tree UI contracts", () => {
     expect(contentPanelSource).not.toContain("Node ID");
     expect(contentPanelSource).not.toContain("search_preview");
     expect(contentPanelSource).not.toContain("display_order");
-    expect(advancedPanelSource).toContain("Node ID");
-    expect(advancedPanelSource).toContain("display_order");
+    expect(advancedPanelSource).toContain("节点 ID");
+    expect(advancedPanelSource).toContain("显示顺序");
     expect(advancedPanelSource).toContain("search_preview");
   });
 
@@ -74,6 +75,9 @@ describe("catalog tree UI contracts", () => {
     expect(videoPanelSource).toContain("mutations.bindMedia.mutate");
     expect(videoPanelSource).toContain("getMediaAssetFileUrl");
     expect(videoPanelSource).toContain("getMediaAssetThumbnailUrl");
+    expect(videoPanelSource).toContain("catalog-video-shortcut-card");
+    expect(videoPanelSource).toContain("视频资源入口");
+    expect(videoPanelSource).not.toContain("<Alert");
     expect(editorSource).not.toContain("shortcut_target_node_id");
     expect(catalogTreeApiSource).not.toContain("media/upload");
     expect(catalogTreeApiSource).not.toContain("uploadCatalogPointMedia");

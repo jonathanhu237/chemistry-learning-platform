@@ -1,4 +1,4 @@
-import { Alert, Button, Descriptions, Empty, Space, Tag, Typography } from "antd";
+import { Button, Descriptions, Empty, Space, Tag, Typography } from "antd";
 
 import type { CatalogNodeDetail, CatalogPointRagProbe, CatalogStaticEvidenceBinding } from "../../api/catalogTree";
 import { QueryState } from "../../components/QueryState";
@@ -51,10 +51,10 @@ function displayLabel(value?: unknown) {
     theory: "理论证据",
     supplemental: "补充证据",
     fallback: "兜底证据",
-    dynamic_rag: "动态 RAG",
+    dynamic_rag: "真实 RAG",
     catalog_node_evidence: "目录点证据",
     static_catalog_node_evidence: "静态目录点证据",
-    dynamic_rag_catalog_node_evidence: "动态 RAG 目录点证据",
+    dynamic_rag_catalog_node_evidence: "真实 RAG 目录点证据",
     hybrid_bge_rag: "混合 BGE RAG",
     generated: "已生成",
     deterministic_catalog_context_query: "目录点上下文兜底查询",
@@ -66,11 +66,64 @@ function displayLabel(value?: unknown) {
   return labels[raw] || raw || "-";
 }
 
-function staticEvidenceMessage(status?: string | null) {
-  if (status === "missing_fallback_evidence") return "缺少静态兜底证据；运行状态允许时，动态 RAG 仍是主要 AI 路径。";
-  if (status === "stale_fallback_evidence") return "静态兜底证据已过期；刷新后才能作为可靠兜底来源。";
-  if (status === "available_static_fallback") return "静态兜底证据可用，可作为动态 RAG 的补充来源。";
-  return "目录点证据状态已更新。";
+type StaticEvidenceStage = "not_started" | "searching" | "selected" | "available" | "missed" | "failed" | "stale";
+
+const STATIC_EVIDENCE_PRIMARY_STEPS: Array<{ id: StaticEvidenceStage; title: string; description: string }> = [
+  { id: "not_started", title: "未建立", description: "等待刷新任务" },
+  { id: "searching", title: "证据搜索中", description: "召回并重排片段" },
+  { id: "selected", title: "已选证据", description: "保存候选片段" },
+  { id: "available", title: "可作为兜底", description: "补充真实 RAG" },
+];
+
+const STATIC_EVIDENCE_BRANCH_STEPS: Array<{ id: StaticEvidenceStage; title: string; description: string }> = [
+  { id: "missed", title: "未命中", description: "暂无静态绑定" },
+  { id: "failed", title: "搜索失败", description: "需要重试任务" },
+  { id: "stale", title: "已过期", description: "等待重新刷新" },
+];
+
+function staticEvidenceStage(status?: string | null): StaticEvidenceStage {
+  if (status === "pending" || status === "running") return "searching";
+  if (status === "selected") return "selected";
+  if (status === "available_static_fallback" || status === "fresh" || status === "succeeded" || status === "synced") return "available";
+  if (status === "stale" || status === "stale_fallback_evidence") return "stale";
+  if (status === "failed" || status === "unavailable") return "failed";
+  if (status === "missing" || status === "missing_fallback_evidence") return "missed";
+  return "not_started";
+}
+
+function staticEvidenceSummary(stage: StaticEvidenceStage, bindingCount: number) {
+  if (stage === "searching") return "正在为当前点位搜索可用的静态证据。";
+  if (stage === "available") return `已选 ${bindingCount} 条静态证据，可作为真实 RAG 的补充兜底。`;
+  if (stage === "selected") return `已选 ${bindingCount} 条候选证据，等待确认可用状态。`;
+  if (stage === "stale") return "静态证据已过期，需要刷新后再作为兜底来源。";
+  if (stage === "failed") return "最近一次静态证据搜索失败，可重试证据任务。";
+  if (stage === "missed") return "当前没有静态兜底证据；真实 RAG 搜索仍可独立运行。";
+  return "尚未建立静态证据状态。";
+}
+
+function StaticEvidenceLifecycle({ status, bindingCount }: { status?: string | null; bindingCount: number }) {
+  const currentStage = staticEvidenceStage(status);
+  const renderNode = (step: { id: StaticEvidenceStage; title: string; description: string }) => (
+    <div className={`catalog-static-lifecycle-node${currentStage === step.id ? " is-current" : ""}`} data-stage={step.id} key={step.id}>
+      <span className="catalog-static-lifecycle-dot" />
+      <strong>{step.title}</strong>
+      <small>{step.description}</small>
+    </div>
+  );
+
+  return (
+    <div className="catalog-static-lifecycle-card">
+      <div className="catalog-static-lifecycle-header">
+        <div>
+          <strong>静态证据状态流</strong>
+          <p>{staticEvidenceSummary(currentStage, bindingCount)}</p>
+        </div>
+        <Tag color={statusColor(status)}>{displayLabel(status || "missing")}</Tag>
+      </div>
+      <div className="catalog-static-lifecycle-track">{STATIC_EVIDENCE_PRIMARY_STEPS.map(renderNode)}</div>
+      <div className="catalog-static-lifecycle-branches">{STATIC_EVIDENCE_BRANCH_STEPS.map(renderNode)}</div>
+    </div>
+  );
 }
 
 function EvidenceRow({ binding }: { binding: CatalogStaticEvidenceBinding }) {
@@ -106,15 +159,16 @@ function EvidenceRow({ binding }: { binding: CatalogStaticEvidenceBinding }) {
 }
 
 function ProbeResult({ probe }: { probe?: CatalogPointRagProbe }) {
-  if (!probe) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="运行一次动态 RAG 探测后，可查看召回和重排行为。" />;
+  if (!probe) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="运行一次真实 RAG 搜索后，可查看召回和重排行为。" />;
   return (
     <div className="catalog-ai-probe-result">
-      <Alert
-        showIcon
-        type={probe.ok ? "success" : "warning"}
-        title={probe.ok ? "动态 RAG 探测完成" : `动态 RAG 探测停在：${displayLabel(probe.failed_stage || "unknown")}`}
-        description={probe.ok ? "已从配置的 RAG 管线中选择证据。" : "请检查运行状态、索引或证据刷新任务。"}
-      />
+      <div className={`catalog-rag-search-result-card${probe.ok ? " is-ok" : " is-blocked"}`}>
+        <span className="catalog-rag-search-result-mark" />
+        <div>
+          <strong>{probe.ok ? "真实 RAG 搜索完成" : `真实 RAG 搜索停在：${displayLabel(probe.failed_stage || "unknown")}`}</strong>
+          <small>{probe.ok ? "已从配置的 RAG 管线中选择证据。" : "检查运行状态、索引或证据刷新任务。"}</small>
+        </div>
+      </div>
       <Descriptions size="small" column={2}>
         <Descriptions.Item label="运行状态">{displayLabel(probe.runtime_health?.status || "-")}</Descriptions.Item>
         <Descriptions.Item label="召回来源">{displayLabel(probe.recall_source || "-")}</Descriptions.Item>
@@ -180,7 +234,7 @@ export function CatalogAiContextPanel({ detail, mutations }: { detail: CatalogNo
       <div className="catalog-panel-title-row">
         <div>
           <Title level={4}>AI 上下文</Title>
-          <Text type="secondary">仅教师可见，用于诊断静态兜底证据、动态 RAG 和点位上下文。</Text>
+          <Text type="secondary">仅教师可见，用于诊断静态兜底证据、真实 RAG 搜索和点位上下文。</Text>
         </div>
         <Space wrap>
           <Button
@@ -194,7 +248,7 @@ export function CatalogAiContextPanel({ detail, mutations }: { detail: CatalogNo
             重试失败任务
           </Button>
           <Button size="small" type="primary" loading={mutations.runRagProbe.isPending} onClick={() => mutations.runRagProbe.mutate({ nodeId })}>
-            运行 RAG 探测
+            运行真实 RAG 搜索
           </Button>
         </Space>
       </div>
@@ -227,11 +281,9 @@ export function CatalogAiContextPanel({ detail, mutations }: { detail: CatalogNo
                 <Title level={5}>静态兜底证据</Title>
                 <Tag color={statusColor(contextQuery.data.static_evidence.status)}>{displayLabel(contextQuery.data.static_evidence.status)}</Tag>
               </div>
-              <Alert
-                showIcon
-                type={contextQuery.data.static_evidence.static_fallback_missing ? "info" : "success"}
-                title={staticEvidenceMessage(contextQuery.data.static_evidence.status)}
-                description="chunk ID 和重排分数仅用于教师诊断，不会发布给学生。"
+              <StaticEvidenceLifecycle
+                status={contextQuery.data.static_evidence.status}
+                bindingCount={contextQuery.data.static_evidence.bindings.length}
               />
               {contextQuery.data.static_evidence.bindings.length ? (
                 <div className="catalog-ai-evidence-list">
@@ -244,12 +296,11 @@ export function CatalogAiContextPanel({ detail, mutations }: { detail: CatalogNo
 
             <section className="catalog-ai-band">
               <div className="catalog-panel-title-row">
-                <Title level={5}>动态 RAG 探测</Title>
+                <Title level={5}>真实 RAG 搜索</Title>
                 <Tag color={statusColor(String(contextQuery.data.dynamic_rag.runtime_health?.status || ""))}>
                   {displayLabel(contextQuery.data.dynamic_rag.runtime_health?.status || "unknown")}
                 </Tag>
               </div>
-              <Alert showIcon type="info" title="动态 RAG 是主要 AI 路径；运行状态允许时可直接检索证据。" />
               <ProbeResult probe={probe} />
             </section>
 
