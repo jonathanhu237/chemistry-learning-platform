@@ -41,7 +41,6 @@ export type CatalogRelatedLinkFormItem = {
   source?: string;
   hidden?: boolean;
   sort_order?: number;
-  label?: string;
   metadata?: Record<string, unknown>;
 };
 
@@ -160,7 +159,6 @@ export function hydrateCatalogRelatedLinksForm(detail: CatalogNodeDetail | null 
       source: link.source || link.relation_type,
       hidden: Boolean(link.hidden),
       sort_order: link.sort_order || index + 1,
-      label: link.label || "",
       metadata: link.metadata || {},
     })),
   };
@@ -179,7 +177,6 @@ export function buildCatalogRelatedLinksPayload(values: CatalogRelatedLinksFormV
         relation_type: relationType,
         hidden: Boolean(link.hidden),
         sort_order: index + 1,
-        label: link.label?.trim() || null,
         metadata: link.metadata || {},
       });
     });

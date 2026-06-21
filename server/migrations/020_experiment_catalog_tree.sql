@@ -70,7 +70,6 @@ CREATE TABLE IF NOT EXISTS experiment_catalog_point_related_links (
   relation_type text NOT NULL DEFAULT 'manual' CHECK (relation_type IN ('manual', 'default_override', 'generated_default')),
   hidden boolean NOT NULL DEFAULT false,
   sort_order int NOT NULL DEFAULT 0,
-  label text,
   metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_by uuid REFERENCES app_users(id) ON DELETE SET NULL,
   updated_by uuid REFERENCES app_users(id) ON DELETE SET NULL,
@@ -380,7 +379,7 @@ ON CONFLICT (node_id) DO UPDATE SET
   updated_at = now();
 
 INSERT INTO experiment_catalog_point_related_links (
-  id, source_node_id, target_node_id, relation_type, hidden, sort_order, label,
+  id, source_node_id, target_node_id, relation_type, hidden, sort_order,
   metadata, created_by, updated_by, created_at, updated_at
 )
 SELECT
@@ -390,7 +389,6 @@ SELECT
   l.relation_type,
   l.hidden,
   l.sort_order,
-  l.label,
   COALESCE(l.metadata, '{}'::jsonb) || jsonb_build_object(
     'migrated_from', 'experiment_point_related_links',
     'legacy_source_experiment_id', l.source_experiment_id,
@@ -418,7 +416,6 @@ ON CONFLICT (id) DO UPDATE SET
   relation_type = EXCLUDED.relation_type,
   hidden = EXCLUDED.hidden,
   sort_order = EXCLUDED.sort_order,
-  label = EXCLUDED.label,
   metadata = experiment_catalog_point_related_links.metadata || EXCLUDED.metadata,
   updated_by = EXCLUDED.updated_by,
   updated_at = now();

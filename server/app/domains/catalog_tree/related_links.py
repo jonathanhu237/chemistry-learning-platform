@@ -37,7 +37,7 @@ def related_links(session: Any, node_id: str, *, include_hidden: bool, include_d
                        COALESCE(l.source_canonical_point_id, source.canonical_point_id) AS source_canonical_point_id,
                        COALESCE(l.target_canonical_point_id, target_node.canonical_point_id) AS target_canonical_point_id,
                        l.relation_type, l.hidden,
-                       l.sort_order, l.label, l.metadata,
+                       l.sort_order, l.metadata,
                        COALESCE(target_point.title, target_placement.title, target_node.title) AS target_title,
                        COALESCE(target_placement.status, target_node.status) AS target_status,
                        COALESCE(target_placement.node_kind, target_node.node_kind) AS target_kind
@@ -80,11 +80,10 @@ def related_links(session: Any, node_id: str, *, include_hidden: bool, include_d
             "source_canonical_point_id": row["source_canonical_point_id"],
             "target_canonical_point_id": row["target_canonical_point_id"],
             "target_placement_node_id": row["target_node_id"],
-            "target_title": row["label"] or row["target_title"],
+            "target_title": row["target_title"],
             "relation_type": row["relation_type"],
             "hidden": bool(row["hidden"]),
             "sort_order": int(row["sort_order"] or 0),
-            "label": row["label"],
             "source": "manual",
             "metadata": row["metadata"] if isinstance(row["metadata"], dict) else {},
         }
@@ -135,7 +134,6 @@ def related_links(session: Any, node_id: str, *, include_hidden: bool, include_d
                 "relation_type": "generated_default",
                 "hidden": False,
                 "sort_order": index,
-                "label": None,
                 "source": "generated_default",
                 "metadata": {
                     "generated_from": "same_parent_points",
@@ -180,12 +178,12 @@ def replace_related_links(*, node_id: str, payload: CatalogPointRelatedLinksRequ
                     """
                     INSERT INTO experiment_catalog_point_related_links (
                       source_node_id, target_node_id, source_canonical_point_id, target_canonical_point_id,
-                      source_placement_node_id, target_placement_node_id, relation_type, hidden, sort_order, label,
+                      source_placement_node_id, target_placement_node_id, relation_type, hidden, sort_order,
                       metadata, created_by, updated_by, updated_at
                     )
                     VALUES (
                       :source_node_id, :target_node_id, :source_canonical_point_id, :target_canonical_point_id,
-                      :source_node_id, :target_node_id, :relation_type, :hidden, :sort_order, :label,
+                      :source_node_id, :target_node_id, :relation_type, :hidden, :sort_order,
                       CAST(:metadata AS jsonb), CAST(:user_id AS uuid), CAST(:user_id AS uuid), now()
                     )
                     ON CONFLICT (source_node_id, target_node_id) DO UPDATE SET
@@ -196,7 +194,6 @@ def replace_related_links(*, node_id: str, payload: CatalogPointRelatedLinksRequ
                       relation_type = EXCLUDED.relation_type,
                       hidden = EXCLUDED.hidden,
                       sort_order = EXCLUDED.sort_order,
-                      label = EXCLUDED.label,
                       metadata = EXCLUDED.metadata,
                       updated_by = EXCLUDED.updated_by,
                       updated_at = now()
@@ -210,7 +207,6 @@ def replace_related_links(*, node_id: str, payload: CatalogPointRelatedLinksRequ
                     "relation_type": clean(link.get("relation_type") or "manual"),
                     "hidden": bool(link.get("hidden")),
                     "sort_order": int(link.get("sort_order") or index + 1),
-                    "label": clean(link.get("label")) or None,
                     "metadata": json_dump(link.get("metadata") if isinstance(link.get("metadata"), dict) else {}),
                     "user_id": user.id,
                 },

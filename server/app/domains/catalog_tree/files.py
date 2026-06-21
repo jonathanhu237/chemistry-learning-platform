@@ -33,7 +33,7 @@ def student_media_asset_file(asset_id: str) -> tuple[Path, str, str]:
                 JOIN experiment_catalog_nodes n ON n.id = mb.node_id
                 WHERE ma.id = CAST(:asset_id AS uuid)
                   AND ma.upload_status = 'ready'
-                  AND mb.binding_status = 'published'
+                  AND mb.binding_status <> 'archived'
                   AND n.node_kind = 'point'
                   AND n.status = 'published'
                 LIMIT 1
@@ -60,7 +60,7 @@ def student_media_thumbnail_file(asset_id: str) -> tuple[Path, str, str]:
                 JOIN experiment_catalog_nodes n ON n.id = mb.node_id
                 WHERE ma.id = CAST(:asset_id AS uuid)
                   AND ma.upload_status = 'ready'
-                  AND mb.binding_status = 'published'
+                  AND mb.binding_status <> 'archived'
                   AND n.node_kind = 'point'
                   AND n.status = 'published'
                   AND ma.thumbnail_relative_path IS NOT NULL

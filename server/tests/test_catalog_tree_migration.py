@@ -9,6 +9,8 @@ REACTION_EQUATION_MIGRATION = Path("server/migrations/023_catalog_point_reaction
 POINT_JOBS_MIGRATION = Path("server/migrations/024_catalog_point_jobs.sql")
 POINT_PLACEMENTS_MIGRATION = Path("server/migrations/025_catalog_point_placements.sql")
 DROP_STUDENT_CARD_FIELDS_MIGRATION = Path("server/migrations/026_drop_catalog_student_card_fields.sql")
+DROP_RELATED_LINK_LABELS_MIGRATION = Path("server/migrations/027_drop_related_link_labels.sql")
+SIMPLIFY_VIDEO_BINDING_MIGRATION = Path("server/migrations/028_simplify_catalog_video_binding.sql")
 
 
 def _sql() -> str:
@@ -35,6 +37,14 @@ def _drop_student_card_fields_sql() -> str:
     return DROP_STUDENT_CARD_FIELDS_MIGRATION.read_text(encoding="utf-8")
 
 
+def _drop_related_link_labels_sql() -> str:
+    return DROP_RELATED_LINK_LABELS_MIGRATION.read_text(encoding="utf-8")
+
+
+def _simplify_video_binding_sql() -> str:
+    return SIMPLIFY_VIDEO_BINDING_MIGRATION.read_text(encoding="utf-8")
+
+
 def test_catalog_tree_migration_uses_deterministic_legacy_identity_mapping() -> None:
     sql = _sql()
 
@@ -56,6 +66,18 @@ def test_catalog_tree_migration_backfills_point_content_media_links_and_question
     assert "ALTER TABLE experiment_questions" in sql
     assert "ADD COLUMN IF NOT EXISTS primary_point_node_ids" in sql
     assert "'primary_point_node_ids', question_points.point_node_ids_json" in sql
+
+
+def test_related_link_baseline_migrations_do_not_create_student_title_override_columns() -> None:
+    legacy_sql = Path("server/migrations/019_experiment_point_learning_content.sql").read_text(encoding="utf-8")
+    catalog_sql = _sql()
+
+    assert "CREATE TABLE IF NOT EXISTS experiment_point_related_links" in legacy_sql
+    assert "CREATE TABLE IF NOT EXISTS experiment_catalog_point_related_links" in catalog_sql
+    assert "label text" not in legacy_sql
+    assert "label text" not in catalog_sql
+    assert "l.label" not in catalog_sql
+    assert "label = EXCLUDED.label" not in catalog_sql
 
 
 def test_catalog_tree_migration_backfills_evidence_assessment_events_and_feedback() -> None:
@@ -96,6 +118,26 @@ def test_drop_student_card_fields_migration_removes_obsolete_manual_card_columns
     assert "DROP COLUMN IF EXISTS card_layout" in sql
     assert "DROP COLUMN IF EXISTS card_presentation" in sql
     assert "DROP COLUMN IF EXISTS point_card_presentation" in sql
+
+
+def test_drop_related_link_labels_migration_removes_obsolete_title_override_columns() -> None:
+    sql = _drop_related_link_labels_sql()
+
+    assert "ALTER TABLE experiment_catalog_point_related_links" in sql
+    assert "ALTER TABLE experiment_point_related_links" in sql
+    assert "DROP COLUMN IF EXISTS label" in sql
+
+
+def test_simplify_video_binding_migration_keeps_one_active_video_per_point() -> None:
+    sql = _simplify_video_binding_sql()
+
+    assert "row_number() OVER" in sql
+    assert "PARTITION BY COALESCE(mb.canonical_point_id, mb.node_id)" in sql
+    assert "single_active_catalog_point_video" in sql
+    assert "idx_catalog_point_media_one_active_canonical" in sql
+    assert "WHERE canonical_point_id IS NOT NULL" in sql
+    assert "binding_status <> 'archived'" in sql
+    assert "idx_catalog_point_media_one_active_node_without_canonical" in sql
 
 
 def test_separate_catalog_node_kind_migration_splits_hybrid_refs_deterministically() -> None:

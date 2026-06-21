@@ -1,5 +1,6 @@
 import type { ApiList } from "./common";
 import { apiBase, api, patchJson, postJson } from "./http";
+import { getAuthToken } from "./auth";
 
 export type MediaAsset = {
   id: string;
@@ -91,10 +92,18 @@ export function listMediaAssets(limit = 200): Promise<ApiList<MediaAsset>> {
 }
 
 export function getMediaAssetThumbnailUrl(assetId: string): string {
+  const accessToken = getAuthToken();
+  if (accessToken) {
+    return `${apiBase}/api/admin/media/assets/${assetId}/thumbnail-stream?access_token=${encodeURIComponent(accessToken)}`;
+  }
   return `${apiBase}/api/admin/media/assets/${assetId}/thumbnail`;
 }
 
 export function getMediaAssetFileUrl(assetId: string): string {
+  const accessToken = getAuthToken();
+  if (accessToken) {
+    return getMediaAssetStreamUrl(assetId, accessToken);
+  }
   return `${apiBase}/api/admin/media/assets/${assetId}/file`;
 }
 

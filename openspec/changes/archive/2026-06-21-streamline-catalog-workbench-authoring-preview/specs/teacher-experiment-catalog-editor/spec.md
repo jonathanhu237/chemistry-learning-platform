@@ -60,6 +60,7 @@ The teacher catalog editor SHALL include visual and interaction acceptance check
 - **WHEN** implementation validates the selected-node editor UI
 - **THEN** QA MUST cover directory content-only editor, point content tab, point video tab, related experiments tab, header preview action, and header diagnostics action
 - **AND** QA MUST verify that the primary tab strip does not contain student-card, node-status, AI-context, or advanced-debug tabs.
+- **AND** related experiments QA MUST verify the compact row list, row-level drag behavior, row-between drop indicator, absence of visible drag grips, absence of always-visible up/down reorder buttons, absence of short-name inputs, compact search/add rows, and narrow viewport non-overlap.
 
 #### Scenario: Preview visual QA runs
 - **WHEN** implementation validates `预览学习卡片`
@@ -93,6 +94,63 @@ The selected-node header SHALL provide the entry points for student preview and 
 - **WHEN** the diagnostics or preview window cannot be opened
 - **THEN** the teacher frontend MUST show a controlled fallback such as an in-app route, modal, or drawer
 - **AND** the fallback MUST preserve the same separation between authoring and diagnostics.
+
+### Requirement: Related experiments editor is a compact ordered list
+The teacher catalog editor SHALL present related experiments as a lightweight ordered learning list that matches the catalog tree's row-level interaction language.
+
+#### Scenario: Related experiments tab opens for a point
+- **WHEN** a teacher opens the `相关实验` tab for a point node
+- **THEN** each related experiment MUST render as a compact single row rather than a form card
+- **AND** the row MUST prioritize the target experiment title, a compact source/status tag such as `同目录默认`, `已调整默认`, or `手动添加`, and secondary row actions
+- **AND** the panel MUST NOT render per-row student-facing display-name, short-name, or label inputs.
+
+#### Scenario: Teacher reorders related experiments by dragging
+- **WHEN** a teacher drags a related experiment row within the list
+- **THEN** the whole row MUST act as the draggable object
+- **AND** the UI MUST show a subdued source row, a lightweight drag preview, and a thin row-between drop indicator
+- **AND** the UI MUST NOT require or show an always-visible `⋮⋮`, six-dot, grip, or equivalent drag handle.
+
+#### Scenario: Related experiment row is idle
+- **WHEN** the teacher is not hovering, focusing, or dragging a row
+- **THEN** the row MUST remain visually quiet and close to the catalog tree row rhythm
+- **AND** it MUST NOT show always-visible up/down reorder buttons or a permanent multi-button action cluster.
+
+#### Scenario: Teacher needs secondary row actions
+- **WHEN** the teacher hovers, focuses, or opens the row actions for a related experiment
+- **THEN** delete/remove and any precision reorder fallback commands MAY be available through a quiet hover action or `...` menu
+- **AND** those fallback commands MUST remain visually secondary to the row title and source tag.
+
+#### Scenario: Related experiment title is long
+- **WHEN** a related experiment title is too long for the row
+- **THEN** the title MUST truncate or wrap according to the list layout without colliding with the source tag or actions
+- **AND** dragging, hovering, or opening actions MUST NOT resize the row in a way that shifts surrounding rows unexpectedly.
+
+#### Scenario: Related experiments are defaults
+- **WHEN** no manual related-link override has been saved
+- **THEN** the panel MAY show the generated same-parent related experiments as compact rows or a controlled empty/default state
+- **AND** the default rows MUST be clear enough to review and reorder without exposing raw link internals.
+
+#### Scenario: Teacher adds a related experiment
+- **WHEN** the teacher clicks the dashed add placeholder in the related experiments panel
+- **THEN** the system MUST open a catalog tree picker in a modal or equivalent window
+- **AND** the picker MUST show directory hierarchy with lazy-loaded children and point rows that can be selected
+- **AND** the panel itself MUST NOT render an inline search box, inline search results region, or manual save button.
+
+#### Scenario: Teacher selects a related experiment from the picker
+- **WHEN** the teacher selects an eligible point node in the catalog tree picker
+- **THEN** the point MUST be appended to the ordered related-experiment list as a manual related link
+- **AND** the system MUST persist the updated related-link order immediately without requiring a separate save action
+- **AND** the current point and already-selected related points MUST be disabled or ignored.
+
+#### Scenario: Teacher edits related experiment membership or order
+- **WHEN** the teacher removes a related experiment, reorders rows by drag/drop, uses a menu reorder fallback command, or resets the list to same-directory defaults
+- **THEN** the system MUST persist the updated related-link payload immediately
+- **AND** the UI MUST keep the compact ordered-list rhythm without adding a persistent save control.
+
+#### Scenario: Visible instructional copy is rendered
+- **WHEN** the related experiments panel renders headings or helper copy
+- **THEN** visible copy MUST explain the learning-list purpose at most briefly
+- **AND** it MUST NOT rely on prominent instructional text such as `拖动可调整顺序` to compensate for unclear interaction design.
 
 ### Requirement: Student-card authoring is removed from the teacher workbench
 The teacher catalog editor SHALL remove manual student-card configuration as an authoring concept.

@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "target": {
+    "node_id": "cat-outline-ch13-091965fc5964c79a",
+    "title": "氯水对溴离子、碘离子混合溶液的氧化顺序",
+    "media_count": 1,
+    "published_media_count": 1,
+    "media_bindings": [
+      {
+        "media_id": "61386909-a1a4-494b-84ed-27b3ada9c549",
+        "title": "codex-batch-b-20260612-221826",
+        "upload_status": "ready",
+        "binding_status": "published"
+      }
+    ]
+  },
+  "ui": {
+    "selectedStatus": "点位状态：已发布：学生可见",
+    "headerHasVideo": true,
+    "popupUrl": "http://127.0.0.1:5174/catalog-preview?nodeId=cat-outline-ch13-091965fc5964c79a&title=%E6%B0%AF%E6%B0%B4%E5%AF%B9%E6%BA%B4%E7%A6%BB%E5%AD%90%E3%80%81%E7%A2%98%E7%A6%BB%E5%AD%90%E6%B7%B7%E5%90%88%E6%BA%B6%E6%B6%B2%E7%9A%84%E6%B0%A7%E5%8C%96%E9%A1%BA%E5%BA%8F&previewUrl=%2Fpreview%2Fcatalog%2Fpoints%2Fcat-outline-ch13-091965fc5964c79a%3Fpreview_token%3DeyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJlYmIxM2E2ZS02MDFlLTRhMzctODI5NC1jZmU2NzU4NjRlYzQiLCJyb2xlIjoiY2F0YWxvZ19wcmV2aWV3IiwidXNlcm5hbWUiOiJjb2RleF9zdHJlYW1saW5lX3ZpZGVvX2FkbWluIiwiZGlzcGxheV9uYW1lIjoiU3RyZWFtbGluZSBWaWRlbyBRQSBBZG1pbiIsInBhc3N3b3JkX3ZlcnNpb24iOjMsImp0aSI6ImdQZFc0YS1xUkg1NWVKcEVmVlotaGg4clVCNHdCQ2VtIiwiaWF0IjoxNzgyMDcyMDQ2LCJleHAiOjE3ODIwNzI5NDYsInB1cnBvc2UiOiJjYXRhbG9nX3BvaW50X3ByZXZpZXciLCJub2RlX2lkIjoiY2F0LW91dGxpbmUtY2gxMy0wOTE5NjVmYzU5NjRjNzlhIiwidGVhY2hlcl91c2VyX2lkIjoiZWJiMTNhNmUtNjAxZS00YTM3LTgyOTQtY2ZlNjc1ODY0ZWM0In0.hDFWOS_o1wSLZBb131z2ioJBQyZdHzTkuwzeotbaVNI&expiresAt=2026-06-21T20%3A15%3A46%2B00%3A00",
+    "frameHasTargetTitle": true,
+    "videoCount": 1,
+    "mediaLikeCount": 1,
+    "screenshotPath": "E:/chemistry-admin/apps/web-teacher/artifacts/streamline-preview-complete-with-video-phone.png"
+  },
+  "diagnostics": {
+    "console": [],
+    "errors": [],
+    "failed": []
+  }
+}

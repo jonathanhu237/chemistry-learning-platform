@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import pytest
+from uuid import UUID
 
 from server.app.auth import AuthUser
+from server.app.catalog_tree_schemas import StudentPointDetailResponse
 from server.app.domains.catalog_tree import preview
+from server.app.domains.catalog_tree.equations import normalize_reaction_equation
 from server.app.domains.errors import DomainHTTPException
 from server.app.security import create_access_token
 
@@ -174,6 +177,63 @@ def test_preview_point_detail_uses_draft_content_without_student_session(monkeyp
     assert detail["related_points"][0]["title"] == "Neighbor"
     assert detail["assessment_context"]["point_node_id"] == "cat-point-a"
     assert "teacher_note" not in detail
+
+
+def test_preview_point_detail_serializes_reaction_equation_ids_for_student_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    token = _preview_token("cat-point-a")
+    equation_id = UUID("25f9754b-66a3-41cc-96de-34b39b9320f6")
+    normalized_equation = normalize_reaction_equation(
+        {
+            "id": equation_id,
+            "node_id": "cat-point-a",
+            "canonical_point_id": "cat-canon-a",
+            "row_order": 1,
+            "raw_text": "Cl2 + 2I- -> 2Cl- + I2",
+        },
+        row_order=1,
+    )
+    monkeypatch.setattr(preview, "db_session", lambda: _SessionScope())
+    monkeypatch.setattr(
+        preview,
+        "get_node",
+        lambda _session, node_id, include_archived=False: {
+            "node_id": node_id,
+            "id": node_id,
+            "node_kind": "point",
+            "chapter_id": "CH13",
+            "title": "Equation point",
+            "summary": "",
+            "status": "published",
+            "canonical_point_id": "cat-canon-a",
+            "canonical_point_status": "published",
+        },
+    )
+    monkeypatch.setattr(
+        preview,
+        "get_content",
+        lambda _session, _node_id: {
+            "content_status": "published",
+            "point_title": "Equation point",
+            "principle_mode": "equation",
+            "principle_equation": "Cl2 + 2I- -> 2Cl- + I2",
+            "reaction_equations": [normalized_equation],
+            "phenomenon_explanation": "Layer color changes.",
+            "safety_note": "Handle chlorine water in hood.",
+        },
+    )
+    monkeypatch.setattr(
+        preview,
+        "breadcrumbs",
+        lambda _session, _node_id: [{"node_id": "cat-point-a", "title": "Equation point", "node_kind": "point", "chapter_id": "CH13"}],
+    )
+    monkeypatch.setattr(preview, "_preview_videos", lambda _session, _node_id, scoped_token: [])
+    monkeypatch.setattr(preview, "related_links", lambda *_args, **_kwargs: [])
+
+    detail = preview.preview_point_detail(node_id="cat-point-a", preview_token=token)
+    response = StudentPointDetailResponse(**detail)
+
+    assert detail["reaction_equations"][0]["id"] == str(equation_id)
+    assert response.reaction_equations[0].id == str(equation_id)
 
 
 def test_preview_media_scope_rejects_unbound_media(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -98,10 +98,27 @@
 
 - [x] 9.1 Capture teacher workbench desktop screenshots for selected directory and selected point after tab simplification.
 - [x] 9.2 Capture teacher workbench narrow laptop screenshots to verify header actions, tabs, and tree metadata do not collide.
-- [ ] 9.3 Capture phone-sized preview screenshots for a complete point with video.
-  - Blocked by current seed data: across 11 chapters and 393 catalog points, no point currently has a bound video (`hasVideoCount=0`). Captured the closest real states instead: missing-content/missing-video and content-complete/missing-video.
+- [x] 9.3 Capture phone-sized preview screenshots for a complete point with video.
+  - Captured `apps/web-teacher/artifacts/streamline-preview-complete-with-video-phone.png` after binding a ready video to `cat-outline-ch13-091965fc5964c79a`; the preview iframe rendered the target point with one video element.
 - [x] 9.4 Capture phone-sized preview screenshots for missing-content and missing-video points.
 - [x] 9.5 Capture phone mockup preview screenshots for the default modern iPhone preset and at least one alternate phone preset.
 - [x] 9.6 Capture diagnostics window/surface screenshots for node status, AI context, and advanced debug panels.
 - [x] 9.7 Verify preview does not expose teaching notes, raw RAG traces, validation internals, or backend job details.
 - [x] 9.8 Verify preview does not trigger assessment, AI chat, feedback, or learning progress side effects.
+
+## 10. Related Experiments Simplification
+
+- [x] 10.1 Remove related-link short display names from teacher frontend form state, hydration, payload builders, API types, and contract tests.
+- [x] 10.2 Remove related-link `label`/short-title fields in backend request schemas and replace-related-links persistence so new saves cannot create student-facing title overrides.
+- [x] 10.3 Update related-link read models so teacher detail, student H5, teacher preview, search documents, video-library search, and AI context use the resolved target experiment title rather than stored labels.
+- [x] 10.4 Add backend tests proving stale stored labels do not override related experiment titles in student, preview, search, and AI-context payloads.
+- [x] 10.5 Replace the card-like `相关实验` editor with compact single-row related experiment items matching the catalog tree visual language.
+- [x] 10.6 Make each related experiment row draggable as a whole row, with subdued source row, lightweight drag preview, and row-between drop indicator.
+- [x] 10.7 Remove always-visible drag grips, `⋮⋮` handles, up/down reorder buttons, and permanent multi-button clusters from idle related experiment rows.
+- [x] 10.8 Move destructive and precision/fallback reorder actions into a quiet hover action or `...` row menu without making them primary.
+- [x] 10.9 Redesign related experiment search/add results as compact selectable rows with quiet `加入` / `已在列表` states.
+- [x] 10.10 Update teacher frontend tests/contracts to assert absence of short-name inputs, absence of visible drag grips, absence of always-visible up/down buttons, and presence of compact row/source-tag behavior.
+- [x] 10.11 Capture desktop and narrow laptop screenshots for the redesigned `相关实验` tab covering default rows, manual rows, long titles, hover/focus actions, drag/drop indicator, search results, and empty/default state.
+- [x] 10.12 Run OpenSpec validation, teacher frontend tests/typecheck, relevant backend tests, and student H5 related-link regression tests after the simplification.
+- [x] 10.13 Destructively drop obsolete related-link label columns from legacy and catalog database tables, and update fresh schema baselines so the columns are not recreated.
+- [x] 10.14 Replace the inline related-experiment search/save workflow with a dashed add placeholder, catalog tree picker modal, and auto-save behavior for add/remove/reorder/reset.

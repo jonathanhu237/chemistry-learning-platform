@@ -35,7 +35,7 @@ The system SHALL keep display-facing family and element property facts in an exp
 - **AND** it MUST NOT depend on parsing canonical RAG chunk text to produce display facts
 
 ### Requirement: Real student learning page payload
-The backend SHALL expose a student learning payload centered on a selected family or chapter profile and its chapter-scoped catalog tree.
+The backend SHALL expose a student learning payload centered on a selected family or chapter profile and its chapter-scoped catalog tree, with catalog card display derived from authoritative catalog and point content.
 
 #### Scenario: Student opens learning page
 - **WHEN** an authenticated student opens the H5 learning page
@@ -46,9 +46,9 @@ The backend SHALL expose a student learning payload centered on a selected famil
 #### Scenario: Student opens the catalog learning view
 - **WHEN** a student enters the experiment learning area for a chapter
 - **THEN** the H5 app MUST show catalog nodes according to the authored directory tree
-- **AND** directory node cards MUST include student-visible title, description, and card presentation metadata
-- **AND** point node cards MUST include point/video learning entry metadata such as title, summary, media availability, and question count where available
-- **AND** the view MUST NOT depend on a fixed parent experiment group level.
+- **AND** directory node cards MUST derive visible display from directory title, hierarchy, child availability, and stable frontend defaults
+- **AND** point node cards MUST derive visible display from point title, point learning summary where available, binary video presence, and bound video thumbnail where available
+- **AND** the view MUST NOT depend on a fixed parent experiment group level or on teacher-authored card-presentation override fields.
 
 #### Scenario: No video exists for a point
 - **WHEN** a published point node has no published video media
@@ -178,8 +178,9 @@ The student H5 element learning page SHALL keep catalog point navigation as the 
 
 #### Scenario: Directory card appears in task area
 - **WHEN** a directory node is shown in the catalog task area
-- **THEN** it MUST render as a navigation category card using directory card presentation
-- **AND** it MUST NOT appear as a playable video point.
+- **THEN** it MUST render as a navigation category card using derived directory card presentation
+- **AND** it MUST NOT appear as a playable video point
+- **AND** it MUST NOT require manual directory description, card image, icon, accent, or layout fields.
 
 #### Scenario: Context area would push catalog too low
 - **WHEN** selected-element facts and family common properties contain more content than fits comfortably before the catalog entry area on a phone viewport
@@ -445,4 +446,84 @@ The student H5 experiment point detail SHALL display inline annotation text atta
 - **WHEN** the backend builds the student point detail payload for equation-mode principles
 - **THEN** it MUST include annotation text for each annotated reaction row
 - **AND** it MUST keep annotation formulae and condition tags separate from core reactants and products in any structured fields exposed to the frontend.
+
+### Requirement: Student catalog cards ignore removed card overrides
+The student H5 catalog SHALL render directory and point cards without relying on removed manual card-presentation fields.
+
+#### Scenario: Removed fields are absent from API payload
+- **WHEN** a student catalog response omits `student_description`, `card_image_asset_id`, `card_icon_key`, `card_accent`, `card_layout`, `card_presentation`, and `point_card_presentation`
+- **THEN** the student H5 catalog MUST still render directory and point cards successfully
+- **AND** no runtime error or blank card MUST occur because those fields are absent.
+
+#### Scenario: Point learning summary is available
+- **WHEN** a point has learning content such as principle, phenomenon explanation, or safety note
+- **THEN** the point card MAY show a concise derived summary from that content
+- **AND** the summary MUST be treated as a display projection rather than an editable card override.
+
+#### Scenario: Point learning summary is missing
+- **WHEN** a point has no available learning summary yet
+- **THEN** the point card MUST still show the point title and stable point/video affordance
+- **AND** it MUST not require teacher-authored short card description.
+
+#### Scenario: Bound video thumbnail is available
+- **WHEN** a point has a bound video thumbnail available to students
+- **THEN** the point card MAY use that thumbnail as the visual cue
+- **AND** it MUST fall back to a stable default if no thumbnail is available.
+
+### Requirement: Student preview mode does not change normal student behavior
+The student H5 code used for teacher preview SHALL preserve normal authenticated student behavior outside preview routes.
+
+#### Scenario: Student opens normal H5 app
+- **WHEN** an authenticated student opens the normal learning, catalog, or point routes
+- **THEN** the app MUST continue to use student authentication, student endpoints, and student progress behavior
+- **AND** teacher preview authorization MUST NOT be accepted as a normal student session.
+
+#### Scenario: Teacher preview renders H5 component
+- **WHEN** the teacher preview shell renders student point/detail content
+- **THEN** preview-only disabled actions MUST NOT affect normal student routes
+- **AND** the normal point route MUST still support learning completion, assessment handoff, AI chat, and related-point navigation according to existing student rules.
+
+### Requirement: Related experiment links use real experiment titles
+The student H5 point detail page SHALL render related experiment links from canonical target experiment titles rather than teacher-authored short display names.
+
+#### Scenario: Student views related experiments
+- **WHEN** a point detail payload includes related experiments
+- **THEN** each related experiment link MUST display the resolved target experiment title
+- **AND** it MUST NOT display a teacher-authored short name, display label, or stale related-link label override.
+
+#### Scenario: Teacher preview views related experiments
+- **WHEN** the teacher preview shell renders the student point detail page
+- **THEN** related experiment links MUST match the same title behavior as normal student H5
+- **AND** preview mode MUST NOT expose teacher-only related-link labels or raw related-link configuration fields.
+
+### Requirement: Student point videos use active ready bindings
+The student H5 learning experience SHALL render catalog point videos from the point's single active ready media binding rather than a separate binding publication state.
+
+#### Scenario: Published point has active ready video
+- **WHEN** a student opens a visible catalog point that has an active non-archived binding to a ready video asset
+- **THEN** the H5 point detail page MUST render that video as the point video
+- **AND** it MUST NOT require the binding row to carry a separate `published` status.
+
+#### Scenario: Point has no active ready video
+- **WHEN** a student opens a visible catalog point with no active ready video binding
+- **THEN** the H5 point detail page MUST show the existing graceful no-video state
+- **AND** it MUST not fail or expose teacher-only binding diagnostics.
+
+#### Scenario: Point has archived or unready bindings
+- **WHEN** a point has only archived bindings or bindings to unready video assets
+- **THEN** the H5 point detail page MUST treat the point as having no playable video
+- **AND** it MUST not expose archived or processing-only media URLs to students.
+
+### Requirement: Teacher preview follows the same video visibility rule
+Teacher preview SHALL render the same student-facing video behavior as normal H5 point detail while remaining read-only.
+
+#### Scenario: Teacher previews a point with active ready video
+- **WHEN** a teacher opens the learning-card preview for a point with an active ready video binding
+- **THEN** the preview MUST render that video through preview-scoped media access
+- **AND** it MUST match the normal student rule that binding publication state is not required.
+
+#### Scenario: Teacher previews a point without active ready video
+- **WHEN** a teacher previews a point with no active ready video
+- **THEN** the preview MUST show the same no-video state as normal H5
+- **AND** it MUST not expose binding status internals or teacher-only diagnostics.
 

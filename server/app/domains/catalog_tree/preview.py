@@ -75,6 +75,7 @@ def _preview_videos(session: Any, node_id: str, token: str) -> list[dict[str, An
                   AND mb.binding_status <> 'archived'
                   AND ma.upload_status = 'ready'
                 ORDER BY mb.display_order, mb.created_at
+                LIMIT 1
                 """
             ),
             {"node_id": node_id},

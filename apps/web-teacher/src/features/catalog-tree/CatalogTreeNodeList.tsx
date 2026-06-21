@@ -89,6 +89,8 @@ export function CatalogTreeNodeList({
   onRefreshRoots,
   onChangeStatus,
   statusFilter = "all",
+  refreshedChildrenParentId,
+  refreshedChildren,
 }: {
   nodes: CatalogNodeCard[];
   treeScopeKey: string;
@@ -105,6 +107,8 @@ export function CatalogTreeNodeList({
   onRefreshRoots?: () => Promise<unknown> | unknown;
   onChangeStatus: (node: CatalogNodeCard, action: "archive" | "restore" | "publish" | "unpublish") => void;
   statusFilter?: CatalogStatusFilter;
+  refreshedChildrenParentId?: string | null;
+  refreshedChildren?: CatalogNodeCard[];
 }) {
   const { message } = AntApp.useApp();
   const [treeData, setTreeData] = useState<CatalogTreeDataNode[]>([]);
@@ -124,6 +128,17 @@ export function CatalogTreeNodeList({
     const scopedNodes = nodes.filter((node) => node.chapter_id === treeScopeKey);
     setTreeData((previous) => mergeCatalogTreeData(scopedNodes, scopeChanged ? [] : previous));
   }, [nodes, treeScopeKey]);
+
+  useEffect(() => {
+    if (!refreshedChildrenParentId || !refreshedChildren) return;
+    setTreeData((previous) => {
+      if (!findCatalogTreeNode(previous, refreshedChildrenParentId)) return previous;
+      const refreshedNodes = refreshedChildren.map((child) =>
+        toCatalogTreeNode(child, findCatalogTreeNode(previous, child.node_id)),
+      );
+      return replaceCatalogTreeChildren(previous, refreshedChildrenParentId, refreshedNodes);
+    });
+  }, [refreshedChildren, refreshedChildrenParentId]);
 
   const addRootItems: MenuProps["items"] = useMemo(
     () => [

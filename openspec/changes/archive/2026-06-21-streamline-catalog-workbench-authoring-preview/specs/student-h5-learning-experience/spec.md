@@ -78,3 +78,16 @@ The student H5 code used for teacher preview SHALL preserve normal authenticated
 - **WHEN** the teacher preview shell renders student point/detail content
 - **THEN** preview-only disabled actions MUST NOT affect normal student routes
 - **AND** the normal point route MUST still support learning completion, assessment handoff, AI chat, and related-point navigation according to existing student rules.
+
+### Requirement: Related experiment links use real experiment titles
+The student H5 point detail page SHALL render related experiment links from canonical target experiment titles rather than teacher-authored short display names.
+
+#### Scenario: Student views related experiments
+- **WHEN** a point detail payload includes related experiments
+- **THEN** each related experiment link MUST display the resolved target experiment title
+- **AND** it MUST NOT display a teacher-authored short name, display label, or stale related-link label override.
+
+#### Scenario: Teacher preview views related experiments
+- **WHEN** the teacher preview shell renders the student point detail page
+- **THEN** related experiment links MUST match the same title behavior as normal student H5
+- **AND** preview mode MUST NOT expose teacher-only related-link labels or raw related-link configuration fields.

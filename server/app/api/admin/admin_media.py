@@ -162,11 +162,7 @@ async def admin_stream_media_asset_file(
     return _media_asset_file_response(asset_id)
 
 
-@router.get("/media/assets/{asset_id}/thumbnail", include_in_schema=False)
-async def admin_get_media_asset_thumbnail(
-    asset_id: str = Path(min_length=1),
-    user: AuthUser = Depends(require_teacher_console_user),
-) -> FileResponse:
+def _media_asset_thumbnail_response(asset_id: str) -> FileResponse:
     with db_session() as session:
         row = (
             session.execute(
@@ -191,6 +187,25 @@ async def admin_get_media_asset_thumbnail(
     if not file_path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media thumbnail not found")
     return FileResponse(file_path, media_type="image/jpeg", filename=f"{asset_id}.jpg")
+
+
+@router.get("/media/assets/{asset_id}/thumbnail", include_in_schema=False)
+async def admin_get_media_asset_thumbnail(
+    asset_id: str = Path(min_length=1),
+    user: AuthUser = Depends(require_teacher_console_user),
+) -> FileResponse:
+    return _media_asset_thumbnail_response(asset_id)
+
+
+@router.get("/media/assets/{asset_id}/thumbnail-stream", include_in_schema=False)
+async def admin_stream_media_asset_thumbnail(
+    asset_id: str = Path(min_length=1),
+    access_token: str = Query(min_length=1),
+) -> FileResponse:
+    user = get_user_from_access_token(access_token)
+    if not is_teacher_console_role(user.role):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+    return _media_asset_thumbnail_response(asset_id)
 
 
 @router.post("/media/assets/{asset_id}/retry-processing")

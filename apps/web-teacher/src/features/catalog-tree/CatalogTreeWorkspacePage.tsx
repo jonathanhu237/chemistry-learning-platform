@@ -481,6 +481,8 @@ export function CatalogTreeWorkspacePage() {
             onRefreshRoots={() => roots.refetch()}
             onChangeStatus={(node, action) => mutations.changeNodeStatus.mutate({ nodeId: node.node_id, action })}
             statusFilter={statusFilter}
+            refreshedChildrenParentId={selectedParentId}
+            refreshedChildren={selectedSiblingChildren.data?.children}
           />
         </aside>
 

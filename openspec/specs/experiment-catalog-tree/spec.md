@@ -40,17 +40,17 @@ The system SHALL use stable catalog point node identity as the authoritative ide
 - **AND** new write paths MUST use the stable point node id instead of the legacy pair.
 
 ### Requirement: Catalog node kinds
-The system SHALL support exactly directory and point node kinds with explicit behavior.
+The system SHALL support exactly directory and point node kinds with explicit behavior and without manual student-card presentation fields.
 
 #### Scenario: Directory node is opened
 - **WHEN** a directory node is opened
-- **THEN** the system MUST return its child nodes, breadcrumbs, directory description, card presentation metadata, and navigation metadata
-- **AND** it MUST NOT require or expose point learning content, video bindings, related point links, assessment context, or ES result identity for the directory itself.
+- **THEN** the system MUST return its child nodes, breadcrumbs, directory identity, publication state, teacher authoring metadata where applicable, and navigation metadata
+- **AND** it MUST NOT require or expose point learning content, video bindings, related point links, assessment context, ES result identity, manual student-card description, manual card image, manual card icon, manual card accent, manual card layout, or manual card presentation metadata for the directory itself.
 
 #### Scenario: Point node is opened
 - **WHEN** a point node is opened
 - **THEN** the system MUST return point detail content, video bindings, related links, assessment context, and source path context where available
-- **AND** it MUST NOT return child catalog nodes for the point.
+- **AND** it MUST NOT return child catalog nodes, manual point-card short description, manual point-card cover image, manual point-card icon, manual point-card accent, or manual point-card emphasis fields for the point.
 
 #### Scenario: Point node is used as parent
 - **WHEN** a client attempts to create or move another catalog node under a point node
@@ -293,32 +293,6 @@ The system SHALL seed the 30 point-content examples from `docs/30点位例子.tx
 - **THEN** the student search document builder MUST index their student-facing principle, phenomenon, and safety content
 - **AND** it MUST NOT require legacy experiment video point evidence to index those fields.
 
-### Requirement: Directory card presentation
-The system SHALL let directory nodes maintain structured student-facing card presentation metadata.
-
-#### Scenario: Teacher edits directory card fields
-- **WHEN** a teacher edits a directory node
-- **THEN** the system MUST allow title, teacher-only note, student-visible description, optional card image reference, optional icon key, optional accent/theme token, and optional layout variant to be saved
-- **AND** it MUST store the teacher-only note separately from student-visible directory fields.
-
-#### Scenario: Student catalog renders directory card
-- **WHEN** a published directory node is returned to the student catalog
-- **THEN** the payload MUST include student-visible card presentation fields needed to render a navigation card
-- **AND** it MUST NOT include teacher-only notes.
-
-### Requirement: Point card presentation stays constrained
-The system SHALL allow limited point card presentation overrides without weakening point identity or list consistency.
-
-#### Scenario: Teacher edits point card overrides
-- **WHEN** a teacher edits a point node card presentation
-- **THEN** the system MAY allow an explicit cover image reference, short student-facing display description, icon key, accent/theme token, or emphasis flag
-- **AND** it MUST keep point title, point node id, and point learning content as the authoritative point identity and detail source.
-
-#### Scenario: Student catalog renders point card
-- **WHEN** a published point node is returned inside a chapter or directory catalog
-- **THEN** the payload MUST render as a point/video learning entry rather than as a directory category
-- **AND** the card MUST remain visually distinguishable from directory cards.
-
 ### Requirement: Hybrid and shortcut live semantics are removed
 The system SHALL remove live hybrid and shortcut semantics from catalog tree behavior.
 
@@ -336,4 +310,138 @@ The system SHALL remove live hybrid and shortcut semantics from catalog tree beh
 - **WHEN** a client attempts to use shortcut target behavior after this change
 - **THEN** the system MUST return a controlled rejection or unavailable response
 - **AND** it MUST NOT resolve point detail through a shortcut node.
+
+### Requirement: Manual student-card fields are removed
+The catalog tree data model SHALL remove obsolete manual student-card presentation fields from live schema, APIs, and read models.
+
+#### Scenario: Catalog schema migration runs
+- **WHEN** the migration for this change is applied
+- **THEN** the catalog node storage MUST drop manual student-card fields including `student_description`, `card_image_asset_id`, `card_icon_key`, `card_accent`, `card_layout`, `card_presentation`, and `point_card_presentation`
+- **AND** the migration MUST NOT attempt to preserve or reconstruct values from those fields.
+
+#### Scenario: Catalog node create or update is requested
+- **WHEN** a client sends create or update payload fields for removed student-card presentation data
+- **THEN** the backend MUST ignore, reject, or strip those fields according to the API compatibility policy
+- **AND** no removed field value MUST be persisted in catalog node storage.
+
+#### Scenario: Catalog node read model is returned
+- **WHEN** teacher, student, search, or preview read models serialize catalog nodes
+- **THEN** the payload MUST NOT include the removed manual student-card fields
+- **AND** consumers MUST derive student-facing card display from remaining catalog, point-content, and video metadata.
+
+#### Scenario: Seed or import code processes catalog nodes
+- **WHEN** catalog seed, copy, import, or reset code creates catalog nodes
+- **THEN** it MUST NOT populate removed student-card fields
+- **AND** validation MUST fail or warn if fixtures/tests still depend on those removed fields.
+
+### Requirement: Catalog card display is derived from authoritative content
+The system SHALL treat student catalog card display as a read-model projection rather than teacher-authored card configuration.
+
+#### Scenario: Directory card projection is needed
+- **WHEN** a student catalog response needs to render a directory card
+- **THEN** the read model MUST provide enough remaining metadata for title, hierarchy, child availability, and stable default visual treatment
+- **AND** it MUST NOT depend on stored directory student-card copy, image, icon, accent, or layout fields.
+
+#### Scenario: Point card projection is needed
+- **WHEN** a student catalog response needs to render a point card
+- **THEN** the read model MUST derive title from point/catalog title, derive optional summary from point learning content when available, and derive visual media from bound video thumbnail when available
+- **AND** it MUST NOT depend on stored point-card override fields.
+
+#### Scenario: Search documents are built
+- **WHEN** student search or video-library documents are built
+- **THEN** searchable student-facing text MUST come from directory titles/path, point title, point learning content, related experiment titles, and video metadata
+- **AND** it MUST NOT include removed manual student-card description or presentation fields.
+
+### Requirement: Related experiment titles are canonical target titles
+The catalog related-link model SHALL keep ordering, hidden/default override state, and manual additions without supporting teacher-authored student-facing short display names.
+The catalog related-link storage SHALL NOT retain obsolete title override columns for related-link labels.
+
+#### Scenario: Teacher saves related experiment links
+- **WHEN** a teacher saves related experiment links for a point
+- **THEN** the write payload MUST identify target point nodes, relation type, hidden state, sort order, and metadata where needed
+- **AND** it MUST NOT accept or persist a student-facing display label, short name, or per-link title override.
+
+#### Scenario: Stale clients send a related-link label
+- **WHEN** a stale client sends a `label`, `display_title`, `short_title`, or equivalent title override for a related link
+- **THEN** the backend MUST reject, ignore, or strip that value according to the API compatibility policy
+- **AND** the value MUST NOT affect persisted related-link ordering, target identity, search text, preview payloads, student payloads, or AI context.
+
+#### Scenario: Related-link title override columns are migrated away
+- **WHEN** catalog migrations are applied to an existing database
+- **THEN** obsolete related-link `label` columns MUST be dropped from both legacy and catalog related-link tables
+- **AND** fresh database baseline migrations MUST NOT create related-link `label` columns.
+
+#### Scenario: Related links are read for teacher authoring
+- **WHEN** the teacher workbench reads related links for a point
+- **THEN** each link MUST expose the resolved target experiment title from the canonical target point or placement
+- **AND** the payload MUST NOT require the teacher frontend to hydrate a short-name or display-label form field.
+
+#### Scenario: Related links are read for students or preview
+- **WHEN** student H5, teacher preview, search documents, video-library search, or AI context consumes related links
+- **THEN** the visible related experiment title MUST come from the resolved target point title
+- **AND** any old stored label value MUST NOT override `target_title`.
+
+#### Scenario: Existing persisted title override data is removed by migration
+- **WHEN** old related-link records contain stored label values from a previous implementation
+- **THEN** the destructive migration MUST remove the obsolete label columns instead of preserving those values
+- **AND** teacher detail, teacher preview, student H5, search documents, video-library search, and AI context MUST use the resolved target experiment title.
+
+### Requirement: Catalog point video binding is a single active reference
+The catalog tree service SHALL model a point's experiment video as at most one active media binding per canonical point.
+
+#### Scenario: Teacher binds a video to a point
+- **WHEN** a teacher binds an eligible media asset to a catalog point
+- **THEN** the service MUST make that media asset the only active non-archived video binding for the point's canonical point identity
+- **AND** any previous active video bindings for that canonical point MUST be archived or otherwise made inactive in the same transaction.
+
+#### Scenario: Teacher replaces a point video
+- **WHEN** a teacher selects a different media asset for a point that already has an active video binding
+- **THEN** the new media asset MUST replace the previous active binding
+- **AND** subsequent point detail reads MUST return only the replacement video as the current point video.
+
+#### Scenario: Teacher binds the existing current video again
+- **WHEN** a teacher binds the same media asset that is already active for the point
+- **THEN** the service MUST keep a single active binding
+- **AND** it MUST update safe binding metadata without creating duplicate active rows.
+
+#### Scenario: Existing data contains multiple active bindings
+- **WHEN** the migration for this change runs on data with multiple non-archived video bindings for one canonical point
+- **THEN** the migration MUST keep one deterministic active binding per canonical point
+- **AND** it MUST archive all other active bindings for that canonical point.
+
+### Requirement: Catalog point video binding has no teacher-facing publish state
+The catalog tree service SHALL stop treating point video bindings as independently published authoring objects.
+
+#### Scenario: New video binding is created
+- **WHEN** a teacher binds a media asset to a point
+- **THEN** the request MUST NOT require a binding-level `draft` or `published` choice
+- **AND** the resulting binding MUST be active unless it is explicitly removed.
+
+#### Scenario: Stale client sends binding status
+- **WHEN** a stale client sends `status`, `binding_status`, `published_by`, or `published_at` for a catalog point video binding
+- **THEN** the service MUST ignore, strip, or reject those values according to the API compatibility policy
+- **AND** stale status values MUST NOT create a hidden draft binding that prevents a ready video from appearing to students.
+
+#### Scenario: Teacher removes a video binding
+- **WHEN** a teacher removes the current point video
+- **THEN** the service MUST archive or delete the active binding
+- **AND** subsequent point detail reads MUST show no current video for that point.
+
+#### Scenario: Video asset is not ready
+- **WHEN** the active binding points at a media asset whose upload or processing status is not ready
+- **THEN** teacher detail MAY show the binding with a processing/unready state
+- **AND** student-facing reads MUST NOT expose a playable video until the asset is ready.
+
+### Requirement: Video readiness counts reflect active ready bindings
+Catalog tree node summaries SHALL report video readiness from active non-archived bindings and ready media assets rather than binding publication state.
+
+#### Scenario: Point has an active ready video
+- **WHEN** a catalog point has one active non-archived binding to a ready media asset
+- **THEN** node summaries and validation MUST count the point as having a student-visible video
+- **AND** they MUST NOT require `binding_status = published`.
+
+#### Scenario: Point has only archived or unready videos
+- **WHEN** a catalog point has no active binding to a ready media asset
+- **THEN** node summaries and validation MUST count the point as missing a student-visible video
+- **AND** status labels MUST remain accurate for teacher repair workflows.
 

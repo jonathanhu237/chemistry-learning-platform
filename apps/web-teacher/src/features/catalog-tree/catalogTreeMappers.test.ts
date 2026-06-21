@@ -215,7 +215,6 @@ describe("catalog tree mappers", () => {
           relation_type: "generated_default",
           hidden: false,
           sort_order: 3,
-          label: null,
           source: "generated_default",
           metadata: { default_scope_label: "同目录默认" },
         },
@@ -233,7 +232,7 @@ describe("catalog tree mappers", () => {
     expect(
       buildCatalogRelatedLinksPayload({
         links: [
-          { target_node_id: "cat-target-a", relation_type: "generated_default", sort_order: 2, label: "Neighbor" },
+          { target_node_id: "cat-target-a", relation_type: "generated_default", sort_order: 2 },
           { target_node_id: "cat-target-a", relation_type: "manual", sort_order: 3 },
           { target_node_id: "" },
         ],
@@ -245,7 +244,6 @@ describe("catalog tree mappers", () => {
           relation_type: "default_override",
           hidden: false,
           sort_order: 1,
-          label: "Neighbor",
           metadata: {},
         },
       ],

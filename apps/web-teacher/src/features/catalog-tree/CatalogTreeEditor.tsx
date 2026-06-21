@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Form, Modal, Tabs, Typography, type TabsProps } from "antd";
 import { FlaskConical, Folder } from "lucide-react";
 
@@ -11,7 +11,7 @@ import { CatalogNodeContentPanel } from "./CatalogNodeContentPanel";
 import { CatalogNodeStatusPanel } from "./CatalogNodeStatusPanel";
 import { CatalogRelatedLinksPanel } from "./CatalogRelatedLinksPanel";
 import { CatalogVideoPanel } from "./CatalogVideoPanel";
-import { useCatalogMediaAssets, useCatalogSearch, useCatalogValidation, type CatalogMutations } from "./catalogTreeHooks";
+import { useCatalogMediaAssets, useCatalogValidation, type CatalogMutations } from "./catalogTreeHooks";
 import {
   buildCatalogNodeUpdatePayload,
   buildCatalogPointContentPayload,
@@ -56,25 +56,22 @@ export function CatalogTreeEditor({
   const [linksForm] = Form.useForm<CatalogRelatedLinksFormValues>();
   const [moveParentId, setMoveParentId] = useState<string>("");
   const [moveDisplayOrder, setMoveDisplayOrder] = useState<number | null>(null);
-  const [mediaAssetIds, setMediaAssetIds] = useState<string[]>([]);
-  const [relatedQuery, setRelatedQuery] = useState("");
   const [activeTab, setActiveTab] = useState<CatalogEditorTabKey>("content");
   const [diagnosticsPanel, setDiagnosticsPanel] = useState<CatalogHeaderDiagnosticsKey | null>(null);
   const [previewFallbackUrl, setPreviewFallbackUrl] = useState("");
+  const previousNodeIdRef = useRef<string | null>(null);
   const node = detail?.node;
   const pointCapable = isPointCapable(node?.node_kind);
   const principleMode = Form.useWatch("principle_mode", pointForm);
   const validation = useCatalogValidation(node?.node_id, true);
   const mediaAssets = useCatalogMediaAssets(pointCapable);
-  const relatedSearch = useCatalogSearch(relatedQuery, node?.chapter_id, pointCapable && relatedQuery.trim().length >= 2);
-  const mediaAssetMap = useMemo(
-    () => new Map((mediaAssets.data?.items || []).map((asset) => [asset.id, asset])),
-    [mediaAssets.data?.items],
-  );
   const nodeStatus = detail ? resolveCatalogNodeStatus(detail) : null;
   const canBindVideo = !pointCapable || nodeStatus?.core_readiness.content_fields === "complete";
 
   useEffect(() => {
+    const nextNodeId = detail?.node.node_id || null;
+    const selectedNodeChanged = previousNodeIdRef.current !== nextNodeId;
+    previousNodeIdRef.current = nextNodeId;
     const timeout = window.setTimeout(() => {
       nodeForm.setFieldsValue(hydrateCatalogNodeForm(detail));
       pointForm.setFieldsValue(hydrateCatalogPointContentForm(detail));
@@ -82,9 +79,9 @@ export function CatalogTreeEditor({
     }, 0);
     setMoveParentId(detail?.node.parent_id || "");
     setMoveDisplayOrder(detail?.node.display_order ?? null);
-    setMediaAssetIds([]);
-    setRelatedQuery("");
-    setActiveTab("content");
+    if (selectedNodeChanged) {
+      setActiveTab("content");
+    }
     return () => window.clearTimeout(timeout);
   }, [detail, linksForm, nodeForm, pointForm]);
 
@@ -197,9 +194,6 @@ export function CatalogTreeEditor({
         <CatalogVideoPanel
           detail={detail}
           mediaAssets={mediaAssets}
-          mediaAssetIds={mediaAssetIds}
-          setMediaAssetIds={setMediaAssetIds}
-          mediaAssetMap={mediaAssetMap}
           mutations={mutations}
           canBindVideo={canBindVideo}
         />
@@ -213,9 +207,6 @@ export function CatalogTreeEditor({
         <CatalogRelatedLinksPanel
           detail={detail}
           linksForm={linksForm}
-          relatedQuery={relatedQuery}
-          setRelatedQuery={setRelatedQuery}
-          relatedSearch={relatedSearch}
           mutations={mutations}
         />
       ),

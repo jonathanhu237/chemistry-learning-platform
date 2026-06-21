@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from server.app.catalog_tree_schemas import CatalogPointMediaBindRequest, CatalogPointRelatedLinkRequest
 from server.app.domains.catalog_tree.common import node_card, node_select, row_dict, validate_node_payload
 from server.app.domains.catalog_tree.directories import create_node_params
 
@@ -319,6 +320,8 @@ def test_video_library_search_contract_is_point_only_with_directory_category_tex
     catalog_search_source = (CATALOG_DIR / "search_documents.py").read_text(encoding="utf-8")
     student_source = (CATALOG_DIR / "student_read_models.py").read_text(encoding="utf-8")
     file_source = (CATALOG_DIR / "files.py").read_text(encoding="utf-8")
+    common_source = (CATALOG_DIR / "common.py").read_text(encoding="utf-8")
+    media_bindings_source = (CATALOG_DIR / "media_bindings.py").read_text(encoding="utf-8")
 
     assert "WHERE n.node_kind = 'point'" in search_source
     assert "canonical_point_id" in search_source
@@ -339,6 +342,23 @@ def test_video_library_search_contract_is_point_only_with_directory_category_tex
     assert "Point content not available" not in student_source
     assert "published_content = content if content and content.get(\"content_status\") == \"published\" else None" in student_source
     assert "pc.content_status = 'published'" not in file_source
+    assert "JOIN media_assets ma ON ma.id = mb.media_asset_id" in common_source
+    assert "AND ma.upload_status = 'ready'" in common_source
+    assert "mb.binding_status = 'published'" not in file_source
+    assert "AND mb.binding_status = 'published'" not in media_bindings_source
+    assert "AND mb.binding_status <> 'archived'" in media_bindings_source
+    assert "LIMIT 1" in media_bindings_source
+    assert "CAST(:canonical_point_id AS text) IS NOT NULL" in media_bindings_source
+    assert ":canonical_point_id IS NOT NULL" not in media_bindings_source
+    assert "WITH selected_binding AS" in media_bindings_source
+    assert '"binding_status": "published"' in media_bindings_source
+    assert "'replaced_by_catalog_point_video_binding'" in media_bindings_source
+    assert "display_order = 1" in media_bindings_source
+    assert "published_at = COALESCE(published_at, now())" in media_bindings_source
+    assert "if action == \"delete\"" in media_bindings_source
+    assert "if action == \"publish\"" in media_bindings_source
+    assert "if action == \"unpublish\"" not in media_bindings_source
+    assert "point_video_binding_changed" in media_bindings_source
 
 
 def test_catalog_tree_facade_stays_slim_and_boundaries_are_named() -> None:
@@ -375,6 +395,68 @@ def test_related_experiment_defaults_are_same_parent_points_without_debug_limits
     assert "sibling.status <> 'archived'" in source
     assert "LIMIT 6" not in source
     assert "same_parent_neighborhood" not in source
+
+
+def test_related_link_write_schema_strips_student_facing_title_overrides() -> None:
+    request = CatalogPointRelatedLinkRequest.model_validate(
+        {
+            "target_node_id": "cat-target",
+            "relation_type": "manual",
+            "hidden": False,
+            "sort_order": 1,
+            "label": "Stale short name",
+            "display_title": "Stale display title",
+            "short_title": "Stale short title",
+        }
+    )
+
+    data = request.model_dump()
+
+    assert data["target_node_id"] == "cat-target"
+    assert "label" not in data
+    assert "display_title" not in data
+    assert "short_title" not in data
+
+
+def test_catalog_video_bind_schema_strips_teacher_facing_binding_publication_state() -> None:
+    request = CatalogPointMediaBindRequest.model_validate(
+        {
+            "media_asset_id": "0f000000-0000-4000-8000-000000000001",
+            "title": "Ready video",
+            "status": "draft",
+            "binding_status": "draft",
+            "published_at": "2026-06-22T00:00:00Z",
+        }
+    )
+
+    data = request.model_dump()
+
+    assert data["media_asset_id"] == "0f000000-0000-4000-8000-000000000001"
+    assert data["title"] == "Ready video"
+    assert "status" not in data
+    assert "binding_status" not in data
+    assert "published_at" not in data
+
+
+def test_related_link_labels_do_not_override_target_titles_in_live_read_paths() -> None:
+    related_source = (CATALOG_DIR / "related_links.py").read_text(encoding="utf-8")
+    student_source = (CATALOG_DIR / "student_read_models.py").read_text(encoding="utf-8")
+    preview_source = (CATALOG_DIR / "preview.py").read_text(encoding="utf-8")
+    search_documents_source = (CATALOG_DIR / "search_documents.py").read_text(encoding="utf-8")
+    ai_context_source = (CATALOG_DIR / "ai_context.py").read_text(encoding="utf-8")
+    video_search_source = (SERVER_DIR / "app" / "domains" / "video_library" / "search.py").read_text(encoding="utf-8")
+
+    assert '"target_title": row["target_title"]' in related_source
+    assert '"label": row["label"]' not in related_source
+    assert 'COALESCE(l.label' not in related_source
+    assert 'COALESCE(l.label' not in video_search_source
+    assert "label = NULL" not in related_source
+    assert "sort_order, label" not in related_source
+
+    assert '"title": link["target_title"]' in student_source
+    assert '"title": link["target_title"]' in preview_source
+    assert "clean(link.get(\"target_title\"))" in search_documents_source
+    assert '"related_points": related' in ai_context_source
 
 
 def test_catalog_point_placement_backend_contracts_are_explicit() -> None:

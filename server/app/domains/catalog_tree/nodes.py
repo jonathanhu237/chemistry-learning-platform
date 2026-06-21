@@ -568,8 +568,8 @@ def _copy_point_resources(
               :copied_node_id,
               mb.media_asset_id,
               mb.title,
-              'draft',
-              mb.display_order,
+              'published',
+              1,
               COALESCE(mb.metadata, '{}'::jsonb) || jsonb_build_object(
                 'copied_from_node_id', mb.node_id,
                 'copied_from_canonical_point_id', mb.canonical_point_id

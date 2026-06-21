@@ -50,6 +50,7 @@ def media_bindings(session: Any, node_id: str) -> list[dict[str, Any]]:
                     OR mb.node_id = :node_id)
                   AND mb.binding_status <> 'archived'
                 ORDER BY mb.display_order, mb.created_at
+                LIMIT 1
                 """
             ),
             {"node_id": node_id},
@@ -74,9 +75,10 @@ def student_videos(session: Any, node_id: str) -> list[dict[str, Any]]:
                 JOIN experiment_catalog_nodes n ON n.id = :node_id
                 WHERE ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
                     OR mb.node_id = :node_id)
-                  AND mb.binding_status = 'published'
+                  AND mb.binding_status <> 'archived'
                   AND ma.upload_status = 'ready'
                 ORDER BY mb.display_order, mb.created_at
+                LIMIT 1
                 """
             ),
             {"node_id": node_id},
@@ -114,10 +116,49 @@ def bind_existing_media(*, node_id: str, payload: CatalogPointMediaBindRequest, 
             "canonical_point_id": canonical_point_id,
             "media_asset_id": clean(data.get("media_asset_id")),
             "title": clean(data.get("title")) or None,
-            "binding_status": clean(data.get("status") or "draft"),
+            "binding_status": "published",
             "metadata": json_dump(data.get("metadata") if isinstance(data.get("metadata"), dict) else {}),
             "user_id": user.id,
         }
+        session.execute(
+            text(
+                """
+                WITH selected_binding AS (
+                  SELECT id
+                  FROM experiment_catalog_point_media_bindings
+                  WHERE media_asset_id = CAST(:media_asset_id AS uuid)
+                    AND (
+                      (CAST(:canonical_point_id AS text) IS NOT NULL AND canonical_point_id = CAST(:canonical_point_id AS text))
+                      OR (CAST(:canonical_point_id AS text) IS NULL AND node_id = :node_id)
+                    )
+                  ORDER BY
+                    CASE WHEN binding_status <> 'archived' THEN 0 ELSE 1 END,
+                    display_order,
+                    created_at,
+                    id
+                  LIMIT 1
+                )
+                UPDATE experiment_catalog_point_media_bindings
+                SET binding_status = 'archived',
+                    metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
+                      'archived_reason', 'replaced_by_catalog_point_video_binding',
+                      'replacement_media_asset_id', :media_asset_id
+                    ),
+                    updated_by = CAST(:user_id AS uuid),
+                    updated_at = now()
+                WHERE binding_status <> 'archived'
+                  AND (
+                    (CAST(:canonical_point_id AS text) IS NOT NULL AND canonical_point_id = CAST(:canonical_point_id AS text))
+                    OR (CAST(:canonical_point_id AS text) IS NULL AND node_id = :node_id)
+                  )
+                  AND (
+                    NOT EXISTS (SELECT 1 FROM selected_binding)
+                    OR id <> (SELECT id FROM selected_binding)
+                  )
+                """
+            ),
+            params,
+        )
         row = (
             session.execute(
                 text(
@@ -128,12 +169,25 @@ def bind_existing_media(*, node_id: str, payload: CatalogPointMediaBindRequest, 
                         source_placement_node_id = :node_id,
                         metadata = experiment_catalog_point_media_bindings.metadata || CAST(:metadata AS jsonb),
                         updated_by = CAST(:user_id AS uuid),
-                        published_by = CASE WHEN :binding_status = 'published' THEN CAST(:user_id AS uuid) ELSE NULL END,
-                        published_at = CASE WHEN :binding_status = 'published' THEN now() ELSE NULL END,
+                        published_by = CAST(:user_id AS uuid),
+                        published_at = COALESCE(published_at, now()),
+                        display_order = 1,
                         updated_at = now()
-                    WHERE canonical_point_id = :canonical_point_id
-                      AND media_asset_id = CAST(:media_asset_id AS uuid)
-                      AND binding_status <> 'archived'
+                    WHERE id = (
+                      SELECT existing.id
+                      FROM experiment_catalog_point_media_bindings existing
+                      WHERE (
+                          (CAST(:canonical_point_id AS text) IS NOT NULL AND existing.canonical_point_id = CAST(:canonical_point_id AS text))
+                          OR (CAST(:canonical_point_id AS text) IS NULL AND existing.node_id = :node_id)
+                        )
+                        AND existing.media_asset_id = CAST(:media_asset_id AS uuid)
+                      ORDER BY
+                        CASE WHEN existing.binding_status <> 'archived' THEN 0 ELSE 1 END,
+                        existing.display_order,
+                        existing.created_at,
+                        existing.id
+                      LIMIT 1
+                    )
                     RETURNING id
                     """
                 ),
@@ -152,15 +206,10 @@ def bind_existing_media(*, node_id: str, payload: CatalogPointMediaBindRequest, 
                     )
                     VALUES (
                       :node_id, :canonical_point_id, :node_id, CAST(:media_asset_id AS uuid), :title, :binding_status,
-                      (
-                        SELECT COALESCE(MAX(display_order), 0) + 1
-                        FROM experiment_catalog_point_media_bindings
-                        WHERE canonical_point_id = :canonical_point_id
-                           OR node_id = :node_id
-                      ),
+                      1,
                       CAST(:metadata AS jsonb), CAST(:user_id AS uuid), CAST(:user_id AS uuid),
-                      CASE WHEN :binding_status = 'published' THEN CAST(:user_id AS uuid) ELSE NULL END,
-                      CASE WHEN :binding_status = 'published' THEN now() ELSE NULL END,
+                      CAST(:user_id AS uuid),
+                      now(),
                       now()
                     )
                     ON CONFLICT (node_id, media_asset_id) DO UPDATE SET
@@ -172,6 +221,7 @@ def bind_existing_media(*, node_id: str, payload: CatalogPointMediaBindRequest, 
                       updated_by = EXCLUDED.updated_by,
                       published_by = EXCLUDED.published_by,
                       published_at = EXCLUDED.published_at,
+                      display_order = EXCLUDED.display_order,
                       updated_at = now()
                     RETURNING id
                     """
@@ -218,21 +268,47 @@ def set_media_binding_status(*, binding_id: str, action: str, user: Any) -> dict
                 {"binding_id": binding_id, "user_id": user.id},
             )
         else:
-            status_value = "published" if action == "publish" else "draft"
-            session.execute(
-                text(
-                    """
-                    UPDATE experiment_catalog_point_media_bindings
-                    SET binding_status = :status,
-                        published_by = CASE WHEN :status = 'published' THEN CAST(:user_id AS uuid) ELSE NULL END,
-                        published_at = CASE WHEN :status = 'published' THEN now() ELSE NULL END,
-                        updated_by = CAST(:user_id AS uuid),
-                        updated_at = now()
-                    WHERE id = CAST(:binding_id AS uuid)
-                    """
-                ),
-                {"binding_id": binding_id, "status": status_value, "user_id": user.id},
-            )
+            if action == "publish":
+                session.execute(
+                    text(
+                        """
+                        UPDATE experiment_catalog_point_media_bindings
+                        SET binding_status = 'archived',
+                            metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
+                              'archived_reason', 'replaced_by_legacy_catalog_point_video_publish',
+                              'replacement_binding_id', :binding_id
+                            ),
+                            updated_by = CAST(:user_id AS uuid),
+                            updated_at = now()
+                        WHERE binding_status <> 'archived'
+                          AND id <> CAST(:binding_id AS uuid)
+                          AND (
+                            (CAST(:canonical_point_id AS text) IS NOT NULL AND canonical_point_id = CAST(:canonical_point_id AS text))
+                            OR (CAST(:canonical_point_id AS text) IS NULL AND node_id = :node_id)
+                          )
+                        """
+                    ),
+                    {
+                        "binding_id": binding_id,
+                        "canonical_point_id": canonical_point_id or None,
+                        "node_id": node_id,
+                        "user_id": user.id,
+                    },
+                )
+                session.execute(
+                    text(
+                        """
+                        UPDATE experiment_catalog_point_media_bindings
+                        SET binding_status = 'published',
+                            published_by = CAST(:user_id AS uuid),
+                            published_at = COALESCE(published_at, now()),
+                            updated_by = CAST(:user_id AS uuid),
+                            updated_at = now()
+                        WHERE id = CAST(:binding_id AS uuid)
+                        """
+                    ),
+                    {"binding_id": binding_id, "user_id": user.id},
+                )
         for placement_node_id in active_placement_ids_for_canonical_point(session, canonical_point_id):
             queue_index_state(session, node_id=placement_node_id, action="upsert")
         mark_point_evidence_stale(session, node_id=node_id, reason=f"point_video_binding_{action}")

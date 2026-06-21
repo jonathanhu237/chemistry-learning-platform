@@ -159,7 +159,6 @@ class CatalogPointPublicationRequest(BaseModel):
 class CatalogPointMediaBindRequest(BaseModel):
     media_asset_id: str = Field(min_length=1)
     title: str | None = None
-    status: str = Field(default="draft", pattern="^(draft|published)$")
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -168,7 +167,6 @@ class CatalogPointRelatedLinkRequest(BaseModel):
     relation_type: str = Field(default="manual", pattern="^(manual|default_override|generated_default)$")
     hidden: bool = False
     sort_order: int = 0
-    label: str | None = Field(default=None, max_length=200)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 

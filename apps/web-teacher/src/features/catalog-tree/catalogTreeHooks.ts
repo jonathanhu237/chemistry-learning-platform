@@ -225,26 +225,16 @@ export function useCatalogMutations(message: MessageApi) {
   const bindMedia = useMutation({
     mutationFn: async ({
       nodeId,
-      assetIds,
-      assetMap,
-      status,
+      asset,
     }: {
       nodeId: string;
-      assetIds: string[];
-      assetMap: Map<string, MediaAsset>;
-      status: "draft" | "published";
+      asset: MediaAsset;
     }) => {
-      let detail: CatalogNodeDetail | null = null;
-      for (const assetId of assetIds) {
-        const asset = assetMap.get(assetId);
-        const result = await bindCatalogPointMedia(nodeId, {
-          media_asset_id: assetId,
-          title: asset?.title || asset?.original_file_name || null,
-          status,
-        });
-        detail = result.detail;
-      }
-      return detail;
+      const result = await bindCatalogPointMedia(nodeId, {
+        media_asset_id: asset.id,
+        title: asset.title || asset.original_file_name || null,
+      });
+      return result.detail;
     },
     onSuccess: (detail) => {
       message.success("视频素材已绑定");

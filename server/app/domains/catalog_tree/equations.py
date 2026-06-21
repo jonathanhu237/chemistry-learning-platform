@@ -676,10 +676,13 @@ def normalize_reaction_equation(row: Any, *, row_order: int) -> dict[str, Any]:
         if part
     )
 
+    def serialized_id(value: Any) -> str | None:
+        return str(value) if value is not None else None
+
     return {
-        "id": data.get("id"),
-        "node_id": data.get("node_id"),
-        "canonical_point_id": data.get("canonical_point_id"),
+        "id": serialized_id(data.get("id")),
+        "node_id": serialized_id(data.get("node_id")),
+        "canonical_point_id": serialized_id(data.get("canonical_point_id")),
         "row_order": int(data.get("row_order") or row_order),
         "raw_text": raw_text,
         "equation_core": equation_core,

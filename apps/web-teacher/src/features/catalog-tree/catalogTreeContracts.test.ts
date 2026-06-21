@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import catalogTreeApiSource from "../../api/catalogTree.ts?raw";
+import mediaApiSource from "../../api/media.ts?raw";
 import advancedPanelSource from "./CatalogAdvancedPanel.tsx?raw";
 import aiContextPanelSource from "./CatalogAiContextPanel.tsx?raw";
 import editorHeaderSource from "./CatalogEditorHeader.tsx?raw";
@@ -28,6 +29,9 @@ describe("catalog tree UI contracts", () => {
     expect(editorSource).toContain("CatalogAiContextPanel");
     expect(editorSource).toContain("CatalogAdvancedPanel");
     expect(editorSource).not.toContain('key: "publish"');
+    expect(editorSource).toContain("previousNodeIdRef");
+    expect(editorSource).toContain("selectedNodeChanged");
+    expect(editorSource).toContain("if (selectedNodeChanged)");
     expect(editorHeaderSource).toContain("预览学习卡片");
     expect(editorHeaderSource).toContain("高级");
     expect(previewWindowSource).toContain("react-device-mockup");
@@ -128,27 +132,116 @@ describe("catalog tree UI contracts", () => {
     expect(contentPanelSource).not.toContain("catalog-equation-symbol-popover");
     expect(contentPanelSource).not.toContain("catalog-equation-toolbar");
   });
-  it("keeps the video panel as existing-media binding only", () => {
+  it("keeps the video panel as a single active existing-media binding", async () => {
+    // @ts-expect-error The frontend tsconfig intentionally omits Node types, but Vitest runs this contract in Node.
+    const { readFileSync } = await import("node:fs");
+    const cwd = (globalThis as unknown as { process: { cwd: () => string } }).process.cwd();
+    const catalogTreeCssSource = readFileSync(`${cwd}/src/features/catalog-tree/catalogTree.css`, "utf8") as string;
+
     expect(videoPanelSource).toContain("mutations.bindMedia.mutate");
     expect(videoPanelSource).toContain("getMediaAssetFileUrl");
     expect(videoPanelSource).toContain("getMediaAssetThumbnailUrl");
     expect(videoPanelSource).toContain("catalog-video-shortcut-card");
     expect(videoPanelSource).toContain("视频资源入口");
+    expect(videoPanelSource).toContain("CatalogVideoPicker");
+    expect(videoPanelSource).toContain("CurrentVideoSlot");
+    expect(videoPanelSource).toContain("catalog-video-empty-slot");
+    expect(videoPanelSource).toContain("catalog-video-current");
+    expect(videoPanelSource).toContain("catalog-video-play-card");
+    expect(videoPanelSource).toContain("catalog-video-preview-modal");
+    expect(videoPanelSource).toContain("catalog-video-preview-player");
+    expect(videoPanelSource).toContain("catalog-video-picker-row");
+    expect(videoPanelSource).toContain("catalog-video-picker-search");
+    expect(videoPanelSource).toContain("SearchOutlined");
+    expect(videoPanelSource).toContain("SwapOutlined");
+    expect(videoPanelSource).toContain("PlayCircleFilled");
+    expect(videoPanelSource).toContain("<video controls autoPlay");
+    expect(videoPanelSource).toContain("asset: MediaAsset");
+    expect(videoPanelSource).toContain("pendingMediaId");
+    expect(videoPanelSource).toContain("const selecting = pendingMediaId === asset.id");
+    expect(videoPanelSource).toContain("loading={selecting}");
+    expect(videoPanelSource).toContain('action: "delete"');
     expect(videoPanelSource).not.toContain("<Alert");
+    expect(videoPanelSource).not.toContain("<Select");
+    expect(videoPanelSource).not.toContain('mode="multiple"');
+    expect(videoPanelSource).not.toContain("mediaAssetIds");
+    expect(videoPanelSource).not.toContain("setMediaAssetIds");
+    expect(videoPanelSource).not.toContain('status: "draft"');
+    expect(videoPanelSource).not.toContain('action: "publish"');
+    expect(videoPanelSource).not.toContain('action: "unpublish"');
+    expect(videoPanelSource).not.toContain("catalog-video-current-meta");
+    expect(videoPanelSource).not.toContain("素材就绪");
+    expect(videoPanelSource).not.toContain("取消发布");
     expect(editorSource).not.toContain("shortcut_target_node_id");
+    expect(editorSource).not.toContain("mediaAssetIds");
+    expect(editorSource).not.toContain("setMediaAssetIds");
     expect(catalogTreeApiSource).not.toContain("media/upload");
     expect(catalogTreeApiSource).not.toContain("uploadCatalogPointMedia");
+    expect(catalogTreeApiSource).not.toContain('status?: "draft" | "published"');
+    expect(catalogTreeCssSource).toContain(".catalog-video-empty-slot");
+    expect(catalogTreeCssSource).toContain(".catalog-video-current");
+    expect(catalogTreeCssSource).toContain(".catalog-video-play-card");
+    expect(catalogTreeCssSource).toContain(".catalog-video-preview-player");
+    expect(catalogTreeCssSource).toContain(".catalog-video-picker-row");
+    expect(catalogTreeCssSource).not.toContain(".catalog-media-bind-toolbar");
+    expect(catalogTreeCssSource).not.toContain(".catalog-media-row");
+    expect(catalogTreeCssSource).not.toContain(".catalog-video-current-meta");
+    expect(mediaApiSource).toContain("thumbnail-stream?access_token=");
+    expect(mediaApiSource).toContain("return getMediaAssetStreamUrl(assetId, accessToken)");
   });
 
-  it("presents related experiments as an ordered learning list instead of raw link records", () => {
+  it("presents related experiments as an ordered learning list instead of raw link records", async () => {
+    // @ts-expect-error The frontend tsconfig intentionally omits Node types, but Vitest runs this contract in Node.
+    const { readFileSync } = await import("node:fs");
+    const cwd = (globalThis as unknown as { process: { cwd: () => string } }).process.cwd();
+    const catalogTreeCssSource = readFileSync(`${cwd}/src/features/catalog-tree/catalogTree.css`, "utf8") as string;
+
     expect(relatedPanelSource).toContain("同一直接父目录下的其他实验");
     expect(relatedPanelSource).toContain("重置为同目录默认");
-    expect(relatedPanelSource).toContain("拖动调整顺序");
     expect(relatedPanelSource).toContain("手动添加");
     expect(relatedPanelSource).toContain("已调整默认");
+    expect(relatedPanelSource).toContain("catalog-related-row");
+    expect(relatedPanelSource).toContain("catalog-related-row-index");
+    expect(relatedPanelSource).toContain("catalog-related-source-tag");
+    expect(relatedPanelSource).toContain("catalog-related-drag-preview");
+    expect(relatedPanelSource).toContain("is-drop-before");
+    expect(relatedPanelSource).toContain("is-drop-after");
+    expect(relatedPanelSource).toContain("CatalogRelatedExperimentPicker");
+    expect(relatedPanelSource).toContain("catalog-related-add-slot");
+    expect(relatedPanelSource).toContain("listCatalogRoots");
+    expect(relatedPanelSource).toContain("listCatalogChildren");
+    expect(relatedPanelSource).toContain("buildCatalogRelatedLinksPayload({ links: normalized })");
+    expect(relatedPanelSource).toContain("setLinks([], true)");
+    expect(relatedPanelSource).toContain("MoreHorizontal");
+    expect(relatedPanelSource).not.toContain("catalog-related-card");
+    expect(relatedPanelSource).not.toContain("catalog-related-drag-handle");
+    expect(relatedPanelSource).not.toContain("catalog-related-search");
+    expect(relatedPanelSource).not.toContain("catalog-related-candidate");
+    expect(relatedPanelSource).not.toContain("relatedQuery");
+    expect(relatedPanelSource).not.toContain("relatedSearch");
+    expect(relatedPanelSource).not.toContain('htmlType="submit"');
+    expect(editorSource).not.toContain("relatedQuery");
+    expect(relatedPanelSource).not.toContain("HolderOutlined");
+    expect(relatedPanelSource).not.toContain("ArrowUpOutlined");
+    expect(relatedPanelSource).not.toContain("ArrowDownOutlined");
+    expect(relatedPanelSource).not.toContain("拖动调整顺序");
+    expect(relatedPanelSource).not.toContain("显示名称");
+    expect(relatedPanelSource).not.toContain("短名称");
+    expect(relatedPanelSource).not.toContain('name={[field.name, "label"]}');
     expect(relatedPanelSource).not.toContain("目标点位 Node ID");
     expect(relatedPanelSource).not.toContain("添加相关链接");
     expect(relatedPanelSource).not.toContain('label="关系"');
+    expect(catalogTreeCssSource).toContain(".catalog-related-row");
+    expect(catalogTreeCssSource).toContain(".catalog-related-row-index");
+    expect(catalogTreeCssSource).toContain(".catalog-related-source-tag");
+    expect(catalogTreeCssSource).toContain(".catalog-related-row.is-drop-before::before");
+    expect(catalogTreeCssSource).toContain(".catalog-related-row.is-drop-after::after");
+    expect(catalogTreeCssSource).toContain(".catalog-related-drag-preview");
+    expect(catalogTreeCssSource).toContain(".catalog-related-add-slot");
+    expect(catalogTreeCssSource).toContain(".catalog-related-picker-tree");
+    expect(catalogTreeCssSource).not.toContain(".catalog-related-card");
+    expect(catalogTreeCssSource).not.toContain(".catalog-related-search");
+    expect(catalogTreeCssSource).not.toContain(".catalog-related-candidate");
   });
 
   it("uses Arborist movement with invalid point-drop feedback instead of Ant Design Tree behavior", () => {
@@ -279,7 +372,8 @@ describe("catalog tree UI contracts", () => {
     expect(editorSource).toContain('["content"]');
     expect(editorSource).toContain('["content", "video", "related"]');
     expect(editorSource).toContain("useCatalogMediaAssets(pointCapable)");
-    expect(editorSource).toContain("pointCapable && relatedQuery.trim().length >= 2");
+    expect(editorSource).not.toContain("useCatalogSearch");
+    expect(editorSource).not.toContain("relatedQuery");
   });
 
   it("groups node status panel diagnostics without the legacy publish-check panel", () => {

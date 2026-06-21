@@ -132,7 +132,7 @@ def node_select(where_clause: str) -> str:
             JOIN media_assets ma ON ma.id = mb.media_asset_id
             WHERE ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
                 OR mb.node_id = n.id)
-              AND mb.binding_status = 'published'
+              AND mb.binding_status <> 'archived'
               AND ma.upload_status = 'ready'
           ) AS published_media_count,
           CASE
@@ -266,9 +266,11 @@ def node_select(where_clause: str) -> str:
               LEFT JOIN LATERAL (
                 SELECT COUNT(*) AS media_count
                 FROM experiment_catalog_point_media_bindings mb
+                JOIN media_assets ma ON ma.id = mb.media_asset_id
                 WHERE ((dt.canonical_point_id IS NOT NULL AND mb.canonical_point_id = dt.canonical_point_id)
                     OR mb.node_id = dt.id)
                   AND mb.binding_status <> 'archived'
+                  AND ma.upload_status = 'ready'
               ) dmb ON TRUE
               LEFT JOIN experiment_catalog_point_search_index_state dsi ON dsi.node_id = dt.id
               LEFT JOIN LATERAL (
@@ -564,7 +566,7 @@ def catalog_node_status_summary(
         shared_content_state = clean(content_source.get("content_status")) or "draft"
     if clean(node.get("canonical_point_status")) == "archived":
         shared_content_state = "archived"
-    video_present = int(node.get("media_count") or 0) > 0
+    video_present = int(node.get("published_media_count") or 0) > 0
     index_state = (job_state or {}).get("es_state") if job_state else node.get("index_state")
     evidence_state = (job_state or {}).get("evidence_state") if job_state else node.get("evidence_state")
     search_state = _map_search_index_state(index_state if isinstance(index_state, dict) else None)

@@ -365,7 +365,6 @@ export type CatalogRelatedLink = {
   relation_type: "manual" | "default_override" | "generated_default" | string;
   hidden: boolean;
   sort_order: number;
-  label?: string | null;
   source: "manual" | "generated_default" | string;
   metadata?: Record<string, unknown>;
 };
@@ -476,7 +475,6 @@ export type CatalogRelatedLinksPayload = {
     relation_type: "manual" | "default_override" | "generated_default";
     hidden: boolean;
     sort_order: number;
-    label?: string | null;
     metadata?: Record<string, unknown>;
   }>;
 };
@@ -558,7 +556,7 @@ export function changeCatalogPointContentPublication(
 
 export function bindCatalogPointMedia(
   nodeId: string,
-  payload: { media_asset_id: string; title?: string | null; status: "draft" | "published"; metadata?: Record<string, unknown> },
+  payload: { media_asset_id: string; title?: string | null; metadata?: Record<string, unknown> },
 ): Promise<{ binding_id: string; detail: CatalogNodeDetail }> {
   return postJson(`/api/admin/catalog/nodes/${encodeURIComponent(nodeId)}/media-bindings`, payload);
 }

@@ -32,6 +32,8 @@ The existing student H5 point page already renders the true learning experience 
 - Allow teachers to switch between a small set of standard phone presets for preview confidence, without exposing freeform responsive-debug controls.
 - Keep `节点状态`, `AI 上下文`, and `高级` reachable as secondary diagnostic surfaces, preferably from a header `高级` / `更多` entry and outside the main tab strip.
 - Ensure preview mode is read-only and does not create student learning/progress side effects.
+- Simplify related experiments from a form-card editor into a compact ordered list that visually behaves like the existing catalog tree.
+- Remove teacher-authored related-experiment short display names from the authoring model and student-facing read models.
 
 **Non-Goals:**
 
@@ -222,6 +224,61 @@ Student directory pages and cards should still render gracefully with title and 
 
 Alternative considered: keep a directory student description in `内容`. Rejected because the user explicitly identified student-card configuration as not useful, and keeping only one field would preserve the same authoring burden.
 
+### Decision 8: Related experiments use a compact tree-like ordered list
+
+The `相关实验` panel should feel like a small ordered navigation list, not a nested form editor. The current card-heavy design gives every related experiment a border, a visible drag handle, up/down buttons, delete button, and optional display-name input. That makes the secondary task look heavier than the point content itself.
+
+The target model is closer to the catalog sidebar tree:
+
+```text
+相关实验                                  默认 2   手动 0   重置默认
+
+Br2在水 / 四氯化碳 / KI水溶液中的溶解性        同目录默认        ...
+I2在水 / 四氯化碳 / KI水溶液中的溶解性         同目录默认        ...
+
+搜索并添加相关实验...
+```
+
+Interaction rules:
+
+- Each related experiment is a single compact row, not a card with embedded form controls.
+- The whole row is the draggable object. There is no always-visible `⋮⋮` / six-dot / grip handle.
+- There are no always-visible up/down reorder buttons.
+- During drag, the source row becomes visually subdued, a lightweight drag preview follows the pointer, and a thin drop indicator line appears between rows, matching the tree movement language.
+- Hover/focus may show a quiet row background and secondary actions, but must not shift layout.
+- Row height should stay close to the catalog tree row rhythm, roughly 36-44px, with stable title truncation and no nested cards.
+- The right side may show a compact source tag such as `同目录默认`, `已调整默认`, or `手动添加`.
+- Destructive or less-common actions belong in a `...` row menu or hover-only quiet icon, not in a permanent button cluster.
+- Keyboard/accessibility fallback may exist in the `...` menu, but those commands should not be visually primary.
+- The panel copy should not teach the drag mechanism in visible prose. The drag interaction, row preview, and drop indicator should make ordering understandable.
+
+Add/remove rules:
+
+- The related-experiment panel itself should not render an inline search box, search results region, or manual save button.
+- After the ordered list, render one dashed placeholder row/slot that visually reads as "add another experiment" without becoming a second configuration panel.
+- Clicking the dashed placeholder opens a modal/window catalog tree picker using the same lightweight directory-tree language as the catalog workspace.
+- The picker loads root nodes for the selected chapter and lazily loads children when directories expand; only point nodes may be selected as related experiments.
+- Selecting a point adds it to the ordered list and immediately persists the related-link payload.
+- Removing a row, reordering by drag/drop, using menu reorder fallback actions, and resetting to same-directory defaults all immediately persist the related-link payload.
+- Duplicate target points and the currently edited point must be disabled or ignored in the picker.
+- The panel should not rely on prominent instructional text to explain saving. The absence of a save button is intentional because each edit auto-saves.
+
+Short display-name rule:
+
+Teacher-authored related-experiment short display names are removed. Students should see the real target experiment title. The related-experiment editor should not expose a `显示名称`, `短名称`, or equivalent per-link label field.
+
+Backend/read-model implications:
+
+- Related-link write payloads should no longer accept a student-facing display label.
+- Related-link read models should not use a stored label to override `target_title`.
+- The obsolete related-link label columns should be removed with a destructive migration from both legacy and catalog related-link tables; fresh schema baselines must not recreate them.
+- Stale client-sent label-like fields must be stripped before persistence and must not affect teacher preview, student H5, search documents, AI context, or video-library search text.
+- Related link ordering, hidden/default override state, and manual additions remain supported.
+
+Alternative considered: keep a small hover-only drag handle. Rejected for this surface because the list is short, the whole row can safely act as the draggable target, and the existing tree already demonstrates that row-level movement can be understandable without a visible grip.
+
+Alternative considered: keep up/down buttons for discoverability. Rejected because they dominate the row visually. If needed, reorder commands can live in the secondary row menu for accessibility and precision fallback.
+
 ## Risks / Trade-offs
 
 - [Risk] Dropping database columns is destructive. -> Mitigation: make the migration explicit and one-way; do not promise value preservation for fields declared unused. Keep rollback as application/database backup restore, not automatic field reconstruction.
@@ -231,6 +288,8 @@ Alternative considered: keep a directory student description in `内容`. Reject
 - [Risk] The device mockup dependency could visually diverge from real browser dimensions. -> Mitigation: keep the dependency responsible only for the frame, map presets to explicit iframe viewport sizes, and verify screenshots with Playwright mobile viewports.
 - [Risk] Moving diagnostics out of tabs may hide useful repair information. -> Mitigation: keep header summary cards and status badges visible; expose `高级/更多` from the selected-node header and allow direct panel deep links.
 - [Risk] Removing card fields touches seed/import/search code beyond the visible UI. -> Mitigation: include backend contract tests, migration tests, frontend typecheck, and student H5 rendering tests in the task list.
+- [Risk] Removing visible drag handles makes reorder less discoverable. -> Mitigation: use row hover feedback, subdued source row, cursor-following preview, and clear drop indicator; keep menu-based reorder commands as an accessibility fallback if needed.
+- [Risk] Old related-link label columns may remain in existing databases or be recreated by baseline migrations. -> Mitigation: add a destructive drop migration plus migration contract tests proving fresh and upgraded schemas do not contain related-link title override columns.
 
 ## Migration Plan
 
@@ -244,7 +303,9 @@ Alternative considered: keep a directory student description in `内容`. Reject
 8. Add teacher preview shell using a standard phone mockup with curated presets, loading the real student preview route in the phone screen.
 9. Add student preview route/shell that renders the real point detail in phone viewport preview mode.
 10. Update student catalog cards to derive presentation from real catalog/point content and video metadata.
-11. Run backend migrations/tests, frontend tests/typecheck, OpenSpec validation, and visual QA for teacher workbench plus mobile preview.
+11. Remove related-experiment short display names from teacher forms, frontend payload mapping, backend request schemas, and read-model title resolution.
+12. Replace the related-experiment card editor with a compact tree-like sortable row list and compact search/add rows.
+13. Run backend migrations/tests, frontend tests/typecheck, OpenSpec validation, and visual QA for teacher workbench plus mobile preview.
 
 Rollback:
 
