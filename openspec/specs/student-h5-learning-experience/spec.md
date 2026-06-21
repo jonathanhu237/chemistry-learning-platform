@@ -41,12 +41,13 @@ The backend SHALL expose a student learning payload centered on a selected famil
 - **WHEN** an authenticated student opens the H5 learning page
 - **THEN** the backend MUST return a recommended, default, or explicitly selected learning profile
 - **AND** the payload MUST include the profile's visible family/element facts and common-property content where available
-- **AND** it MUST include the top-level published catalog nodes for the current chapter.
+- **AND** it MUST include the top-level published catalog directory and point nodes for the current chapter.
 
 #### Scenario: Student opens the catalog learning view
 - **WHEN** a student enters the experiment learning area for a chapter
 - **THEN** the H5 app MUST show catalog nodes according to the authored directory tree
-- **AND** node cards MUST include title, summary or teaching cue, node kind/action, media availability where relevant, and question count where available
+- **AND** directory node cards MUST include student-visible title, description, and card presentation metadata
+- **AND** point node cards MUST include point/video learning entry metadata such as title, summary, media availability, and question count where available
 - **AND** the view MUST NOT depend on a fixed parent experiment group level.
 
 #### Scenario: No video exists for a point
@@ -60,18 +61,18 @@ The student learning surface SHALL be treated as a phone-first H5 / mini-program
 #### Scenario: Student opens H5 on a phone viewport
 - **WHEN** the student H5 app is viewed at common phone widths from 360px to 430px CSS pixels
 - **THEN** primary learning screens MUST fit the viewport without horizontal scrolling
-- **AND** headings, cards, segmented chapter switcher, bottom navigation, floating feedback entry, chat entry, and action buttons MUST remain tappable and non-overlapping
-- **AND** the layout MUST prioritize the phone flow: current chapter context, A/B facts-or-experiments switching, experiment-point cards, point detail, chat, and feedback
+- **AND** headings, cards, segmented chapter switcher, bottom navigation, chat page, profile feedback, and action buttons MUST remain tappable and non-overlapping
+- **AND** the layout MUST prioritize the phone flow: app-level tabs, current chapter context, A/B facts-or-experiments switching, experiment-point cards, point detail, chat, feedback, and assessment.
 
 #### Scenario: Student uses touch-only interaction
 - **WHEN** a student uses the app without hover, precise mouse input, or desktop keyboard shortcuts
 - **THEN** all required learning, A/B switching, chat, feedback, login, password-change, pretest-skip, and logout actions MUST be reachable through touch controls
-- **AND** interactive controls SHOULD use phone-appropriate hit areas and spacing
+- **AND** interactive controls SHOULD use phone-appropriate hit areas and spacing.
 
 #### Scenario: Desktop browser is used only for development preview
 - **WHEN** a developer opens the student H5 app on a wide desktop browser
 - **THEN** the app MAY center or constrain the phone layout for preview
-- **BUT** it MUST NOT introduce desktop-only navigation, table-first layouts, hover-only affordances, or admin-console density into the student H5 experience
+- **BUT** it MUST NOT introduce desktop-only navigation, table-first layouts, hover-only affordances, or admin-console density into the student H5 experience.
 
 ### Requirement: Student experiment point detail
 The student H5 app SHALL provide a point detail experience keyed by stable catalog point node identity.
@@ -87,24 +88,34 @@ The student H5 app SHALL provide a point detail experience keyed by stable catal
 - **THEN** the H5 app MUST pass chapter, point node id, optional source path, and page summary context to student chat requests
 - **AND** it MUST NOT rely on legacy `experiment_id` plus `point_key` as the primary context.
 
-### Requirement: Global authenticated H5 feedback
-The student H5 app SHALL provide a global feedback entry for authenticated students when the feedback feature is enabled.
+#### Scenario: Directory is opened as point detail
+- **WHEN** a student route or stale client attempts to open a directory node as a point detail
+- **THEN** the app MUST render a controlled unavailable state or redirect to the directory page
+- **AND** it MUST NOT request video, point knowledge, or assessment context for the directory.
 
-#### Scenario: Student submits feedback
-- **WHEN** an authenticated student submits feedback from any H5 learning screen
+### Requirement: Global authenticated H5 feedback
+The student H5 app SHALL provide authenticated feedback from the `我的` profile destination when the feedback feature is enabled.
+
+#### Scenario: Student submits feedback from profile
+- **WHEN** an authenticated student submits feedback from `我的`
 - **THEN** the backend MUST create a feedback record using the authenticated student's identity
-- **AND** it MUST capture feedback type, content, page path or screen, and available chapter/experiment/point context
-- **AND** the feedback MUST appear in the existing admin feedback management workflow
+- **AND** it MUST capture feedback type, content, page path or screen, optional screenshot attachment, and any available route or learning context metadata
+- **AND** the feedback MUST appear in the existing admin feedback management workflow.
+
+#### Scenario: Student reports a page problem
+- **WHEN** a student encounters a problem on a learning, experiment, assistant, or assessment page
+- **THEN** the app MUST allow the student to report it through `我的` with a written description and optional screenshot
+- **AND** the app MUST NOT require a current-page floating feedback widget to submit the report.
 
 #### Scenario: Feedback switch is disabled
 - **WHEN** the admin feedback switch is disabled
-- **THEN** the H5 app MUST hide the feedback entry after configuration refresh
-- **AND** the backend MUST reject new student feedback submissions even if a stale client attempts one
+- **THEN** the H5 app MUST hide or disable the profile feedback entry after configuration refresh
+- **AND** the backend MUST reject new student feedback submissions even if a stale client attempts one.
 
 #### Scenario: Client cannot spoof student identity
 - **WHEN** a student feedback request includes client-supplied student or class identity in metadata
 - **THEN** the backend MUST derive the authoritative student and class identity from the authenticated token
-- **AND** it MUST NOT trust client-supplied identity fields
+- **AND** it MUST NOT trust client-supplied identity fields.
 
 ### Requirement: Current family chapter composition
 The student H5 element learning page SHALL render as the learning page for one current family or chapter selected from the periodic-table learning entry, not as a primary sibling-family browsing surface.
@@ -121,18 +132,26 @@ The student H5 element learning page SHALL render as the learning page for one c
 - **AND** it MUST NOT imply that the student is on a cross-family index page.
 
 ### Requirement: Within-family element selection
-The student H5 element learning page SHALL let students select an element within the current family and view facts for that selected element without changing the current family or chapter.
+The student H5 element learning page SHALL let students select an element within the current family and view a model-led selected-element facts area for that element without changing the current family or chapter.
 
 #### Scenario: Student selects an element chip
 - **WHEN** the current profile contains multiple elements such as `F`, `Cl`, `Br`, `I`, and `At`
 - **THEN** the page MUST render touch-friendly element chips for those elements
-- **AND** selecting a chip MUST update the selected-element facts area
+- **AND** selecting a chip MUST update the selected-element atom model card and compact facts area
 - **AND** the selected property section and experiment-point groups MUST remain scoped to the same current family or chapter.
 
-#### Scenario: Selected element facts are shown
+#### Scenario: Selected element model and facts are shown
 - **WHEN** a student selects an element inside the current family
 - **THEN** the page MUST show available element-specific facts including atomic number, electron configuration, family or group, common valence, elemental state, and oxidizing or reducing tendency where applicable
-- **AND** missing optional facts MUST degrade to a clear empty or unavailable state rather than causing the page to fail.
+- **AND** the page MUST present those facts through a selected-element atom model card rather than a primary 2x3 static fact-card grid
+- **AND** the card MUST preserve the selected element tile identity with atomic number, symbol, and English element name
+- **AND** the card MUST show the atom visualization when electron configuration or fallback model data is available
+- **AND** missing optional facts or unavailable model data MUST degrade to a clear empty or unavailable state rather than causing the page to fail.
+
+#### Scenario: Selected element facts remain compact before tasks
+- **WHEN** selected-element physical facts, teaching notes, family common properties, and property summaries would make the facts view long on a phone viewport
+- **THEN** the selected-element card MUST use compact summaries, strips, chips, or progressive disclosure
+- **AND** it MUST keep family common properties and experiment-point learning entry discoverable without excessive scrolling
 
 ### Requirement: Family-wide common properties
 The student H5 element learning page SHALL distinguish family-wide common properties and trends from selected-element facts.
@@ -156,6 +175,11 @@ The student H5 element learning page SHALL keep catalog point navigation as the 
 - **THEN** the page MUST show top-level directory and point entries for that chapter
 - **AND** selecting a directory MUST open the next catalog level
 - **AND** selecting a point MUST open the point detail learning page.
+
+#### Scenario: Directory card appears in task area
+- **WHEN** a directory node is shown in the catalog task area
+- **THEN** it MUST render as a navigation category card using directory card presentation
+- **AND** it MUST NOT appear as a playable video point.
 
 #### Scenario: Context area would push catalog too low
 - **WHEN** selected-element facts and family common properties contain more content than fits comfortably before the catalog entry area on a phone viewport
@@ -313,3 +337,94 @@ The student H5 app SHALL implement the new prototype flow from periodic-table en
 - **THEN** the app MUST open the point video/detail page
 - **AND** the page MUST show manually authored principle, phenomenon explanation, safety note, related links, and the fixed test handoff.
 - **AND** teacher-only remarks MUST remain hidden from this page.
+
+#### Scenario: Directory search context leads to points
+- **WHEN** a student search result is matched through directory/category text
+- **THEN** the result list MUST show concrete descendant point entries
+- **AND** selecting a result MUST open point detail rather than a directory-only search result page.
+
+### Requirement: RSC-backed selected-element physical facts
+The student H5 learning experience SHALL support curated physical fact fields for selected elements using RSC Periodic Table fact boxes as the primary reference.
+
+#### Scenario: Student sees RSC-style physical facts
+- **WHEN** the selected element has curated physical facts
+- **THEN** the facts view MUST be able to show relative atomic mass, group, period, block, 20°C state, density, and electron configuration in a compact mobile layout
+- **AND** those fields MUST be maintained in profile or profile-adjacent seed data rather than fetched from RSC at runtime
+
+#### Scenario: Student sees teaching facts separately
+- **WHEN** the selected element also has common valence, redox tendency, or profile-specific teaching note
+- **THEN** the facts view MUST keep those teaching facts visible as learning cues
+- **AND** it MUST distinguish them from source-attributed physical facts where attribution is shown
+
+### Requirement: Experiment-focused selected element card
+The student H5 chapter learning page SHALL present the selected element as a compact experiment-learning card rather than as a generated sentence or full detail summary.
+
+#### Scenario: Selected element card renders curated focus copy
+- **WHEN** a student selects an element within the current family or chapter
+- **THEN** the compact selected-element card MUST keep the periodic-table element tile visible with atomic number, symbol, and English element label
+- **AND** it MUST show a curated focus-property line for the selected element
+- **AND** it MUST show a curated experiment-relevance line explaining why that element matters to the current chapter's experiments or observation tasks
+- **AND** it MUST show compact supporting tags such as group, period/block, state, or common valence where available
+
+#### Scenario: Selected element card avoids generated prose
+- **WHEN** the H5 app renders the compact selected-element card
+- **THEN** it MUST NOT generate the primary title or body by concatenating the selected element name with the family name
+- **AND** it MUST NOT use family-wide trend text as the selected element card body
+- **AND** it MUST NOT prefix a family trend sentence with the selected element name to make it appear element-specific
+
+#### Scenario: Detailed facts remain outside compact card
+- **WHEN** the selected element has detailed facts such as electron configuration, atomic mass, density, full redox tendency, reference URL, or longer notes
+- **THEN** those details MUST remain available in the facts view, element detail route, or equivalent detail area
+- **AND** the compact selected-element card MUST only surface the short focus property, experiment relevance, and compact tags
+
+#### Scenario: Element switching updates compact card
+- **WHEN** the student taps another element chip in the same family or chapter
+- **THEN** the compact card MUST update its tile, focus property, experiment relevance, and tags for the newly selected element
+- **AND** the current family or chapter context, facts/experiments switcher state, and experiment-point groups MUST remain scoped to the same learning profile
+
+### Requirement: Explicit element focus card seed copy
+The platform SHALL store selected-element card copy as explicit maintained student learning seed data instead of deriving the compact card's teaching copy from RAG chunks, family trend summaries, or front-end string composition.
+
+#### Scenario: Learning profile seed includes card copy
+- **WHEN** production resource validation or test validation runs for enabled student learning profiles
+- **THEN** each enabled element MUST include card-level focus copy, experiment relevance copy, and compact card tags before the profile is treated as complete for the redesigned card experience
+- **AND** missing card-level copy MUST be reported as validation feedback before the profile is considered complete for the redesigned card experience
+
+#### Scenario: Backend exposes card copy
+- **WHEN** the student learning API builds the H5 learning payload for a selected family or chapter
+- **THEN** each element badge MUST expose the card-level focus property, experiment relevance, and card tags when seed data provides them
+- **AND** existing detailed element facts MUST remain available for the facts view and element detail experience
+
+#### Scenario: Card copy is temporarily missing
+- **WHEN** an element is missing redesigned card copy during migration
+- **THEN** the H5 app MUST render a graceful compact fallback using stable factual tags where available
+- **AND** the fallback MUST NOT recreate the old generated `<element>在<family>中的位置` pattern or use a family trend sentence as the element card body
+
+### Requirement: Bottom-tab student app information architecture
+The student H5 learning experience SHALL organize authenticated student workflows around bottom app tabs rather than a single learning page with floating global entries.
+
+#### Scenario: Student views bottom-tab destinations
+- **WHEN** a student is in the authenticated app shell with all features enabled
+- **THEN** the app MUST provide destinations for `学习`, `实验`, `问答`, `测评`, and `我的`
+- **AND** each destination MUST represent app-level navigation, not a chapter-local view switch.
+
+#### Scenario: Student opens learning tab
+- **WHEN** the student opens `学习`
+- **THEN** the app MUST provide the periodic-table chapter entry, current or recommended chapter access, selected chapter facts, selected chapter experiment videos, and point detail navigation
+- **AND** chapter-local controls such as `性质通识` and `实验视频` MUST remain inside the learning tab.
+
+#### Scenario: Student opens experiments tab
+- **WHEN** the student opens `实验`
+- **THEN** the app MUST provide an experiment-resource or point-resource overview using existing student-visible experiment data
+- **AND** it MUST avoid showing generic placeholder marketing content.
+
+#### Scenario: Student opens assessment tab
+- **WHEN** the student opens `测评`
+- **THEN** the app MUST provide student assessment status, post-learning assessment entry when available, and report access where data exists
+- **AND** assessment actions MUST remain reachable above the bottom navigation.
+
+#### Scenario: Student opens profile tab
+- **WHEN** the student opens `我的`
+- **THEN** the app MUST provide student identity, feedback, account, and logout-oriented actions
+- **AND** global support actions such as feedback MUST live here instead of as floating page controls.
+

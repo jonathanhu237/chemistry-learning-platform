@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { App as AntApp, Button, Dropdown, Flex, Spin, Typography, type MenuProps } from "antd";
 import { Tree, type DragPreviewProps, type MoveHandler, type NodeRendererProps, type TreeApi } from "react-arborist";
-import { Folder, FlaskConical, Plus } from "lucide-react";
+import { Copy, Folder, FlaskConical, Plus } from "lucide-react";
 
 import { listCatalogChildren, type CatalogNodeCard, type CatalogNodeMovePayload } from "../../api/catalogTree";
 import { QueryState } from "../../components/QueryState";
@@ -70,6 +70,7 @@ export function CatalogTreeNodeList({
   onSelect,
   onAddRoot,
   onAddChild,
+  onCopyInto,
   onMove,
   onCopyNode,
   onReorder,
@@ -84,6 +85,7 @@ export function CatalogTreeNodeList({
   onSelect: (node: CatalogNodeCard) => void;
   onAddRoot: (kind: CatalogNodeCard["node_kind"]) => void;
   onAddChild: (node: CatalogNodeCard, kind?: CatalogNodeCard["node_kind"]) => void;
+  onCopyInto: (parentNode: CatalogNodeCard | null, kind: CatalogNodeCard["node_kind"]) => void;
   onMove: (nodeId: string, payload: CatalogNodeMovePayload) => Promise<unknown> | unknown;
   onCopyNode: (node: CatalogNodeCard) => void;
   onReorder: (items: Array<{ node_id: string; display_order: number }>) => Promise<unknown> | unknown;
@@ -113,6 +115,9 @@ export function CatalogTreeNodeList({
     () => [
       { key: "directory", icon: <Folder size={14} />, label: "新建目录" },
       { key: "point", icon: <FlaskConical size={14} />, label: "新建点位" },
+      { type: "divider" },
+      { key: "copy-directory", icon: <Copy size={14} />, label: "从已有目录复制到本章" },
+      { key: "copy-point", icon: <Copy size={14} />, label: "从已有实验复制到本章" },
     ],
     [],
   );
@@ -208,13 +213,21 @@ export function CatalogTreeNodeList({
         onCopyNode(node);
         return;
       }
+      if (action === "copy-directory") {
+        onCopyInto(node, "directory");
+        return;
+      }
+      if (action === "copy-point") {
+        onCopyInto(node, "point");
+        return;
+      }
       if (action === "move-before" || action === "move-after") {
         void applyMoveResult(fallbackCatalogTreeReorder(treeData, node.node_id, action === "move-before" ? "before" : "after"));
         return;
       }
       onChangeStatus(node, action);
     },
-    [applyMoveResult, onAddChild, onChangeStatus, onCopyNode, treeData],
+    [applyMoveResult, onAddChild, onChangeStatus, onCopyInto, onCopyNode, treeData],
   );
 
   const dragPreviewNodesById = useMemo(() => collectCatalogTreeNodes(treeData), [treeData]);
@@ -235,7 +248,7 @@ export function CatalogTreeNodeList({
     [dragPreviewNodesById],
   );
 
-  const treeHeight = Math.max(320, treeBoxSize.height || 420);
+  const treeHeight = Math.max(520, treeBoxSize.height || 620);
   const treeWidth = treeBoxSize.width > 0 ? treeBoxSize.width : "100%";
 
   useEffect(() => {
@@ -252,7 +265,17 @@ export function CatalogTreeNodeList({
           trigger={["click"]}
           menu={{
             items: addRootItems,
-            onClick: ({ key }) => onAddRoot(key as CatalogNodeCard["node_kind"]),
+            onClick: ({ key }) => {
+              if (key === "copy-directory") {
+                onCopyInto(null, "directory");
+                return;
+              }
+              if (key === "copy-point") {
+                onCopyInto(null, "point");
+                return;
+              }
+              onAddRoot(key as CatalogNodeCard["node_kind"]);
+            },
           }}
         >
           <Button size="small" type="text" icon={<Plus size={17} />} aria-label="添加到本章" title="添加到本章" />

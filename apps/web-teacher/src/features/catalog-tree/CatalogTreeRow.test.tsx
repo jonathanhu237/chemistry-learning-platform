@@ -53,6 +53,7 @@ function renderRow({
   isDragging = false,
   willReceiveDrop = false,
   level = 1,
+  childIndex = 1,
   hasNextSibling = true,
   ancestorGuideContinuations = [],
 }: {
@@ -63,6 +64,7 @@ function renderRow({
   isDragging?: boolean;
   willReceiveDrop?: boolean;
   level?: number;
+  childIndex?: number;
   hasNextSibling?: boolean;
   ancestorGuideContinuations?: boolean[];
 }) {
@@ -86,6 +88,7 @@ function renderRow({
         children: catalogNode.node_kind === "directory" ? [] : null,
       } satisfies CatalogArboristNode,
       level,
+      childIndex,
       isInternal,
       isOpen,
       isSelected,
@@ -218,6 +221,7 @@ describe("CatalogTreeRow drag and drop interaction states", () => {
     const { container } = renderRow({
       catalogNode: node({ node_id: "last-child", title: "Last child", node_kind: "point" }),
       level: 2,
+      childIndex: 2,
       hasNextSibling: false,
       ancestorGuideContinuations: [true],
     });
@@ -231,12 +235,48 @@ describe("CatalogTreeRow drag and drop interaction states", () => {
     expect(guides[1]).toHaveClass("is-current");
     expect(guides[1]).toHaveClass("is-terminal");
     expect(guides[1]).not.toHaveClass("is-continuing");
+    expect(guides[1]).not.toHaveClass("is-first");
+    expect(guides[1]).not.toHaveClass("is-only");
+  });
+
+  it("marks the first current branch without treating it as terminal", () => {
+    const { container } = renderRow({
+      catalogNode: node({ node_id: "first-child", title: "First child", node_kind: "directory" }),
+      level: 1,
+      childIndex: 0,
+      hasNextSibling: true,
+    });
+
+    const guides = container.querySelectorAll(".catalog-sidebar-guide");
+    expect(guides).toHaveLength(1);
+    expect(guides[0]).toHaveClass("is-current");
+    expect(guides[0]).toHaveClass("is-first");
+    expect(guides[0]).not.toHaveClass("is-terminal");
+    expect(guides[0]).not.toHaveClass("is-only");
+  });
+
+  it("marks only children so the current vertical guide can be suppressed", () => {
+    const { container } = renderRow({
+      catalogNode: node({ node_id: "only-child", title: "Only child", node_kind: "point" }),
+      level: 1,
+      childIndex: 0,
+      hasNextSibling: false,
+    });
+
+    const guides = container.querySelectorAll(".catalog-sidebar-guide");
+    expect(guides).toHaveLength(1);
+    expect(guides[0]).toHaveClass("is-current");
+    expect(guides[0]).toHaveClass("is-first");
+    expect(guides[0]).toHaveClass("is-terminal");
+    expect(guides[0]).toHaveClass("is-only");
+    expect(guides[0]).not.toHaveClass("is-continuing");
   });
 
   it("continues ancestor guides only when that ancestor has following siblings", () => {
     const { container } = renderRow({
       catalogNode: node({ node_id: "middle-child", title: "Middle child", node_kind: "point" }),
       level: 3,
+      childIndex: 1,
       hasNextSibling: true,
       ancestorGuideContinuations: [true, false],
     });

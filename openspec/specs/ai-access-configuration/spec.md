@@ -42,14 +42,17 @@ The system SHALL propagate admin-managed learning feature switches to the studen
 #### Scenario: Admin disables student AI entry
 - **WHEN** an admin disables the AI learning assistant entry in system settings
 - **THEN** subsequent student app-config responses MUST mark the H5 assistant entry as disabled
-- **AND** student assistant request endpoints MUST reject stale requests without invoking the agent
+- **AND** the authenticated student app shell MUST hide or disable the `问答` bottom-nav entry and move any active assistant route back to a safe tab
+- **AND** student assistant request endpoints MUST reject stale requests without invoking the agent.
 
 #### Scenario: Admin disables feedback entry
 - **WHEN** an admin disables the feedback entry in system settings
 - **THEN** subsequent student app-config responses MUST mark the H5 feedback entry as disabled
-- **AND** student feedback submission endpoints MUST reject stale requests
+- **AND** the `我的` tab MUST hide or disable the feedback section
+- **AND** student feedback submission endpoints MUST reject stale requests.
 
 #### Scenario: Admin disables student AI capability
 - **WHEN** an admin disables student AI capability in AI feature controls
 - **THEN** subsequent student app-config responses MUST mark student AI capability as disabled
-- **AND** the H5 assistant entry MUST not be available even if the general learning assistant entry remains enabled
+- **AND** the H5 assistant tab MUST not be available even if the general learning assistant entry remains enabled.
+

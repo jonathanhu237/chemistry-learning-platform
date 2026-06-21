@@ -23,7 +23,12 @@ type CreateIntent = {
 };
 
 type CopyIntent = {
-  node: CatalogNodeCard;
+  mode: "fixed-source" | "fixed-target";
+  sourceKind: CatalogNodeKind;
+  sourceNode?: CatalogNodeCard | null;
+  targetChapterId: string;
+  targetParentId: string | null;
+  targetNode?: CatalogNodeCard | null;
 };
 
 type CopyFormValues = {
@@ -41,6 +46,10 @@ type CopyDestinationNode = {
 function kindIcon(kind: CatalogNodeKind) {
   if (kind === "point") return <FlaskConical size={14} />;
   return <Folder size={14} />;
+}
+
+function copyKindLabel(kind?: CatalogNodeKind) {
+  return kind === "point" ? "实验" : "目录";
 }
 
 function copyTitle(title: string) {
@@ -170,6 +179,7 @@ export function CatalogTreeWorkspacePage() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
   const [reuseSearchText, setReuseSearchText] = useState("");
+  const [copySourceSearchText, setCopySourceSearchText] = useState("");
   const [createIntent, setCreateIntent] = useState<CreateIntent | null>(null);
   const [copyIntent, setCopyIntent] = useState<CopyIntent | null>(null);
   const [copyChapterId, setCopyChapterId] = useState<string>();
@@ -187,6 +197,11 @@ export function CatalogTreeWorkspacePage() {
     reuseSearchText,
     null,
     Boolean(createIntent?.kind === "point" && reuseSearchText.trim().length >= 2),
+  );
+  const copySourceSearch = useCatalogSearch(
+    copySourceSearchText,
+    null,
+    Boolean(copyIntent?.mode === "fixed-target" && copySourceSearchText.trim().length >= 2),
   );
   const mutations = useCatalogMutations(message);
 
@@ -217,9 +232,9 @@ export function CatalogTreeWorkspacePage() {
 
   useEffect(() => {
     if (!copyIntent) return;
-    setCopyChapterId(copyIntent.node.chapter_id);
-    setCopyParentId(copyIntent.node.parent_id || null);
-    copyForm.setFieldsValue({ title: copyTitle(copyIntent.node.title) });
+    setCopyChapterId(copyIntent.targetChapterId);
+    setCopyParentId(copyIntent.targetParentId);
+    copyForm.setFieldsValue({ title: copyIntent.sourceNode ? copyTitle(copyIntent.sourceNode.title) : "" });
   }, [copyForm, copyIntent]);
 
   const chapterOptions = (chapters.data || []).map((chapter) => ({
@@ -249,7 +264,51 @@ export function CatalogTreeWorkspacePage() {
   };
 
   const openCopy = (node: CatalogNodeCard) => {
-    setCopyIntent({ node });
+    setCopySourceSearchText("");
+    copyForm.resetFields();
+    setCopyIntent({
+      mode: "fixed-source",
+      sourceKind: node.node_kind,
+      sourceNode: node,
+      targetChapterId: node.chapter_id,
+      targetParentId: node.parent_id || null,
+    });
+  };
+
+  const openCopyInto = (parentNode: CatalogNodeCard | null, kind: CatalogNodeKind) => {
+    const targetChapterId = parentNode?.chapter_id || chapterId;
+    if (!targetChapterId) return;
+    setCopySourceSearchText("");
+    copyForm.resetFields();
+    setCopyIntent({
+      mode: "fixed-target",
+      sourceKind: kind,
+      sourceNode: null,
+      targetChapterId,
+      targetParentId: parentNode?.node_id || null,
+      targetNode: parentNode,
+    });
+  };
+
+  const closeCopy = () => {
+    setCopyIntent(null);
+    setCopySourceSearchText("");
+    copyForm.resetFields();
+  };
+
+  const selectCopySource = (node: CatalogNodeCard) => {
+    setCopyIntent((previous) =>
+      previous
+        ? { ...previous, sourceKind: node.node_kind, sourceNode: node }
+        : {
+            mode: "fixed-source",
+            sourceKind: node.node_kind,
+            sourceNode: node,
+            targetChapterId: node.chapter_id,
+            targetParentId: node.parent_id || null,
+          },
+    );
+    copyForm.setFieldsValue({ title: copyTitle(node.title) });
   };
 
   const submitCreate = async () => {
@@ -264,11 +323,11 @@ export function CatalogTreeWorkspacePage() {
   };
 
   const submitCopy = async () => {
-    if (!copyIntent || !copyChapterId) return;
+    if (!copyIntent?.sourceNode || !copyChapterId) return;
     const values = await copyForm.validateFields();
     try {
       const detail = await mutations.copyNode.mutateAsync({
-        nodeId: copyIntent.node.node_id,
+        nodeId: copyIntent.sourceNode.node_id,
         payload: {
           chapter_id: copyChapterId,
           parent_id: copyParentId,
@@ -276,7 +335,7 @@ export function CatalogTreeWorkspacePage() {
           include_subtree: true,
         },
       });
-      setCopyIntent(null);
+      closeCopy();
       setChapterId(detail.node.chapter_id);
       setSelectedNodeId(detail.node.node_id);
     } catch {
@@ -289,6 +348,24 @@ export function CatalogTreeWorkspacePage() {
     setSelectedNodeId(node.node_id);
   };
   const reusablePointResults = (reuseSearch.data?.items || []).filter((item) => item.node_kind === "point" && item.canonical_point_id);
+  const copySourceResults = (copySourceSearch.data?.items || []).filter(
+    (item) => item.node_kind === copyIntent?.sourceKind && item.status !== "archived",
+  );
+  const copyModalTitle =
+    copyIntent?.mode === "fixed-source"
+      ? `复制当前${copyKindLabel(copyIntent.sourceKind)}`
+      : `从已有${copyKindLabel(copyIntent?.sourceKind)}复制到此处`;
+  const copySourceLocked = copyIntent?.mode === "fixed-source";
+  const copyTargetLocked = copyIntent?.mode === "fixed-target";
+  const sourceSearchReady = copySourceSearchText.trim().length >= 2;
+  const formatCopyNodeChapter = (node: CatalogNodeCard) => {
+    const chapter = chapters.data?.find((candidate) => candidate.chapter_id === node.chapter_id);
+    return chapter ? formatChapterTitle(chapter.chapter_title, chapter.chapter_id) : node.chapter_id;
+  };
+  const copyTargetChapterLabel = (() => {
+    const targetChapter = chapters.data?.find((candidate) => candidate.chapter_id === copyChapterId);
+    return targetChapter ? formatChapterTitle(targetChapter.chapter_title, targetChapter.chapter_id) : copyChapterId || "";
+  })();
   const selectReusablePoint = (item: CatalogNodeCard) => {
     createForm.setFieldsValue({
       title: item.canonical_point_title || item.title,
@@ -374,6 +451,7 @@ export function CatalogTreeWorkspacePage() {
             onSelect={selectNode}
             onAddRoot={(kind) => openCreate(kind)}
             onAddChild={(node, kind = "directory") => openCreate(kind, node.node_id)}
+            onCopyInto={openCopyInto}
             onCopyNode={openCopy}
             onMove={(nodeId, payload) => mutations.moveNode.mutateAsync({ nodeId, payload })}
             onReorder={(items) => mutations.reorderNodes.mutateAsync(items)}
@@ -476,38 +554,104 @@ export function CatalogTreeWorkspacePage() {
       </Modal>
 
       <Modal
-        title="复制节点"
+        title={copyModalTitle}
         open={Boolean(copyIntent)}
-        onCancel={() => setCopyIntent(null)}
+        onCancel={closeCopy}
         onOk={submitCopy}
-        okButtonProps={{ loading: mutations.copyNode.isPending, disabled: !copyChapterId }}
+        okButtonProps={{ loading: mutations.copyNode.isPending, disabled: !copyChapterId || !copyIntent?.sourceNode }}
         destroyOnHidden
         width={760}
       >
         <Form form={copyForm} layout="vertical">
+          <Form.Item label={`来源${copyKindLabel(copyIntent?.sourceKind)}`} required>
+            <div className="catalog-copy-source-picker">
+              {copyIntent?.sourceNode ? (
+                <div className="catalog-copy-source-card">
+                  <span className="catalog-copy-target-icon">{kindIcon(copyIntent.sourceNode.node_kind)}</span>
+                  <div className="catalog-copy-source-copy">
+                    <strong>{copyIntent.sourceNode.title}</strong>
+                    <Text type="secondary">{formatCopyNodeChapter(copyIntent.sourceNode)}</Text>
+                  </div>
+                  <Tag>{catalogNodeKindLabel(copyIntent.sourceNode.node_kind)}</Tag>
+                </div>
+              ) : (
+                <Text type="secondary">请先搜索并选择一个已有{copyKindLabel(copyIntent?.sourceKind)}作为复制来源。</Text>
+              )}
+              {copySourceLocked ? null : (
+                <>
+                  <Input.Search
+                    value={copySourceSearchText}
+                    onChange={(event) => setCopySourceSearchText(event.target.value)}
+                    onSearch={setCopySourceSearchText}
+                    placeholder={`搜索已有${copyKindLabel(copyIntent?.sourceKind)}名称`}
+                    allowClear
+                    autoFocus={!copyIntent?.sourceNode}
+                  />
+                  {sourceSearchReady ? (
+                    <QueryState loading={copySourceSearch.isFetching} error={copySourceSearch.error} empty={!copySourceResults.length}>
+                      <div className="catalog-copy-source-results">
+                        {copySourceResults.slice(0, 10).map((item) => (
+                          <button
+                            key={item.node_id}
+                            type="button"
+                            className={
+                              item.node_id === copyIntent?.sourceNode?.node_id ? "catalog-copy-source-result is-selected" : "catalog-copy-source-result"
+                            }
+                            onClick={() => selectCopySource(item)}
+                          >
+                            <span className="catalog-copy-target-icon">{kindIcon(item.node_kind)}</span>
+                            <span className="catalog-copy-source-result-main">
+                              <strong>{item.title}</strong>
+                              <Text type="secondary">{formatCopyNodeChapter(item)}</Text>
+                            </span>
+                            <Tag>{catalogNodeKindLabel(item.node_kind)}</Tag>
+                          </button>
+                        ))}
+                      </div>
+                    </QueryState>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </Form.Item>
           <Form.Item name="title" label="副本名称" rules={[{ required: true, message: "请输入副本名称" }]}>
-            <Input autoFocus />
+            <Input autoFocus={Boolean(copyIntent?.sourceNode)} />
           </Form.Item>
-          <Form.Item label="目标章节">
-            <Select
-              value={copyChapterId}
-              options={chapterOptions}
-              onChange={(value) => {
-                setCopyChapterId(value);
-                setCopyParentId(null);
-              }}
-            />
-          </Form.Item>
-          <Form.Item label="目标目录">
-            <QueryState loading={copyRoots.isLoading} error={copyRoots.error} empty={false}>
-              <CatalogCopyDestinationTree
-                chapterId={copyChapterId}
-                roots={copyRoots.data?.nodes || []}
-                selectedParentId={copyParentId}
-                onSelectParent={setCopyParentId}
-              />
-            </QueryState>
-          </Form.Item>
+          {copyTargetLocked ? (
+            <Form.Item label="目标位置">
+              <div className="catalog-copy-source-card catalog-copy-fixed-target-card">
+                <span className="catalog-copy-target-icon"><Folder size={14} /></span>
+                <div className="catalog-copy-source-copy">
+                  <strong>{copyIntent?.targetNode?.title || "章节根目录"}</strong>
+                  <Text type="secondary">{copyTargetChapterLabel}</Text>
+                </div>
+                <Tag>{copyIntent?.targetNode ? "目录" : "本章根目录"}</Tag>
+              </div>
+            </Form.Item>
+          ) : (
+            <>
+              <Form.Item label="目标章节">
+                <Select
+                  value={copyChapterId}
+                  options={chapterOptions}
+                  onChange={(value) => {
+                    setCopyChapterId(value);
+                    setCopyParentId(null);
+                  }}
+                />
+              </Form.Item>
+              <Form.Item label="目标目录">
+                <QueryState loading={copyRoots.isLoading} error={copyRoots.error} empty={false}>
+                  <CatalogCopyDestinationTree
+                    chapterId={copyChapterId}
+                    roots={copyRoots.data?.nodes || []}
+                    selectedParentId={copyParentId}
+                    onSelectParent={setCopyParentId}
+                  />
+                </QueryState>
+              </Form.Item>
+            </>
+          )}
         </Form>
       </Modal>
     </div>

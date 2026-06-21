@@ -9,7 +9,7 @@ The system SHALL model experiment learning structure as a chapter-scoped recursi
 #### Scenario: Chapter catalog is requested
 - **WHEN** a chapter catalog is requested by an authorized user
 - **THEN** the system MUST return root catalog nodes for that chapter ordered by display order
-- **AND** each node MUST expose enough metadata to render directory, point, hybrid, or shortcut behavior.
+- **AND** each node MUST expose enough metadata to render either directory navigation/card behavior or point learning behavior.
 
 #### Scenario: Catalog depth differs by chapter
 - **WHEN** two chapters have different directory depths
@@ -22,7 +22,7 @@ The system SHALL model experiment learning structure as a chapter-scoped recursi
 - **AND** the student API MUST either hide it or render an intentional empty state according to publication settings.
 
 ### Requirement: Stable point node identity
-The system SHALL use stable catalog node identity as the authoritative identity for point-capable learning content.
+The system SHALL use stable catalog point node identity as the authoritative identity for point learning content.
 
 #### Scenario: Point is moved
 - **WHEN** a teacher moves a point node to a different parent directory
@@ -40,32 +40,33 @@ The system SHALL use stable catalog node identity as the authoritative identity 
 - **AND** new write paths MUST use the stable point node id instead of the legacy pair.
 
 ### Requirement: Catalog node kinds
-The system SHALL support directory, point, hybrid, and shortcut node kinds with explicit behavior.
+The system SHALL support exactly directory and point node kinds with explicit behavior.
 
 #### Scenario: Directory node is opened
 - **WHEN** a directory node is opened
-- **THEN** the system MUST return its child nodes and navigation metadata
-- **AND** it MUST NOT require point learning content.
+- **THEN** the system MUST return its child nodes, breadcrumbs, directory description, card presentation metadata, and navigation metadata
+- **AND** it MUST NOT require or expose point learning content, video bindings, related point links, assessment context, or ES result identity for the directory itself.
 
 #### Scenario: Point node is opened
 - **WHEN** a point node is opened
-- **THEN** the system MUST return point detail content, video bindings, related links, assessment context, and source path context where available.
+- **THEN** the system MUST return point detail content, video bindings, related links, assessment context, and source path context where available
+- **AND** it MUST NOT return child catalog nodes for the point.
 
-#### Scenario: Hybrid node is opened
-- **WHEN** a hybrid node is opened
-- **THEN** the system MUST expose both child-node navigation and point detail capability
-- **AND** clients MUST receive explicit actions so they do not infer behavior from child count alone.
+#### Scenario: Point node is used as parent
+- **WHEN** a client attempts to create or move another catalog node under a point node
+- **THEN** the system MUST reject the operation
+- **AND** the point node id and existing bindings MUST remain unchanged.
 
-#### Scenario: Shortcut node is opened
-- **WHEN** a shortcut node references a canonical point node
-- **THEN** the system MUST resolve detail content from the target point node
-- **AND** it MUST preserve the opening shortcut path as navigation context.
+#### Scenario: Hybrid or shortcut node kind is submitted
+- **WHEN** a client attempts to create or update a catalog node with kind `hybrid` or `shortcut`
+- **THEN** the system MUST reject the request
+- **AND** no live compatibility path MUST preserve hybrid or shortcut behavior.
 
 ### Requirement: Point learning content belongs to point-capable nodes
-The system SHALL attach manually authored point learning content to point-capable catalog nodes.
+The system SHALL attach manually authored point learning content only to point nodes.
 
 #### Scenario: Teacher saves the point authoring model
-- **WHEN** a teacher edits a point-capable node
+- **WHEN** a teacher edits a point node
 - **THEN** the system MUST support manually maintained point title, teacher-only note, point knowledge, related point links, and video bindings
 - **AND** point knowledge MUST include principle mode with either equation or text, phenomenon explanation, and safety note.
 
@@ -80,14 +81,19 @@ The system SHALL attach manually authored point learning content to point-capabl
 - **AND** it MUST NOT require a chemical equation.
 
 #### Scenario: Point has no video
-- **WHEN** a point-capable node has learning content but no published video
+- **WHEN** a point node has learning content but no published video
 - **THEN** the system MUST still allow the point to appear in the catalog and search when published
 - **AND** the student detail page MUST render a graceful no-video state.
 
 #### Scenario: Teacher-only note is stored
-- **WHEN** a teacher saves a teacher-only note for a point-capable node
+- **WHEN** a teacher saves a teacher-only note for a point node
 - **THEN** the system MUST persist the note for admin authoring context
 - **AND** student APIs, student search documents, student snippets, and student page payloads MUST NOT expose or index the note.
+
+#### Scenario: Directory receives point content
+- **WHEN** a client attempts to save point learning content, video bindings, related point links, or point publication state on a directory node
+- **THEN** the system MUST reject the operation
+- **AND** the directory MUST remain a navigation/category node.
 
 ### Requirement: Related point links use node identities
 The system SHALL represent related experiment links between stable point nodes.
@@ -106,14 +112,19 @@ The system SHALL represent related experiment links between stable point nodes.
 The system SHALL build student video-library search documents from published point nodes and their bound learning resources.
 
 #### Scenario: Published point is indexed
-- **WHEN** a point-capable node is published or its searchable content changes
+- **WHEN** a point node is published or its searchable content changes
 - **THEN** the system MUST queue an ES document upsert keyed by point node id
-- **AND** the document MUST include chapter path, node path, point title, principle, phenomenon explanation, safety note, student-facing related link text, extracted formulae, aliases, reaction features, and published video metadata where available.
-- **AND** the document MUST NOT include teacher-only notes, raw AI source chunks, or `experiment_video_point_evidence` payloads.
+- **AND** the document MUST include chapter path, ancestor directory category/path text, point title, principle, phenomenon explanation, safety note, student-facing related link text, extracted formulae, aliases, reaction features, and published video metadata where available.
+- **AND** the document MUST NOT include teacher-only notes, raw AI source chunks, `experiment_video_point_evidence` payloads, or standalone directory-only documents.
 
 #### Scenario: Point is unpublished or archived
-- **WHEN** a point-capable node becomes unpublished or archived
+- **WHEN** a point node becomes unpublished or archived
 - **THEN** the system MUST queue deletion or disabling of its student search document.
+
+#### Scenario: Directory text matches a search query
+- **WHEN** a student searches for text that appears only in a published ancestor directory title or description
+- **THEN** the search backend MUST return matching descendant published point documents
+- **AND** it MUST NOT return the directory as an independent video-library result.
 
 #### Scenario: Raw media asset exists
 - **WHEN** a teacher uploads a media asset that is not bound to a published point node
@@ -138,15 +149,191 @@ The system SHALL provide a production-ready ES/IK analyzer stack for student vid
 - **AND** matching MUST NOT depend on teacher-only notes or AI evidence chunks.
 
 ### Requirement: Destructive legacy model replacement
-The system SHALL retire legacy experiment-parent write paths after migration to the catalog tree.
+The system SHALL retire legacy experiment-parent write paths and old seed-derived experiment data after replacing the catalog seed with the canonical outline-backed tree.
 
 #### Scenario: Legacy admin point API is called
-- **WHEN** a client calls the old experiment video-point write API after the migration
+- **WHEN** a client calls the old experiment video-point write API after the catalog seed replacement
 - **THEN** the system MUST not process the write as an authoritative path
 - **AND** tests MUST verify application code uses catalog-node APIs.
 
-#### Scenario: Legacy experiment data is migrated
-- **WHEN** the migration runs against existing formal experiments and experiment video points
-- **THEN** useful titles, summaries, chapter bindings, video candidates, point content, related links, videos, questions, and search state MUST be migrated into catalog-tree records
-- **AND** the migration MUST record old-to-new identity mapping for audit and data repair.
+#### Scenario: Legacy seed data is reset
+- **WHEN** the new catalog seed replacement runs against a database containing legacy formal experiments, experiment video points, point content, media bindings, evidence bindings, or question-bank rows
+- **THEN** the seed/import process MAY delete or replace those legacy seed-derived rows without preserving old-to-new audit mappings
+- **AND** the resulting catalog tree MUST be rebuilt from the structured canonical outline seed.
+
+#### Scenario: Non-seed resources exist
+- **WHEN** the destructive seed replacement runs
+- **THEN** it MUST preserve canonical RAG chunks, chunk embeddings, analyzer dictionaries, users, roles, courses, and other non-seed platform resources
+- **AND** it MUST document which seed-derived tables are intentionally reset.
+
+### Requirement: Authoritative docs catalog seed
+The system SHALL treat the updated experiment catalog docs as the authoritative seed source for catalog structure.
+
+#### Scenario: Full catalog tree is imported
+- **WHEN** the authoritative catalog seed is imported
+- **THEN** the system MUST preserve the complete chapter directory hierarchy from the docs
+- **AND** it MUST NOT collapse the tree to only point leaves.
+
+#### Scenario: Leaf nodes are experiment points
+- **WHEN** a seed item has no child experiment catalog items under the authoritative docs structure
+- **THEN** the system MUST create it as a point-capable catalog node
+- **AND** parent directory nodes MUST remain directory/navigation nodes even when all descendants are points.
+
+#### Scenario: Empty or placeholder content is encountered
+- **WHEN** the docs contain placeholder wording such as no corresponding experiment content
+- **THEN** the importer MUST treat the placeholder as empty source content
+- **AND** it MUST NOT create fake point text, fake evidence, or fake student-facing content from that placeholder.
+
+### Requirement: Catalog seed replaces legacy experiment point seeds
+The system SHALL use catalog node identities as the only authoritative point identity after seed replacement.
+
+#### Scenario: Legacy point evidence is removed from seed baseline
+- **WHEN** the catalog seed reset runs
+- **THEN** old point-to-chunk bindings keyed by legacy `(experiment_id, point_key)` MUST be cleared or marked retired
+- **AND** canonical `source_chunks` and embeddings MUST remain available as the candidate evidence corpus.
+
+#### Scenario: Legacy question bank is removed from seed baseline
+- **WHEN** the catalog seed reset runs
+- **THEN** old question-bank seed data that depends on invalid legacy point identity MUST be cleared or made inactive
+- **AND** the system MUST treat the new default question bank as empty until catalog-node evidence regeneration succeeds.
+
+#### Scenario: Validation checks legacy identity leakage
+- **WHEN** production resource validation runs after the seed reset
+- **THEN** it MUST fail if active point evidence or generated question seed rows still depend only on legacy `(experiment_id, point_key)` identity
+- **AND** it MUST accept references keyed by catalog node id or stable catalog seed key.
+
+### Requirement: Sample point seed maps examples to catalog nodes
+The system SHALL map the 30 sample point examples to real catalog point nodes rather than importing them as detached examples.
+
+#### Scenario: Sample title is short or ambiguous
+- **WHEN** a sample point example contains only a short title, reagent phrase, or main-number block
+- **THEN** the mapper MUST match it against catalog path, leaf title, known reagent names, teacher note, and point content context
+- **AND** it MUST NOT assume that the main-number block alone identifies the correct node.
+
+#### Scenario: Sample mapping is ambiguous
+- **WHEN** two or more catalog point nodes remain plausible matches for one sample
+- **THEN** the mapping process MUST require an explicit override or review record
+- **AND** it MUST NOT silently bind the sample to an arbitrary node.
+
+#### Scenario: Corrected sample wording is used
+- **WHEN** a known sample wording correction exists, such as `NaClO + 品红溶液`
+- **THEN** the seed mapping MUST use the corrected wording for matching and reporting
+- **AND** validation MUST surface the correction so future runs do not reintroduce the old typo.
+
+### Requirement: Directories remain first-class catalog content
+The catalog tree SHALL preserve directory nodes as first-class teacher-managed navigation content.
+
+#### Scenario: Directory has no direct point content
+- **WHEN** a directory node has no point content fields
+- **THEN** teacher APIs MUST still return it for tree editing and organization
+- **AND** student APIs MAY use publication rules to show, hide, or render it as navigation without treating it as an experiment point.
+
+#### Scenario: Directory is moved
+- **WHEN** a directory subtree is moved
+- **THEN** all descendant point node ids MUST remain stable
+- **AND** ES state, evidence state, videos, questions, analytics, and sample mappings MUST continue to resolve through catalog node identity.
+
+### Requirement: Canonical outline-backed catalog seed
+The system SHALL use a structured seed derived from `docs/实验目录_整理版.md` as the authoritative default experiment catalog tree.
+
+#### Scenario: Catalog seed is validated
+- **WHEN** the catalog seed validation runs
+- **THEN** it MUST confirm the seed represents 569 catalog nodes under existing chapter contexts
+- **AND** it MUST confirm those nodes contain 176 directory nodes and 393 point nodes.
+
+#### Scenario: Chapter section heading is imported
+- **WHEN** a `##` heading appears under a chapter in the canonical outline
+- **THEN** the seed MUST represent that heading as a directory node
+- **AND** child bullet nodes MUST be nested below that directory in source order.
+
+#### Scenario: Bullet node has children
+- **WHEN** a bullet item in the canonical outline has child bullet items
+- **THEN** the seed MUST represent that item as a directory node
+- **AND** it MUST preserve its full parent path and display order.
+
+#### Scenario: Bullet node has no children
+- **WHEN** a bullet item in the canonical outline has no child bullet items
+- **THEN** the seed MUST represent that item as a point node
+- **AND** no seeded point node MUST have child nodes.
+
+#### Scenario: Chapter 21 placeholder is encountered
+- **WHEN** the canonical outline contains `暂无对应实验内容` for chapter 21
+- **THEN** the seed MUST treat chapter 21 as empty
+- **AND** it MUST NOT create a directory node, point node, or placeholder point for that text.
+
+#### Scenario: Point marker text is absent
+- **WHEN** the seed is generated or validated
+- **THEN** it MUST NOT require `(点位)` annotations
+- **AND** point classification MUST be derived from leaf structure.
+
+### Requirement: Corrected hypochlorite branch entries
+The catalog seed SHALL preserve the corrected chapter 13 hypochlorite entries as distinct point nodes.
+
+#### Scenario: Hypochlorite points are validated
+- **WHEN** the catalog seed validation checks chapter 13 `五、卤素含氧酸盐的氧化性 / 次氯酸盐的氧化性`
+- **THEN** it MUST find a point node titled `NaClO + MnSO₄`
+- **AND** it MUST find a separate sibling point node titled `NaClO + 品红溶液`.
+
+### Requirement: Seeded point content examples
+The system SHALL seed the 30 point-content examples from `docs/30点位例子.txt` by explicit mapping to catalog point nodes.
+
+#### Scenario: Example content seed is validated
+- **WHEN** the point-content example seed is validated
+- **THEN** every example MUST resolve to exactly one catalog point node
+- **AND** the 30 examples MUST resolve to 30 unique point nodes.
+
+#### Scenario: Example content is imported
+- **WHEN** a mapped example is imported
+- **THEN** its `实验原理` MUST be stored as text-mode principle content for the mapped point node
+- **AND** its `现象解释` MUST be stored as the phenomenon explanation
+- **AND** its `安全提示` MUST be stored as the safety note.
+
+#### Scenario: ES smoke content is indexed
+- **WHEN** the 30 mapped example points are imported in an indexable status
+- **THEN** the student search document builder MUST index their student-facing principle, phenomenon, and safety content
+- **AND** it MUST NOT require legacy experiment video point evidence to index those fields.
+
+### Requirement: Directory card presentation
+The system SHALL let directory nodes maintain structured student-facing card presentation metadata.
+
+#### Scenario: Teacher edits directory card fields
+- **WHEN** a teacher edits a directory node
+- **THEN** the system MUST allow title, teacher-only note, student-visible description, optional card image reference, optional icon key, optional accent/theme token, and optional layout variant to be saved
+- **AND** it MUST store the teacher-only note separately from student-visible directory fields.
+
+#### Scenario: Student catalog renders directory card
+- **WHEN** a published directory node is returned to the student catalog
+- **THEN** the payload MUST include student-visible card presentation fields needed to render a navigation card
+- **AND** it MUST NOT include teacher-only notes.
+
+### Requirement: Point card presentation stays constrained
+The system SHALL allow limited point card presentation overrides without weakening point identity or list consistency.
+
+#### Scenario: Teacher edits point card overrides
+- **WHEN** a teacher edits a point node card presentation
+- **THEN** the system MAY allow an explicit cover image reference, short student-facing display description, icon key, accent/theme token, or emphasis flag
+- **AND** it MUST keep point title, point node id, and point learning content as the authoritative point identity and detail source.
+
+#### Scenario: Student catalog renders point card
+- **WHEN** a published point node is returned inside a chapter or directory catalog
+- **THEN** the payload MUST render as a point/video learning entry rather than as a directory category
+- **AND** the card MUST remain visually distinguishable from directory cards.
+
+### Requirement: Hybrid and shortcut live semantics are removed
+The system SHALL remove live hybrid and shortcut semantics from catalog tree behavior.
+
+#### Scenario: Existing hybrid data is migrated
+- **WHEN** a migration encounters an existing hybrid node
+- **THEN** it MUST normalize the record to directory and/or point semantics using deterministic rules
+- **AND** it MUST preserve migration metadata for audit or data repair.
+
+#### Scenario: Existing shortcut data is migrated
+- **WHEN** a migration encounters an existing shortcut node
+- **THEN** it MUST remove shortcut behavior from live student and teacher APIs
+- **AND** it MUST either materialize an allowed directory/point placement or archive the shortcut with audit metadata.
+
+#### Scenario: Shortcut route is requested
+- **WHEN** a client attempts to use shortcut target behavior after this change
+- **THEN** the system MUST return a controlled rejection or unavailable response
+- **AND** it MUST NOT resolve point detail through a shortcut node.
 

@@ -34,6 +34,8 @@ export type CatalogTreeRowAction =
   | "publish"
   | "unpublish"
   | "copy-node"
+  | "copy-directory"
+  | "copy-point"
   | "move-before"
   | "move-after";
 
@@ -67,6 +69,8 @@ function actionIcon(action: CatalogTreeRowAction): ReactNode {
     publish: <CheckCircle2 size={14} />,
     unpublish: <Ban size={14} />,
     "copy-node": <Copy size={14} />,
+    "copy-directory": <Copy size={14} />,
+    "copy-point": <Copy size={14} />,
     "move-before": <MoveUp size={14} />,
     "move-after": <MoveDown size={14} />,
   };
@@ -84,7 +88,11 @@ function buildMenuItems(node: CatalogNodeCard): MenuProps["items"] {
     { key: "move-before", icon: actionIcon("move-before"), label: "上移一位" },
     { key: "move-after", icon: actionIcon("move-after"), label: "下移一位" },
     { type: "divider" },
-    { key: "copy-node", icon: actionIcon("copy-node"), label: "复制节点" },
+    {
+      key: "copy-node",
+      icon: actionIcon("copy-node"),
+      label: node.node_kind === "directory" ? "复制当前目录" : "复制当前实验",
+    },
     node.status === "archived"
       ? { key: "restore", icon: actionIcon("restore"), label: "恢复节点" }
       : {
@@ -99,6 +107,8 @@ function buildMenuItems(node: CatalogNodeCard): MenuProps["items"] {
 type CatalogTreeGuide = {
   current: boolean;
   continuing: boolean;
+  first: boolean;
+  only: boolean;
   terminal: boolean;
 };
 
@@ -111,13 +121,18 @@ function buildCatalogTreeGuides(node: CatalogTreeNodeApi): CatalogTreeGuide[] {
   const guides: CatalogTreeGuide[] = Array.from({ length: level }, () => ({
     current: false,
     continuing: true,
+    first: false,
+    only: false,
     terminal: false,
   }));
   const currentIndex = level - 1;
   const currentContinues = Boolean(node.nextSibling);
+  const currentIsFirst = node.childIndex === 0;
   guides[currentIndex] = {
     current: true,
     continuing: currentContinues,
+    first: currentIsFirst,
+    only: currentIsFirst && !currentContinues,
     terminal: !currentContinues,
   };
 
@@ -141,6 +156,8 @@ function CatalogTreeGuides({ node }: { node: CatalogTreeNodeApi }) {
             "catalog-sidebar-guide",
             guide.current ? "is-current" : "",
             guide.continuing ? "is-continuing" : "",
+            guide.first ? "is-first" : "",
+            guide.only ? "is-only" : "",
             guide.terminal ? "is-terminal" : "",
           ]
             .filter(Boolean)
@@ -232,7 +249,6 @@ export function CatalogTreeRow({
           ...style,
           "--catalog-elbow-left": `${13 + Math.max(0, node.level - 1) * 22}px`,
           "--catalog-elbow-width": "10px",
-          "--catalog-tree-half-row": "19px",
         } as CSSProperties & Record<string, string>
       }
       onMouseEnter={() => setIsPointerDragHover(true)}
@@ -299,6 +315,9 @@ export function CatalogTreeRow({
                   items: [
                     { key: "add-directory", icon: actionIcon("add-directory"), label: "新建子目录" },
                     { key: "add-point", icon: actionIcon("add-point"), label: "新建子点位" },
+                    { type: "divider" },
+                    { key: "copy-directory", icon: actionIcon("copy-directory"), label: "从已有目录复制到此目录" },
+                    { key: "copy-point", icon: actionIcon("copy-point"), label: "从已有实验复制到此目录" },
                   ],
                   onClick: ({ key }) => onAction(catalogNode, key as CatalogTreeRowAction),
                 }}

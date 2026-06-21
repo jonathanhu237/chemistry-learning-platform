@@ -173,11 +173,15 @@ describe("catalog tree UI contracts", () => {
     expect([treeSource, rowSource].join("\n")).not.toContain("ArrowDownOutlined");
   });
 
-  it("extends sidebar guide lines across Arborist rows while keeping terminal branches L-shaped", () => {
+  it("keeps sidebar guide lines row-clipped while preserving L-shaped branch states", () => {
     expect(treeSource).toContain("rowHeight={38}");
-    expect(rowSource).toContain('"--catalog-tree-half-row": "19px"');
+    expect(treeSource).toContain("Math.max(520, treeBoxSize.height || 620)");
+    expect(rowSource).toContain("node.childIndex === 0");
+    expect(rowSource).toContain("is-first");
+    expect(rowSource).toContain("is-only");
     expect(rowSource).toContain("is-terminal");
     expect(rowSource).toContain("is-continuing");
+    expect(rowSource).not.toContain("--catalog-tree-half-row");
   });
 
   it("keeps add wording chapter-oriented instead of root-node oriented", () => {
@@ -194,13 +198,26 @@ describe("catalog tree UI contracts", () => {
     expect(workspaceSource).toContain("canonical_point_id");
   });
 
-  it("uses a copy-node dialog instead of exposing Node ID copying in the tree menu", () => {
+  it("distinguishes fixed-source and fixed-target copy actions instead of exposing Node ID copying", () => {
     expect(rowSource).toContain('"copy-node"');
-    expect(rowSource).toContain("复制节点");
+    expect(rowSource).toContain("复制当前目录");
+    expect(rowSource).toContain("复制当前实验");
+    expect(rowSource).toContain("从已有目录复制到此目录");
+    expect(rowSource).toContain("从已有实验复制到此目录");
+    expect(rowSource).not.toContain("复制节点");
     expect(rowSource).not.toContain('"copy-id"');
     expect(rowSource).not.toContain("复制 Node ID");
     expect(treeSource).toContain("onCopyNode");
+    expect(treeSource).toContain("onCopyInto");
+    expect(treeSource).toContain("从已有目录复制到本章");
+    expect(treeSource).toContain("从已有实验复制到本章");
     expect(workspaceSource).toContain("copyIntent");
+    expect(workspaceSource).toContain('"fixed-source"');
+    expect(workspaceSource).toContain('"fixed-target"');
+    expect(workspaceSource).toContain("copySourceSearchText");
+    expect(workspaceSource).toContain("selectCopySource");
+    expect(workspaceSource).toContain("来源");
+    expect(workspaceSource).toContain("目标位置");
     expect(workspaceSource).toContain("CatalogCopyDestinationTree");
     expect(catalogTreeApiSource).toContain("copyCatalogNode");
     expect(catalogTreeApiSource).toContain("/copy");

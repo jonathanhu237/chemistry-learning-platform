@@ -219,7 +219,7 @@
 
 .catalog-arborist-shell {
   position: relative;
-  min-height: 420px;
+  min-height: clamp(520px, 58vh, 620px);
   overflow: hidden;
   padding: 8px 8px 12px;
 }
@@ -232,6 +232,7 @@
   position: relative;
   display: flex;
   align-items: center;
+  height: 38px;
   min-width: 0;
   padding-right: 4px;
   color: var(--sysu-ink);
@@ -305,21 +306,24 @@
   content: "";
   position: absolute;
   left: 0;
-  top: calc(-1 * var(--catalog-tree-half-row, 19px));
-  bottom: calc(-1 * var(--catalog-tree-half-row, 19px));
+  top: 0;
+  bottom: 0;
   width: 1px;
   background: rgba(11, 59, 43, 0.09);
   opacity: 0;
 }
 
-.catalog-sidebar-guide.is-continuing::before {
+.catalog-sidebar-guide.is-continuing::before,
+.catalog-sidebar-guide.is-current::before {
   opacity: 1;
 }
 
 .catalog-sidebar-guide.is-current.is-terminal::before {
-  top: calc(-1 * var(--catalog-tree-half-row, 19px));
   bottom: 50%;
-  opacity: 1;
+}
+
+.catalog-sidebar-guide.is-current.is-only::before {
+  opacity: 0;
 }
 
 .catalog-sidebar-row {
@@ -1821,6 +1825,74 @@
 .catalog-copy-target-icon {
   display: inline-flex;
   color: var(--sysu-green-700);
+}
+
+.catalog-copy-source-picker {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  background: #fbfdfc;
+}
+
+.catalog-copy-source-card,
+.catalog-copy-source-result {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border: 1px solid rgba(0, 88, 38, 0.14);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.catalog-copy-source-card {
+  box-shadow: 0 8px 18px rgba(11, 59, 43, 0.06);
+}
+
+.catalog-copy-source-copy,
+.catalog-copy-source-result-main {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.catalog-copy-source-copy strong,
+.catalog-copy-source-result-main strong,
+.catalog-copy-source-copy .ant-typography,
+.catalog-copy-source-result-main .ant-typography {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-copy-source-results {
+  display: grid;
+  gap: 6px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.catalog-copy-source-result {
+  width: 100%;
+  color: var(--sysu-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.catalog-copy-source-result:hover,
+.catalog-copy-source-result.is-selected {
+  border-color: var(--sysu-primary);
+  background: rgba(0, 88, 38, 0.05);
+}
+
+.catalog-copy-source-result.is-selected {
+  box-shadow: inset 2px 0 0 var(--sysu-primary);
 }
 
 @media (max-width: 1180px) {

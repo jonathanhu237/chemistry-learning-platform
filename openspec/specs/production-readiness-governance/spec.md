@@ -9,15 +9,21 @@ The platform SHALL define a versioned manifest for every current core resource r
 
 #### Scenario: Current resources are registered
 - **GIVEN** the production-readiness manifest is generated or checked
-- **WHEN** it lists protected core resources
-- **THEN** it includes formal experiments, the knowledge framework, the current point inventory, the current point-aware question bank, the question-bank schema, canonical chunks, canonical embeddings, manually reviewed point evidence, and current import reports
-- **AND** each entry records semantic role, path or source location, required status, item count where applicable, byte size, and SHA256 where applicable
+- **WHEN** it lists protected core resources after the catalog outline seed replacement
+- **THEN** it MUST include the canonical structured experiment catalog seed, the 30 mapped point-content example seed, the knowledge framework, canonical chunks, canonical embeddings, ES analyzer dictionaries, and current import/validation reports
+- **AND** each entry MUST record semantic role, path or source location, required status, item count where applicable, byte size, and SHA256 where applicable.
 
-#### Scenario: Evidence file is under a historical path
-- **GIVEN** a protected resource lives under an artifact path with `video` or review wording in the directory name
-- **WHEN** cleanup classification runs
-- **THEN** the final manually reviewed point evidence file remains classified as protected core data
-- **AND** it is not deleted or overwritten by legacy artifact cleanup
+#### Scenario: Retired resources are encountered
+- **GIVEN** old point inventory files, old point-aware question-bank seed files, old manually reviewed point evidence files, or old video-point evidence artifacts remain under historical paths
+- **WHEN** cleanup classification or production validation runs
+- **THEN** those retired resources MUST NOT be classified as protected current core data
+- **AND** they MAY be archived or removed according to cleanup policy after the new protected resources validate.
+
+#### Scenario: Canonical retrieval corpus is encountered
+- **GIVEN** canonical chunks and chunk embeddings remain under current production resource paths
+- **WHEN** cleanup classification or production validation runs
+- **THEN** those corpus resources MUST remain classified as protected current core data
+- **AND** they MUST NOT be deleted merely because old point evidence bindings are retired.
 
 ### Requirement: Destructive Cleanup Guard
 
@@ -79,15 +85,23 @@ The repository SHALL provide a documented validation chain that proves the produ
 
 #### Scenario: Maintainer validates the baseline
 - **GIVEN** a maintainer runs the production-readiness validation command or documented command set
-- **WHEN** validation completes
-- **THEN** it checks OpenSpec strict validation, protected resource manifests, backend tests, frontend typecheck, frontend tests, frontend build, and core data counts
-- **AND** it reports failures with enough detail to identify the broken stage
+- **WHEN** validation completes after the catalog outline seed replacement
+- **THEN** it MUST check OpenSpec strict validation, protected resource manifests, catalog seed counts, 30-example content mapping, backend tests, frontend typecheck, frontend tests, frontend build, and core data counts
+- **AND** it MUST report failures with enough detail to identify the broken stage.
 
 #### Scenario: Fresh rebuild is verified
 - **GIVEN** an empty database and the declared production resources are available
 - **WHEN** the documented restore/import path is executed
-- **THEN** the platform can recreate the current formal experiments, knowledge framework, question bank, chunks, embeddings, and point evidence bindings
-- **AND** the resulting counts match the protected baseline manifest
+- **THEN** the platform MUST recreate the current chapter-scoped experiment catalog tree from the structured seed
+- **AND** it MUST recreate the 30 mapped point-content examples
+- **AND** it MUST preserve or import canonical chunks and embeddings
+- **AND** it MUST leave the retired experiment question bank and retired point evidence bindings empty or absent.
+
+#### Scenario: Legacy protected counts are checked
+- **GIVEN** validation code still contains old expected counts for 300 video points, 77 question banks, 2,310 questions, or 300 point evidence bindings
+- **WHEN** the production-readiness validation command runs
+- **THEN** validation MUST fail until those old protected counts are removed or replaced by catalog-outline seed expectations
+- **AND** the failure MUST identify the outdated baseline expectation.
 
 ### Requirement: Production Operations Baseline
 
@@ -97,16 +111,45 @@ Production hardening SHALL document and validate the operational basics needed f
 - **GIVEN** a new database migration is added after this productionization work begins
 - **WHEN** the migration is named
 - **THEN** it follows the next unambiguous migration number
-- **AND** duplicate migration numbers are not introduced
+- **AND** duplicate migration numbers are not introduced.
 
 #### Scenario: Deployment configuration is reviewed
 - **GIVEN** a maintainer prepares a deployment or local production-like run
 - **WHEN** they inspect repository documentation and examples
-- **THEN** they can find environment variable examples, Docker service expectations, health checks, backup/restore notes, and validation commands
+- **THEN** they can find environment variable examples, Docker service expectations, health checks, backup/restore notes, validation commands, and default ports for `web-admin`, `web-teacher`, and `web-student`.
 
-#### Scenario: Local development rebuilds are service scoped
-- **GIVEN** a developer changes code or configuration owned by one Compose service
-- **WHEN** they update the local Docker Compose runtime during ordinary development
-- **THEN** documentation and examples MUST direct them to rebuild and recreate only the affected service or services, such as `docker compose up -d --build backend`, `docker compose up -d --build web-teacher`, `docker compose up -d --build web-student`, `docker compose up -d --build web-admin`, `docker compose up -d --build video-worker`, or `docker compose --profile rag up -d --build bge-rag`
-- **AND** full-stack image rebuilds MUST be reserved for initial setup, shared base-image or Compose-topology changes, multi-service dependency changes, release smoke checks, or explicitly requested full validation
-- **AND** Docker build cache deletion commands, no-cache rebuilds, and system-wide prune commands MUST NOT be part of routine development startup; they may be used only as documented recovery steps for cache corruption or disk pressure after service-scoped restart or rebuild has been tried.
+### Requirement: Retired seed documentation
+Production operations documentation SHALL explain the intentional retirement of legacy experiment seed resources.
+
+#### Scenario: Maintainer reads production seed documentation
+- **WHEN** a maintainer reads the seed or production operations documentation after this change
+- **THEN** the documentation MUST state that old question-bank seeds, old video point inventory, old video references, and old point evidence bindings are invalid for the current catalog baseline
+- **AND** it MUST state that canonical chunks and embeddings remain valid retrieval corpus resources.
+
+#### Scenario: Maintainer looks for question-bank regeneration instructions
+- **WHEN** a maintainer searches the documentation for the new question-bank baseline
+- **THEN** the documentation MUST state that the current bank is empty until fresh catalog-node evidence and a future generation workflow create a replacement
+- **AND** it MUST NOT instruct maintainers to import the retired 2,310-question bank as a current baseline.
+
+### Requirement: Release governance distinguishes API and frontend origins
+Production readiness governance SHALL distinguish backend API origin, student frontend origin, and admin frontend origin.
+
+#### Scenario: Environment variables are configured
+- **WHEN** local or production-like validation configures service origins
+- **THEN** backend API origin, student frontend origin, and admin frontend origin MUST be configurable independently
+- **AND** validation output MUST make clear which origin was tested.
+
+#### Scenario: Full e2e validation runs
+- **WHEN** full e2e validation runs after this split
+- **THEN** admin e2e MUST use the admin frontend origin
+- **AND** student mobile QA MUST use the student frontend origin
+- **AND** backend health/API readiness MUST use the backend origin.
+
+### Requirement: Deployment docs describe split service ownership
+Production readiness governance SHALL document that backend, student web, and admin web are separate default services.
+
+#### Scenario: Production operations docs are read
+- **WHEN** an operator reads the deployment instructions
+- **THEN** the docs MUST state that backend no longer serves the frontends
+- **AND** the docs MUST explain how to start and validate the separate frontend services.
+
