@@ -38,7 +38,7 @@ export function answerText(answer?: Record<string, unknown>) {
 
 export function sourceRefLabel(ref: Record<string, unknown>) {
   const file = String(ref.source_file || "资料片段");
-  const page = ref.page_number ? ` p.${ref.page_number}` : "";
+  const page = ref.page_number ? ` 第 ${ref.page_number} 页` : "";
   const section = ref.section_title ? ` · ${ref.section_title}` : "";
   return `${file}${page}${section}`;
 }

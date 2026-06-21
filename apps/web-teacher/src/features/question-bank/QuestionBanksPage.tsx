@@ -99,6 +99,18 @@ type QuestionPointOption = {
   point_key?: string;
 };
 
+function generationEvidenceLabel(value?: unknown) {
+  const raw = String(value || "").trim();
+  const labels: Record<string, string> = {
+    catalog_node_evidence: "目录点证据",
+    dynamic_rag_catalog_node_evidence: "动态 RAG 目录点证据",
+    static_catalog_node_evidence: "静态目录点证据",
+    missing_target_points: "缺少目标点位",
+    draft: "草稿",
+  };
+  return labels[raw] || raw || "-";
+}
+
 export function QuestionBanksPage() {
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
@@ -450,7 +462,7 @@ export function QuestionBanksPage() {
           message="当前默认实验题库为空"
           description={
             <div className="question-bank-regeneration-audit">
-              <Text>旧题库已随新版实验目录重置退休；新题库需绑定到 catalog point node，并保留可审计的 catalog-node evidence lineage。</Text>
+              <Text>旧题库已随新版实验目录重置退休；新题库需绑定到目录点位节点，并保留可审计的目录点证据链路。</Text>
               {regenerationAudit ? (
                 <div className="question-bank-regeneration-tags">
                   <Tag color="blue">点位 {regenerationAudit.catalog_point_count}</Tag>
@@ -461,11 +473,11 @@ export function QuestionBanksPage() {
                   {evidenceSourceEntries.length ? (
                     evidenceSourceEntries.map(([source, count]) => (
                       <Tag key={source}>
-                        {source} {count}
+                        {generationEvidenceLabel(source)} {count}
                       </Tag>
                     ))
                   ) : (
-                    <Tag>catalog-node evidence 待建立</Tag>
+                    <Tag>目录点证据待建立</Tag>
                   )}
                 </div>
               ) : null}
@@ -832,16 +844,16 @@ export function QuestionBanksPage() {
                     <div className="question-evidence-row">
                       <Text type="secondary">生成证据来源</Text>
                       <Text>
-                        {selectedQuestion.metadata.source_audit.evidence_contract || "catalog_node_evidence"} ·{" "}
-                        {selectedQuestion.metadata.source_audit.evidence_source}
+                        {generationEvidenceLabel(selectedQuestion.metadata.source_audit.evidence_contract || "catalog_node_evidence")} ·{" "}
+                        {generationEvidenceLabel(selectedQuestion.metadata.source_audit.evidence_source)}
                       </Text>
                     </div>
                   ) : null}
                   {selectedQuestion.metadata?.evidence_lineage ? (
                     <div className="question-evidence-row">
-                      <Text type="secondary">生成 lineage</Text>
+                      <Text type="secondary">生成链路</Text>
                       <Text>
-                        {selectedQuestion.metadata.evidence_lineage.generation_id || "draft"} · refs{" "}
+                        {selectedQuestion.metadata.evidence_lineage.generation_id || "草稿"} · 来源{" "}
                         {selectedQuestion.metadata.evidence_lineage.source_ref_count ?? selectedQuestion.source_refs?.length ?? 0}
                       </Text>
                     </div>

@@ -25,9 +25,9 @@ describe("catalog tree UI contracts", () => {
     expect(editorSource).toContain('key: "ai-context"');
     expect(editorSource).toContain('key: "publish"');
     expect(editorSource).toContain('key: "advanced"');
-    expect(aiContextPanelSource).toContain("Static fallback evidence");
-    expect(aiContextPanelSource).toContain("Dynamic RAG probe");
-    expect(aiContextPanelSource).toContain("Teacher-only teaching notes");
+    expect(aiContextPanelSource).toContain("静态兜底证据");
+    expect(aiContextPanelSource).toContain("动态 RAG 探测");
+    expect(aiContextPanelSource).toContain("仅教师可见教学备注");
     expect(catalogTreeApiSource).toContain("getCatalogPointAiContext");
     expect(catalogTreeApiSource).toContain("runCatalogPointRagProbe");
     expect(contentPanelSource).toContain('name="point_title"');

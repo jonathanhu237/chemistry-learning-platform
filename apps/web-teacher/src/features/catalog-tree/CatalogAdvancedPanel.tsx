@@ -18,6 +18,42 @@ function syncTagColor(status?: string | null) {
   return "default";
 }
 
+function displayLabel(value?: string | null) {
+  if (!value) return "-";
+  const labels: Record<string, string> = {
+    synced: "已同步",
+    succeeded: "成功",
+    failed: "失败",
+    unavailable: "不可用",
+    stale: "已过期",
+    pending: "等待中",
+    running: "运行中",
+    missing_fallback_evidence: "缺少静态兜底证据",
+    available_static_fallback: "静态兜底可用",
+    stale_fallback_evidence: "静态兜底已过期",
+    fresh: "最新",
+    es_refresh: "刷新 ES",
+    "es-refresh": "刷新 ES",
+    es_delete: "删除 ES",
+    "es-delete": "删除 ES",
+    rag_refresh: "刷新 RAG 证据",
+    "rag-refresh": "刷新 RAG 证据",
+    retry: "重试",
+    user: "用户触发",
+    system: "系统触发",
+    seed: "种子数据",
+    static_catalog_node_evidence: "静态目录点证据",
+    dynamic_rag_catalog_node_evidence: "动态 RAG 目录点证据",
+    catalog_node_evidence: "目录点证据",
+    hybrid_bge_rag: "混合 BGE RAG",
+    runtime_health: "运行健康度",
+    hybrid_candidates: "混合召回候选",
+    reranked_candidates: "重排候选",
+    deterministic_catalog_context_query: "目录点上下文兜底查询",
+  };
+  return labels[value] || value.replace(/_/g, " ");
+}
+
 export function CatalogAdvancedPanel({
   detail,
   siblings,
@@ -49,9 +85,9 @@ export function CatalogAdvancedPanel({
         <Text type="secondary">节点、搜索索引和证据任务</Text>
       </div>
       <Descriptions size="small" column={2} bordered>
-        <Descriptions.Item label="Node ID">{node.node_id}</Descriptions.Item>
+        <Descriptions.Item label="节点 ID">{node.node_id}</Descriptions.Item>
         <Descriptions.Item label="父节点">{node.parent_id || "根节点"}</Descriptions.Item>
-        <Descriptions.Item label="display_order">{node.display_order}</Descriptions.Item>
+        <Descriptions.Item label="显示顺序">{node.display_order}</Descriptions.Item>
         <Descriptions.Item label="同级节点">{siblings.length}</Descriptions.Item>
       </Descriptions>
       {divergentTitle ? (
@@ -78,7 +114,7 @@ export function CatalogAdvancedPanel({
       <div className="catalog-index-diagnostics">
         <div className="catalog-panel-title-row">
           <Title level={5}>搜索与证据任务</Title>
-          {detail.index_state ? <Tag color={syncTagColor(detail.index_state.sync_status)}>{detail.index_state.sync_status}</Tag> : <Tag>未入队</Tag>}
+          {detail.index_state ? <Tag color={syncTagColor(detail.index_state.sync_status)}>{displayLabel(detail.index_state.sync_status)}</Tag> : <Tag>未入队</Tag>}
         </div>
         <Space wrap className="catalog-job-actions">
           <Button
@@ -127,9 +163,9 @@ export function CatalogAdvancedPanel({
         </Descriptions>
         <Descriptions size="small" column={2} className="catalog-job-state">
           <Descriptions.Item label="证据状态">
-            {evidenceState ? <Tag color={syncTagColor(evidenceState.evidence_status)}>{evidenceState.evidence_status}</Tag> : "-"}
+            {evidenceState ? <Tag color={syncTagColor(evidenceState.evidence_status)}>{displayLabel(evidenceState.evidence_status)}</Tag> : "-"}
           </Descriptions.Item>
-          <Descriptions.Item label="证据模式">{evidenceState?.source_mode || "-"}</Descriptions.Item>
+          <Descriptions.Item label="证据模式">{displayLabel(evidenceState?.source_mode)}</Descriptions.Item>
           <Descriptions.Item label="证据块数">{evidenceState?.selected_chunk_ids?.length ?? "-"}</Descriptions.Item>
           <Descriptions.Item label="最近刷新">{evidenceState?.refreshed_at || evidenceState?.updated_at || "-"}</Descriptions.Item>
           <Descriptions.Item label="stale 原因">{evidenceState?.stale_reason || "-"}</Descriptions.Item>
@@ -139,9 +175,9 @@ export function CatalogAdvancedPanel({
           <div className="catalog-job-list">
             {pointJobState.recent_jobs.slice(0, 5).map((job) => (
               <div className="catalog-job-row" key={job.id}>
-                <span>{job.job_type}</span>
-                <Tag color={syncTagColor(job.status)}>{job.status}</Tag>
-                <Text type="secondary">{job.trigger_source}</Text>
+                <span>{displayLabel(job.job_type)}</span>
+                <Tag color={syncTagColor(job.status)}>{displayLabel(job.status)}</Tag>
+                <Text type="secondary">{displayLabel(job.trigger_source)}</Text>
                 <Text type="secondary">{job.updated_at || job.created_at || "-"}</Text>
               </div>
             ))}

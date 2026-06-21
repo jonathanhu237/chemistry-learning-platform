@@ -197,7 +197,7 @@ export function CatalogTreeEditor({
     },
     {
       key: "ai-context",
-      label: "AI Context",
+      label: "AI 上下文",
       forceRender: true,
       children: <CatalogAiContextPanel detail={detail} mutations={mutations} />,
     },

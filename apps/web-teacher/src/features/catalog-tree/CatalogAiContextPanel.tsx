@@ -16,11 +16,61 @@ function statusColor(status?: string | null) {
 
 function valueList(value: unknown) {
   if (!value || typeof value !== "object") return [];
-  return Object.entries(value as Record<string, unknown>).map(([key, item]) => `${key}: ${String(item ?? "-")}`);
+  return Object.entries(value as Record<string, unknown>).map(([key, item]) => `${displayLabel(key)}：${String(item ?? "-")}`);
 }
 
 function previewText(value: unknown) {
   return String(value || "").trim() || "-";
+}
+
+function displayLabel(value?: unknown) {
+  const raw = String(value || "").trim();
+  const labels: Record<string, string> = {
+    healthy: "健康",
+    succeeded: "成功",
+    synced: "已同步",
+    available_static_fallback: "静态兜底可用",
+    fresh: "最新",
+    failed: "失败",
+    unavailable: "不可用",
+    stale: "已过期",
+    stale_fallback_evidence: "静态兜底已过期",
+    pending: "等待中",
+    running: "运行中",
+    missing: "缺失",
+    missing_fallback_evidence: "缺少静态兜底证据",
+    "no-es-state": "未建立 ES 状态",
+    unknown: "未知",
+    draft: "草稿",
+    published: "已发布",
+    archived: "已归档",
+    selected: "已选用",
+    candidate: "候选",
+    rejected: "已拒绝",
+    experiment: "实验证据",
+    theory: "理论证据",
+    supplemental: "补充证据",
+    fallback: "兜底证据",
+    dynamic_rag: "动态 RAG",
+    catalog_node_evidence: "目录点证据",
+    static_catalog_node_evidence: "静态目录点证据",
+    dynamic_rag_catalog_node_evidence: "动态 RAG 目录点证据",
+    hybrid_bge_rag: "混合 BGE RAG",
+    generated: "已生成",
+    deterministic_catalog_context_query: "目录点上下文兜底查询",
+    runtime_health: "运行健康度",
+    hybrid_candidates: "混合召回候选",
+    reranked_candidates: "重排候选",
+    final_evidence: "最终证据",
+  };
+  return labels[raw] || raw || "-";
+}
+
+function staticEvidenceMessage(status?: string | null) {
+  if (status === "missing_fallback_evidence") return "缺少静态兜底证据；运行状态允许时，动态 RAG 仍是主要 AI 路径。";
+  if (status === "stale_fallback_evidence") return "静态兜底证据已过期；刷新后才能作为可靠兜底来源。";
+  if (status === "available_static_fallback") return "静态兜底证据可用，可作为动态 RAG 的补充来源。";
+  return "目录点证据状态已更新。";
 }
 
 function EvidenceRow({ binding }: { binding: CatalogStaticEvidenceBinding }) {
@@ -33,22 +83,22 @@ function EvidenceRow({ binding }: { binding: CatalogStaticEvidenceBinding }) {
         <p>{binding.source_title || binding.source_file || binding.document_id || "-"}</p>
         <small>
           {[
-            binding.page_number ? `page ${binding.page_number}` : "",
+            binding.page_number ? `第 ${binding.page_number} 页` : "",
             binding.section_title || "",
-            binding.content_type ? `type ${binding.content_type}` : "",
+            binding.content_type ? `类型 ${displayLabel(binding.content_type)}` : "",
           ]
             .filter(Boolean)
             .join(" / ") || "-"}
         </small>
       </div>
       <Space wrap>
-        <Tag>{binding.evidence_role}</Tag>
-        <Tag color={statusColor(binding.selection_status)}>{binding.selection_status}</Tag>
-        <Tag color={statusColor(binding.freshness_status)}>{binding.freshness_status}</Tag>
+        <Tag>{displayLabel(binding.evidence_role)}</Tag>
+        <Tag color={statusColor(binding.selection_status)}>{displayLabel(binding.selection_status)}</Tag>
+        <Tag color={statusColor(binding.freshness_status)}>{displayLabel(binding.freshness_status)}</Tag>
       </Space>
       <div className="catalog-ai-score-grid">
-        <span>score {binding.score ?? "-"}</span>
-        <span>rerank {binding.rerank_score ?? "-"}</span>
+        <span>初筛分 {binding.score ?? "-"}</span>
+        <span>重排分 {binding.rerank_score ?? "-"}</span>
       </div>
       <Text type="secondary">{binding.text_preview || "-"}</Text>
     </div>
@@ -56,24 +106,24 @@ function EvidenceRow({ binding }: { binding: CatalogStaticEvidenceBinding }) {
 }
 
 function ProbeResult({ probe }: { probe?: CatalogPointRagProbe }) {
-  if (!probe) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Run a dynamic RAG probe to inspect recall and rerank behavior." />;
+  if (!probe) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="运行一次动态 RAG 探测后，可查看召回和重排行为。" />;
   return (
     <div className="catalog-ai-probe-result">
       <Alert
         showIcon
         type={probe.ok ? "success" : "warning"}
-        title={probe.ok ? "Dynamic RAG probe completed" : `Dynamic RAG probe stopped at ${probe.failed_stage || "unknown stage"}`}
-        description={probe.reason || "Evidence was selected from the configured RAG pipeline."}
+        title={probe.ok ? "动态 RAG 探测完成" : `动态 RAG 探测停在：${displayLabel(probe.failed_stage || "unknown")}`}
+        description={probe.ok ? "已从配置的 RAG 管线中选择证据。" : "请检查运行状态、索引或证据刷新任务。"}
       />
       <Descriptions size="small" column={2}>
-        <Descriptions.Item label="runtime">{String(probe.runtime_health?.status || "-")}</Descriptions.Item>
-        <Descriptions.Item label="recall source">{probe.recall_source || "-"}</Descriptions.Item>
-        <Descriptions.Item label="query status">{probe.query_strategy?.status || "-"}</Descriptions.Item>
-        <Descriptions.Item label="fallback reason">{probe.query_strategy?.fallback_reason || "-"}</Descriptions.Item>
+        <Descriptions.Item label="运行状态">{displayLabel(probe.runtime_health?.status || "-")}</Descriptions.Item>
+        <Descriptions.Item label="召回来源">{displayLabel(probe.recall_source || "-")}</Descriptions.Item>
+        <Descriptions.Item label="查询状态">{displayLabel(probe.query_strategy?.status || "-")}</Descriptions.Item>
+        <Descriptions.Item label="兜底原因">{displayLabel(probe.query_strategy?.fallback_reason || "-")}</Descriptions.Item>
       </Descriptions>
       <div className="catalog-ai-split">
         <section>
-          <Title level={5}>Generated queries</Title>
+          <Title level={5}>生成查询</Title>
           {probe.generated_queries.length ? (
             <ol>
               {probe.generated_queries.map((query) => (
@@ -81,18 +131,18 @@ function ProbeResult({ probe }: { probe?: CatalogPointRagProbe }) {
               ))}
             </ol>
           ) : (
-            <Text type="secondary">No query variants were generated.</Text>
+            <Text type="secondary">暂无查询变体。</Text>
           )}
         </section>
         <section>
-          <Title level={5}>Candidate counts</Title>
+          <Title level={5}>候选数量</Title>
           {valueList(probe.candidate_counts).map((line) => (
             <Tag key={line}>{line}</Tag>
           ))}
         </section>
       </div>
       <section>
-        <Title level={5}>Final evidence</Title>
+        <Title level={5}>最终证据</Title>
         {probe.final_evidence.length ? (
           <div className="catalog-ai-evidence-list">
             {probe.final_evidence.map((item, index) => (
@@ -101,9 +151,9 @@ function ProbeResult({ probe }: { probe?: CatalogPointRagProbe }) {
                   {String(item.chunk_id || "-")}
                 </Text>
                 <Space wrap>
-                  <Tag>{String(item.recall_source || item.source || "-")}</Tag>
-                  <Tag>score {String(item.score ?? "-")}</Tag>
-                  <Tag>rerank {String(item.rerank_score ?? "-")}</Tag>
+                  <Tag>{displayLabel(item.recall_source || item.source || "-")}</Tag>
+                  <Tag>初筛分 {String(item.score ?? "-")}</Tag>
+                  <Tag>重排分 {String(item.rerank_score ?? "-")}</Tag>
                 </Space>
                 <Text type="secondary">{String(item.source_file || item.source_title || "-")}</Text>
                 <p>{String(item.text_preview || "")}</p>
@@ -111,7 +161,7 @@ function ProbeResult({ probe }: { probe?: CatalogPointRagProbe }) {
             ))}
           </div>
         ) : (
-          <Text type="secondary">No grounded evidence was returned.</Text>
+          <Text type="secondary">暂无可接地证据。</Text>
         )}
       </section>
     </div>
@@ -129,8 +179,8 @@ export function CatalogAiContextPanel({ detail, mutations }: { detail: CatalogNo
     <section className="catalog-editor-section catalog-ai-context-panel">
       <div className="catalog-panel-title-row">
         <div>
-          <Title level={4}>AI Context</Title>
-          <Text type="secondary">Teacher-only diagnostics for static fallback evidence, dynamic RAG, and point context.</Text>
+          <Title level={4}>AI 上下文</Title>
+          <Text type="secondary">仅教师可见，用于诊断静态兜底证据、动态 RAG 和点位上下文。</Text>
         </div>
         <Space wrap>
           <Button
@@ -138,13 +188,13 @@ export function CatalogAiContextPanel({ detail, mutations }: { detail: CatalogNo
             loading={mutations.triggerPointJob.isPending}
             onClick={() => mutations.triggerPointJob.mutate({ nodeId, action: "rag-refresh" })}
           >
-            Refresh RAG evidence
+            刷新 RAG 证据
           </Button>
           <Button size="small" loading={mutations.triggerPointJob.isPending} onClick={() => mutations.triggerPointJob.mutate({ nodeId, action: "retry" })}>
-            Retry failed job
+            重试失败任务
           </Button>
           <Button size="small" type="primary" loading={mutations.runRagProbe.isPending} onClick={() => mutations.runRagProbe.mutate({ nodeId })}>
-            Run RAG probe
+            运行 RAG 探测
           </Button>
         </Space>
       </div>
@@ -152,14 +202,14 @@ export function CatalogAiContextPanel({ detail, mutations }: { detail: CatalogNo
         {contextQuery.data ? (
           <>
             <section className="catalog-ai-band">
-              <Title level={5}>Student-facing point content</Title>
+              <Title level={5}>学生端可见点位内容</Title>
               <Descriptions size="small" column={2} bordered>
-                <Descriptions.Item label="node id">{contextQuery.data.node_id}</Descriptions.Item>
-                <Descriptions.Item label="path">{contextQuery.data.catalog_path_text || "-"}</Descriptions.Item>
-                <Descriptions.Item label="title">{contextQuery.data.point_title}</Descriptions.Item>
-                <Descriptions.Item label="publication">{String(contextQuery.data.publication_state.content_status || "-")}</Descriptions.Item>
-                <Descriptions.Item label="phenomenon">{previewText(contextQuery.data.student_facing_content.phenomenon_explanation)}</Descriptions.Item>
-                <Descriptions.Item label="safety">{previewText(contextQuery.data.student_facing_content.safety_note)}</Descriptions.Item>
+                <Descriptions.Item label="节点 ID">{contextQuery.data.node_id}</Descriptions.Item>
+                <Descriptions.Item label="目录路径">{contextQuery.data.catalog_path_text || "-"}</Descriptions.Item>
+                <Descriptions.Item label="标题">{contextQuery.data.point_title}</Descriptions.Item>
+                <Descriptions.Item label="发布状态">{displayLabel(contextQuery.data.publication_state.content_status || "-")}</Descriptions.Item>
+                <Descriptions.Item label="现象解释">{previewText(contextQuery.data.student_facing_content.phenomenon_explanation)}</Descriptions.Item>
+                <Descriptions.Item label="安全提示">{previewText(contextQuery.data.student_facing_content.safety_note)}</Descriptions.Item>
               </Descriptions>
               <div className="catalog-ai-equations">
                 {(contextQuery.data.student_facing_content.reaction_equations || []).length ? (
@@ -174,14 +224,14 @@ export function CatalogAiContextPanel({ detail, mutations }: { detail: CatalogNo
 
             <section className="catalog-ai-band">
               <div className="catalog-panel-title-row">
-                <Title level={5}>Static fallback evidence</Title>
-                <Tag color={statusColor(contextQuery.data.static_evidence.status)}>{contextQuery.data.static_evidence.status}</Tag>
+                <Title level={5}>静态兜底证据</Title>
+                <Tag color={statusColor(contextQuery.data.static_evidence.status)}>{displayLabel(contextQuery.data.static_evidence.status)}</Tag>
               </div>
               <Alert
                 showIcon
                 type={contextQuery.data.static_evidence.static_fallback_missing ? "info" : "success"}
-                title={contextQuery.data.static_evidence.message}
-                description="These chunk ids and rerank values are teacher diagnostics. They are not published to students."
+                title={staticEvidenceMessage(contextQuery.data.static_evidence.status)}
+                description="chunk ID 和重排分数仅用于教师诊断，不会发布给学生。"
               />
               {contextQuery.data.static_evidence.bindings.length ? (
                 <div className="catalog-ai-evidence-list">
@@ -194,36 +244,36 @@ export function CatalogAiContextPanel({ detail, mutations }: { detail: CatalogNo
 
             <section className="catalog-ai-band">
               <div className="catalog-panel-title-row">
-                <Title level={5}>Dynamic RAG probe</Title>
+                <Title level={5}>动态 RAG 探测</Title>
                 <Tag color={statusColor(String(contextQuery.data.dynamic_rag.runtime_health?.status || ""))}>
-                  {String(contextQuery.data.dynamic_rag.runtime_health?.status || "unknown")}
+                  {displayLabel(contextQuery.data.dynamic_rag.runtime_health?.status || "unknown")}
                 </Tag>
               </div>
-              <Alert showIcon type="info" title={contextQuery.data.dynamic_rag.note} />
+              <Alert showIcon type="info" title="动态 RAG 是主要 AI 路径；运行状态允许时可直接检索证据。" />
               <ProbeResult probe={probe} />
             </section>
 
             <section className="catalog-ai-band">
-              <Title level={5}>Teacher-only teaching notes</Title>
+              <Title level={5}>仅教师可见教学备注</Title>
               <Descriptions size="small" column={1} bordered>
-                <Descriptions.Item label="node note">{contextQuery.data.teacher_only_notes.node_teacher_note || "-"}</Descriptions.Item>
-                <Descriptions.Item label="point note">{contextQuery.data.teacher_only_notes.point_teacher_note || "-"}</Descriptions.Item>
+                <Descriptions.Item label="节点备注">{contextQuery.data.teacher_only_notes.node_teacher_note || "-"}</Descriptions.Item>
+                <Descriptions.Item label="点位备注">{contextQuery.data.teacher_only_notes.point_teacher_note || "-"}</Descriptions.Item>
               </Descriptions>
             </section>
 
             <section className="catalog-ai-band">
               <div className="catalog-panel-title-row">
-                <Title level={5}>ES and evidence jobs</Title>
+                <Title level={5}>ES 与证据任务</Title>
                 <Space>
-                  <Tag color={statusColor(jobState?.es_state?.sync_status)}>{jobState?.es_state?.sync_status || "no-es-state"}</Tag>
-                  <Tag color={statusColor(evidenceState?.evidence_status)}>{evidenceState?.evidence_status || "missing"}</Tag>
+                  <Tag color={statusColor(jobState?.es_state?.sync_status)}>{displayLabel(jobState?.es_state?.sync_status || "no-es-state")}</Tag>
+                  <Tag color={statusColor(evidenceState?.evidence_status)}>{displayLabel(evidenceState?.evidence_status || "missing")}</Tag>
                 </Space>
               </div>
               <Descriptions size="small" column={2}>
-                <Descriptions.Item label="ES action">{jobState?.es_state?.desired_action || "-"}</Descriptions.Item>
-                <Descriptions.Item label="ES error">{jobState?.es_state?.last_error || "-"}</Descriptions.Item>
-                <Descriptions.Item label="evidence mode">{evidenceState?.source_mode || "-"}</Descriptions.Item>
-                <Descriptions.Item label="evidence error">{evidenceState?.latest_error || "-"}</Descriptions.Item>
+                <Descriptions.Item label="ES 动作">{displayLabel(jobState?.es_state?.desired_action || "-")}</Descriptions.Item>
+                <Descriptions.Item label="ES 错误">{jobState?.es_state?.last_error || "-"}</Descriptions.Item>
+                <Descriptions.Item label="证据模式">{displayLabel(evidenceState?.source_mode || "-")}</Descriptions.Item>
+                <Descriptions.Item label="证据错误">{evidenceState?.latest_error || "-"}</Descriptions.Item>
               </Descriptions>
             </section>
           </>
