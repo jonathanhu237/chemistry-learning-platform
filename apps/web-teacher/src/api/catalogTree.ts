@@ -345,6 +345,16 @@ export type CatalogMediaBinding = {
   original_file_name: string;
   mime_type?: string | null;
   playback_mime_type?: string | null;
+  source_file_size_bytes?: number | null;
+  playback_file_size_bytes?: number | null;
+  playback_width?: number | null;
+  playback_height?: number | null;
+  playback_duration_seconds?: number | null;
+  playback_fps?: number | null;
+  playback_bitrate?: number | null;
+  playback_video_codec?: string | null;
+  playback_audio_codec?: string | null;
+  playback_rendition_kind?: string | null;
   upload_status: string;
   processing_phase?: string | null;
   processing_progress?: number | null;

@@ -32,8 +32,12 @@ describe("catalog tree UI contracts", () => {
     expect(editorSource).toContain("previousNodeIdRef");
     expect(editorSource).toContain("selectedNodeChanged");
     expect(editorSource).toContain("if (selectedNodeChanged)");
-    expect(editorHeaderSource).toContain("预览学习卡片");
-    expect(editorHeaderSource).toContain("高级");
+    expect(editorHeaderSource).toContain("预览学生端");
+    expect(editorHeaderSource).toContain("更多");
+    expect(editorHeaderSource).toContain("catalogHeaderPrimaryAction");
+    expect(editorHeaderSource).toContain("onOpenContentTask");
+    expect(editorHeaderSource).toContain("onOpenVideoPicker");
+    expect(editorHeaderSource).not.toContain("预览学习卡片");
     expect(previewWindowSource).toContain("react-device-mockup");
     expect(previewWindowSource).toContain("iPhone 15 Pro");
     expect(previewWindowSource).toContain("iframe");
@@ -43,7 +47,12 @@ describe("catalog tree UI contracts", () => {
     expect(aiContextPanelSource).toContain("仅教师可见教学备注");
     expect(catalogTreeApiSource).toContain("getCatalogPointAiContext");
     expect(catalogTreeApiSource).toContain("runCatalogPointRagProbe");
-    expect(contentPanelSource).toContain('name="point_title"');
+    expect(contentPanelSource).toContain('name="point_title" hidden');
+    expect(contentPanelSource).not.toContain("多目录共享实验");
+    expect(editorHeaderSource).toContain("多目录共享实验");
+    expect(editorSource).toContain("contentTaskOpen");
+    expect(editorSource).toContain('title="编辑内容"');
+    expect(editorSource).toContain("pickerOpen={videoPickerOpen}");
     expect(contentPanelSource).toContain('name="teacher_note"');
     expect(contentPanelSource).toContain('label="教学备注"');
     expect(contentPanelSource).not.toContain("管理摘要");
@@ -141,6 +150,7 @@ describe("catalog tree UI contracts", () => {
     expect(videoPanelSource).toContain("mutations.bindMedia.mutate");
     expect(videoPanelSource).toContain("getMediaAssetFileUrl");
     expect(videoPanelSource).toContain("getMediaAssetThumbnailUrl");
+    expect(videoPanelSource).toContain("formatBytes");
     expect(videoPanelSource).toContain("catalog-video-shortcut-card");
     expect(videoPanelSource).toContain("视频资源入口");
     expect(videoPanelSource).toContain("CatalogVideoPicker");
@@ -148,6 +158,19 @@ describe("catalog tree UI contracts", () => {
     expect(videoPanelSource).toContain("catalog-video-empty-slot");
     expect(videoPanelSource).toContain("catalog-video-current");
     expect(videoPanelSource).toContain("catalog-video-play-card");
+    expect(videoPanelSource).toContain("catalog-video-current-facts");
+    expect(videoPanelSource).toContain("catalog-video-current-fact");
+    expect(videoPanelSource).toContain("buildCurrentVideoFacts");
+    expect(videoPanelSource).toContain("buildCurrentVideoFactRows");
+    expect(videoPanelSource).toContain("formatUploadTimestamp");
+    expect(videoPanelSource).toContain("formatCurrentVideoBitrate");
+    expect(videoPanelSource).toContain("formatCurrentVideoFps");
+    expect(videoPanelSource).toContain("playback_file_size_bytes");
+    expect(videoPanelSource).toContain("playback_width");
+    expect(videoPanelSource).toContain("playback_height");
+    expect(videoPanelSource).toContain("playback_bitrate");
+    expect(videoPanelSource).toContain("playback_video_codec");
+    expect(videoPanelSource).toContain("playback_audio_codec");
     expect(videoPanelSource).toContain("catalog-video-preview-modal");
     expect(videoPanelSource).toContain("catalog-video-preview-player");
     expect(videoPanelSource).toContain("catalog-video-picker-row");
@@ -180,9 +203,21 @@ describe("catalog tree UI contracts", () => {
     expect(catalogTreeApiSource).not.toContain("media/upload");
     expect(catalogTreeApiSource).not.toContain("uploadCatalogPointMedia");
     expect(catalogTreeApiSource).not.toContain('status?: "draft" | "published"');
+    expect(catalogTreeApiSource).toContain("playback_file_size_bytes?: number | null");
+    expect(catalogTreeApiSource).toContain("playback_width?: number | null");
+    expect(catalogTreeApiSource).toContain("playback_height?: number | null");
+    expect(catalogTreeApiSource).toContain("playback_duration_seconds?: number | null");
+    expect(catalogTreeApiSource).toContain("playback_fps?: number | null");
+    expect(catalogTreeApiSource).toContain("playback_bitrate?: number | null");
+    expect(catalogTreeApiSource).toContain("playback_video_codec?: string | null");
+    expect(catalogTreeApiSource).toContain("playback_audio_codec?: string | null");
     expect(catalogTreeCssSource).toContain(".catalog-video-empty-slot");
     expect(catalogTreeCssSource).toContain(".catalog-video-current");
     expect(catalogTreeCssSource).toContain(".catalog-video-play-card");
+    expect(catalogTreeCssSource).toContain(".catalog-video-current-facts");
+    expect(catalogTreeCssSource).toContain(".catalog-video-current-fact");
+    expect(catalogTreeCssSource).toMatch(/\.catalog-video-current-side\s*\{[\s\S]*grid-template-rows: auto 1fr auto;/);
+    expect(catalogTreeCssSource).toMatch(/\.catalog-video-current-main\s*\{[\s\S]*place-items: start;[\s\S]*text-align: left;/);
     expect(catalogTreeCssSource).toContain(".catalog-video-preview-player");
     expect(catalogTreeCssSource).toContain(".catalog-video-picker-row");
     expect(catalogTreeCssSource).not.toContain(".catalog-media-bind-toolbar");
@@ -366,7 +401,7 @@ describe("catalog tree UI contracts", () => {
   it("renders editor status labels in Chinese instead of backend enum text", () => {
     expect(editorHeaderSource).toContain("catalogStatusLabel(node.status)");
     expect(editorHeaderSource).not.toContain("{node.status}</Tag>");
-    expect(contentPanelSource).toContain("pointContentStatusLabel(detail.point_content?.content_status)");
+    expect(editorHeaderSource).toContain("pointContentStatusLabel(contentStatus)");
     expect(contentPanelSource).not.toContain("{detail.point_content?.content_status ||");
   });
 

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, TypedDict
 
 from sqlalchemy import text
 
-from server.app.auth import AuthUser
 from server.app.domains.catalog_tree.common import breadcrumbs, clean, get_content, get_node, point_capable
 from server.app.domains.catalog_tree.related_links import related_links
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
@@ -17,28 +16,35 @@ PREVIEW_PURPOSE = "catalog_point_preview"
 PREVIEW_TOKEN_EXPIRES_MINUTES = 15
 
 
+class PreviewTeacherIdentity(TypedDict):
+    id: str
+    username: str
+    display_name: str | None
+    password_version: int
+
+
 def _preview_url(node_id: str, token: str) -> str:
     return f"/preview/catalog/points/{node_id}?preview_token={token}"
 
 
-def create_catalog_point_preview_token(*, node_id: str, user: AuthUser) -> dict[str, Any]:
+def create_catalog_point_preview_token(*, node_id: str, teacher: PreviewTeacherIdentity) -> dict[str, Any]:
     with db_session() as session:
-        node = get_node(session, node_id, include_archived=False)
+        node = get_node(session, node_id, include_archived=True)
         if not point_capable(node):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Catalog node is not a point")
         if node.get("canonical_point_status") == "archived":
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Point node not available")
     token, claims = create_access_token(
-        subject=user.id,
+        subject=teacher["id"],
         role="catalog_preview",
-        username=user.username,
-        display_name=user.display_name,
-        password_version=user.password_version,
+        username=teacher["username"],
+        display_name=teacher["display_name"],
+        password_version=teacher["password_version"],
         expires_minutes=PREVIEW_TOKEN_EXPIRES_MINUTES,
         extra_claims={
             "purpose": PREVIEW_PURPOSE,
             "node_id": node_id,
-            "teacher_user_id": user.id,
+            "teacher_user_id": teacher["id"],
         },
     )
     expires_at = datetime.fromtimestamp(int(claims["exp"]), tz=timezone.utc).isoformat()
@@ -74,6 +80,7 @@ def _preview_videos(session: Any, node_id: str, token: str) -> list[dict[str, An
                     OR mb.node_id = :node_id)
                   AND mb.binding_status <> 'archived'
                   AND ma.upload_status = 'ready'
+                  AND COALESCE(ma.lifecycle_status, 'active') = 'active'
                 ORDER BY mb.display_order, mb.created_at
                 LIMIT 1
                 """
@@ -98,7 +105,7 @@ def _preview_videos(session: Any, node_id: str, token: str) -> list[dict[str, An
 def preview_point_detail(*, node_id: str, preview_token: str) -> dict[str, Any]:
     decode_catalog_preview_token(preview_token, node_id=node_id)
     with db_session() as session:
-        node = get_node(session, node_id, include_archived=False)
+        node = get_node(session, node_id, include_archived=True)
         if not point_capable(node):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Catalog node is not a point")
         if node.get("canonical_point_status") == "archived":
@@ -165,6 +172,7 @@ def assert_preview_media_scope(*, asset_id: str, preview_token: str) -> str:
                     OR mb.node_id = :node_id)
                   AND mb.binding_status <> 'archived'
                   AND ma.upload_status = 'ready'
+                  AND COALESCE(ma.lifecycle_status, 'active') = 'active'
                 LIMIT 1
                 """
             ),

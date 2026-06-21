@@ -122,9 +122,11 @@ def node_select(where_clause: str) -> str:
           (
             SELECT COUNT(*)
             FROM experiment_catalog_point_media_bindings mb
+            JOIN media_assets ma ON ma.id = mb.media_asset_id
             WHERE ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
                 OR mb.node_id = n.id)
               AND mb.binding_status <> 'archived'
+              AND COALESCE(ma.lifecycle_status, 'active') = 'active'
           ) AS media_count,
           (
             SELECT COUNT(*)
@@ -134,6 +136,7 @@ def node_select(where_clause: str) -> str:
                 OR mb.node_id = n.id)
               AND mb.binding_status <> 'archived'
               AND ma.upload_status = 'ready'
+              AND COALESCE(ma.lifecycle_status, 'active') = 'active'
           ) AS published_media_count,
           CASE
             WHEN n.node_kind = 'point' AND n.canonical_point_id IS NOT NULL THEN (
@@ -271,6 +274,7 @@ def node_select(where_clause: str) -> str:
                     OR mb.node_id = dt.id)
                   AND mb.binding_status <> 'archived'
                   AND ma.upload_status = 'ready'
+                  AND COALESCE(ma.lifecycle_status, 'active') = 'active'
               ) dmb ON TRUE
               LEFT JOIN experiment_catalog_point_search_index_state dsi ON dsi.node_id = dt.id
               LEFT JOIN LATERAL (
@@ -571,7 +575,7 @@ def catalog_node_status_summary(
     evidence_state = (job_state or {}).get("evidence_state") if job_state else node.get("evidence_state")
     search_state = _map_search_index_state(index_state if isinstance(index_state, dict) else None)
     ai_state = _map_ai_evidence_state(evidence_state if isinstance(evidence_state, dict) else None)
-    student_available = placement_state == "published" and shared_content_state != "archived" and not validation.get("errors")
+    student_available = placement_state == "published" and shared_content_state == "published" and not validation.get("errors")
     conditions: list[dict[str, Any]] = []
 
     if placement_state == "archived" or shared_content_state == "archived":
@@ -646,6 +650,18 @@ def catalog_node_status_summary(
                 action="发布节点或所在目录",
             )
         )
+    if content_exists and shared_content_state not in {"published", "archived"} and not missing_fields:
+        conditions.append(
+            _status_condition(
+                "shared_content_not_published",
+                group="visibility",
+                severity="info",
+                status_value=shared_content_state,
+                reason="学习内容未发布",
+                message="当前共享实验内容仍是草稿，学生端暂不可见。",
+                action="发布学习内容",
+            )
+        )
     if search_state in {"failed", "unavailable"}:
         conditions.append(
             _status_condition(
@@ -716,6 +732,9 @@ def catalog_node_status_summary(
     elif missing_fields:
         primary_state = "needs_content"
         primary_reason = f"缺少{ '、'.join(missing_fields) }"
+    elif shared_content_state != "published":
+        primary_state = "ready"
+        primary_reason = "学习内容完整，等待发布学习内容"
     elif not video_present:
         primary_state = "needs_video"
         primary_reason = "无视频"

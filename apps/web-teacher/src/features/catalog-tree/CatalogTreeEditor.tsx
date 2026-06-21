@@ -54,15 +54,20 @@ export function CatalogTreeEditor({
   const [nodeForm] = Form.useForm<CatalogNodeFormValues>();
   const [pointForm] = Form.useForm<CatalogPointContentFormValues>();
   const [linksForm] = Form.useForm<CatalogRelatedLinksFormValues>();
+  const [taskNodeForm] = Form.useForm<CatalogNodeFormValues>();
+  const [taskPointForm] = Form.useForm<CatalogPointContentFormValues>();
   const [moveParentId, setMoveParentId] = useState<string>("");
   const [moveDisplayOrder, setMoveDisplayOrder] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<CatalogEditorTabKey>("content");
   const [diagnosticsPanel, setDiagnosticsPanel] = useState<CatalogHeaderDiagnosticsKey | null>(null);
+  const [contentTaskOpen, setContentTaskOpen] = useState(false);
+  const [videoPickerOpen, setVideoPickerOpen] = useState(false);
   const [previewFallbackUrl, setPreviewFallbackUrl] = useState("");
   const previousNodeIdRef = useRef<string | null>(null);
   const node = detail?.node;
   const pointCapable = isPointCapable(node?.node_kind);
   const principleMode = Form.useWatch("principle_mode", pointForm);
+  const taskPrincipleMode = Form.useWatch("principle_mode", taskPointForm);
   const validation = useCatalogValidation(node?.node_id, true);
   const mediaAssets = useCatalogMediaAssets(pointCapable);
   const nodeStatus = detail ? resolveCatalogNodeStatus(detail) : null;
@@ -81,6 +86,8 @@ export function CatalogTreeEditor({
     setMoveDisplayOrder(detail?.node.display_order ?? null);
     if (selectedNodeChanged) {
       setActiveTab("content");
+      setContentTaskOpen(false);
+      setVideoPickerOpen(false);
     }
     return () => window.clearTimeout(timeout);
   }, [detail, linksForm, nodeForm, pointForm]);
@@ -110,6 +117,60 @@ export function CatalogTreeEditor({
       await mutations.updateNode.mutateAsync({ nodeId: node.node_id, payload: buildCatalogNodeUpdatePayload(currentNodeValues) });
     }
     await mutations.savePointContent.mutateAsync({ nodeId: node.node_id, payload: buildCatalogPointContentPayload(values) });
+  };
+
+  const contentValuesForTask = () => {
+    const hydrated = hydrateCatalogPointContentForm(detail);
+    return {
+      ...hydrated,
+      ...pointForm.getFieldsValue(true),
+      point_title: pointForm.getFieldValue("point_title") || hydrated.point_title || displayCatalogPointTitle(detail) || node?.title || "",
+    };
+  };
+
+  const openContentTask = () => {
+    if (!detail || !node || !pointCapable) return;
+    setActiveTab("content");
+    taskNodeForm.setFieldsValue({ ...hydrateCatalogNodeForm(detail), ...nodeForm.getFieldsValue(true) });
+    taskPointForm.setFieldsValue(contentValuesForTask());
+    setContentTaskOpen(true);
+  };
+
+  useEffect(() => {
+    if (!contentTaskOpen) return;
+    const timeout = window.setTimeout(() => {
+      taskPointForm.validateFields().catch((error: { errorFields?: Array<{ name?: (string | number)[] }> }) => {
+        const firstMissing = error.errorFields?.[0]?.name;
+        if (firstMissing) {
+          taskPointForm.scrollToField(firstMissing, { focus: true });
+        }
+      });
+    }, 140);
+    return () => window.clearTimeout(timeout);
+  }, [contentTaskOpen, taskPointForm]);
+
+  const saveTaskPointContent = async (values: CatalogPointContentFormValues) => {
+    await savePointContent(values);
+    pointForm.setFieldsValue(values);
+    setContentTaskOpen(false);
+  };
+
+  const publishPointContentFromHeader = () => {
+    if (!node) return;
+    if (pointForm.isFieldsTouched(true)) {
+      openContentTask();
+      return;
+    }
+    mutations.changePointPublication.mutate({ nodeId: node.node_id, action: "publish" });
+  };
+
+  const savePointTitleFromHeader = async (nextTitle: string) => {
+    const nextValues = {
+      ...contentValuesForTask(),
+      point_title: nextTitle,
+    };
+    pointForm.setFieldsValue({ point_title: nextTitle });
+    await savePointContent(nextValues);
   };
 
   const formAnchors = (
@@ -191,12 +252,14 @@ export function CatalogTreeEditor({
       label: "视频",
       forceRender: true,
       children: (
-        <CatalogVideoPanel
-          detail={detail}
-          mediaAssets={mediaAssets}
-          mutations={mutations}
-          canBindVideo={canBindVideo}
-        />
+          <CatalogVideoPanel
+            detail={detail}
+            mediaAssets={mediaAssets}
+            mutations={mutations}
+            canBindVideo={canBindVideo}
+            pickerOpen={videoPickerOpen}
+            onPickerOpenChange={setVideoPickerOpen}
+          />
       ),
     },
     {
@@ -243,6 +306,13 @@ export function CatalogTreeEditor({
             onPreviewLearningCard={openLearningCardPreview}
             previewLoading={mutations.createPreviewToken.isPending}
             onOpenDiagnostics={setDiagnosticsPanel}
+            onOpenContentTask={openContentTask}
+            onOpenVideoPicker={() => {
+              setActiveTab("video");
+              setVideoPickerOpen(true);
+            }}
+            onPublishPointContent={publishPointContentFromHeader}
+            onSavePointTitle={savePointTitleFromHeader}
           />
           <Tabs
             className="catalog-editor-tabs"
@@ -260,6 +330,25 @@ export function CatalogTreeEditor({
             destroyOnHidden={false}
           >
             <div className="catalog-diagnostics-modal-body">{diagnosticsContent}</div>
+          </Modal>
+          <Modal
+            className="catalog-content-task-modal"
+            title="编辑内容"
+            open={contentTaskOpen}
+            onCancel={() => setContentTaskOpen(false)}
+            footer={null}
+            width={1180}
+            destroyOnHidden
+          >
+            <CatalogNodeContentPanel
+              detail={detail}
+              nodeForm={taskNodeForm}
+              pointForm={taskPointForm}
+              principleMode={taskPrincipleMode}
+              mutations={mutations}
+              onSavePointContent={saveTaskPointContent}
+              variant="task"
+            />
           </Modal>
           <Modal
             title="打开学习卡片预览"

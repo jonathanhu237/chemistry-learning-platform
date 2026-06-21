@@ -223,8 +223,23 @@ def test_node_status_prioritizes_missing_content_before_missing_video() -> None:
     assert card["node_status"]["primary_reason"] == "缺少原理、现象解释、安全提示"
     assert card["node_status"]["core_readiness"]["content_fields"] == "missing"
     assert card["node_status"]["core_readiness"]["video"] == "absent"
-    assert card["node_status"]["visibility"]["student_available"] is True
+    assert card["node_status"]["visibility"]["student_available"] is False
     assert not any(condition["key"] == "experiment_video_missing" for condition in card["node_status"]["conditions"])
+
+
+def test_node_status_requires_shared_content_publication_for_student_availability() -> None:
+    card = node_card(
+        _point_node(status="published", media_count=1, published_media_count=1),
+        content=_complete_content(content_status="draft"),
+        validation={"ok": True, "errors": [], "warnings": []},
+    )
+
+    assert card["node_status"]["primary_state"] == "ready"
+    assert card["node_status"]["primary_reason"] == "学习内容完整，等待发布学习内容"
+    assert card["node_status"]["visibility"]["placement"] == "published"
+    assert card["node_status"]["visibility"]["shared_content"] == "draft"
+    assert card["node_status"]["visibility"]["student_available"] is False
+    assert any(condition["key"] == "shared_content_not_published" for condition in card["node_status"]["conditions"])
 
 
 def test_node_status_prioritizes_missing_learning_fields_before_sync_state() -> None:
@@ -267,7 +282,7 @@ def test_node_status_treats_unsaved_content_as_quality_gap_not_blocker() -> None
     serialized = json.dumps(card["node_status"], ensure_ascii=False)
     assert card["node_status"]["primary_state"] == "needs_content"
     assert "三要素尚未填写" in serialized
-    assert card["node_status"]["visibility"]["student_available"] is True
+    assert card["node_status"]["visibility"]["student_available"] is False
     assert "Canonical point content" not in serialized
 
 
@@ -320,8 +335,10 @@ def test_video_library_search_contract_is_point_only_with_directory_category_tex
     catalog_search_source = (CATALOG_DIR / "search_documents.py").read_text(encoding="utf-8")
     student_source = (CATALOG_DIR / "student_read_models.py").read_text(encoding="utf-8")
     file_source = (CATALOG_DIR / "files.py").read_text(encoding="utf-8")
+    preview_source = (CATALOG_DIR / "preview.py").read_text(encoding="utf-8")
     common_source = (CATALOG_DIR / "common.py").read_text(encoding="utf-8")
     media_bindings_source = (CATALOG_DIR / "media_bindings.py").read_text(encoding="utf-8")
+    media_asset_events_source = (CATALOG_DIR / "media_asset_events.py").read_text(encoding="utf-8")
 
     assert "WHERE n.node_kind = 'point'" in search_source
     assert "canonical_point_id" in search_source
@@ -339,11 +356,29 @@ def test_video_library_search_contract_is_point_only_with_directory_category_tex
     assert "teacher_note" not in catalog_search_source
     assert "not content or content.get(\"content_status\") != \"published\"" not in catalog_search_source
     assert "content_for_search = (published_content if require_published else content) or" in catalog_search_source
+    assert "student_video_readiness" in catalog_search_source
+    assert '"videos":' not in catalog_search_source
+    assert '"media_id":' not in catalog_search_source
     assert "Point content not available" not in student_source
     assert "published_content = content if content and content.get(\"content_status\") == \"published\" else None" in student_source
     assert "pc.content_status = 'published'" not in file_source
     assert "JOIN media_assets ma ON ma.id = mb.media_asset_id" in common_source
     assert "AND ma.upload_status = 'ready'" in common_source
+    assert "COALESCE(ma.lifecycle_status, 'active') = 'active'" in common_source
+    assert "COALESCE(ma.lifecycle_status, 'active') = 'active'" in file_source
+    assert "COALESCE(ma.lifecycle_status, 'active') = 'active'" in preview_source
+    assert "COALESCE(ma.lifecycle_status, 'active') = 'active'" in media_bindings_source
+    assert "LEFT JOIN LATERAL" in media_bindings_source
+    assert "mr.kind = 'learning'" in media_bindings_source
+    assert "mr.status = 'ready'" in media_bindings_source
+    assert "COALESCE(playback.file_size_bytes, ma.file_size_bytes) AS playback_file_size_bytes" in media_bindings_source
+    assert "COALESCE(playback.width, ma.width) AS playback_width" in media_bindings_source
+    assert "COALESCE(playback.height, ma.height) AS playback_height" in media_bindings_source
+    assert "COALESCE(playback.duration_seconds, ma.duration_seconds) AS playback_duration_seconds" in media_bindings_source
+    assert "COALESCE(playback.fps, ma.fps) AS playback_fps" in media_bindings_source
+    assert "COALESCE(playback.bitrate, ma.bitrate) AS playback_bitrate" in media_bindings_source
+    assert "COALESCE(playback.video_codec, ma.video_codec) AS playback_video_codec" in media_bindings_source
+    assert "COALESCE(playback.audio_codec, ma.audio_codec) AS playback_audio_codec" in media_bindings_source
     assert "mb.binding_status = 'published'" not in file_source
     assert "AND mb.binding_status = 'published'" not in media_bindings_source
     assert "AND mb.binding_status <> 'archived'" in media_bindings_source
@@ -359,6 +394,10 @@ def test_video_library_search_contract_is_point_only_with_directory_category_tex
     assert "if action == \"publish\"" in media_bindings_source
     assert "if action == \"unpublish\"" not in media_bindings_source
     assert "point_video_binding_changed" in media_bindings_source
+    assert "def handle_media_asset_archived" in media_asset_events_source
+    assert "'media_asset_lifecycle_event_id', :lifecycle_event_id" in media_asset_events_source
+    assert "queue_index_state" in media_asset_events_source
+    assert "mark_point_evidence_stale" in media_asset_events_source
 
 
 def test_catalog_tree_facade_stays_slim_and_boundaries_are_named() -> None:

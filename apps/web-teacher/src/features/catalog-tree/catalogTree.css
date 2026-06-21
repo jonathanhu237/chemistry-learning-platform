@@ -854,6 +854,13 @@
   gap: 5px;
 }
 
+.catalog-editor-title-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .catalog-editor-title-copy h3 {
   margin: 0;
   color: var(--sysu-ink);
@@ -861,13 +868,64 @@
   line-height: 1.25;
 }
 
+.catalog-editor-title-edit.ant-btn {
+  flex: 0 0 auto;
+  color: var(--sysu-muted);
+}
+
+.catalog-editor-title-edit.ant-btn:hover,
+.catalog-editor-title-edit.ant-btn:focus-visible {
+  color: var(--sysu-primary);
+  background: rgba(0, 88, 38, 0.08);
+}
+
 .catalog-editor-title-copy .ant-typography {
   overflow-wrap: anywhere;
+}
+
+.catalog-editor-identity-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--sysu-muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .catalog-editor-header-actions {
   flex: 0 0 auto;
   justify-content: flex-end;
+}
+
+.catalog-editor-state-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 88, 38, 0.14);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--sysu-ink-soft);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.catalog-editor-state-pill.is-published {
+  color: var(--sysu-primary);
+  background: rgba(0, 88, 38, 0.08);
+}
+
+.catalog-editor-state-pill.is-warning {
+  color: var(--sysu-amber);
+  background: rgba(217, 119, 6, 0.1);
+  border-color: rgba(217, 119, 6, 0.18);
+}
+
+.catalog-editor-state-pill.is-error {
+  color: #b91c1c;
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.18);
 }
 
 .catalog-editor-summary-grid {
@@ -1078,6 +1136,11 @@
 
 .catalog-editor-panel-section {
   min-height: 360px;
+}
+
+.catalog-editor-panel-section.is-task-window {
+  min-height: 0;
+  padding: 0;
 }
 
 .catalog-editor-section-heading {
@@ -2023,9 +2086,9 @@
 .catalog-video-current-side {
   min-width: 0;
   display: grid;
-  grid-template-rows: 1fr auto;
+  grid-template-rows: auto 1fr auto;
   gap: 18px;
-  padding: 10px 2px 2px;
+  padding: 18px 2px 2px;
 }
 
 .catalog-video-current-main .ant-typography,
@@ -2038,23 +2101,56 @@
 .catalog-video-current-main strong {
   display: -webkit-box;
   overflow: hidden;
-  max-width: min(100%, 560px);
+  max-width: min(100%, 640px);
   color: var(--sysu-ink);
-  font-size: 24px;
-  line-height: 34px;
-  text-align: center;
+  font-size: 23px;
+  line-height: 32px;
+  text-align: left;
   white-space: normal;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
+.catalog-video-current-facts {
+  display: grid;
+  gap: 4px;
+  margin: 4px 0 0;
+  padding: 0;
+  max-width: min(100%, 640px);
+}
+
+.catalog-video-current-fact {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  color: var(--sysu-muted);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.catalog-video-current-fact dt {
+  margin: 0;
+  color: rgba(13, 31, 26, 0.62);
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.catalog-video-current-fact dd {
+  min-width: 0;
+  margin: 0;
+  color: rgba(13, 31, 26, 0.72);
+  overflow-wrap: anywhere;
+}
+
 .catalog-video-current-main {
   min-height: 0;
   display: grid;
-  place-items: center;
-  align-self: stretch;
+  place-items: start;
+  align-self: start;
   justify-self: stretch;
-  text-align: center;
+  text-align: left;
 }
 
 .catalog-video-picker-meta {
@@ -2128,6 +2224,34 @@
   margin-bottom: 14px;
 }
 
+.catalog-video-picker-resource-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(29, 95, 214, 0.18);
+  border-radius: 8px;
+  background: #f7faff;
+  color: var(--sysu-ink);
+}
+
+.catalog-video-picker-resource-entry:hover {
+  border-color: rgba(29, 95, 214, 0.34);
+  color: var(--sysu-blue);
+}
+
+.catalog-video-picker-resource-entry span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.catalog-video-picker-resource-entry small {
+  color: var(--sysu-muted);
+}
+
 .catalog-video-picker-list {
   display: grid;
   gap: 8px;
@@ -2153,8 +2277,13 @@
 }
 
 .catalog-teacher-note {
-  border-color: rgba(180, 35, 24, 0.28);
-  background: #fffafa;
+  border-color: rgba(0, 88, 38, 0.14);
+  background: #fbfdfc;
+}
+
+.catalog-content-task-modal .ant-modal-body {
+  max-height: min(78vh, 860px);
+  overflow: auto;
 }
 
 .catalog-search-preview {

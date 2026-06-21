@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Flex, Form, Input, Radio, Space, Tag, Typography, type FormInstance } from "antd";
-import { CheckCircleOutlined, RobotOutlined, SaveOutlined } from "@ant-design/icons";
+import { Button, Form, Input, Radio, Space, Tag, Typography, type FormInstance } from "antd";
+import { RobotOutlined, SaveOutlined } from "@ant-design/icons";
 import { Editor as MonacoEditor, loader, type BeforeMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
 import type { editor } from "monaco-editor/esm/vs/editor/editor.api.js";
@@ -106,13 +106,6 @@ const configureChemReactionEditor: BeforeMount = (monaco) => {
   });
 };
 
-function pointContentStatusLabel(status?: string | null): string {
-  if (status === "published") return "已发布";
-  if (status === "draft") return "草稿";
-  if (status === "missing") return "未配置";
-  return "未配置";
-}
-
 function splitEquationText(value: string): string[] {
   return value
     .split(/\r?\n/)
@@ -192,6 +185,7 @@ export function CatalogNodeContentPanel({
   principleMode,
   mutations,
   onSavePointContent,
+  variant = "panel",
 }: {
   detail: CatalogNodeDetail;
   nodeForm: FormInstance<CatalogNodeFormValues>;
@@ -199,6 +193,7 @@ export function CatalogNodeContentPanel({
   principleMode?: string;
   mutations: CatalogMutations;
   onSavePointContent: (values: CatalogPointContentFormValues) => Promise<void>;
+  variant?: "panel" | "task";
 }) {
   const { node } = detail;
   const equationText = Form.useWatch("reaction_equations_text", pointForm) || "";
@@ -211,9 +206,6 @@ export function CatalogNodeContentPanel({
   const previewSeq = useRef(0);
   const reviewModel = useMemo(() => buildEquationReviewModel(equationPreview, assistDrafts), [equationPreview, assistDrafts]);
   const hasEquationInput = Boolean(equationText.trim());
-  const activePlacementCount = detail.canonical_point?.active_placement_count ?? node.active_placement_count ?? 0;
-  const reusedPlacements = (detail.placements || []).filter((placement) => placement.node_id !== node.node_id);
-
   const requestPreview = async (textValue: string, seq: number) => {
     const rows = splitEquationText(textValue).map((rawText, index) => ({ raw_text: rawText, row_order: index + 1 }));
     if (!rows.length) {
@@ -327,55 +319,16 @@ export function CatalogNodeContentPanel({
   }
 
   return (
-    <section className="catalog-editor-section catalog-editor-panel-section">
-      <Flex className="catalog-editor-section-heading" align="center" justify="space-between" gap={12}>
+    <section className={`catalog-editor-section catalog-editor-panel-section ${variant === "task" ? "is-task-window" : ""}`}>
+      <div className="catalog-editor-section-heading">
         <div className="catalog-editor-section-intro">
-          <Text strong>知识字段</Text>
-          <Text type="secondary">默认只显示老师最常维护的点位知识字段。</Text>
+          <Text strong>内容</Text>
+          <Text type="secondary">维护教师备注、实验原理、现象解释和安全提示。</Text>
         </div>
-        <Space wrap>
-          <Tag color={detail.point_content?.content_status === "published" ? "green" : "default"}>
-            {pointContentStatusLabel(detail.point_content?.content_status)}
-          </Tag>
-          <Button
-            icon={<CheckCircleOutlined />}
-            onClick={() => mutations.changePointPublication.mutate({ nodeId: node.node_id, action: "publish" })}
-            loading={mutations.changePointPublication.isPending}
-          >
-            发布点位内容
-          </Button>
-        </Space>
-      </Flex>
+      </div>
       <Form form={pointForm} layout="vertical" onFinish={onSavePointContent}>
-        <div className="catalog-field-scope-note">
-          <Tag color="green">多目录共享实验</Tag>
-          <Text type="secondary">点位名、原理、现象、安全说明、视频和相关实验属于同一个多目录共享实验。</Text>
-        </div>
-        {activePlacementCount > 1 ? (
-          <Alert
-            className="catalog-shared-content-alert"
-            type="warning"
-            showIcon
-            message={`此实验已同步到 ${activePlacementCount} 个目录位置`}
-            description={
-              <div className="catalog-shared-content-copy">
-                <span>这个多目录共享实验的内容、视频、AI 证据和相关实验会在所有复用位置同步更新。</span>
-                {reusedPlacements.length ? (
-                  <div className="catalog-shared-placement-list">
-                    {reusedPlacements.slice(0, 5).map((placement) => (
-                      <Tag key={placement.node_id}>
-                        {(placement.breadcrumbs || []).map((item) => item.title).join(" / ") || placement.title}
-                      </Tag>
-                    ))}
-                    {reusedPlacements.length > 5 ? <Tag>+{reusedPlacements.length - 5}</Tag> : null}
-                  </div>
-                ) : null}
-              </div>
-            }
-          />
-        ) : null}
-        <Form.Item name="point_title" label="点位名" rules={[{ required: true, message: "请输入点位名" }]}>
-          <Input />
+        <Form.Item name="point_title" hidden>
+          <Input type="hidden" />
         </Form.Item>
         <Form.Item name="teacher_note" label="教学备注" extra="仅教师端可见，不进入学生端、学生搜索或题目证据链。">
           <Input.TextArea className="catalog-teacher-note" autoSize={{ minRows: 2, maxRows: 5 }} />

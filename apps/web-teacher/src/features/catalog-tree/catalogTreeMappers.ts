@@ -320,6 +320,65 @@ export function catalogNodePrimaryStateClass(state: string): string {
   return "is-draft";
 }
 
+export type CatalogHeaderPrimaryActionKey =
+  | "restore"
+  | "view-issues"
+  | "edit-content"
+  | "publish-content"
+  | "bind-video"
+  | "publish-placement"
+  | "view-sync";
+
+export type CatalogHeaderPrimaryAction = {
+  key: CatalogHeaderPrimaryActionKey;
+  label: string;
+  tone: "primary" | "warning" | "danger" | "default";
+};
+
+export function catalogHeaderPrimaryAction(detail: CatalogNodeDetail): CatalogHeaderPrimaryAction | null {
+  const { node } = detail;
+  const status = resolveCatalogNodeStatus(detail);
+  const primaryState = status.primary_state;
+
+  if (primaryState === "archived" || node.status === "archived") {
+    return { key: "restore", label: isPointCapable(node.node_kind) ? "恢复点位" : "恢复目录", tone: "default" };
+  }
+  if (primaryState === "blocked") {
+    return { key: "view-issues", label: "查看问题", tone: "warning" };
+  }
+
+  if (isPointCapable(node.node_kind)) {
+    if (status.core_readiness.content_fields === "missing" || primaryState === "needs_content") {
+      return { key: "edit-content", label: "编辑内容", tone: "primary" };
+    }
+    if (status.visibility.shared_content !== "published") {
+      return { key: "publish-content", label: "发布学习内容", tone: "primary" };
+    }
+    if (status.core_readiness.video === "absent" || primaryState === "needs_video") {
+      return { key: "bind-video", label: "绑定视频", tone: "primary" };
+    }
+    if (status.visibility.placement !== "published") {
+      return { key: "publish-placement", label: "发布到学生端", tone: "primary" };
+    }
+    if (
+      primaryState === "sync_attention" ||
+      ["failed", "unavailable"].includes(status.async_consumption.search_index) ||
+      ["failed", "unavailable"].includes(status.async_consumption.ai_evidence)
+    ) {
+      return { key: "view-sync", label: "查看同步", tone: "warning" };
+    }
+    return null;
+  }
+
+  if (["needs_content", "needs_video", "sync_attention"].includes(primaryState)) {
+    return { key: primaryState === "sync_attention" ? "view-sync" : "view-issues", label: primaryState === "sync_attention" ? "查看同步" : "查看问题", tone: "warning" };
+  }
+  if (node.status !== "published") {
+    return { key: "publish-placement", label: "发布目录", tone: "primary" };
+  }
+  return null;
+}
+
 export function catalogNodeActionCount(node: CatalogNodeCard): number {
   const status = resolveCatalogNodeStatus(node);
   const counts = status.core_readiness.descendant_status_counts || {};

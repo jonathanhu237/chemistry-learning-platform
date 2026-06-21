@@ -46,6 +46,16 @@ def _teacher_user() -> AuthUser:
     )
 
 
+def _teacher_identity() -> preview.PreviewTeacherIdentity:
+    user = _teacher_user()
+    return {
+        "id": user.id,
+        "username": user.username,
+        "display_name": user.display_name,
+        "password_version": user.password_version,
+    }
+
+
 def _preview_token(node_id: str) -> str:
     token, _claims = create_access_token(
         subject="00000000-0000-0000-0000-000000000001",
@@ -73,11 +83,13 @@ def _expired_preview_token(node_id: str) -> str:
 
 
 def test_preview_token_is_scoped_to_one_catalog_point(monkeypatch: pytest.MonkeyPatch) -> None:
+    include_archived_values: list[bool] = []
     monkeypatch.setattr(preview, "db_session", lambda: _SessionScope())
     monkeypatch.setattr(
         preview,
         "get_node",
-        lambda _session, node_id, include_archived=False: {
+        lambda _session, node_id, include_archived=False: include_archived_values.append(include_archived)
+        or {
             "node_id": node_id,
             "id": node_id,
             "node_kind": "point",
@@ -86,8 +98,9 @@ def test_preview_token_is_scoped_to_one_catalog_point(monkeypatch: pytest.Monkey
         },
     )
 
-    response = preview.create_catalog_point_preview_token(node_id="cat-point-a", user=_teacher_user())
+    response = preview.create_catalog_point_preview_token(node_id="cat-point-a", teacher=_teacher_identity())
 
+    assert include_archived_values == [True]
     assert response["preview_url"].startswith("/preview/catalog/points/cat-point-a?preview_token=")
     claims = preview.decode_catalog_preview_token(response["token"], node_id="cat-point-a")
     assert claims["purpose"] == preview.PREVIEW_PURPOSE
@@ -177,6 +190,52 @@ def test_preview_point_detail_uses_draft_content_without_student_session(monkeyp
     assert detail["related_points"][0]["title"] == "Neighbor"
     assert detail["assessment_context"]["point_node_id"] == "cat-point-a"
     assert "teacher_note" not in detail
+
+
+def test_preview_point_detail_allows_archived_placement_when_shared_point_is_available(monkeypatch: pytest.MonkeyPatch) -> None:
+    token = _preview_token("cat-point-a")
+    include_archived_values: list[bool] = []
+    monkeypatch.setattr(preview, "db_session", lambda: _SessionScope())
+    monkeypatch.setattr(
+        preview,
+        "get_node",
+        lambda _session, node_id, include_archived=False: include_archived_values.append(include_archived)
+        or {
+            "node_id": node_id,
+            "id": node_id,
+            "node_kind": "point",
+            "chapter_id": "CH13",
+            "title": "Archived placement title",
+            "summary": "",
+            "status": "archived",
+            "canonical_point_id": "cat-canon-a",
+            "canonical_point_status": "published",
+        },
+    )
+    monkeypatch.setattr(
+        preview,
+        "get_content",
+        lambda _session, _node_id: {
+            "content_status": "published",
+            "point_title": "Previewable archived placement",
+            "principle_mode": "text",
+            "principle_text": "Preview principle",
+            "phenomenon_explanation": "Preview phenomenon",
+            "safety_note": "Preview safety",
+        },
+    )
+    monkeypatch.setattr(
+        preview,
+        "breadcrumbs",
+        lambda _session, _node_id: [{"node_id": "cat-point-a", "title": "Previewable archived placement", "node_kind": "point", "chapter_id": "CH13"}],
+    )
+    monkeypatch.setattr(preview, "_preview_videos", lambda _session, _node_id, scoped_token: [])
+    monkeypatch.setattr(preview, "related_links", lambda *_args, **_kwargs: [])
+
+    detail = preview.preview_point_detail(node_id="cat-point-a", preview_token=token)
+
+    assert include_archived_values == [True]
+    assert detail["title"] == "Previewable archived placement"
 
 
 def test_preview_point_detail_serializes_reaction_equation_ids_for_student_response(monkeypatch: pytest.MonkeyPatch) -> None:

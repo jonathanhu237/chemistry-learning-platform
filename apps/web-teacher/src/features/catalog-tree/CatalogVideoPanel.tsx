@@ -14,6 +14,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import type { ApiList } from "../../api/common";
 import type { CatalogMediaBinding, CatalogNodeDetail } from "../../api/catalogTree";
 import { getMediaAssetFileUrl, getMediaAssetThumbnailUrl, type MediaAsset } from "../../api/media";
+import { formatBytes } from "../../lib/format";
 import type { CatalogMutations } from "./catalogTreeHooks";
 import { isPointCapable } from "./catalogTreeMappers";
 
@@ -53,6 +54,94 @@ function formatDuration(seconds?: number | null): string | null {
   const minutes = Math.floor(total / 60);
   const rest = total % 60;
   return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
+function formatPlaybackResolution(binding: CatalogMediaBinding): string | null {
+  if (!binding.playback_width || !binding.playback_height) return null;
+  return `${binding.playback_width} x ${binding.playback_height}`;
+}
+
+function formatUploadTimestamp(value?: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return [
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`,
+  ].join(" ");
+}
+
+function buildCurrentVideoFacts(binding: CatalogMediaBinding): string {
+  const facts: string[] = [];
+  if (binding.playback_file_size_bytes && binding.playback_file_size_bytes > 0) {
+    facts.push(`学生播放源 ${formatBytes(binding.playback_file_size_bytes)}`);
+  } else {
+    facts.push("学生播放源大小待生成");
+  }
+  const resolution = formatPlaybackResolution(binding);
+  if (resolution) facts.push(resolution);
+  const uploadedAt = formatUploadTimestamp(binding.created_at);
+  if (uploadedAt) facts.push(`上传 ${uploadedAt}`);
+  return facts.join(" · ");
+}
+
+function formatCurrentVideoDuration(seconds?: number | null): string | null {
+  if (!seconds || seconds <= 0) return null;
+  const total = Math.round(seconds);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor(total / 60);
+  const rest = total % 60;
+  if (hours > 0) return `${hours}:${String(minutes % 60).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
+  return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
+function formatCurrentVideoFps(value?: number | null): string | null {
+  if (!value || value <= 0) return null;
+  return `${Number(value).toFixed(3)} fps`;
+}
+
+function formatCurrentVideoBitrate(value?: number | null): string | null {
+  if (!value || value <= 0) return null;
+  const kbps = Number(value) / 1000;
+  if (!Number.isFinite(kbps) || kbps <= 0) return null;
+  if (kbps >= 1000) return `${(kbps / 1000).toFixed(2)} Mbps`;
+  return `${Math.round(kbps).toLocaleString()} Kbps`;
+}
+
+function buildCurrentVideoFactRows(binding: CatalogMediaBinding): Array<{ label: string; value: string }> {
+  const facts: Array<{ label: string; value: string }> = [
+    { label: "播放源", value: binding.playback_rendition_kind === "learning" ? "学生播放源" : "学生可播放源" },
+  ];
+  facts.push({
+    label: "文件大小",
+    value:
+      binding.playback_file_size_bytes && binding.playback_file_size_bytes > 0
+        ? formatBytes(binding.playback_file_size_bytes)
+        : "学生播放源大小待生成",
+  });
+  if (
+    binding.source_file_size_bytes &&
+    binding.playback_file_size_bytes &&
+    binding.source_file_size_bytes > 0 &&
+    binding.source_file_size_bytes !== binding.playback_file_size_bytes
+  ) {
+    facts.push({ label: "原始大小", value: formatBytes(binding.source_file_size_bytes) });
+  }
+  if (binding.playback_width && binding.playback_height) {
+    const fps = formatCurrentVideoFps(binding.playback_fps);
+    facts.push({ label: "分辨率", value: `${binding.playback_width} x ${binding.playback_height}${fps ? ` @ ${fps}` : ""}` });
+  }
+  const bitrate = formatCurrentVideoBitrate(binding.playback_bitrate);
+  if (bitrate) facts.push({ label: "码率", value: bitrate });
+  if (binding.playback_video_codec) facts.push({ label: "视频编码", value: binding.playback_video_codec });
+  if (binding.playback_audio_codec) facts.push({ label: "音频编码", value: binding.playback_audio_codec });
+  if (binding.playback_mime_type) facts.push({ label: "Mime Type", value: binding.playback_mime_type });
+  const duration = formatCurrentVideoDuration(binding.playback_duration_seconds);
+  if (duration) facts.push({ label: "时长", value: duration });
+  const uploadedAt = formatUploadTimestamp(binding.created_at);
+  if (uploadedAt) facts.push({ label: "上传时间", value: uploadedAt });
+  return facts;
 }
 
 function VideoThumbnail({
@@ -105,6 +194,7 @@ function CurrentVideoSlot({
 
   const mediaUrl = getMediaAssetFileUrl(binding.media_id);
   const posterUrl = binding.has_thumbnail ? getMediaAssetThumbnailUrl(binding.media_id) : undefined;
+  const currentVideoFacts = buildCurrentVideoFactRows(binding);
 
   return (
     <>
@@ -123,6 +213,14 @@ function CurrentVideoSlot({
         <div className="catalog-video-current-side">
           <div className="catalog-video-current-main">
             <strong title={binding.title}>{binding.title}</strong>
+            <dl className="catalog-video-current-facts">
+              {currentVideoFacts.map((fact) => (
+                <div className="catalog-video-current-fact" key={fact.label}>
+                  <dt>{fact.label}</dt>
+                  <dd>{fact.value}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
           <div className="catalog-video-current-actions">
             <Button className="catalog-video-card-action" icon={<SwapOutlined />} onClick={onOpenPicker} disabled={!canBindVideo}>
@@ -178,6 +276,7 @@ function CatalogVideoPicker({
         }),
     [mediaAssets.data?.items, query],
   );
+  const readyAssetCount = assets.filter(isReadyVideo).length;
 
   return (
     <Modal
@@ -197,6 +296,15 @@ function CatalogVideoPicker({
         onChange={(event) => setQuery(event.target.value)}
         placeholder="搜索视频标题或文件名"
       />
+      {!readyAssetCount ? (
+        <a className="catalog-video-picker-resource-entry" href="/videos">
+          <span>
+            <strong>没有可绑定的就绪视频</strong>
+            <small>去视频资源页上传或等待处理完成</small>
+          </span>
+          <ArrowRightOutlined />
+        </a>
+      ) : null}
       <div className="catalog-video-picker-list">
         {assets.length ? (
           assets.map((asset) => {
@@ -247,16 +355,28 @@ export function CatalogVideoPanel({
   mediaAssets,
   mutations,
   canBindVideo,
+  pickerOpen,
+  onPickerOpenChange,
 }: {
   detail: CatalogNodeDetail;
   mediaAssets: UseQueryResult<ApiList<MediaAsset>>;
   mutations: CatalogMutations;
   canBindVideo: boolean;
+  pickerOpen?: boolean;
+  onPickerOpenChange?: (open: boolean) => void;
 }) {
   const { node } = detail;
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [internalPickerOpen, setInternalPickerOpen] = useState(false);
   const [pendingMediaId, setPendingMediaId] = useState<string | null>(null);
   const currentVideo = detail.media_bindings[0] || null;
+  const resolvedPickerOpen = pickerOpen ?? internalPickerOpen;
+  const setPickerOpen = (open: boolean) => {
+    if (onPickerOpenChange) {
+      onPickerOpenChange(open);
+      return;
+    }
+    setInternalPickerOpen(open);
+  };
 
   if (!isPointCapable(node.node_kind)) {
     return (
@@ -310,7 +430,7 @@ export function CatalogVideoPanel({
         removing={mutations.changeMediaStatus.isPending}
       />
       <CatalogVideoPicker
-        open={pickerOpen}
+        open={resolvedPickerOpen}
         currentMediaId={currentVideo?.media_id}
         mediaAssets={mediaAssets}
         pendingMediaId={pendingMediaId}

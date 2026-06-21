@@ -5,6 +5,7 @@ import {
   buildCatalogNodeCreatePayload,
   buildCatalogPointContentPayload,
   buildCatalogRelatedLinksPayload,
+  catalogHeaderPrimaryAction,
   catalogNodeActionCount,
   catalogStatusColor,
   catalogStatusDotClass,
@@ -303,6 +304,70 @@ describe("catalog tree mappers", () => {
     expect(catalogNodePrimaryStateClass("sync_attention")).toBe("is-warning");
     expect(catalogNodePrimaryStateClass("blocked")).toBe("is-error");
     expect(catalogNodeStatusTooltip(detail)).toBe("同步异常：搜索或 AI 同步异常");
+  });
+
+  it("derives the selected point header primary action from readiness state", () => {
+    const baseDetail = {
+      node: {
+        node_id: "cat-point-1",
+        title: "氯水 + KBr",
+        node_kind: "point",
+        status: "published",
+        has_point_content: true,
+        media_count: 1,
+        node_status: {
+          primary_state: "published",
+          primary_label: "已发布",
+          primary_reason: "学生可见",
+          core_readiness: { content_fields: "complete", video: "present", missing_fields: [] },
+          visibility: { placement: "published", shared_content: "published", student_available: true },
+          async_consumption: { search_index: "synced", ai_evidence: "available" },
+          conditions: [],
+        },
+      },
+    } as unknown as CatalogNodeDetail;
+
+    expect(catalogHeaderPrimaryAction(baseDetail)).toBeNull();
+    expect(
+      catalogHeaderPrimaryAction({
+        ...baseDetail,
+        node: {
+          ...baseDetail.node,
+          node_status: {
+            ...baseDetail.node.node_status!,
+            primary_state: "needs_content",
+            core_readiness: { content_fields: "missing", video: "absent", missing_fields: ["原理"] },
+            visibility: { placement: "published", shared_content: "draft", student_available: false },
+          },
+        },
+      }),
+    ).toMatchObject({ key: "edit-content", label: "编辑内容" });
+    expect(
+      catalogHeaderPrimaryAction({
+        ...baseDetail,
+        node: {
+          ...baseDetail.node,
+          node_status: {
+            ...baseDetail.node.node_status!,
+            primary_state: "ready",
+            visibility: { placement: "published", shared_content: "draft", student_available: false },
+          },
+        },
+      }),
+    ).toMatchObject({ key: "publish-content", label: "发布学习内容" });
+    expect(
+      catalogHeaderPrimaryAction({
+        ...baseDetail,
+        node: {
+          ...baseDetail.node,
+          node_status: {
+            ...baseDetail.node.node_status!,
+            primary_state: "needs_video",
+            core_readiness: { content_fields: "complete", video: "absent", missing_fields: [] },
+          },
+        },
+      }),
+    ).toMatchObject({ key: "bind-video", label: "绑定视频" });
   });
 
   it("falls back to binary video readiness when node_status is absent", () => {

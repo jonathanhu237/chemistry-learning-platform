@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
-import { Button, Dropdown, Popconfirm, Space, Typography } from "antd";
-import { CheckCircleOutlined, DeleteOutlined, EyeOutlined, MoreOutlined, StopOutlined } from "@ant-design/icons";
+import { useEffect, useState, type ReactNode } from "react";
+import { Button, Dropdown, Input, Modal, Space, Tag, Typography } from "antd";
+import { CheckCircleOutlined, DeleteOutlined, EditOutlined, MoreOutlined, StopOutlined } from "@ant-design/icons";
 import { AlertTriangle, CircleCheck, CircleDashed, FlaskConical, Folder, Link2, ListTree, Video } from "lucide-react";
 
 import type { CatalogNodeDetail } from "../../api/catalogTree";
@@ -9,6 +9,7 @@ import {
   catalogStatusLabel,
   catalogNodePrimaryStateClass,
   catalogNodeStatusTooltip,
+  catalogHeaderPrimaryAction,
   displayCatalogPointTitle,
   isPointCapable,
   resolveCatalogNodeStatus,
@@ -115,7 +116,7 @@ function buildPointSummaryItems(detail: CatalogNodeDetail): SummaryItem[] {
       icon: publicationIcon(contentStatus),
       label: "学习内容",
       value: pointContentStatusLabel(contentStatus),
-      note: detail.point_content ? "知识字段" : "待维护",
+      note: detail.point_content ? "学习字段" : "待维护",
       tone: pointContentTone(contentStatus),
       emphasis: contentStatus !== "published" && contentStatus !== "draft",
     },
@@ -146,22 +147,97 @@ export function CatalogEditorHeader({
   onPreviewLearningCard,
   previewLoading,
   onOpenDiagnostics,
+  onOpenContentTask,
+  onOpenVideoPicker,
+  onPublishPointContent,
+  onSavePointTitle,
 }: {
   detail: CatalogNodeDetail;
   mutations: CatalogMutations;
   onPreviewLearningCard?: () => void;
   previewLoading?: boolean;
   onOpenDiagnostics?: (key: CatalogHeaderDiagnosticsKey) => void;
+  onOpenContentTask?: () => void;
+  onOpenVideoPicker?: () => void;
+  onPublishPointContent?: () => void;
+  onSavePointTitle?: (title: string) => Promise<void> | void;
 }) {
   const { node } = detail;
   const pointCapable = isPointCapable(node.node_kind);
   const title = pointCapable ? displayCatalogPointTitle(detail) : node.title;
   const nodeStatus = resolveCatalogNodeStatus(detail);
   const summaryItems = pointCapable ? buildPointSummaryItems(detail) : buildDirectorySummaryItems(detail);
-  const diagnosticsItems = [
+  const primaryAction = catalogHeaderPrimaryAction(detail);
+  const activePlacementCount = detail.canonical_point?.active_placement_count ?? node.active_placement_count ?? 0;
+  const [titleEditorOpen, setTitleEditorOpen] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(title);
+  const [titleSaving, setTitleSaving] = useState(false);
+
+  useEffect(() => {
+    setDraftTitle(title);
+  }, [title]);
+
+  const confirmStatusAction = (action: "unpublish" | "archive") => {
+    Modal.confirm({
+      title: action === "unpublish" ? "取消发布该节点？" : "归档该节点？",
+      content: action === "unpublish" ? "学生端将暂时不可见，可稍后重新发布。" : "节点将从常规目录隐藏，必要时可恢复。",
+      okText: action === "unpublish" ? "取消发布" : "归档",
+      okButtonProps: { danger: action === "archive" },
+      cancelText: "再想想",
+      onOk: () => mutations.changeNodeStatus.mutate({ nodeId: node.node_id, action }),
+    });
+  };
+
+  const handlePrimaryAction = () => {
+    if (!primaryAction) return;
+    if (primaryAction.key === "restore") {
+      mutations.changeNodeStatus.mutate({ nodeId: node.node_id, action: "restore" });
+      return;
+    }
+    if (primaryAction.key === "view-issues" || primaryAction.key === "view-sync") {
+      onOpenDiagnostics?.("node-status");
+      return;
+    }
+    if (primaryAction.key === "edit-content") {
+      onOpenContentTask?.();
+      return;
+    }
+    if (primaryAction.key === "publish-content") {
+      onPublishPointContent?.();
+      return;
+    }
+    if (primaryAction.key === "bind-video") {
+      onOpenVideoPicker?.();
+      return;
+    }
+    if (primaryAction.key === "publish-placement") {
+      mutations.changeNodeStatus.mutate({ nodeId: node.node_id, action: "publish", includeSubtree: false });
+    }
+  };
+
+  const handleSaveTitle = async () => {
+    const nextTitle = draftTitle.trim();
+    if (!nextTitle || nextTitle === title) {
+      setTitleEditorOpen(false);
+      return;
+    }
+    setTitleSaving(true);
+    try {
+      await onSavePointTitle?.(nextTitle);
+      setTitleEditorOpen(false);
+    } finally {
+      setTitleSaving(false);
+    }
+  };
+
+  const moreItems = [
+    ...(pointCapable ? [{ key: "preview", label: "预览学生端", disabled: previewLoading }] : []),
     { key: "node-status", label: "节点状态" },
     ...(pointCapable ? [{ key: "ai-context", label: "点位检索诊断" }] : []),
     { key: "advanced", label: "高级调试" },
+    ...(node.status !== "archived" ? [{ type: "divider" as const }] : []),
+    ...(node.status === "published" ? [{ key: "unpublish", label: "取消发布", icon: <StopOutlined /> }] : []),
+    ...(node.status !== "archived" ? [{ key: "archive", label: "归档节点", icon: <DeleteOutlined />, danger: true }] : []),
   ];
 
   return (
@@ -176,51 +252,78 @@ export function CatalogEditorHeader({
             {pointCapable ? <FlaskConical size={20} /> : <Folder size={20} />}
           </span>
           <div className="catalog-editor-title-copy">
-            <Title level={3}>{title}</Title>
+            <div className="catalog-editor-title-row">
+              <Title level={3}>{title}</Title>
+              {pointCapable ? (
+                <Button
+                  className="catalog-editor-title-edit"
+                  type="text"
+                  size="small"
+                  icon={<EditOutlined />}
+                  aria-label="编辑点位名"
+                  onClick={() => setTitleEditorOpen(true)}
+                />
+              ) : null}
+            </div>
             <Text type="secondary">
               {pointCapable ? "实验点位" : "目录分组"} · {detail.breadcrumbs.map((item) => item.title).join(" / ")}
             </Text>
+            {pointCapable ? (
+              <div className="catalog-editor-identity-note">
+                <Tag color="green">多目录共享实验</Tag>
+                <span>{activePlacementCount > 1 ? `已复用到 ${activePlacementCount} 个目录位置` : "当前点位内容、视频和相关实验属于同一个共享实验"}</span>
+              </div>
+            ) : null}
           </div>
         </div>
         <Space wrap className="catalog-editor-header-actions">
-          {pointCapable ? (
-            <Button icon={<EyeOutlined />} onClick={onPreviewLearningCard} loading={previewLoading}>
-              预览学习卡片
+          {primaryAction ? (
+            <Button
+              type={primaryAction.tone === "primary" ? "primary" : "default"}
+              danger={primaryAction.tone === "danger"}
+              icon={primaryAction.key === "publish-content" || primaryAction.key === "publish-placement" ? <CheckCircleOutlined /> : undefined}
+              onClick={handlePrimaryAction}
+              loading={mutations.changeNodeStatus.isPending || mutations.changePointPublication.isPending}
+            >
+              {primaryAction.label}
             </Button>
-          ) : null}
+          ) : (
+            <span className={`catalog-editor-state-pill ${catalogNodePrimaryStateClass(nodeStatus.primary_state)}`}>
+              {nodeStatus.primary_label || catalogStatusLabel(node.status)}
+            </span>
+          )}
           <Dropdown
             trigger={["click"]}
             menu={{
-              items: diagnosticsItems,
-              onClick: ({ key }) => onOpenDiagnostics?.(key as CatalogHeaderDiagnosticsKey),
+              items: moreItems,
+              onClick: ({ key }) => {
+                if (key === "preview") {
+                  onPreviewLearningCard?.();
+                  return;
+                }
+                if (key === "unpublish" || key === "archive") {
+                  confirmStatusAction(key);
+                  return;
+                }
+                onOpenDiagnostics?.(key as CatalogHeaderDiagnosticsKey);
+              },
             }}
           >
-            <Button icon={<MoreOutlined />}>高级</Button>
+            <Button icon={<MoreOutlined />}>更多</Button>
           </Dropdown>
-          {node.status === "archived" ? (
-            <Button onClick={() => mutations.changeNodeStatus.mutate({ nodeId: node.node_id, action: "restore" })}>恢复</Button>
-          ) : (
-            <Popconfirm title="归档该节点？" onConfirm={() => mutations.changeNodeStatus.mutate({ nodeId: node.node_id, action: "archive" })}>
-              <Button danger icon={<DeleteOutlined />}>
-                归档
-              </Button>
-            </Popconfirm>
-          )}
-          {node.status === "published" ? (
-            <Button icon={<StopOutlined />} onClick={() => mutations.changeNodeStatus.mutate({ nodeId: node.node_id, action: "unpublish" })}>
-              取消发布
-            </Button>
-          ) : (
-            <Button
-              type="primary"
-              icon={<CheckCircleOutlined />}
-              onClick={() => mutations.changeNodeStatus.mutate({ nodeId: node.node_id, action: "publish", includeSubtree: false })}
-            >
-              发布节点
-            </Button>
-          )}
         </Space>
       </div>
+      <Modal
+        title="编辑点位名"
+        open={titleEditorOpen}
+        okText="保存"
+        confirmLoading={titleSaving}
+        onOk={handleSaveTitle}
+        onCancel={() => setTitleEditorOpen(false)}
+        destroyOnHidden
+      >
+        <Input value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} placeholder="请输入点位名" autoFocus />
+      </Modal>
       <div className="catalog-editor-summary-grid" aria-label="节点概览">
         {summaryItems.map((item) => (
           <div className={`catalog-editor-summary-item ${item.tone ? `is-${item.tone}` : ""} ${item.emphasis ? "is-emphasis" : ""}`} key={item.key}>
