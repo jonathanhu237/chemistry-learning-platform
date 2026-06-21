@@ -1,7 +1,7 @@
 import { BookOpenCheck, ClipboardList, LogOut } from "lucide-react";
 import { MobileButton } from "../../mobile/primitives";
 
-export const TEMP_PRETEST_SKIP_BARRIER = true;
+export const TEMP_PRETEST_SKIP_BARRIER = false;
 export const TEMP_PRETEST_SKIP_TITLE = "课前摸底暂未接入";
 
 export function PretestErrorPanel({ message, onSkip, onLogout }: { message: string; onSkip: () => void; onLogout: () => void }) {

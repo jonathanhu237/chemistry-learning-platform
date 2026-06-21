@@ -109,6 +109,32 @@ function SmartAssessmentCurve({ settings }: { settings: SmartAssessmentSettings 
   );
 }
 
+function PercentSlider({
+  value = 0,
+  onChange,
+  disabled,
+}: {
+  value?: number;
+  onChange?: (value: number) => void;
+  disabled?: boolean;
+}) {
+  const current = Math.max(0, Math.min(100, Number(value) || 0));
+  return (
+    <div className="percent-slider">
+      <Slider
+        min={0}
+        max={100}
+        step={5}
+        value={current}
+        disabled={disabled}
+        tooltip={{ formatter: (next) => `${next ?? 0}%` }}
+        onChange={(next) => onChange?.(Array.isArray(next) ? next[0] : next)}
+      />
+      <strong>{current}%</strong>
+    </div>
+  );
+}
+
 function errorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   return String(error || "????");
@@ -308,21 +334,33 @@ export function SettingsPage() {
                     label="未测实验纳入比例"
                     rules={[{ required: true, message: "请选择未测实验纳入比例" }]}
                   >
-                    <Slider min={0} max={100} step={5} disabled={!canEdit} tooltip={{ formatter: (value) => `${value || 0}%` }} />
+                    <PercentSlider disabled={!canEdit} />
                   </Form.Item>
                   <Form.Item
                     name={["assessment", "smart_assessment", "weak_tendency_percent"]}
                     label="薄弱倾向"
                     rules={[{ required: true, message: "请选择薄弱倾向" }]}
                   >
-                    <Slider min={0} max={100} step={5} disabled={!canEdit} tooltip={{ formatter: (value) => `${value || 0}%` }} />
+                    <PercentSlider disabled={!canEdit} />
                   </Form.Item>
-                  <Form.Item name={["assessment", "smart_assessment", "weak_curve"]} hidden>
-                    <InputNumber />
-                  </Form.Item>
-                  <Form.Item name={["assessment", "smart_assessment", "weak_max_bonus"]} hidden>
-                    <InputNumber />
-                  </Form.Item>
+                  <div className="settings-grid smart-settings-grid">
+                    <Form.Item
+                      name={["assessment", "smart_assessment", "weak_curve"]}
+                      label="薄弱曲线系数"
+                      help="数值越大，系统越集中照顾低掌握度实验。"
+                      rules={[{ required: true, message: "请输入薄弱曲线系数" }]}
+                    >
+                      <InputNumber min={0.5} max={4} step={0.1} precision={1} disabled={!canEdit} className="full" />
+                    </Form.Item>
+                    <Form.Item
+                      name={["assessment", "smart_assessment", "weak_max_bonus"]}
+                      label="最大权重加成"
+                      help="控制 0 分实验相对 100 分实验最多可增加多少抽题票。"
+                      rules={[{ required: true, message: "请输入最大权重加成" }]}
+                    >
+                      <InputNumber min={1} max={20} step={0.5} precision={1} disabled={!canEdit} className="full" />
+                    </Form.Item>
+                  </div>
                   <SmartAssessmentCurve settings={smartAssessmentSettings} />
                 </div>
                 <div className="settings-section custom-assessment-section">

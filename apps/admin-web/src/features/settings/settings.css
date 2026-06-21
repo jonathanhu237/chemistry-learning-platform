@@ -32,6 +32,28 @@
   margin-top: 16px;
 }
 
+.percent-slider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px;
+  align-items: center;
+  gap: 12px;
+}
+
+.percent-slider .ant-slider {
+  margin: 10px 0;
+}
+
+.percent-slider strong {
+  display: grid;
+  place-items: center;
+  min-height: 40px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  color: var(--sysu-primary);
+  background: rgba(0, 88, 38, 0.06);
+  font-size: 18px;
+}
+
 .custom-assessment-note {
   margin-top: 8px;
 }

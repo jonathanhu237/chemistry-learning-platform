@@ -110,6 +110,29 @@ function ClassSmartCurve({ settings }: { settings: SmartAssessmentSettings }) {
   );
 }
 
+function PercentSlider({
+  value = 0,
+  onChange,
+}: {
+  value?: number;
+  onChange?: (value: number) => void;
+}) {
+  const current = Math.max(0, Math.min(100, Number(value) || 0));
+  return (
+    <div className="percent-slider">
+      <Slider
+        min={0}
+        max={100}
+        step={5}
+        value={current}
+        tooltip={{ formatter: (next) => `${next ?? 0}%` }}
+        onChange={(next) => onChange?.(Array.isArray(next) ? next[0] : next)}
+      />
+      <strong>{current}%</strong>
+    </div>
+  );
+}
+
 export function ClassesPage() {
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
@@ -770,17 +793,29 @@ export function ClassesPage() {
                   </Form.Item>
                 </div>
                 <Form.Item name="untested_ratio_percent" label="未测实验纳入比例">
-                  <Slider min={0} max={100} step={5} tooltip={{ formatter: (value) => `${value || 0}%` }} />
+                  <PercentSlider />
                 </Form.Item>
                 <Form.Item name="weak_tendency_percent" label="薄弱倾向">
-                  <Slider min={0} max={100} step={5} tooltip={{ formatter: (value) => `${value || 0}%` }} />
+                  <PercentSlider />
                 </Form.Item>
-                <Form.Item name="weak_curve" hidden>
-                  <InputNumber />
-                </Form.Item>
-                <Form.Item name="weak_max_bonus" hidden>
-                  <InputNumber />
-                </Form.Item>
+                <div className="settings-grid class-smart-grid">
+                  <Form.Item
+                    name="weak_curve"
+                    label="薄弱曲线系数"
+                    help="数值越大，系统越集中照顾低掌握度实验。"
+                    rules={[{ required: true, message: "请输入薄弱曲线系数" }]}
+                  >
+                    <InputNumber min={0.5} max={4} step={0.1} precision={1} className="full" />
+                  </Form.Item>
+                  <Form.Item
+                    name="weak_max_bonus"
+                    label="最大权重加成"
+                    help="控制 0 分实验相对 100 分实验最多可增加多少抽题票。"
+                    rules={[{ required: true, message: "请输入最大权重加成" }]}
+                  >
+                    <InputNumber min={1} max={20} step={0.5} precision={1} className="full" />
+                  </Form.Item>
+                </div>
                 <ClassSmartCurve settings={smartPreview} />
               </Form>
             </div>
