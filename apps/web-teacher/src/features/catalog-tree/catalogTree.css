@@ -1949,7 +1949,7 @@
 .catalog-video-current {
   display: grid;
   grid-template-columns: minmax(360px, 52%) minmax(260px, 1fr);
-  gap: 22px;
+  gap: 24px;
   align-items: stretch;
   width: 100%;
   padding: 18px;
@@ -2022,11 +2022,10 @@
 
 .catalog-video-current-side {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 16px;
-  padding: 8px 2px;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 18px;
+  padding: 10px 2px 2px;
 }
 
 .catalog-video-current-main .ant-typography,
@@ -2039,11 +2038,23 @@
 .catalog-video-current-main strong {
   display: -webkit-box;
   overflow: hidden;
-  font-size: 21px;
-  line-height: 30px;
+  max-width: min(100%, 560px);
+  color: var(--sysu-ink);
+  font-size: 24px;
+  line-height: 34px;
+  text-align: center;
   white-space: normal;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.catalog-video-current-main {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  justify-self: stretch;
+  text-align: center;
 }
 
 .catalog-video-picker-meta {
@@ -2063,32 +2074,33 @@
 }
 
 .catalog-video-current-actions {
-  justify-content: flex-start;
-  gap: 10px;
-  width: fit-content;
-  padding: 6px;
-  border: 1px solid rgba(0, 105, 55, 0.08);
-  border-radius: 8px;
-  background: rgba(0, 105, 55, 0.035);
+  justify-self: end;
+  align-self: end;
+  justify-content: flex-end;
+  gap: 8px;
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .catalog-video-current-actions .catalog-video-card-action.ant-btn {
-  min-width: 88px;
-  height: 38px;
-  padding: 0 15px;
-  border-color: rgba(18, 79, 58, 0.14);
-  border-radius: 7px;
+  min-width: 96px;
+  height: 42px;
+  padding: 0 14px;
+  border-color: rgba(0, 105, 55, 0.14);
+  border-radius: 8px;
   color: var(--sysu-ink);
   font-weight: 700;
-  background: #ffffff;
-  box-shadow: none;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fcfa 100%);
+  box-shadow: 0 8px 18px rgba(0, 56, 38, 0.06);
 }
 
 .catalog-video-current-actions .catalog-video-card-action.ant-btn:hover,
 .catalog-video-current-actions .catalog-video-card-action.ant-btn:focus-visible {
-  border-color: rgba(0, 105, 55, 0.3);
+  border-color: rgba(0, 105, 55, 0.34);
   color: var(--sysu-primary);
-  background: #f7fbf8;
+  background: #f4fbf7;
 }
 
 .catalog-video-current-actions .catalog-video-card-action.is-danger.ant-btn {

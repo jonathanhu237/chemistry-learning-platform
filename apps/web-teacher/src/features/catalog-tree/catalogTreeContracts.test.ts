@@ -152,6 +152,7 @@ describe("catalog tree UI contracts", () => {
     expect(videoPanelSource).toContain("catalog-video-preview-player");
     expect(videoPanelSource).toContain("catalog-video-picker-row");
     expect(videoPanelSource).toContain("catalog-video-picker-search");
+    expect(videoPanelSource).toContain("更换视频");
     expect(videoPanelSource).toContain("SearchOutlined");
     expect(videoPanelSource).toContain("SwapOutlined");
     expect(videoPanelSource).toContain("PlayCircleFilled");
@@ -170,6 +171,7 @@ describe("catalog tree UI contracts", () => {
     expect(videoPanelSource).not.toContain('action: "publish"');
     expect(videoPanelSource).not.toContain('action: "unpublish"');
     expect(videoPanelSource).not.toContain("catalog-video-current-meta");
+    expect(videoPanelSource).not.toContain('<Text type="secondary" title={binding.original_file_name}>');
     expect(videoPanelSource).not.toContain("素材就绪");
     expect(videoPanelSource).not.toContain("取消发布");
     expect(editorSource).not.toContain("shortcut_target_node_id");

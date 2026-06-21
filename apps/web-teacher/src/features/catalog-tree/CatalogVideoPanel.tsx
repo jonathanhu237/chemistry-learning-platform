@@ -123,13 +123,10 @@ function CurrentVideoSlot({
         <div className="catalog-video-current-side">
           <div className="catalog-video-current-main">
             <strong title={binding.title}>{binding.title}</strong>
-            <Text type="secondary" title={binding.original_file_name}>
-              {binding.original_file_name}
-            </Text>
           </div>
           <div className="catalog-video-current-actions">
             <Button className="catalog-video-card-action" icon={<SwapOutlined />} onClick={onOpenPicker} disabled={!canBindVideo}>
-              更换
+              更换视频
             </Button>
             <Popconfirm title="删除当前视频绑定？" onConfirm={onRemove}>
               <Button className="catalog-video-card-action is-danger" danger icon={<DeleteOutlined />} loading={removing}>
