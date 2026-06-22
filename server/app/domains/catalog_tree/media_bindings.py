@@ -130,26 +130,27 @@ def student_videos(session: Any, node_id: str) -> list[dict[str, Any]]:
 
 
 def student_video_readiness(session: Any, node_id: str) -> dict[str, Any]:
-    count = int(
+    has_video = bool(
         session.execute(
             text(
                 """
-                SELECT COUNT(*)
-                FROM experiment_catalog_point_media_bindings mb
-                JOIN media_assets ma ON ma.id = mb.media_asset_id
-                JOIN experiment_catalog_nodes n ON n.id = :node_id
-                WHERE ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
-                    OR mb.node_id = :node_id)
-                  AND mb.binding_status <> 'archived'
-                  AND ma.upload_status = 'ready'
-                  AND COALESCE(ma.lifecycle_status, 'active') = 'active'
+                SELECT EXISTS (
+                  SELECT 1
+                  FROM experiment_catalog_point_media_bindings mb
+                  JOIN media_assets ma ON ma.id = mb.media_asset_id
+                  JOIN experiment_catalog_nodes n ON n.id = :node_id
+                  WHERE ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
+                      OR mb.node_id = :node_id)
+                    AND mb.binding_status <> 'archived'
+                    AND ma.upload_status = 'ready'
+                    AND COALESCE(ma.lifecycle_status, 'active') = 'active'
+                )
                 """
             ),
             {"node_id": node_id},
         ).scalar_one()
-        or 0
     )
-    return {"has_video": count > 0, "video_count": count}
+    return {"has_video": has_video, "video_count": 1 if has_video else 0}
 
 
 def bind_existing_media(*, node_id: str, payload: CatalogPointMediaBindRequest, user: Any) -> dict[str, Any]:

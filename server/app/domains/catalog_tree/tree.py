@@ -8,6 +8,7 @@ from server.app.domains.catalog_tree.common import (
 from server.app.domains.catalog_tree.files import student_media_asset_file, student_media_thumbnail_file
 from server.app.domains.catalog_tree.media_bindings import bind_existing_media, set_media_binding_status
 from server.app.domains.catalog_tree.nodes import (
+    chapter_tree_summary,
     copy_node,
     create_node,
     get_node_detail,
@@ -35,6 +36,7 @@ __all__ = [
     "_queue_index_state",
     "validate_node_payload",
     "bind_existing_media",
+    "chapter_tree_summary",
     "copy_node",
     "create_node",
     "get_node_detail",

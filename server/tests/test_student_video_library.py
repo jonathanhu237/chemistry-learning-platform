@@ -141,7 +141,7 @@ def _point_row(
         "safety_note": safety_note,
         "teacher_note": "Teacher-only note must never be indexed or shown to students.",
         "content_updated_at": "2026-06-19T00:00:00Z",
-        "video_count": len(video_resources),
+        "video_count": 1 if video_resources else 0,
         "videos": video_resources,
         "related_links": [{"node_id": "cat-point-related", "title": "Related published point"}],
     }

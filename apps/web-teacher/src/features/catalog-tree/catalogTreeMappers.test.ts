@@ -9,6 +9,7 @@ import {
   catalogNodeActionCount,
   catalogStatusColor,
   catalogStatusDotClass,
+  catalogStatusFilterCount,
   catalogStatusFilterOptions,
   catalogNodePrimaryStateClass,
   catalogNodeStatusTooltip,
@@ -284,10 +285,11 @@ describe("catalog tree mappers", () => {
     expect(catalogStatusFilterOptions.map((option) => option.label)).toEqual([
       "全部",
       "待处理",
+      "异常",
       "缺内容",
       "缺视频",
+      "待发布",
       "已发布",
-      "未发布",
       "同步异常",
     ]);
   });
@@ -466,6 +468,7 @@ describe("catalog tree mappers", () => {
     } as never;
 
     expect(matchesCatalogNodeStatusFilter(directory, "needs_content")).toBe(true);
+    expect(matchesCatalogNodeStatusFilter(directory, "blocked")).toBe(false);
     expect(matchesCatalogNodeStatusFilter(directory, "needs_video")).toBe(false);
     expect(matchesCatalogNodeStatusFilter(directory, "sync_attention")).toBe(true);
     expect(catalogNodeActionCount(directory)).toBe(3);
@@ -513,5 +516,28 @@ describe("catalog tree mappers", () => {
     expect(matchesCatalogNodeStatusFilter(readyNode, "unpublished")).toBe(true);
     expect(matchesCatalogNodeStatusFilter(aggregateNode, "unpublished")).toBe(true);
     expect(matchesCatalogNodeStatusFilter(aggregateNode, "published")).toBe(true);
+  });
+
+  it("maps chapter summary counts to status filter chips", () => {
+    const summary = {
+      point_count: 12,
+      actionable_point_count: 7,
+      point_status_counts: {
+        blocked: 1,
+        needs_content: 2,
+        needs_video: 3,
+        ready: 4,
+        draft: 1,
+        published: 5,
+        sync_attention: 1,
+      },
+    } as never;
+
+    expect(catalogStatusFilterCount(summary, "all")).toBe(12);
+    expect(catalogStatusFilterCount(summary, "actionable")).toBe(7);
+    expect(catalogStatusFilterCount(summary, "blocked")).toBe(1);
+    expect(catalogStatusFilterCount(summary, "unpublished")).toBe(5);
+    expect(catalogStatusFilterCount(summary, "published")).toBe(5);
+    expect(catalogStatusFilterCount(undefined, "all")).toBeNull();
   });
 });

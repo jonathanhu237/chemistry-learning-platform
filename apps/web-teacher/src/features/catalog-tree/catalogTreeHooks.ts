@@ -8,6 +8,7 @@ import {
   copyCatalogNode,
   createCatalogPointPreviewToken,
   createCatalogNode,
+  getCatalogChapterTreeSummary,
   getCatalogNode,
   getCatalogPointAiContext,
   listCatalogCandidateMedia,
@@ -52,6 +53,14 @@ export function useCatalogRoots(chapterId?: string, includeArchived = false) {
   return useQuery({
     queryKey: ["catalog-roots", chapterId, includeArchived],
     queryFn: () => listCatalogRoots(chapterId || "", includeArchived),
+    enabled: Boolean(chapterId),
+  });
+}
+
+export function useCatalogChapterTreeSummary(chapterId?: string) {
+  return useQuery({
+    queryKey: ["catalog-chapter-summary", chapterId],
+    queryFn: () => getCatalogChapterTreeSummary(chapterId || ""),
     enabled: Boolean(chapterId),
   });
 }
@@ -108,6 +117,7 @@ export function useCatalogInvalidation() {
   const queryClient = useQueryClient();
   const invalidateCatalog = (detail?: CatalogNodeDetail | null) => {
     void queryClient.invalidateQueries({ queryKey: ["catalog-roots"] });
+    void queryClient.invalidateQueries({ queryKey: ["catalog-chapter-summary"] });
     void queryClient.invalidateQueries({ queryKey: ["catalog-children"] });
     void queryClient.invalidateQueries({ queryKey: ["catalog-search"] });
     void queryClient.invalidateQueries({ queryKey: ["catalog-validation"] });

@@ -3,17 +3,26 @@ import { App as AntApp, Button, Dropdown, Flex, Form, Input, Modal, Radio, Selec
 import { DownOutlined, SearchOutlined } from "@ant-design/icons";
 import { ChevronDown, ChevronRight, FlaskConical, Folder, FolderOpen, RotateCcw } from "lucide-react";
 
-import { listCatalogChildren, type CatalogNodeCard, type CatalogNodeKind } from "../../api/catalogTree";
+import { listCatalogChildren, type CatalogChapterTreeSummary, type CatalogNodeCard, type CatalogNodeKind } from "../../api/catalogTree";
 import { PageTitle } from "../../components/PageTitle";
 import { QueryState } from "../../components/QueryState";
 import { formatChapterTitle } from "../../lib/resourceUtils";
 import { CatalogTreeEditor } from "./CatalogTreeEditor";
-import { useCatalogChildren, useCatalogChapters, useCatalogMutations, useCatalogNodeDetail, useCatalogRoots, useCatalogSearch } from "./catalogTreeHooks";
+import {
+  useCatalogChapterTreeSummary,
+  useCatalogChildren,
+  useCatalogChapters,
+  useCatalogMutations,
+  useCatalogNodeDetail,
+  useCatalogRoots,
+  useCatalogSearch,
+} from "./catalogTreeHooks";
 import { CatalogTreeNodeList } from "./CatalogTreeNodeList";
 import {
   buildCatalogNodeCreatePayload,
   catalogNodeKindLabel,
   catalogStatusFilterOptions,
+  catalogStatusFilterCount,
   matchesCatalogNodeStatusFilter,
 } from "./catalogTreeMappers";
 import type { CatalogNodeFormValues, CatalogStatusFilter } from "./catalogTreeMappers";
@@ -47,6 +56,82 @@ type CopyDestinationNode = {
   open: boolean;
   loading: boolean;
 };
+
+function displaySummaryCount(summary: CatalogChapterTreeSummary | undefined, value: number | undefined, loading: boolean): string | number {
+  if (summary) return value ?? 0;
+  return loading ? "..." : 0;
+}
+
+function CatalogTreeOverview({ summary, loading }: { summary?: CatalogChapterTreeSummary; loading: boolean }) {
+  const pointCounts = summary?.point_status_counts || {};
+  const statusItems = [
+    { key: "blocked", label: "异常", value: Number(pointCounts.blocked || 0), tone: "error" },
+    { key: "needs_content", label: "缺内容", value: Number(pointCounts.needs_content || 0), tone: "warning" },
+    { key: "needs_video", label: "缺视频", value: Number(pointCounts.needs_video || 0), tone: "warning" },
+    { key: "unpublished", label: "待发布", value: Number(pointCounts.ready || 0) + Number(pointCounts.draft || 0), tone: "info" },
+    { key: "published", label: "已发布", value: Number(pointCounts.published || 0), tone: "success" },
+    { key: "sync_attention", label: "同步异常", value: Number(pointCounts.sync_attention || 0), tone: "warning" },
+  ];
+  const primaryStats = [
+    { label: "目录", value: displaySummaryCount(summary, summary?.directory_count, loading) },
+    { label: "点位", value: displaySummaryCount(summary, summary?.point_count, loading) },
+    { label: "已发布", value: displaySummaryCount(summary, Number(pointCounts.published || 0), loading) },
+    { label: "待处理", value: displaySummaryCount(summary, summary?.actionable_point_count, loading) },
+  ];
+
+  return (
+    <section className="catalog-tree-overview" aria-label="章节资源统计">
+      <div className="catalog-tree-overview-main">
+        {primaryStats.map((item) => (
+          <div key={item.label} className="catalog-tree-overview-stat">
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+          </div>
+        ))}
+      </div>
+      <div className="catalog-tree-overview-statuses" aria-label="点位状态统计">
+        {statusItems.map((item) => (
+          <Tag key={item.key} className={`catalog-tree-overview-chip is-${item.tone}`}>
+            <span>{item.label}</span>
+            <strong>{summary ? item.value : loading ? "..." : 0}</strong>
+          </Tag>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CatalogStatusFilterBar({
+  value,
+  summary,
+  onChange,
+}: {
+  value: CatalogStatusFilter;
+  summary?: CatalogChapterTreeSummary;
+  onChange: (value: CatalogStatusFilter) => void;
+}) {
+  return (
+    <div className="catalog-status-filter" role="radiogroup" aria-label="点位状态筛选">
+      {catalogStatusFilterOptions.map((option) => {
+        const count = catalogStatusFilterCount(summary, option.value);
+        const selected = value === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            className={selected ? "catalog-status-filter-chip is-active" : "catalog-status-filter-chip"}
+            onClick={() => onChange(option.value)}
+          >
+            <span>{option.label}</span>
+            {count !== null ? <strong>{count}</strong> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function kindIcon(kind: CatalogNodeKind) {
   if (kind === "point") return <FlaskConical size={14} />;
@@ -195,6 +280,7 @@ export function CatalogTreeWorkspacePage() {
   const [copyForm] = Form.useForm<CopyFormValues>();
   const chapters = useCatalogChapters();
   const roots = useCatalogRoots(chapterId);
+  const chapterSummary = useCatalogChapterTreeSummary(chapterId);
   const copyRoots = useCatalogRoots(copyChapterId);
   const selectedDetail = useCatalogNodeDetail(selectedNodeId || undefined);
   const selectedParentId = selectedDetail.data?.node.parent_id || undefined;
@@ -393,7 +479,7 @@ export function CatalogTreeWorkspacePage() {
     <div className="catalog-workspace">
       <PageTitle
         title="章节目录与点位工作台"
-        description="在当前章节下维护多级目录和视频点位，目录负责分组导航，点位负责学习内容。"
+        description="在当前章节下维护多级目录和视频点位，目录负责分组导航，点位负责学习内容。一个视频点位唯一对应一个视频资源。"
         extra={
           <Button icon={<RotateCcw size={16} />} onClick={resetWorkspace}>
             重置工作台
@@ -427,23 +513,16 @@ export function CatalogTreeWorkspacePage() {
               </Dropdown>
             </div>
           </Flex>
+          <CatalogTreeOverview summary={chapterSummary.data} loading={chapterSummary.isFetching} />
           <div className="catalog-tree-filterbar catalog-tree-searchbar">
             <Input
               prefix={<SearchOutlined />}
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
-              placeholder="搜索目录、点位、教学备注或旧身份"
+              placeholder="搜标题、学习内容、教学备注、旧实验 ID"
               allowClear
             />
-            <Radio.Group
-              className="catalog-status-filter"
-              size="small"
-              optionType="button"
-              buttonStyle="solid"
-              value={statusFilter}
-              options={catalogStatusFilterOptions}
-              onChange={(event) => setStatusFilter(event.target.value as CatalogStatusFilter)}
-            />
+            <CatalogStatusFilterBar value={statusFilter} summary={chapterSummary.data} onChange={setStatusFilter} />
           </div>
           {searchText.trim().length >= 2 ? (
             <div className="catalog-search-results catalog-tree-search-results">

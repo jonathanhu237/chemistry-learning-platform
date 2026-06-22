@@ -22,7 +22,7 @@ The admin `/experiments` workspace loads the catalog tree editor:
 - Directory nodes are navigation/category/card nodes only. They cannot own point content, video bindings, related links, assessment identity, or standalone search documents.
 - Teacher-only notes are admin-only state. They are excluded from student APIs, Elasticsearch documents, student search summaries, and question evidence payloads.
 - Related links default from nearby catalog points but are stored by canonical source/target identity with backend-resolved placement display targets.
-- Video upload belongs to the media library. The catalog editor only binds existing media assets to point nodes.
+- Video upload belongs to the media library. The catalog editor only binds existing media assets to point nodes, and one video point has exactly one current video resource.
 
 ## Student Flow
 

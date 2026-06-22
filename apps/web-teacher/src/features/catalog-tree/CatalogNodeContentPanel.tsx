@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Form, Input, Radio, Space, Tag, Typography, type FormInstance } from "antd";
+import { Button, Form, Input, Modal, Radio, Space, Tag, Typography, type FormInstance } from "antd";
 import { CheckCircleOutlined, ExclamationCircleOutlined, LoadingOutlined, RobotOutlined } from "@ant-design/icons";
 import { Editor as MonacoEditor, loader, type BeforeMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
@@ -184,6 +184,10 @@ function preserveInlineAnnotationSuffix(currentLine: string, replacement: string
   return `${replacement.trim()} ${currentSuffix}`;
 }
 
+function principleModeLabel(mode: CatalogPointContentFormValues["principle_mode"]): string {
+  return mode === "equation" ? "化学方程式" : "文字描述";
+}
+
 function CatalogEquationCodeEditor({
   value = "",
   onChange,
@@ -235,6 +239,9 @@ export function CatalogNodeContentPanel({
 }) {
   const { node } = detail;
   const equationText = Form.useWatch("reaction_equations_text", pointForm) || "";
+  const principleText = Form.useWatch("principle_text", pointForm) || "";
+  const watchedPrincipleMode = Form.useWatch("principle_mode", pointForm) || principleMode || "text";
+  const activePrincipleMode = watchedPrincipleMode as CatalogPointContentFormValues["principle_mode"];
   const [equationPreview, setEquationPreview] = useState<CatalogEquationPreviewResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState("");
@@ -338,7 +345,7 @@ export function CatalogNodeContentPanel({
   };
 
   useEffect(() => {
-    if (principleMode !== "equation") return;
+    if (activePrincipleMode !== "equation") return;
     const seq = previewSeq.current + 1;
     previewSeq.current = seq;
     const textValue = equationText.trim();
@@ -352,7 +359,7 @@ export function CatalogNodeContentPanel({
       void requestPreview(textValue, seq);
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [equationText, principleMode]);
+  }, [equationText, activePrincipleMode]);
 
   useEffect(() => {
     setAssistMessage("");
@@ -372,6 +379,49 @@ export function CatalogNodeContentPanel({
     const current = equationText.trim();
     pointForm.setFieldValue("reaction_equations_text", [current, replacement].filter(Boolean).join("\n"));
     scheduleAutoSave();
+  };
+
+  const clearEquationFeedback = () => {
+    previewSeq.current += 1;
+    setEquationPreview(null);
+    setPreviewLoading(false);
+    setPreviewError("");
+    setAssistMessage("");
+    setAssistDrafts([]);
+  };
+
+  const commitPrincipleModeSwitch = (nextMode: CatalogPointContentFormValues["principle_mode"]) => {
+    const nextValues: Partial<CatalogPointContentFormValues> = { principle_mode: nextMode };
+    if (activePrincipleMode === "equation") {
+      nextValues.reaction_equations_text = "";
+      nextValues.reaction_equations = [];
+      nextValues.principle_equation = "";
+      clearEquationFeedback();
+    } else {
+      nextValues.principle_text = "";
+    }
+    pointForm.setFieldsValue(nextValues);
+    scheduleAutoSave();
+  };
+
+  const handlePrincipleModeChange = (event: { target: { value?: unknown } }) => {
+    const nextMode = event.target.value as CatalogPointContentFormValues["principle_mode"];
+    if (nextMode !== "equation" && nextMode !== "text") return;
+    if (nextMode === activePrincipleMode) return;
+    const currentContent = activePrincipleMode === "equation" ? equationText : principleText;
+    if (!currentContent.trim()) {
+      commitPrincipleModeSwitch(nextMode);
+      return;
+    }
+    Modal.confirm({
+      title: "切换实验原理形式？",
+      content: `当前${principleModeLabel(activePrincipleMode)}内容不会继续保存。确认切换为${principleModeLabel(nextMode)}后，系统会清空当前${principleModeLabel(activePrincipleMode)}内容并自动保存。`,
+      okText: "确认切换",
+      cancelText: "放弃切换",
+      okButtonProps: { danger: true },
+      centered: true,
+      onOk: () => commitPrincipleModeSwitch(nextMode),
+    });
   };
 
   const runEquationAssist = async () => {
@@ -398,7 +448,7 @@ export function CatalogNodeContentPanel({
 
   if (node.node_kind === "directory") {
     return (
-      <section className="catalog-editor-section catalog-editor-panel-section">
+      <section className="catalog-editor-section catalog-editor-panel-section catalog-directory-panel-section">
         <div className="catalog-panel-title-row catalog-content-title-row">
           <div>
             <Title level={4}>目录信息</Title>
@@ -417,9 +467,11 @@ export function CatalogNodeContentPanel({
           <Form.Item name="title" hidden>
             <Input type="hidden" />
           </Form.Item>
-          <Form.Item name="teacher_note" label="教学备注" extra="仅教师端可见，不进入学生端、学生搜索或题目证据链。">
-            <Input.TextArea className="catalog-teacher-note" autoSize={{ minRows: 2, maxRows: 5 }} />
-          </Form.Item>
+          <section className="catalog-content-form-section catalog-content-note-section">
+            <Form.Item name="teacher_note" label="教学备注" extra="仅教师端可见，不进入学生端、学生搜索或题目证据链。">
+              <Input.TextArea className="catalog-teacher-note" autoSize={{ minRows: 2, maxRows: 5 }} />
+            </Form.Item>
+          </section>
         </Form>
       </section>
     );
@@ -438,174 +490,201 @@ export function CatalogNodeContentPanel({
         <Form.Item name="point_title" hidden>
           <Input type="hidden" />
         </Form.Item>
-        <Form.Item name="teacher_note" label="教学备注" extra="仅教师端可见，不进入学生端、学生搜索或题目证据链。">
-          <Input.TextArea className="catalog-teacher-note" autoSize={{ minRows: 2, maxRows: 5 }} />
+        <Form.Item name="principle_mode" hidden>
+          <Input type="hidden" />
         </Form.Item>
-        <Form.Item name="principle_mode" label="实验原理形式" rules={[{ required: true }]}>
-          <Radio.Group optionType="button" buttonStyle="solid">
-            <Radio.Button value="equation">化学方程式</Radio.Button>
-            <Radio.Button value="text">文字描述</Radio.Button>
-          </Radio.Group>
-        </Form.Item>
-        {principleMode === "equation" ? (
-          <div className="catalog-equation-natural-editor">
-            <div className="catalog-equation-inline-help">
-              <Text strong>实验反应式</Text>
-              <span>
-                直接输入或粘贴反应式，一行一个；条件、过量、酸碱环境或补充说明写在同一行的 <code>//</code> 后面。
-              </span>
-            </div>
-            <div className="catalog-equation-workbench">
-              <section className="catalog-equation-pane catalog-equation-preview-pane">
-                <div className="catalog-equation-pane-heading">
-                  <div>
-                    <Text strong>反应式预览</Text>
-                    <Text type="secondary">根据右侧输入实时渲染。</Text>
-                  </div>
-                </div>
-                {previewError ? <div className="catalog-equation-natural-feedback is-error">{previewError}</div> : null}
-                {previewLoading ? <div className="catalog-equation-natural-feedback">正在渲染预览...</div> : null}
-                {reviewModel.rows.length || reviewModel.supplementalCandidates.length ? (
-                  <div className="catalog-equation-natural-preview">
-                    <div className="catalog-equation-natural-preview-title">
-                      <Text strong>按输入渲染</Text>
-                      <Space wrap>
-                        <Text type="secondary">保存时以右侧输入为准，后端会生成 AI/检索可用的规范结构。</Text>
-                        {reviewModel.rows.some((row) => row.candidates.length) ? (
-                          <Button
-                            className="catalog-equation-apply-button"
-                            size="small"
-                            onClick={() => reviewModel.rows.forEach((row) => row.candidates[0] && applyCandidate(row.candidates[0]))}
-                          >
-                            全部采用
-                          </Button>
-                        ) : null}
-                      </Space>
-                    </div>
-                    {reviewModel.rows.map(({ equation, candidates }) => {
-                      return (
-                        <div className="catalog-equation-natural-row" key={`${equation.row_order}-${equation.raw_text}`}>
-                          <span className="catalog-equation-natural-index">{equation.row_order}</span>
-                          <div className="catalog-equation-natural-result">
-                            <div className="catalog-equation-natural-result-line">
-                              <div className="catalog-equation-natural-rendered">
-                                {equation.canonical_mhchem ? (
-                                  <AssistantMarkdownContent text={`$${equation.canonical_mhchem}$`} inline />
-                                ) : (
-                                  equation.canonical_display || equation.raw_text
-                                )}
-                                {equation.annotation_text ? (
-                                  <div className="catalog-equation-inline-note">补充说明：{equation.annotation_text}</div>
-                                ) : null}
-                              </div>
-                            </div>
-                            {candidates.length ? (
-                              <div className="catalog-equation-natural-candidates">
-                                <Text className="catalog-equation-natural-candidates-title" type="secondary">AI 建议</Text>
-                                {candidates.map((candidate) => (
-                                  <div className="catalog-equation-natural-candidate" key={candidate.key}>
-                                    <div className="catalog-equation-natural-candidate-main">
-                                      <Tag color={candidate.sources.includes("ai") ? "green" : "blue"}>{candidate.sourceLabel}</Tag>
-                                      <div className="catalog-equation-natural-rendered">
-                                        {candidate.canonical_mhchem ? (
-                                          <AssistantMarkdownContent text={`$${candidate.canonical_mhchem}$`} inline />
-                                        ) : (
-                                          candidate.canonical_display
-                                        )}
-                                        {candidate.annotation_text ? (
-                                          <div className="catalog-equation-inline-note">补充说明：{candidate.annotation_text}</div>
-                                        ) : null}
-                                      </div>
-                                      <Button className="catalog-equation-apply-button" size="small" onClick={() => applyCandidate(candidate)}>
-                                        采用
-                                      </Button>
-                                    </div>
-                                    {candidate.rationale ? (
-                                      <details className="catalog-equation-natural-details">
-                                        <summary>查看 AI 分析</summary>
-                                        <Text type="secondary">{candidate.rationale}</Text>
-                                      </details>
-                                    ) : null}
-                                  </div>
-                                ))}
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {reviewModel.supplementalCandidates.length ? (
-                      <div className="catalog-equation-natural-supplemental">
-                        <Text strong>AI 补充建议</Text>
-                        {reviewModel.supplementalCandidates.map((candidate) => (
-                          <div className="catalog-equation-natural-candidate" key={candidate.key}>
-                            <div className="catalog-equation-natural-candidate-main">
-                              <Tag color="green">{candidate.sourceLabel}</Tag>
-                              <div className="catalog-equation-natural-rendered">
-                                {candidate.canonical_mhchem ? <AssistantMarkdownContent text={`$${candidate.canonical_mhchem}$`} inline /> : candidate.canonical_display}
-                                {candidate.annotation_text ? (
-                                  <div className="catalog-equation-inline-note">补充说明：{candidate.annotation_text}</div>
-                                ) : null}
-                              </div>
-                              <Button className="catalog-equation-apply-button" size="small" onClick={() => applyCandidate(candidate)}>
-                                采用
-                              </Button>
-                            </div>
-                            {candidate.rationale ? (
-                              <details className="catalog-equation-natural-details">
-                                <summary>查看 AI 分析</summary>
-                                <Text type="secondary">{candidate.rationale}</Text>
-                              </details>
-                            ) : null}
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
+        <section className="catalog-content-form-section catalog-content-note-section">
+          <Form.Item name="teacher_note" label="教学备注" extra="仅教师端可见，不进入学生端、学生搜索或题目证据链。">
+            <Input.TextArea className="catalog-teacher-note" autoSize={{ minRows: 2, maxRows: 5 }} />
+          </Form.Item>
+        </section>
+        <section className="catalog-content-form-section catalog-content-principle-section">
+          <div className="catalog-content-section-heading">
+            <div className="catalog-content-section-copy">
+              <Text strong>实验原理</Text>
+              <Text type="secondary">
+                {activePrincipleMode === "equation" ? (
+                  <>
+                    直接输入或粘贴反应式，一行一个；条件、过量、酸碱环境或补充说明写在同一行的 <code>//</code> 后面。
+                  </>
                 ) : (
-                  <div className="catalog-equation-natural-empty">
-                    <Text strong>{hasEquationInput ? "等待预览" : "还没有预览"}</Text>
-                    <Text type="secondary">
-                      {hasEquationInput ? "输入稳定后会自动刷新左侧渲染。" : "右侧输入反应式后，这里会显示规范化渲染。"}
-                    </Text>
-                  </div>
+                  "用文字说明实验原理。"
                 )}
-                {assistMessage ? <div className="catalog-equation-natural-feedback">{assistMessage}</div> : null}
-              </section>
-              <section className="catalog-equation-pane catalog-equation-input-pane">
-                <div className="catalog-equation-pane-heading">
-                  <div>
-                    <Text strong>输入反应式</Text>
-                    <Text type="secondary">像代码编辑器一样按行维护；每一行对应左侧一个预览序号。</Text>
-                  </div>
-                </div>
-                <Form.Item name="reaction_equations_text" rules={[{ required: true, message: "请输入实验反应式，或切换为文字描述" }]}>
-                  <CatalogEquationCodeEditor placeholder={"例如：CL2+H2=HCL\nCl2 + 2KBr -> 2KCl + Br2\n氯气 + 氢气 = 氯化氢"} />
-                </Form.Item>
-                <div className="catalog-equation-natural-actions">
-                  <div className="catalog-equation-natural-action-copy">
-                    <Text type="secondary">默认采用右侧输入；需要进一步校对或补全时，再让 AI 基于当前内容给建议。</Text>
-                  </div>
-                  <Space wrap>
-                    <Button type="primary" icon={<RobotOutlined />} loading={assistLoading} onClick={() => void runEquationAssist()}>
-                      {hasEquationInput ? "AI 校对" : "AI 根据点位建议"}
-                    </Button>
-                  </Space>
-                </div>
-              </section>
+              </Text>
+            </div>
+            <div className="catalog-content-section-actions">
+              <Radio.Group
+                optionType="button"
+                buttonStyle="solid"
+                aria-label="实验原理形式"
+                value={activePrincipleMode}
+                onChange={handlePrincipleModeChange}
+              >
+                <Radio.Button value="equation">化学方程式</Radio.Button>
+                <Radio.Button value="text">文字描述</Radio.Button>
+              </Radio.Group>
+              {activePrincipleMode === "equation" ? (
+                <Button type="primary" icon={<RobotOutlined />} loading={assistLoading} onClick={() => void runEquationAssist()}>
+                  {hasEquationInput ? "AI 校对" : "AI 根据点位建议"}
+                </Button>
+              ) : null}
             </div>
           </div>
-        ) : (
-          <Form.Item name="principle_text" label="文字原理" rules={[{ required: true, message: "请输入文字原理" }]}>
-            <Input.TextArea autoSize={{ minRows: 3, maxRows: 7 }} />
-          </Form.Item>
-        )}
-        <Form.Item name="phenomenon_explanation" label="现象解释" rules={[{ required: true, message: "请输入现象解释" }]}>
-          <Input.TextArea autoSize={{ minRows: 3, maxRows: 7 }} />
-        </Form.Item>
-        <Form.Item name="safety_note" label="安全提示" rules={[{ required: true, message: "请输入安全提示" }]}>
-          <Input.TextArea autoSize={{ minRows: 2, maxRows: 5 }} />
-        </Form.Item>
+          {activePrincipleMode === "equation" ? (
+            <div className="catalog-equation-natural-editor">
+              <div className="catalog-equation-workbench">
+                <section className="catalog-equation-pane catalog-equation-input-pane">
+                  <div className="catalog-equation-pane-heading">
+                    <div>
+                      <Text strong>输入反应式</Text>
+                      <Text type="secondary">按行维护；每一行对应右侧一个预览序号。</Text>
+                    </div>
+                  </div>
+                  <Form.Item name="reaction_equations_text" rules={[{ required: true, message: "请输入实验反应式，或切换为文字描述" }]}>
+                    <CatalogEquationCodeEditor placeholder={"例如：CL2+H2=HCL\nCl2 + 2KBr -> 2KCl + Br2\n氯气 + 氢气 = 氯化氢"} />
+                  </Form.Item>
+                </section>
+                <section className="catalog-equation-pane catalog-equation-preview-pane">
+                  <div className="catalog-equation-pane-heading">
+                    <div>
+                      <Text strong>反应式预览</Text>
+                      <Text type="secondary">保存时以输入为准，后端生成 AI/检索可用的规范结构。</Text>
+                    </div>
+                  </div>
+                  {previewError ? <div className="catalog-equation-natural-feedback is-error">{previewError}</div> : null}
+                  {previewLoading ? <div className="catalog-equation-natural-feedback">正在渲染预览...</div> : null}
+                  {reviewModel.rows.length || reviewModel.supplementalCandidates.length ? (
+                    <div className="catalog-equation-natural-preview">
+                      <div className="catalog-equation-natural-preview-title">
+                        <Text strong>按输入渲染</Text>
+                        <Space wrap>
+                          {reviewModel.rows.some((row) => row.candidates.length) ? (
+                            <Button
+                              className="catalog-equation-apply-button"
+                              size="small"
+                              onClick={() => reviewModel.rows.forEach((row) => row.candidates[0] && applyCandidate(row.candidates[0]))}
+                            >
+                              全部采用
+                            </Button>
+                          ) : null}
+                        </Space>
+                      </div>
+                      <div className="catalog-equation-preview-scroll">
+                        {reviewModel.rows.map(({ equation, candidates }) => {
+                          return (
+                            <div className="catalog-equation-natural-row" key={`${equation.row_order}-${equation.raw_text}`}>
+                              <span className="catalog-equation-natural-index">{equation.row_order}</span>
+                              <div className="catalog-equation-natural-result">
+                                <div className="catalog-equation-natural-result-line">
+                                  <div className="catalog-equation-natural-rendered">
+                                    {equation.canonical_mhchem ? (
+                                      <AssistantMarkdownContent text={`$${equation.canonical_mhchem}$`} inline />
+                                    ) : (
+                                      equation.canonical_display || equation.raw_text
+                                    )}
+                                    {equation.annotation_text ? (
+                                      <div className="catalog-equation-inline-note">补充说明：{equation.annotation_text}</div>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                {candidates.length ? (
+                                  <div className="catalog-equation-natural-candidates">
+                                    <Text className="catalog-equation-natural-candidates-title" type="secondary">AI 建议</Text>
+                                    {candidates.map((candidate) => (
+                                      <div className="catalog-equation-natural-candidate" key={candidate.key}>
+                                        <div className="catalog-equation-natural-candidate-main">
+                                          <Tag color={candidate.sources.includes("ai") ? "green" : "blue"}>{candidate.sourceLabel}</Tag>
+                                          <div className="catalog-equation-natural-rendered">
+                                            {candidate.canonical_mhchem ? (
+                                              <AssistantMarkdownContent text={`$${candidate.canonical_mhchem}$`} inline />
+                                            ) : (
+                                              candidate.canonical_display
+                                            )}
+                                            {candidate.annotation_text ? (
+                                              <div className="catalog-equation-inline-note">补充说明：{candidate.annotation_text}</div>
+                                            ) : null}
+                                          </div>
+                                          <Button className="catalog-equation-apply-button" size="small" onClick={() => applyCandidate(candidate)}>
+                                            采用
+                                          </Button>
+                                        </div>
+                                        {candidate.rationale ? (
+                                          <details className="catalog-equation-natural-details">
+                                            <summary>查看 AI 分析</summary>
+                                            <Text type="secondary">{candidate.rationale}</Text>
+                                          </details>
+                                        ) : null}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {reviewModel.supplementalCandidates.length ? (
+                          <div className="catalog-equation-natural-supplemental">
+                            <Text strong>AI 补充建议</Text>
+                            {reviewModel.supplementalCandidates.map((candidate) => (
+                              <div className="catalog-equation-natural-candidate" key={candidate.key}>
+                                <div className="catalog-equation-natural-candidate-main">
+                                  <Tag color="green">{candidate.sourceLabel}</Tag>
+                                  <div className="catalog-equation-natural-rendered">
+                                    {candidate.canonical_mhchem ? <AssistantMarkdownContent text={`$${candidate.canonical_mhchem}$`} inline /> : candidate.canonical_display}
+                                    {candidate.annotation_text ? (
+                                      <div className="catalog-equation-inline-note">补充说明：{candidate.annotation_text}</div>
+                                    ) : null}
+                                  </div>
+                                  <Button className="catalog-equation-apply-button" size="small" onClick={() => applyCandidate(candidate)}>
+                                    采用
+                                  </Button>
+                                </div>
+                                {candidate.rationale ? (
+                                  <details className="catalog-equation-natural-details">
+                                    <summary>查看 AI 分析</summary>
+                                    <Text type="secondary">{candidate.rationale}</Text>
+                                  </details>
+                                ) : null}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="catalog-equation-natural-empty">
+                      <Text strong>{hasEquationInput ? "等待预览" : "还没有预览"}</Text>
+                      <Text type="secondary">
+                        {hasEquationInput ? "输入稳定后会自动刷新预览。" : "输入反应式后，这里会显示规范化渲染。"}
+                      </Text>
+                    </div>
+                  )}
+                  {assistMessage ? <div className="catalog-equation-natural-feedback">{assistMessage}</div> : null}
+                </section>
+              </div>
+            </div>
+          ) : (
+            <Form.Item name="principle_text" label="文字原理" rules={[{ required: true, message: "请输入文字原理" }]}>
+              <Input.TextArea autoSize={{ minRows: 4, maxRows: 9 }} />
+            </Form.Item>
+          )}
+        </section>
+        <section className="catalog-content-form-section catalog-student-facing-section">
+          <div className="catalog-content-section-heading">
+            <div className="catalog-content-section-copy">
+              <Text strong>学生可见内容</Text>
+              <Text type="secondary">用于学生端学习卡片、搜索和题目证据链。</Text>
+            </div>
+          </div>
+          <div className="catalog-student-facing-grid">
+            <Form.Item name="phenomenon_explanation" label="现象解释" rules={[{ required: true, message: "请输入现象解释" }]}>
+              <Input.TextArea autoSize={{ minRows: 4, maxRows: 9 }} />
+            </Form.Item>
+            <Form.Item name="safety_note" label="安全提示" rules={[{ required: true, message: "请输入安全提示" }]}>
+              <Input.TextArea autoSize={{ minRows: 4, maxRows: 9 }} />
+            </Form.Item>
+          </div>
+        </section>
       </Form>
     </section>
   );

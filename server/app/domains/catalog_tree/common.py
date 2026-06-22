@@ -120,23 +120,27 @@ def node_select(where_clause: str) -> str:
                OR pc.node_id = n.id
           ) AS has_point_content,
           (
-            SELECT COUNT(*)
-            FROM experiment_catalog_point_media_bindings mb
-            JOIN media_assets ma ON ma.id = mb.media_asset_id
-            WHERE ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
-                OR mb.node_id = n.id)
-              AND mb.binding_status <> 'archived'
-              AND COALESCE(ma.lifecycle_status, 'active') = 'active'
+            SELECT CASE WHEN EXISTS (
+              SELECT 1
+              FROM experiment_catalog_point_media_bindings mb
+              JOIN media_assets ma ON ma.id = mb.media_asset_id
+              WHERE ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
+                  OR mb.node_id = n.id)
+                AND mb.binding_status <> 'archived'
+                AND COALESCE(ma.lifecycle_status, 'active') = 'active'
+            ) THEN 1 ELSE 0 END
           ) AS media_count,
           (
-            SELECT COUNT(*)
-            FROM experiment_catalog_point_media_bindings mb
-            JOIN media_assets ma ON ma.id = mb.media_asset_id
-            WHERE ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
-                OR mb.node_id = n.id)
-              AND mb.binding_status <> 'archived'
-              AND ma.upload_status = 'ready'
-              AND COALESCE(ma.lifecycle_status, 'active') = 'active'
+            SELECT CASE WHEN EXISTS (
+              SELECT 1
+              FROM experiment_catalog_point_media_bindings mb
+              JOIN media_assets ma ON ma.id = mb.media_asset_id
+              WHERE ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
+                  OR mb.node_id = n.id)
+                AND mb.binding_status <> 'archived'
+                AND ma.upload_status = 'ready'
+                AND COALESCE(ma.lifecycle_status, 'active') = 'active'
+            ) THEN 1 ELSE 0 END
           ) AS published_media_count,
           CASE
             WHEN n.node_kind = 'point' AND n.canonical_point_id IS NOT NULL THEN (
@@ -710,19 +714,6 @@ def catalog_node_status_summary(
                 action=None,
             )
         )
-    if int(node.get("media_count") or 0) > 1:
-        conditions.append(
-            _status_condition(
-                "legacy_multiple_video_bindings",
-                group="advanced",
-                severity="info",
-                status_value="multiple_bindings",
-                reason="存在多个历史视频绑定",
-                message="教师状态仍按有视频/无视频判断；多个绑定只作为高级诊断保留。",
-                action="在视频面板清理历史绑定",
-            )
-        )
-
     if placement_state == "archived" or shared_content_state == "archived":
         primary_state = "archived"
         primary_reason = "点位已归档"
@@ -784,6 +775,8 @@ def node_card(
     summary = clean(node.get("summary"))
     if kind == "point" and not summary:
         summary = derived_point_summary(node, content)
+    media_count = 1 if int(node.get("media_count") or 0) > 0 else 0
+    published_media_count = 1 if int(node.get("published_media_count") or 0) > 0 else 0
     card = {
         "node_id": node["node_id"],
         "chapter_id": node["chapter_id"],
@@ -801,8 +794,8 @@ def node_card(
         "has_children": bool(node.get("has_children")),
         "descendant_point_count": int(node.get("descendant_point_count") or 0) if kind == "directory" else 0,
         "has_point_content": bool(node.get("has_point_content")),
-        "media_count": int(node.get("media_count") or 0),
-        "published_media_count": int(node.get("published_media_count") or 0),
+        "media_count": media_count,
+        "published_media_count": published_media_count,
         "active_placement_count": int(node.get("active_placement_count") or 0) if kind == "point" else 0,
         "validation": active_validation,
         "node_status": catalog_node_status_summary(node, content=content, validation=active_validation, job_state=job_state),

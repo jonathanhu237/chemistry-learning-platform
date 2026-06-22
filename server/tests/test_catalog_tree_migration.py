@@ -11,6 +11,7 @@ POINT_PLACEMENTS_MIGRATION = Path("server/migrations/025_catalog_point_placement
 DROP_STUDENT_CARD_FIELDS_MIGRATION = Path("server/migrations/026_drop_catalog_student_card_fields.sql")
 DROP_RELATED_LINK_LABELS_MIGRATION = Path("server/migrations/027_drop_related_link_labels.sql")
 SIMPLIFY_VIDEO_BINDING_MIGRATION = Path("server/migrations/028_simplify_catalog_video_binding.sql")
+ENFORCE_SINGLE_VIDEO_BINDING_MIGRATION = Path("server/migrations/030_enforce_single_catalog_point_video_binding.sql")
 
 
 def _sql() -> str:
@@ -43,6 +44,10 @@ def _drop_related_link_labels_sql() -> str:
 
 def _simplify_video_binding_sql() -> str:
     return SIMPLIFY_VIDEO_BINDING_MIGRATION.read_text(encoding="utf-8")
+
+
+def _enforce_single_video_binding_sql() -> str:
+    return ENFORCE_SINGLE_VIDEO_BINDING_MIGRATION.read_text(encoding="utf-8")
 
 
 def test_catalog_tree_migration_uses_deterministic_legacy_identity_mapping() -> None:
@@ -137,6 +142,19 @@ def test_simplify_video_binding_migration_keeps_one_active_video_per_point() -> 
     assert "idx_catalog_point_media_one_active_canonical" in sql
     assert "WHERE canonical_point_id IS NOT NULL" in sql
     assert "binding_status <> 'archived'" in sql
+    assert "idx_catalog_point_media_one_active_node_without_canonical" in sql
+
+
+def test_enforce_single_video_binding_migration_hard_deletes_duplicate_active_rows() -> None:
+    sql = _enforce_single_video_binding_sql()
+
+    assert "one video point has one current video resource" in sql
+    assert "row_number() OVER" in sql
+    assert "PARTITION BY COALESCE(mb.canonical_point_id, mb.node_id)" in sql
+    assert "DELETE FROM experiment_catalog_point_media_bindings" in sql
+    assert "ranked.keep_rank > 1" in sql
+    assert "'030_enforce_single_catalog_point_video_binding'" in sql
+    assert "idx_catalog_point_media_one_active_canonical" in sql
     assert "idx_catalog_point_media_one_active_node_without_canonical" in sql
 
 

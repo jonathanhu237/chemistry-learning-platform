@@ -198,10 +198,10 @@ The student experiment-video search SHALL treat the index as a published point l
 #### Scenario: Point has a playable video
 - **WHEN** a published point has an active ready video binding
 - **THEN** the search document MAY include `has_video` and `video_count`
+- **AND** `video_count` MUST be either `0` or `1`, because a video point has at most one current video resource
 - **AND** those fields MUST be treated only as point readiness/filter signals, not as video semantic content.
 
 #### Scenario: Search hit is rendered
 - **WHEN** a student search result is rendered
 - **THEN** the result MUST use point title, point snippet, catalog path, and route target from point data
 - **AND** it MUST NOT display or depend on video resource title, media asset id, thumbnail path, stream path, or original file name from ES.
-

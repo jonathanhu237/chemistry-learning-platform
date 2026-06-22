@@ -28,6 +28,7 @@ from server.app.domains.catalog_tree.jobs import catalog_point_job_state, trigge
 from server.app.domains.catalog_tree.preview import PreviewTeacherIdentity, create_catalog_point_preview_token
 from server.app.domains.catalog_tree.tree import (
     bind_existing_media,
+    chapter_tree_summary,
     copy_node,
     create_node,
     get_node_detail,
@@ -57,6 +58,14 @@ async def admin_catalog_chapter_roots(
     user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     return list_chapter_roots(chapter_id=chapter_id, include_archived=include_archived)
+
+
+@router.get("/chapters/{chapter_id}/summary")
+async def admin_catalog_chapter_summary(
+    chapter_id: str = Path(min_length=1),
+    user: AuthUser = Depends(require_teacher_console_user),
+) -> dict[str, Any]:
+    return chapter_tree_summary(chapter_id=chapter_id)
 
 
 @router.get("/nodes/{node_id}/children")

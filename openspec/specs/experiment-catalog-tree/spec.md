@@ -79,6 +79,19 @@ The system SHALL model experiment learning structure as a chapter-scoped recursi
 - **THEN** the system MUST keep the directory editable for teachers
 - **AND** the student API MUST either hide it or render an intentional empty state according to publication settings.
 
+#### Scenario: Teacher opens a chapter workbench
+- **WHEN** the teacher workbench loads a chapter catalog tree
+- **THEN** the admin API MUST expose chapter-level counts for active directory nodes, point nodes, playable video points, missing-video points, and actionable point nodes
+- **AND** it MUST expose point status buckets for `blocked`, `needs_content`, `needs_video`, `ready`, `draft`, `published`, and `sync_attention`
+- **AND** the teacher UI MUST present those counts near the tree controls instead of requiring teachers to infer them from expanded rows.
+
+#### Scenario: Teacher filters or searches the tree
+- **WHEN** a teacher uses the chapter tree status controls
+- **THEN** the UI MUST offer filters covering all primary point states: all, actionable, blocked, needs content, needs video, ready/draft, published, and sync attention
+- **AND** each filter MUST show its chapter-level point count when the summary is available.
+- **WHEN** a teacher enters at least two characters in the tree search field
+- **THEN** the search MUST run against the current chapter's catalog node title, summary, teacher note, point learning content, and legacy experiment identity fields.
+
 ### Requirement: Stable point node identity
 The system SHALL use stable catalog point node identity as the authoritative identity for point learning content.
 
@@ -455,7 +468,7 @@ The catalog tree service SHALL model a point's experiment video as at most one a
 #### Scenario: Teacher binds a video to a point
 - **WHEN** a teacher binds an eligible media asset to a catalog point
 - **THEN** the service MUST make that media asset the only active non-archived video binding for the point's canonical point identity
-- **AND** any previous active video bindings for that canonical point MUST be archived or otherwise made inactive in the same transaction.
+- **AND** any previous active video binding for that canonical point MUST be replaced in the same transaction.
 
 #### Scenario: Teacher replaces a point video
 - **WHEN** a teacher selects a different media asset for a point that already has an active video binding
@@ -467,10 +480,10 @@ The catalog tree service SHALL model a point's experiment video as at most one a
 - **THEN** the service MUST keep a single active binding
 - **AND** it MUST update safe binding metadata without creating duplicate active rows.
 
-#### Scenario: Existing data contains multiple active bindings
-- **WHEN** the migration for this change runs on data with multiple non-archived video bindings for one canonical point
+#### Scenario: Existing data contains duplicate active binding rows
+- **WHEN** the migration for this change runs on data with duplicate non-archived video binding rows for one canonical point
 - **THEN** the migration MUST keep one deterministic active binding per canonical point
-- **AND** it MUST archive all other active bindings for that canonical point.
+- **AND** it MUST hard-delete all other active bindings for that canonical point.
 
 ### Requirement: Catalog point video binding has no teacher-facing publish state
 The catalog tree service SHALL stop treating point video bindings as independently published authoring objects.

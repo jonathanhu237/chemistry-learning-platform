@@ -424,6 +424,19 @@ export type CatalogChildrenResponse = {
   children: CatalogNodeCard[];
 };
 
+export type CatalogChapterTreeSummary = {
+  chapter_id: string;
+  node_count: number;
+  directory_count: number;
+  point_count: number;
+  video_binding_count: number;
+  playable_video_count: number;
+  missing_video_count: number;
+  actionable_point_count: number;
+  point_status_counts: Record<string, number>;
+  directory_status_counts: Record<string, number>;
+};
+
 export type CatalogSearchResponse = {
   query: string;
   items: CatalogNodeCard[];
@@ -497,6 +510,10 @@ export function listCatalogRoots(chapterId: string, includeArchived = false): Pr
 export function listCatalogChildren(nodeId: string, includeArchived = false): Promise<CatalogChildrenResponse> {
   const suffix = includeArchived ? "?include_archived=true" : "";
   return api<CatalogChildrenResponse>(`/api/admin/catalog/nodes/${encodeURIComponent(nodeId)}/children${suffix}`);
+}
+
+export function getCatalogChapterTreeSummary(chapterId: string): Promise<CatalogChapterTreeSummary> {
+  return api<CatalogChapterTreeSummary>(`/api/admin/catalog/chapters/${encodeURIComponent(chapterId)}/summary`);
 }
 
 export function getCatalogNode(nodeId: string): Promise<CatalogNodeDetail> {

@@ -16,7 +16,7 @@ function nodeIcon(node: StudentCatalogNodeCard) {
 }
 
 function nodeMeta(node: StudentCatalogNodeCard): string {
-  if (node.node_kind === "point") return `${node.published_media_count || node.media_count} 个视频`;
+  if (node.node_kind === "point") return (node.published_media_count || node.media_count) > 0 ? "有视频" : "暂无视频";
   return node.has_children ? "继续学习" : "待发布内容";
 }
 

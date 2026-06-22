@@ -998,3 +998,68 @@ def search_catalog_nodes(*, query: str, chapter_id: str | None = None, limit: in
             .all()
         )
     return {"query": query, "items": [node_card(row_dict(row), include_teacher_note=True) for row in rows]}
+
+
+def chapter_tree_summary(*, chapter_id: str) -> dict[str, Any]:
+    status_keys = ("blocked", "needs_content", "needs_video", "ready", "draft", "published", "sync_attention", "archived")
+    point_status_counts = dict.fromkeys(status_keys, 0)
+    directory_status_counts = dict.fromkeys(status_keys, 0)
+    with db_session() as session:
+        rows = (
+            session.execute(
+                text(
+                    node_select(
+                        """
+                        WHERE n.chapter_id = :chapter_id
+                          AND n.status <> 'archived'
+                        ORDER BY n.parent_id NULLS FIRST, n.display_order, n.id
+                        """
+                    )
+                ),
+                {"chapter_id": chapter_id},
+            )
+            .mappings()
+            .all()
+        )
+
+    cards = [node_card(row_dict(row)) for row in rows]
+    directory_count = 0
+    point_count = 0
+    video_binding_count = 0
+    playable_video_count = 0
+    for card in cards:
+        status_summary = card.get("node_status") if isinstance(card.get("node_status"), dict) else {}
+        primary_state = clean(status_summary.get("primary_state")) or clean(card.get("status")) or "draft"
+        if primary_state not in point_status_counts:
+            primary_state = "draft"
+        if card.get("node_kind") == "directory":
+            directory_count += 1
+            directory_status_counts[primary_state] += 1
+            continue
+        point_count += 1
+        point_status_counts[primary_state] += 1
+        if int(card.get("media_count") or 0) > 0:
+            video_binding_count += 1
+        if int(card.get("published_media_count") or 0) > 0:
+            playable_video_count += 1
+
+    actionable_point_count = (
+        point_status_counts["blocked"]
+        + point_status_counts["needs_content"]
+        + point_status_counts["needs_video"]
+        + point_status_counts["ready"]
+        + point_status_counts["draft"]
+        + point_status_counts["sync_attention"]
+    )
+    return {
+        "chapter_id": chapter_id,
+        "node_count": len(cards),
+        "directory_count": directory_count,
+        "point_count": point_count,
+        "video_binding_count": video_binding_count,
+        "playable_video_count": playable_video_count,
+        "missing_video_count": max(point_count - playable_video_count, 0),
+        "actionable_point_count": actionable_point_count,
+        "point_status_counts": point_status_counts,
+        "directory_status_counts": directory_status_counts,
+    }

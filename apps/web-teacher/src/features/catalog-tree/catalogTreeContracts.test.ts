@@ -91,6 +91,20 @@ describe("catalog tree UI contracts", () => {
     expect(editorSource).toContain('className="catalog-editor-direct-panel"');
   });
 
+  it("shows chapter tree summary and counted status filters in the sidebar", () => {
+    expect(catalogTreeApiSource).toContain("CatalogChapterTreeSummary");
+    expect(catalogTreeApiSource).toContain("/summary");
+    expect(workspaceSource).toContain("useCatalogChapterTreeSummary");
+    expect(workspaceSource).toContain("CatalogTreeOverview");
+    expect(workspaceSource).toContain("CatalogStatusFilterBar");
+    expect(workspaceSource).toContain("catalogStatusFilterCount");
+    expect(workspaceSource).toContain("搜标题、学习内容、教学备注、旧实验 ID");
+    expect(workspaceSource).toContain('aria-label="章节资源统计"');
+    expect(workspaceSource).toContain('aria-label="点位状态筛选"');
+    expect(workspaceSource).toContain("待发布");
+    expect(workspaceSource).not.toContain("未发布");
+  });
+
   it("resets tree open and loaded state at chapter boundaries and workspace resets", () => {
     expect(treeSource).toContain("previousTreeScopeKeyRef");
     expect(treeSource).toContain("previousResetVersionRef");
@@ -117,7 +131,15 @@ describe("catalog tree UI contracts", () => {
   it("uses a Chinese natural multiline equation authoring workflow", () => {
     expect(contentPanelSource).toContain('name="reaction_equations_text"');
     expect(contentPanelSource).toContain("buildEquationReviewModel");
-    expect(contentPanelSource).toContain("catalog-equation-natural-actions");
+    expect(contentPanelSource).toContain("catalog-content-form-section");
+    expect(contentPanelSource).toContain("catalog-content-section-actions");
+    expect(contentPanelSource).toContain("catalog-equation-preview-scroll");
+    expect(contentPanelSource).toContain("catalog-student-facing-grid");
+    expect(contentPanelSource).toContain("handlePrincipleModeChange");
+    expect(contentPanelSource).toContain("Modal.confirm");
+    expect(contentPanelSource).toContain("确认切换");
+    expect(contentPanelSource).toContain("放弃切换");
+    expect(contentPanelSource).toContain("okButtonProps: { danger: true }");
     expect(contentPanelSource).toContain("catalog-equation-natural-candidate");
     expect(contentPanelSource).toContain("catalog-equation-natural-supplemental");
     expect(contentPanelSource).toContain("catalog-equation-natural-empty");

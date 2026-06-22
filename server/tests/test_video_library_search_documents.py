@@ -40,7 +40,7 @@ def test_directory_category_text_matches_descendant_point_without_directory_docu
                     }
                 ],
                 "related_links": [],
-                "video_count": 1,
+                "video_count": 3,
                 "videos": [
                     {
                         "media_id": "media-1",

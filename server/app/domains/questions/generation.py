@@ -89,7 +89,7 @@ def _local_generated_questions(
                 {
                     **common,
                     "question_type": "true_false",
-                    "stem": f"{title}应作为一个具体实验点管理，并可在该实验下绑定多个视频资源。",
+                    "stem": f"{title}应作为一个具体视频点位管理，并唯一对应一个视频资源。",
                     "options": [],
                     "answer": {"value": True},
                     "explanation": "正式目录以具体实验点为后台实验主实体，教师发布前仍需核验表述。",

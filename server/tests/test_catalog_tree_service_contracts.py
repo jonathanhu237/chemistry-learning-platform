@@ -125,6 +125,46 @@ def test_catalog_node_card_exposes_recursive_point_count_contract() -> None:
     assert node_card(point_row)["descendant_point_count"] == 0
 
 
+def test_catalog_node_card_exposes_point_video_readiness_as_binary() -> None:
+    point_row = row_dict(
+        {
+            "node_id": "cat-point-1",
+            "chapter_id": "CH1",
+            "parent_id": "cat-dir-1",
+            "node_kind": "point",
+            "title": "Chlorine water reaction",
+            "summary": "",
+            "status": "published",
+            "display_order": 1,
+            "has_children": False,
+            "has_point_content": True,
+            "media_count": "3",
+            "published_media_count": "2",
+        }
+    )
+
+    card = node_card(point_row)
+
+    assert card["media_count"] == 1
+    assert card["published_media_count"] == 1
+
+
+def test_chapter_tree_summary_counts_statuses_and_video_readiness() -> None:
+    nodes_source = (CATALOG_DIR / "nodes.py").read_text(encoding="utf-8")
+    facade_source = (CATALOG_DIR / "tree.py").read_text(encoding="utf-8")
+    router_source = (SERVER_DIR / "app" / "api" / "admin" / "admin_catalog_tree.py").read_text(encoding="utf-8")
+
+    assert "def chapter_tree_summary" in nodes_source
+    assert '"point_status_counts"' in nodes_source
+    assert '"directory_status_counts"' in nodes_source
+    assert '"video_binding_count"' in nodes_source
+    assert '"playable_video_count"' in nodes_source
+    assert '"missing_video_count"' in nodes_source
+    assert '"actionable_point_count"' in nodes_source
+    assert "chapter_tree_summary" in facade_source
+    assert '"/chapters/{chapter_id}/summary"' in router_source
+
+
 def test_catalog_node_select_counts_non_archived_descendant_points_recursively() -> None:
     query = node_select("WHERE n.id = :node_id")
 
@@ -388,6 +428,9 @@ def test_video_library_search_contract_is_point_only_with_directory_category_tex
     assert "WITH selected_binding AS" in media_bindings_source
     assert '"binding_status": "published"' in media_bindings_source
     assert "'replaced_by_catalog_point_video_binding'" in media_bindings_source
+    assert "legacy_multiple_video_bindings" not in common_source
+    assert "SELECT EXISTS" in media_bindings_source
+    assert '"video_count": 1 if has_video else 0' in media_bindings_source
     assert "display_order = 1" in media_bindings_source
     assert "published_at = COALESCE(published_at, now())" in media_bindings_source
     assert "if action == \"delete\"" in media_bindings_source
@@ -395,7 +438,8 @@ def test_video_library_search_contract_is_point_only_with_directory_category_tex
     assert "if action == \"unpublish\"" not in media_bindings_source
     assert "point_video_binding_changed" in media_bindings_source
     assert "def handle_media_asset_archived" in media_asset_events_source
-    assert "'media_asset_lifecycle_event_id', :lifecycle_event_id" in media_asset_events_source
+    assert "'media_asset_lifecycle_event_id'" in media_asset_events_source
+    assert "CAST(:lifecycle_event_id AS text)" in media_asset_events_source
     assert "queue_index_state" in media_asset_events_source
     assert "mark_point_evidence_stale" in media_asset_events_source
 
@@ -512,7 +556,7 @@ def test_catalog_point_placement_backend_contracts_are_explicit() -> None:
     assert "Canonical experiment point not found" in nodes_source
     assert "active_placements_for_canonical_point" in nodes_source
     assert "Archiving the final placement requires an explicit canonical archive decision" in nodes_source
-    assert "queue_subtree_point_indexes(session, node_id=node_id)" in nodes_source
+    assert "queue_subtree_point_indexes(session, node_id=node_id, soft=True)" in nodes_source
     assert 'reason="catalog_path_moved"' in nodes_source
 
     assert "canonical_point_id_for_node(session, node_id)" in points_source

@@ -169,6 +169,7 @@ Production readiness validation SHALL verify that the student video-library Elas
 #### Scenario: Video readiness signals are present
 - **WHEN** an indexed published point has an active ready video binding
 - **THEN** validation MAY accept `has_video` and `video_count`
+- **AND** `video_count` MUST be either `0` or `1`
 - **AND** those fields MUST NOT contain media labels, ids, file names, or paths.
 
 ### Requirement: Destructive ES rebuild is part of the migration gate
@@ -201,4 +202,3 @@ Production readiness governance SHALL treat media asset archive state as part of
 - **WHEN** a destructive database rebuild or migration is used to introduce media lifecycle state
 - **THEN** validation MUST document which media records, bindings, lifecycle events, and derived ES states were reset or rebuilt
 - **AND** protected seed resources, users, roles, analyzer dictionaries, and canonical retrieval corpus resources MUST remain protected.
-

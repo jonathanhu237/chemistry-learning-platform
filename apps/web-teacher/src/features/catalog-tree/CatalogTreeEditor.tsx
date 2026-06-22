@@ -225,16 +225,22 @@ export function CatalogTreeEditor({
         {formAnchors}
         <div className="catalog-editor-empty-state">
           <div className="catalog-editor-empty-mark" aria-hidden="true">
-            <Folder size={28} />
-            <FlaskConical size={20} />
+            <Folder className="catalog-editor-empty-folder" size={32} strokeWidth={1.85} />
+            <FlaskConical className="catalog-editor-empty-flask" size={22} strokeWidth={1.9} />
           </div>
           <div className="catalog-editor-empty-copy">
-            <Title level={4}>请选择左侧目录或点位</Title>
-            <Text type="secondary">目录负责组织学生导航，点位负责维护学习内容、视频绑定与节点状态。</Text>
+            <Title level={4}>从左侧选择一个节点</Title>
+            <Text type="secondary">目录组织学生导航；点位维护学习内容、视频与发布状态。</Text>
           </div>
-          <div className="catalog-editor-empty-hints" aria-hidden="true">
-            <span>目录</span>
-            <span>点位</span>
+          <div className="catalog-editor-empty-hints" aria-label="节点类型提示">
+            <span>
+              <Folder size={14} strokeWidth={1.9} aria-hidden="true" />
+              目录导航
+            </span>
+            <span>
+              <FlaskConical size={14} strokeWidth={1.9} aria-hidden="true" />
+              点位内容
+            </span>
           </div>
         </div>
       </div>

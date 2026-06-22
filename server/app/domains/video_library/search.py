@@ -236,14 +236,16 @@ def _load_published_point_rows(session: Any) -> list[dict[str, Any]]:
                     )
                   ) AS chapter_bindings,
                   (
-                    SELECT COUNT(*)
-                    FROM experiment_catalog_point_media_bindings mb
-                    JOIN media_assets ma ON ma.id = mb.media_asset_id
-                    WHERE ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
-                        OR mb.node_id = n.id)
-                      AND ma.upload_status = 'ready'
-                      AND COALESCE(ma.lifecycle_status, 'active') = 'active'
-                      AND mb.binding_status <> 'archived'
+                    SELECT CASE WHEN EXISTS (
+                      SELECT 1
+                      FROM experiment_catalog_point_media_bindings mb
+                      JOIN media_assets ma ON ma.id = mb.media_asset_id
+                      WHERE ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
+                          OR mb.node_id = n.id)
+                        AND ma.upload_status = 'ready'
+                        AND COALESCE(ma.lifecycle_status, 'active') = 'active'
+                        AND mb.binding_status <> 'archived'
+                    ) THEN 1 ELSE 0 END
                   ) AS video_count,
                   COALESCE((
                     SELECT jsonb_agg(
@@ -322,7 +324,7 @@ def _point_document(row: dict[str, Any], profiles: list[dict[str, Any]]) -> Vide
     principle = _clean_text(row.get("principle_equation") if row.get("principle_mode") == "equation" else row.get("principle_text"))
     phenomenon = _clean_text(row.get("phenomenon_explanation"))
     safety = _clean_text(row.get("safety_note"))
-    video_count = int(row.get("video_count") or 0)
+    video_count = 1 if int(row.get("video_count") or 0) > 0 else 0
     related_links = row.get("related_links") if isinstance(row.get("related_links"), list) else []
     directory_context = row.get("directory_context") if isinstance(row.get("directory_context"), list) else []
     catalog_path = [str(item) for item in row.get("catalog_path") or [] if str(item).strip()]

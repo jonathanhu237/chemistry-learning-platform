@@ -1,4 +1,5 @@
 import type {
+  CatalogChapterTreeSummary,
   CatalogNodeCard,
   CatalogNodeCreatePayload,
   CatalogNodeDetail,
@@ -226,15 +227,24 @@ export function catalogStatusDotClass(status: string): string {
   return "is-draft";
 }
 
-export type CatalogStatusFilter = "all" | "actionable" | "needs_content" | "needs_video" | "published" | "unpublished" | "sync_attention";
+export type CatalogStatusFilter =
+  | "all"
+  | "actionable"
+  | "blocked"
+  | "needs_content"
+  | "needs_video"
+  | "unpublished"
+  | "published"
+  | "sync_attention";
 
 export const catalogStatusFilterOptions: Array<{ value: CatalogStatusFilter; label: string }> = [
   { value: "all", label: "全部" },
   { value: "actionable", label: "待处理" },
+  { value: "blocked", label: "异常" },
   { value: "needs_content", label: "缺内容" },
   { value: "needs_video", label: "缺视频" },
+  { value: "unpublished", label: "待发布" },
   { value: "published", label: "已发布" },
-  { value: "unpublished", label: "未发布" },
   { value: "sync_attention", label: "同步异常" },
 ];
 
@@ -406,6 +416,7 @@ export function matchesCatalogNodeStatusFilter(node: CatalogNodeCard, filter: Ca
   const state = status.primary_state;
   const counts = status.core_readiness.descendant_status_counts || {};
   if (filter === "published") return state === "published";
+  if (filter === "blocked") return state === "blocked" || Number(counts.blocked || 0) > 0;
   if (filter === "unpublished") return state === "draft" || state === "ready" || Number(counts.draft || 0) > 0 || Number(counts.ready || 0) > 0;
   if (filter === "needs_content") return state === "needs_content" || Number(counts.needs_content || 0) > 0;
   if (filter === "needs_video") return state === "needs_video" || Number(counts.needs_video || 0) > 0;
@@ -420,4 +431,18 @@ export function matchesCatalogNodeStatusFilter(node: CatalogNodeCard, filter: Ca
     state === "ready" ||
     catalogNodeActionCount(node) > 0
   );
+}
+
+export function catalogStatusFilterCount(summary: CatalogChapterTreeSummary | null | undefined, filter: CatalogStatusFilter): number | null {
+  if (!summary) return null;
+  const pointCounts = summary.point_status_counts || {};
+  if (filter === "all") return summary.point_count;
+  if (filter === "actionable") return summary.actionable_point_count;
+  if (filter === "blocked") return Number(pointCounts.blocked || 0);
+  if (filter === "needs_content") return Number(pointCounts.needs_content || 0);
+  if (filter === "needs_video") return Number(pointCounts.needs_video || 0);
+  if (filter === "unpublished") return Number(pointCounts.ready || 0) + Number(pointCounts.draft || 0);
+  if (filter === "published") return Number(pointCounts.published || 0);
+  if (filter === "sync_attention") return Number(pointCounts.sync_attention || 0);
+  return null;
 }
