@@ -4,15 +4,15 @@
 Define maintainability boundaries for the student H5 frontend so future student-side product changes can land in focused app, feature, shared, and style modules without regressing the verified mobile bottom-tab learning experience.
 ## Requirements
 ### Requirement: Student frontend feature module boundaries
-The student H5 frontend SHALL organize authenticated and onboarding code into feature-oriented modules with explicit ownership boundaries.
+The student H5 frontend SHALL organize catalog navigation, point detail, authenticated shell, and onboarding code into feature-oriented modules with explicit ownership boundaries.
 
-#### Scenario: Student app shell owns app-level orchestration
-- **WHEN** the student frontend is modularized
-- **THEN** app-level tab state, nested learning/experiment/assessment route state, app-config polling, disabled-tab redirect behavior, and finish-learning assessment handoff MUST be owned by an app shell module
-- **AND** individual feature modules MUST NOT each create independent app-level tab navigation state.
+#### Scenario: Student app shell owns route orchestration
+- **WHEN** the catalog route migration is implemented
+- **THEN** app-level route providers, authenticated layout, disabled-route redirect behavior, and finish-learning assessment handoff MUST be owned by app-level modules
+- **AND** feature modules MUST NOT each create independent app-level navigation state.
 
 #### Scenario: Feature modules own their own panels
-- **WHEN** a developer edits assistant, feedback, assessment, experiments, periodic-table, learning, auth, or pretest behavior
+- **WHEN** a developer edits assistant, feedback, assessment, catalog navigation, point detail, periodic-table, learning, auth, or pretest behavior
 - **THEN** the primary React components for that behavior MUST live under the corresponding feature module or a clearly shared module
 - **AND** `apps/student-web/src/App.tsx` MUST remain a composition/root file rather than the owner of feature internals.
 
@@ -61,22 +61,23 @@ The student H5 frontend SHALL move styles toward feature-owned CSS files without
 - **THEN** bottom navigation MUST NOT block chat composer, feedback submit, finish-learning action, posttest submit, video controls, or other primary student actions.
 
 ### Requirement: API and domain helper ownership
-The student H5 frontend SHALL separate domain helper ownership without changing backend contracts.
+The student H5 frontend SHALL separate domain helper ownership while adopting the catalog-node backend contracts.
 
-#### Scenario: Backend contracts remain stable
-- **WHEN** API code is moved or wrapped during modularization
-- **THEN** request URLs, request payload shapes, response handling, authentication token behavior, media URL behavior, feedback attachment behavior, and assistant streaming behavior MUST remain stable.
+#### Scenario: Backend contracts move to directory and point nodes
+- **WHEN** API code is updated for catalog tree and point detail routes
+- **THEN** request URLs, request payload shapes, response handling, authentication token behavior, media URL behavior, feedback attachment behavior, and assistant streaming behavior MUST match the directory/point catalog-node contracts
+- **AND** legacy experiment group/detail APIs, hybrid node behavior, and shortcut node behavior MUST NOT remain as live compatibility exports.
 
-#### Scenario: Compatibility exports protect migration
-- **WHEN** API modules are split by domain
-- **THEN** existing feature imports MAY be migrated incrementally through a compatibility barrel
-- **AND** the final structure MUST make auth, learning, experiments, assistant, feedback, and assessment API ownership clear.
+#### Scenario: API modules are split by domain
+- **WHEN** API modules are split or reorganized
+- **THEN** auth, learning profiles, catalog tree, point detail, assistant, feedback, media, and assessment ownership MUST be clear
+- **AND** route pages MUST import through the appropriate domain API surface.
 
 #### Scenario: Formatting helpers move near their domain
-- **WHEN** pure formatting helpers are extracted from `App.tsx`
+- **WHEN** pure formatting helpers are extracted or updated
 - **THEN** family/chapter formatting helpers MUST live near learning or periodic-table modules
-- **AND** assessment answer formatting helpers MUST live near assessment modules
-- **AND** assistant metadata formatting helpers MUST live near assistant modules.
+- **AND** catalog node formatting helpers MUST live near catalog modules
+- **AND** assessment answer formatting helpers MUST live near assessment modules.
 
 ### Requirement: Obsolete floating overlay cleanup
 The student H5 frontend SHALL remove or quarantine obsolete floating overlay code after authenticated floating AI and feedback usage has been removed.
@@ -114,3 +115,64 @@ The student H5 frontend modularization SHALL keep behavior tests and mobile view
 - **WHEN** modularization implementation is complete
 - **THEN** `openspec validate student-web-frontend-modularization --strict` MUST pass
 - **AND** `git diff --check` MUST report no whitespace errors.
+
+### Requirement: Recursive catalog UI ownership
+The student H5 frontend SHALL implement recursive catalog pages through reusable catalog feature components rather than hardcoded level-specific pages.
+
+#### Scenario: Directory depth changes
+- **WHEN** a chapter catalog has one, two, or more directory levels
+- **THEN** the same route/page pattern MUST render each directory level
+- **AND** implementation MUST NOT create separate hardcoded pages for third-level, fourth-level, or fifth-level directories.
+
+#### Scenario: Point detail opens from multiple sources
+- **WHEN** a point detail opens from chapter catalog, nested catalog, search, related links, or recent learning
+- **THEN** the point detail feature MUST reuse the same component path
+- **AND** source-aware return behavior MUST be handled by route/search context rather than duplicated component state or shortcut-specific state.
+
+#### Scenario: Directory and point cards share a list
+- **WHEN** a catalog page contains both directory cards and point cards
+- **THEN** reusable catalog components MUST render the two card types with clear visual distinction
+- **AND** the implementation MUST NOT infer point behavior from child count, media count, or unknown node kind values.
+
+### Requirement: Student catalog node type assumptions are centralized
+The student frontend SHALL centralize catalog node type helpers and remove hybrid/shortcut assumptions from live routes and components.
+
+#### Scenario: Node kind helpers are updated
+- **WHEN** student catalog API types or card helpers are updated
+- **THEN** they MUST accept only `directory` and `point` as live node kinds
+- **AND** repository search MUST show no live student catalog route or component depending on `hybrid`, `shortcut`, or `shortcut_target_node_id`.
+
+#### Scenario: Unknown node kind is received
+- **WHEN** a stale server response includes an unknown node kind
+- **THEN** the student UI MUST render a controlled unavailable state or ignore the unsupported item
+- **AND** it MUST NOT treat the item as a playable point.
+
+### Requirement: Student SPA deployment is owned by the student frontend
+Student web maintainability SHALL treat the student H5 SPA as a frontend service rather than a backend static mount.
+
+#### Scenario: Student frontend deployment is inspected
+- **WHEN** the production-like deployment is inspected
+- **THEN** the student H5 frontend MUST have its own service and SPA fallback
+- **AND** the backend service MUST NOT own student SPA route fallback.
+
+#### Scenario: Student mobile QA runs
+- **WHEN** student mobile QA runs after the deployment split
+- **THEN** it MUST target the student frontend service origin
+- **AND** it MUST continue covering root routes, detail routes, and the video library route.
+
+### Requirement: Student frontend is audited but not refactored in backend slim pass
+The backend slim architecture change SHALL include a student H5 frontend maintainability audit without performing student frontend module restructuring.
+
+#### Scenario: Student frontend audit is produced
+- **WHEN** the backend slim refactor is complete
+- **THEN** implementation notes MUST identify oversized student modules, monolithic API areas, route-shell coupling, backend endpoint assumptions, and recommended follow-up changes.
+
+#### Scenario: Student frontend structure is not optimized in this pass
+- **WHEN** this backend slim change is implemented
+- **THEN** student frontend code MUST NOT be broadly reorganized into new feature/API module architecture as part of this change
+- **AND** student frontend edits MUST be limited to endpoint updates, test updates, and minimal fixes required by backend canonical route cleanup.
+
+#### Scenario: Student mobile behavior remains verified
+- **WHEN** backend canonical route cleanup affects student H5 API calls or navigation
+- **THEN** student frontend typecheck, e2e tests, build, and mobile viewport QA MUST be run or explicitly documented if unavailable.
+

@@ -32,16 +32,6 @@ class StudentLearningHomeResponse(BaseModel):
     groups: list[StudentExperimentGroupSummary] = Field(default_factory=list)
 
 
-class StudentVideoResource(BaseModel):
-    media_id: str
-    title: str
-    point_key: str | None = None
-    point_title: str | None = None
-    mime_type: str | None = None
-    stream_path: str | None = None
-    thumbnail_path: str | None = None
-
-
 class StudentLearningReferenceMedia(BaseModel):
     id: str
     usage: str
@@ -53,58 +43,6 @@ class StudentLearningReferenceMedia(BaseModel):
     local_path: str | None = None
     element_symbols: list[str] = Field(default_factory=list)
     property_keys: list[str] = Field(default_factory=list)
-
-
-class StudentExperimentPointSummary(BaseModel):
-    id: str
-    code: str
-    title: str
-    summary: str | None = None
-    parent_code: str
-    parent_title: str
-    module_title: str | None = None
-    chapter_ids: list[str] = Field(default_factory=list)
-    video_candidate_count: int = 0
-    published_video_count: int = 0
-    question_count: int = 0
-
-
-class StudentExperimentGroupResponse(BaseModel):
-    parent_code: str
-    parent_title: str
-    area_id: str
-    area_name: str
-    experiments: list[StudentExperimentPointSummary] = Field(default_factory=list)
-
-
-class StudentExperimentRelatedPoint(BaseModel):
-    experiment_id: str
-    point_key: str
-    point_title: str
-    experiment_title: str | None = None
-    relation_type: str | None = None
-
-
-class StudentExperimentAssessmentContext(BaseModel):
-    experiment_id: str | None = None
-    chapter_ids: list[str] = Field(default_factory=list)
-    parent_code: str | None = None
-    parent_title: str | None = None
-
-
-class StudentExperimentDetailResponse(StudentExperimentPointSummary):
-    selected_point_key: str | None = None
-    selected_point_title: str | None = None
-    point_content_status: str = "missing"
-    principle_mode: str = "text"
-    principle_equation: str | None = None
-    principle_text: str | None = None
-    phenomenon_explanation: str | None = None
-    safety_note: str | None = None
-    related_points: list[StudentExperimentRelatedPoint] = Field(default_factory=list)
-    assessment_context: StudentExperimentAssessmentContext = Field(default_factory=StudentExperimentAssessmentContext)
-    video_candidates: list[str] = Field(default_factory=list)
-    videos: list[StudentVideoResource] = Field(default_factory=list)
 
 
 class StudentLearningHero(BaseModel):
@@ -152,30 +90,6 @@ class StudentLearningPropertySection(BaseModel):
     tone: str = "green"
 
 
-class StudentLearningPointCard(StudentExperimentPointSummary):
-    property_key: str
-    property_title: str
-    point_key: str | None = None
-    point_title: str | None = None
-    formula: str | None = None
-    videos: list[StudentVideoResource] = Field(default_factory=list)
-    video_candidates: list[str] = Field(default_factory=list)
-
-
-class StudentLearningPointGroup(BaseModel):
-    property_key: str
-    property_title: str
-    parent_code: str
-    parent_title: str
-    points: list[StudentLearningPointCard] = Field(default_factory=list)
-
-
-class StudentLearningChapterExperimentGroup(BaseModel):
-    parent_code: str
-    parent_title: str
-    points: list[StudentLearningPointCard] = Field(default_factory=list)
-
-
 class StudentLearningProfileSummary(BaseModel):
     profile_id: str
     chapter_id: str
@@ -201,8 +115,6 @@ class StudentLearningProfile(BaseModel):
     family_common_properties: list[StudentLearningPropertyCard] = Field(default_factory=list)
     property_sections: list[StudentLearningPropertySection] = Field(default_factory=list)
     reference_media: list[StudentLearningReferenceMedia] = Field(default_factory=list)
-    related_groups: list[StudentLearningPointGroup] = Field(default_factory=list)
-    chapter_experiment_groups: list[StudentLearningChapterExperimentGroup] = Field(default_factory=list)
 
 
 class StudentLearningPageResponse(BaseModel):

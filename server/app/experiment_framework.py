@@ -115,8 +115,8 @@ def _load_formal_stats(session: Any, experiment_ids: set[str]) -> dict[str, dict
         text(
             """
             SELECT fe.id AS experiment_id,
-                   COUNT(DISTINCT mb.id) FILTER (WHERE mb.status <> 'archived') AS video_count,
-                   COUNT(DISTINCT mb.id) FILTER (WHERE mb.status = 'published') AS published_video_count,
+                   CASE WHEN COUNT(DISTINCT mb.id) FILTER (WHERE mb.status <> 'archived') > 0 THEN 1 ELSE 0 END AS video_count,
+                   CASE WHEN COUNT(DISTINCT mb.id) FILTER (WHERE mb.status = 'published') > 0 THEN 1 ELSE 0 END AS published_video_count,
                    COUNT(DISTINCT q.id) FILTER (WHERE q.status <> 'archived') AS question_count,
                    COUNT(DISTINCT q.id) FILTER (WHERE q.status = 'published') AS published_question_count
             FROM formal_experiments fe

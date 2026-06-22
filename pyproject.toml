@@ -30,4 +30,4 @@ dependencies = [
 dev = ["pytest"]
 
 [tool.fastapi]
-entrypoint = "server.app.admin_main:app"
+entrypoint = "server.app.app_runtime.main:app"

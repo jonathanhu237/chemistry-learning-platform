@@ -57,17 +57,30 @@ def main() -> None:
     parser.add_argument(
         "--delete-asset-files",
         action="store_true",
-        help="Refuse by default until an archive/tombstone state exists for DB-backed media assets.",
+        help="Delete files for archived or tombstoned DB-backed media assets only.",
     )
     args = parser.parse_args()
 
     plan = media_cleanup_dry_run(limit=args.limit, orphan_limit=args.orphan_limit)
-    if args.delete_asset_files:
-        print("Refusing to delete DB-backed media asset files without an archive/tombstone state.", flush=True)
-        if args.json:
-            print(json.dumps(plan, ensure_ascii=False, indent=2, default=str))
-        raise SystemExit(2)
     deleted: list[str] = []
+    deleted_asset_files: list[str] = []
+    refused_asset_files: list[str] = []
+    if args.delete_asset_files:
+        for asset in plan["assets"]:
+            if asset.get("lifecycle_status") not in {"archived", "tombstoned"}:
+                if asset.get("media_files"):
+                    refused_asset_files.append(str(asset["id"]))
+                continue
+            for media_file in asset.get("media_files") or []:
+                relative_path = str(media_file.get("relative_path") or "")
+                if not relative_path:
+                    continue
+                path = _safe_orphan_path(relative_path)
+                if path.is_file():
+                    path.unlink()
+                    deleted_asset_files.append(relative_path)
+        plan["deleted_asset_files"] = deleted_asset_files
+        plan["refused_active_asset_file_asset_ids"] = refused_asset_files
     if args.delete_orphans:
         for item in plan["orphan_files"]:
             path = _safe_orphan_path(str(item["relative_path"]))
@@ -81,6 +94,10 @@ def main() -> None:
         _print_summary(plan)
         if deleted:
             print(f"\nDeleted orphan files: {len(deleted)}")
+        if deleted_asset_files:
+            print(f"\nDeleted archived asset files: {len(deleted_asset_files)}")
+        if refused_asset_files:
+            print(f"\nRefused active DB-backed asset file deletion: {len(refused_asset_files)} assets")
 
 
 if __name__ == "__main__":

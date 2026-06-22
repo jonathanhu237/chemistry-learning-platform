@@ -81,6 +81,7 @@ def test_student_feedback_uses_authenticated_student_identity(monkeypatch: pytes
             "unit_id": payload.unit_id,
             "knowledge_point_id": payload.knowledge_point_id,
             "experiment_id": payload.experiment_id,
+            "point_node_id": payload.point_node_id,
             "page_path": payload.page_path,
             "metadata": payload.metadata,
             "created_at": None,
@@ -92,13 +93,14 @@ def test_student_feedback_uses_authenticated_student_identity(monkeypatch: pytes
     result = student_platform.submit_student_feedback(
         StudentFeedbackSubmitRequest(
             feedback_type="content",
-            content="这个点位解释不够清楚",
-            chapter_id="CH13",
-            experiment_id="EXP_1",
-            point_key="candidate-1",
-            page_path="/student/learning/halogens-17",
-            metadata={"student_id": "client-forged", "class_id": "client-class", "screen": "learning_point"},
-        ),
+                content="这个点位解释不够清楚",
+                chapter_id="CH13",
+                experiment_id="EXP_1",
+                point_node_id="cat-point-candidate-1",
+                catalog_path=["第 13 章", "卤素", "氯水置换"],
+                page_path="/student/learning/halogens-17",
+                metadata={"student_id": "client-forged", "class_id": "client-class", "screen": "learning_point"},
+            ),
         _student_user(),
     )
 
@@ -106,7 +108,10 @@ def test_student_feedback_uses_authenticated_student_identity(monkeypatch: pytes
     assert payload.student_id == "20240001"
     assert payload.class_id == "class-1"
     assert payload.metadata["screen"] == "learning_point"
-    assert payload.metadata["point_key"] == "candidate-1"
+    assert payload.point_node_id == "cat-point-candidate-1"
+    assert payload.catalog_path == ["第 13 章", "卤素", "氯水置换"]
+    assert payload.metadata["point_node_id"] == "cat-point-candidate-1"
+    assert payload.metadata["catalog_path"] == ["第 13 章", "卤素", "氯水置换"]
     assert payload.metadata["client_student_id_ignored"] == "client-forged"
     assert payload.metadata["client_class_id_ignored"] == "client-class"
     assert "student_id" not in payload.metadata

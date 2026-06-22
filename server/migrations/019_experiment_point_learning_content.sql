@@ -47,7 +47,6 @@ CREATE TABLE IF NOT EXISTS experiment_point_related_links (
   relation_type text NOT NULL DEFAULT 'manual' CHECK (relation_type IN ('manual', 'default_override')),
   hidden boolean NOT NULL DEFAULT false,
   sort_order int NOT NULL DEFAULT 0,
-  label text,
   metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_by uuid REFERENCES app_users(id) ON DELETE SET NULL,
   updated_by uuid REFERENCES app_users(id) ON DELETE SET NULL,

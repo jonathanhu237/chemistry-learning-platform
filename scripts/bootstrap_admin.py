@@ -43,10 +43,10 @@ def bootstrap_user(username: str, password: str, display_name: str, role: str) -
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Create or update a local admin/teacher account.")
+    parser = argparse.ArgumentParser(description="Create or update a local platform-admin or teacher-console account.")
     parser.add_argument("--username", default="admin")
     parser.add_argument("--display-name", default="系统管理员")
-    parser.add_argument("--role", choices=["admin", "teacher"], default="admin")
+    parser.add_argument("--role", choices=["platform_admin", "admin", "teacher"], default="admin")
     parser.add_argument("--password", help="If omitted, prompts securely.")
     parser.add_argument("--skip-migrations", action="store_true")
     args = parser.parse_args()

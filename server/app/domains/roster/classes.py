@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Any
 
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
+from server.app.domains.platform.roles import is_teacher_console_role
+from server.app.domains.preview.student_device_preview import TEACHER_PREVIEW_ACCOUNT_PURPOSE, TEACHER_PREVIEW_CLASS_PURPOSE
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -213,7 +215,7 @@ def _sync_disabled_student_account(session: Any, class_id: str, student_id: str)
 
 
 def _teacher_can_access_class(user: Any, class_id: str) -> bool:
-    if user.role == "admin":
+    if is_teacher_console_role(user.role):
         return True
     with db_session() as session:
         row = (
@@ -233,7 +235,28 @@ def _teacher_can_access_class(user: Any, class_id: str) -> bool:
     return row is not None
 
 
+def _is_teacher_preview_class(class_id: str) -> bool:
+    with db_session() as session:
+        row = (
+            session.execute(
+                text(
+                    """
+                    SELECT COALESCE(class_purpose, 'instructional') = :preview_purpose AS is_preview
+                    FROM classes
+                    WHERE id = :class_id
+                    """
+                ),
+                {"class_id": class_id, "preview_purpose": TEACHER_PREVIEW_CLASS_PURPOSE},
+            )
+            .mappings()
+            .first()
+        )
+    return bool(row and row["is_preview"])
+
+
 def require_class_access(class_id: str, user: Any) -> None:
+    if _is_teacher_preview_class(class_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
     if not _teacher_can_access_class(user, class_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this class")
 
@@ -251,28 +274,45 @@ def _load_class_name(class_id: str) -> str:
 
 
 def list_classes(user: Any) -> list[ClassResponse]:
-    if user.role == "admin":
+    if is_teacher_console_role(user.role):
         sql = """
             SELECT c.id, c.class_name, c.description, c.status,
-                   COUNT(re.id) FILTER (WHERE re.status <> 'disabled') AS student_count
+                   COUNT(re.id) FILTER (
+                     WHERE re.status <> 'disabled'
+                       AND COALESCE(re.entry_purpose, 'instructional') <> :preview_account_purpose
+                   ) AS student_count
             FROM classes c
             LEFT JOIN roster_entries re ON re.class_id = c.id
+            WHERE COALESCE(c.class_purpose, 'instructional') <> :preview_class_purpose
+              AND COALESCE(c.hidden_from_teacher, false) IS false
             GROUP BY c.id
             ORDER BY c.created_at DESC
         """
-        params: dict[str, Any] = {}
+        params: dict[str, Any] = {
+            "preview_account_purpose": TEACHER_PREVIEW_ACCOUNT_PURPOSE,
+            "preview_class_purpose": TEACHER_PREVIEW_CLASS_PURPOSE,
+        }
     else:
         sql = """
             SELECT c.id, c.class_name, c.description, c.status,
-                   COUNT(re.id) FILTER (WHERE re.status <> 'disabled') AS student_count
+                   COUNT(re.id) FILTER (
+                     WHERE re.status <> 'disabled'
+                       AND COALESCE(re.entry_purpose, 'instructional') <> :preview_account_purpose
+                   ) AS student_count
             FROM teacher_classes tc
             JOIN classes c ON c.id = tc.class_id
             LEFT JOIN roster_entries re ON re.class_id = c.id
             WHERE tc.teacher_user_id = CAST(:teacher_id AS uuid)
+              AND COALESCE(c.class_purpose, 'instructional') <> :preview_class_purpose
+              AND COALESCE(c.hidden_from_teacher, false) IS false
             GROUP BY c.id
             ORDER BY c.created_at DESC
         """
-        params = {"teacher_id": user.id}
+        params = {
+            "teacher_id": user.id,
+            "preview_account_purpose": TEACHER_PREVIEW_ACCOUNT_PURPOSE,
+            "preview_class_purpose": TEACHER_PREVIEW_CLASS_PURPOSE,
+        }
     with db_session() as session:
         rows = [dict(row) for row in session.execute(text(sql), params).mappings().all()]
     return [_class_row_to_response(row) for row in rows]
@@ -497,14 +537,17 @@ def get_class(class_id: str, user: Any) -> ClassResponse:
                 text(
                     """
                     SELECT c.id, c.class_name, c.description, c.status,
-                           COUNT(re.id) FILTER (WHERE re.status <> 'disabled') AS student_count
+                           COUNT(re.id) FILTER (
+                             WHERE re.status <> 'disabled'
+                               AND COALESCE(re.entry_purpose, 'instructional') <> :preview_account_purpose
+                           ) AS student_count
                     FROM classes c
                     LEFT JOIN roster_entries re ON re.class_id = c.id
                     WHERE c.id = :class_id
                     GROUP BY c.id
                     """
                 ),
-                {"class_id": class_id},
+                {"class_id": class_id, "preview_account_purpose": TEACHER_PREVIEW_ACCOUNT_PURPOSE},
             )
             .mappings()
             .first()
@@ -531,7 +574,9 @@ def update_class(payload: ClassUpdateRequest, class_id: str, user: Any) -> Class
                               (
                                 SELECT COUNT(*)
                                 FROM roster_entries
-                                WHERE class_id = classes.id AND status <> 'disabled'
+                                WHERE class_id = classes.id
+                                  AND status <> 'disabled'
+                                  AND COALESCE(entry_purpose, 'instructional') <> :preview_account_purpose
                               ) AS student_count
                     """
                 ),
@@ -540,6 +585,7 @@ def update_class(payload: ClassUpdateRequest, class_id: str, user: Any) -> Class
                     "class_name": payload.class_name,
                     "description": payload.description,
                     "status": payload.status,
+                    "preview_account_purpose": TEACHER_PREVIEW_ACCOUNT_PURPOSE,
                 },
             )
             .mappings()
@@ -554,13 +600,24 @@ def assign_teacher_to_class(payload: TeacherClassAssignRequest, class_id: str) -
     with db_session() as session:
         teacher = (
             session.execute(
-                text("SELECT id FROM app_users WHERE id = CAST(:id AS uuid) AND role = 'teacher'"),
+                text("SELECT id FROM app_users WHERE id = CAST(:id AS uuid) AND role IN ('admin', 'teacher')"),
                 {"id": payload.teacher_user_id},
             )
             .mappings()
             .first()
         )
-        klass = session.execute(text("SELECT id FROM classes WHERE id = :class_id"), {"class_id": class_id}).first()
+        klass = session.execute(
+            text(
+                """
+                SELECT id
+                FROM classes
+                WHERE id = :class_id
+                  AND COALESCE(class_purpose, 'instructional') <> :preview_class_purpose
+                  AND COALESCE(hidden_from_teacher, false) IS false
+                """
+            ),
+            {"class_id": class_id, "preview_class_purpose": TEACHER_PREVIEW_CLASS_PURPOSE},
+        ).first()
         if not teacher:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Teacher not found")
         if not klass:
@@ -730,6 +787,7 @@ def list_roster_students(class_id: str, user: Any) -> list[RosterStudentResponse
                     FROM roster_entries re
                     LEFT JOIN student_profiles sp ON sp.roster_entry_id = re.id
                     WHERE re.class_id = :class_id
+                      AND COALESCE(re.entry_purpose, 'instructional') <> :preview_account_purpose
                     ORDER BY
                       CASE re.status
                         WHEN 'active' THEN 1
@@ -739,7 +797,7 @@ def list_roster_students(class_id: str, user: Any) -> list[RosterStudentResponse
                       re.student_id
                     """
                 ),
-                {"class_id": class_id},
+                {"class_id": class_id, "preview_account_purpose": TEACHER_PREVIEW_ACCOUNT_PURPOSE},
             )
             .mappings()
             .all()

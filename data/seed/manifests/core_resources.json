@@ -1,6 +1,6 @@
 {
   "version": "production-core-resources-v1",
-  "generated_at": "2026-06-19T10:02:22.888574+00:00",
+  "generated_at": "2026-06-21T15:19:06.054324+00:00",
   "policy": "These files are the protected current system resources. Destructive cleanup must validate this manifest before deleting or moving historical artifacts.",
   "external_sources_mirrored": true,
   "expected_database_counts": {
@@ -8,16 +8,18 @@
     "chapters": 11,
     "knowledge_units": 133,
     "knowledge_points": 385,
-    "experiment_points": 300,
-    "experiment_question_banks": 77,
-    "experiment_questions": 2310,
+    "experiment_catalog_nodes": 569,
+    "experiment_catalog_directory_nodes": 176,
+    "experiment_catalog_point_nodes": 393,
+    "experiment_catalog_point_content_records": 76,
+    "experiment_question_banks": 0,
+    "experiment_questions": 0,
     "source_documents": 2,
     "source_chunks": 3637,
     "chunk_embeddings": 3637,
-    "stable_experiment_video_points": 300,
-    "published_point_learning_content_min": 0,
-    "point_related_links_min": 0,
-    "point_evidence_bindings": 300
+    "published_catalog_point_content_min": 76,
+    "catalog_point_related_links_min": 0,
+    "point_evidence_bindings_with_node": 0
   },
   "resources": [
     {
@@ -89,21 +91,51 @@
       }
     },
     {
-      "id": "experiment_point_inventory",
-      "role": "Current stable formal experiment video point inventory",
-      "path": "data/seed/experiment_points/formal_experiment_point_inventory.json",
-      "source_path": "artifacts/point-aware-question-bank/formal_experiment_point_inventory.json",
+      "id": "experiment_catalog_tree",
+      "role": "Canonical outline-backed experiment catalog tree seed",
+      "path": "data/seed/experiment_catalog/catalog_tree.json",
+      "source_path": "docs/实验目录_整理版.md",
       "required": true,
       "kind": "json",
-      "size_bytes": 3133725,
-      "sha256": "9a50b9c58fad0ac98c2a34edc8ba7a597ed3bfe28f9c6e71b1ef96e76e608deb",
+      "size_bytes": 676838,
+      "sha256": "3454369237c3f71689c3d8742f631a6493ab373b71ee4c6e325c328b62061ebb",
       "count": {
-        "experiments": 77,
-        "points": 300
+        "total_nodes": 569,
+        "directory_nodes": 176,
+        "point_nodes": 393,
+        "chapter_21_nodes": 0
       },
       "expected_counts": {
-        "experiments": 77,
-        "points": 300
+        "total_nodes": 569,
+        "directory_nodes": 176,
+        "point_nodes": 393,
+        "chapter_21_nodes": 0
+      }
+    },
+    {
+      "id": "experiment_catalog_point_content_seed",
+      "role": "Reviewed catalog point-content seed with structured reaction equations for ES/search tests",
+      "path": "data/seed/experiment_catalog/point_content_seed.json",
+      "source_path": "data/seed/experiment_catalog/normalized_three_element_candidates.md",
+      "required": true,
+      "kind": "json",
+      "size_bytes": 178956,
+      "sha256": "ace76038ecb9301879fcb373970645e36c6c33217d72b9d39cae339c53248f41",
+      "count": {
+        "records": 76,
+        "equation_mode_records": 71,
+        "text_mode_records": 5,
+        "reaction_equation_rows": 122,
+        "unique_target_seed_keys": 76,
+        "semantic_mapped_records": 76
+      },
+      "expected_counts": {
+        "records": 76,
+        "equation_mode_records": 71,
+        "text_mode_records": 5,
+        "reaction_equation_rows": 122,
+        "unique_target_seed_keys": 76,
+        "semantic_mapped_records": 76
       }
     },
     {
@@ -114,8 +146,7 @@
       "required": true,
       "kind": "json",
       "size_bytes": 469,
-      "sha256": "79fb62140460df513b85815b8bae433a52a49e225f6ec396319fb64acd95e552",
-      "count": 12
+      "sha256": "79fb62140460df513b85815b8bae433a52a49e225f6ec396319fb64acd95e552"
     },
     {
       "id": "chemical_search_stopwords",
@@ -125,58 +156,89 @@
       "required": true,
       "kind": "text",
       "size_bytes": 105,
-      "sha256": "c45d769147b8875216d501bc28bfc64ece407447ce7cef5e703b1a26a88fb129",
-      "count": 15
+      "sha256": "c45d769147b8875216d501bc28bfc64ece407447ce7cef5e703b1a26a88fb129"
     },
     {
-      "id": "point_aware_question_bank",
-      "role": "Current imported point-aware default question bank",
-      "path": "data/seed/question_bank/rebuilt_question_bank_merged_v1.json",
-      "source_path": "artifacts/point-aware-question-bank/reviewed_old_bank_chunks/slim_release_work_v1/rebuilt_question_bank_merged_v1.json",
+      "id": "es_ik_chemistry_manifest",
+      "role": "Versioned ES/IK chemistry analyzer asset manifest",
+      "path": "data/seed/search/es_ik/manifest.json",
+      "source_path": "data/seed/search/es_ik/manifest.json",
       "required": true,
       "kind": "json",
-      "size_bytes": 5765150,
-      "sha256": "24ec6a37f67736b60753e81892e9130ebb8cb792337350a7176a04a1c6bed029",
-      "count": {
-        "experiments": 77,
-        "questions": 2310
-      },
-      "expected_counts": {
-        "experiments": 77,
-        "questions": 2310
-      }
+      "size_bytes": 907,
+      "sha256": "a33c66f35cec6ba4673d5aba1d1883cbfbc409f339b770d29089164a6e2ae017"
     },
     {
-      "id": "point_aware_question_bank_schema",
-      "role": "Schema used to validate the point-aware question bank",
-      "path": "data/seed/question_bank/point_aware_question_bank_schema.json",
-      "source_path": "artifacts/point-aware-question-bank/point_aware_question_bank_schema.json",
+      "id": "es_ik_analyzer_config",
+      "role": "ES/IK analyzer external dictionary configuration",
+      "path": "data/seed/search/es_ik/analysis-ik/IKAnalyzer.cfg.xml",
+      "source_path": "data/seed/search/es_ik/analysis-ik/IKAnalyzer.cfg.xml",
       "required": true,
-      "kind": "json",
-      "size_bytes": 1160,
-      "sha256": "cfe6b127e0470730a3b8dd7e5e61b898d18cb2163ed11b6dd103a825606f3b60"
+      "kind": "text",
+      "size_bytes": 359,
+      "sha256": "f77e36d860c08e25639b2d6148001b442fd65187e948b182bb72a809410c59ef",
+      "count": 7,
+      "expected_count": 7
     },
     {
-      "id": "manual_reviewed_point_evidence",
-      "role": "Current manually reviewed experiment point to canonical chunk evidence bindings",
-      "path": "data/seed/point_evidence/manual_reviewed_point_evidence.jsonl",
-      "source_path": "artifacts/video-point-default-evidence/gpu-rerank-direct-v2-20260616T1140Z/manual-reviewed-from-start-20260616T2135Z/manual_reviewed_point_evidence.jsonl",
+      "id": "es_ik_hit_stopwords",
+      "role": "Harbin Institute of Technology stopword baseline for IK",
+      "path": "data/seed/search/es_ik/analysis-ik/custom/hit_stopwords.dic",
+      "source_path": "data/seed/search/es_ik/analysis-ik/custom/hit_stopwords.dic",
       "required": true,
-      "kind": "jsonl",
-      "size_bytes": 107486,
-      "sha256": "1eb1d9e98eddb67e2edbea1c64565ef67bb94ee7bc9a7e38a446031bbf7ceaf9",
-      "count": 300,
-      "expected_count": 300
+      "kind": "text",
+      "size_bytes": 299,
+      "sha256": "22b0e475d12c1b373a796d22326dffbe0b33c09fa742cb17ceb53aff7de996aa",
+      "count": 59,
+      "expected_count": 59
     },
     {
-      "id": "manual_review_point_evidence_manifest",
-      "role": "Manifest for the manually reviewed point evidence source run",
-      "path": "data/seed/point_evidence/manual_review_manifest.json",
-      "source_path": "artifacts/video-point-default-evidence/gpu-rerank-direct-v2-20260616T1140Z/manual-reviewed-from-start-20260616T2135Z/manifest.json",
+      "id": "es_ik_project_chemistry_stopwords",
+      "role": "Project chemistry stopwords for IK",
+      "path": "data/seed/search/es_ik/analysis-ik/custom/project_chemistry_stopwords.dic",
+      "source_path": "data/seed/search/es_ik/analysis-ik/custom/project_chemistry_stopwords.dic",
       "required": true,
-      "kind": "json",
-      "size_bytes": 421,
-      "sha256": "f4b2c123c2c7818ecdf4d2fa83372ca87068e040461cbdfc287396d24b41add3"
+      "kind": "text",
+      "size_bytes": 154,
+      "sha256": "fc8f6efd4461cdb76ecfadad975e444b8fa52fd8d8dbbb66b1e64e34671813a9",
+      "count": 22,
+      "expected_count": 22
+    },
+    {
+      "id": "es_ik_chemistry_custom_dictionary",
+      "role": "Chemistry custom IK dictionary",
+      "path": "data/seed/search/es_ik/analysis-ik/custom/chemistry_custom.dic",
+      "source_path": "data/seed/search/es_ik/analysis-ik/custom/chemistry_custom.dic",
+      "required": true,
+      "kind": "text",
+      "size_bytes": 601,
+      "sha256": "a68d9e282370982d822add35cb0f6e3d5b98476b7cc8710e96305e03fc2f79fc",
+      "count": 66,
+      "expected_count": 66
+    },
+    {
+      "id": "es_ik_chemistry_stopwords_filter",
+      "role": "Elasticsearch chemistry analyzer stopword filter list",
+      "path": "data/seed/search/es_ik/analysis/chemistry_stopwords.txt",
+      "source_path": "data/seed/search/es_ik/analysis/chemistry_stopwords.txt",
+      "required": true,
+      "kind": "text",
+      "size_bytes": 453,
+      "sha256": "b6700c32ddd1e4d14ad78345b1e26864246aaf82444db3733edfabcaafcc8e12",
+      "count": 81,
+      "expected_count": 81
+    },
+    {
+      "id": "es_ik_chemistry_synonyms",
+      "role": "Elasticsearch chemistry synonym graph filter list",
+      "path": "data/seed/search/es_ik/analysis/chemistry_synonyms.txt",
+      "source_path": "data/seed/search/es_ik/analysis/chemistry_synonyms.txt",
+      "required": true,
+      "kind": "text",
+      "size_bytes": 1147,
+      "sha256": "01730ecf2869578ecae2fd51bb0243e0a34195793fe1442605d78a0aa4ef5a6a",
+      "count": 29,
+      "expected_count": 29
     },
     {
       "id": "student_learning_profiles",
@@ -292,14 +354,36 @@
       "sha256": "c490f40e11554e313ae1abe098d036871c29e086c560cea9924bf41e002d67ca"
     },
     {
-      "id": "point_aware_question_bank_import_report",
-      "role": "Current point-aware question bank import report",
-      "path": "data/seed/import_reports/rebuilt_question_bank_merged_v1_import_report.json",
-      "source_path": "artifacts/point-aware-question-bank/reviewed_old_bank_chunks/slim_release_work_v1/rebuilt_question_bank_merged_v1_import_report.json",
+      "id": "catalog_outline_seed_validation_report",
+      "role": "Current catalog outline seed validation report",
+      "path": "data/seed/import_reports/catalog_outline_seed_validation_report.json",
+      "source_path": "data/seed/experiment_catalog/catalog_tree.json",
       "required": true,
       "kind": "json",
-      "size_bytes": 2130,
-      "sha256": "aeba76d0f258308b3da2cd0f0ab005ee7caaa3f9e62e5edb149aadee8f239daa"
+      "size_bytes": 958,
+      "sha256": "2f29c55bcf12457c73b5724ec380f478aac47b8bebec38f6b41d94074cfa8f9a",
+      "count": {
+        "ok": true,
+        "total_nodes": 569,
+        "directory_nodes": 176,
+        "point_nodes": 393,
+        "point_content_records": 76,
+        "equation_content_records": 71,
+        "text_content_records": 5,
+        "reaction_equation_rows": 122,
+        "semantic_mapped_records": 76
+      },
+      "expected_counts": {
+        "ok": true,
+        "total_nodes": 569,
+        "directory_nodes": 176,
+        "point_nodes": 393,
+        "point_content_records": 76,
+        "equation_content_records": 71,
+        "text_content_records": 5,
+        "reaction_equation_rows": 122,
+        "semantic_mapped_records": 76
+      }
     }
   ]
 }

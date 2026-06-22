@@ -10,8 +10,20 @@ import urllib.request
 from pathlib import Path
 
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED_SERVICES = {"admin-web", "backend", "elasticsearch", "postgres", "student-web", "tusd", "video-worker"}
+REQUIRED_SERVICES = {"backend", "elasticsearch", "postgres", "tusd", "video-worker", "web-admin", "web-student", "web-teacher"}
+ES_ANALYZER_ASSET_PATHS = [
+    "/usr/share/elasticsearch/config/analysis-ik/IKAnalyzer.cfg.xml",
+    "/usr/share/elasticsearch/config/analysis-ik/custom/hit_stopwords.dic",
+    "/usr/share/elasticsearch/config/analysis-ik/custom/project_chemistry_stopwords.dic",
+    "/usr/share/elasticsearch/config/analysis-ik/custom/chemistry_custom.dic",
+    "/usr/share/elasticsearch/config/analysis/chemistry_stopwords.txt",
+    "/usr/share/elasticsearch/config/analysis/chemistry_synonyms.txt",
+]
 
 
 def _run(command: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -121,6 +133,7 @@ def _assert_ik_analyzer(elasticsearch_base_url: str) -> None:
     if not tokens:
         raise SystemExit("Elasticsearch responded, but ik_max_word produced no tokens")
     required_tokens = {
+        r"\u786b\u4ee3\u786b\u9178\u94a0".encode("ascii").decode("unicode_escape"),
         r"\u76d0\u9178".encode("ascii").decode("unicode_escape"),
         r"\u4e8c\u6c27\u5316\u786b".encode("ascii").decode("unicode_escape"),
     }
@@ -130,9 +143,16 @@ def _assert_ik_analyzer(elasticsearch_base_url: str) -> None:
     print("IK analyzer smoke: ok " + json.dumps(tokens[:8], ensure_ascii=True))
 
 
+def _assert_es_analyzer_assets() -> None:
+    for path in ES_ANALYZER_ASSET_PATHS:
+        _run(["docker", "compose", "exec", "-T", "elasticsearch", "sh", "-lc", f"test -s {path}"])
+    print("ES/IK analyzer assets present: ok")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Validate the required Docker Compose application services.")
     parser.add_argument("--build", action="store_true", help="Build required service images before starting the stack.")
+    parser.add_argument("--keep-orphans", action="store_true", help="Do not remove obsolete Compose service containers.")
     parser.add_argument("--skip-up", action="store_true", help="Validate already-running Compose services without starting them.")
     parser.add_argument("--skip-index-rebuild", action="store_true", help="Skip rebuilding the video-library search index.")
     args = parser.parse_args()
@@ -142,24 +162,31 @@ def main() -> None:
         command = ["docker", "compose", "up", "-d", *sorted(REQUIRED_SERVICES)]
         if args.build:
             command.insert(4, "--build")
+        if not args.keep_orphans:
+            command.insert(4 if not args.build else 5, "--remove-orphans")
         _run(command)
     _assert_required_services_running()
 
     elasticsearch_url = "http://" + _compose_port("elasticsearch", 9200)
     backend_url = "http://" + _compose_port("backend", 8000)
-    student_web_url = "http://" + _compose_port("student-web", 80)
-    admin_web_url = "http://" + _compose_port("admin-web", 80)
+    web_student_url = "http://" + _compose_port("web-student", 80)
+    web_teacher_url = "http://" + _compose_port("web-teacher", 80)
+    web_admin_url = "http://" + _compose_port("web-admin", 80)
 
     _run(["docker", "compose", "exec", "-T", "postgres", "pg_isready", "-U", "chemistry", "-d", "chemistry_exam"])
     _wait_json(f"{elasticsearch_url}/_cluster/health", label="Elasticsearch")
+    _assert_es_analyzer_assets()
     _assert_ik_analyzer(elasticsearch_url)
     _wait_json(f"{backend_url}/health", label="backend")
-    _wait_status(f"{student_web_url}/health", label="student frontend health", expected={200})
-    _wait_status(f"{admin_web_url}/health", label="admin frontend health", expected={200})
-    _wait_status(f"{student_web_url}/", label="student frontend root", expected={200})
-    _wait_status(f"{admin_web_url}/login", label="admin frontend login", expected={200})
-    _wait_status(f"{student_web_url}/api/auth/me", label="student frontend API proxy", expected={401})
-    _wait_status(f"{admin_web_url}/api/auth/me", label="admin frontend API proxy", expected={401})
+    _wait_status(f"{web_student_url}/health", label="web-student frontend health", expected={200})
+    _wait_status(f"{web_teacher_url}/health", label="web-teacher frontend health", expected={200})
+    _wait_status(f"{web_admin_url}/health", label="web-admin frontend health", expected={200})
+    _wait_status(f"{web_student_url}/", label="web-student frontend root", expected={200})
+    _wait_status(f"{web_teacher_url}/login", label="web-teacher login", expected={200})
+    _wait_status(f"{web_admin_url}/", label="web-admin root", expected={200})
+    _wait_status(f"{web_student_url}/api/auth/me", label="web-student API proxy", expected={401})
+    _wait_status(f"{web_teacher_url}/api/auth/me", label="web-teacher API proxy", expected={401})
+    _wait_status(f"{web_admin_url}/api/web-admin/session", label="web-admin API proxy", expected={401, 503})
 
     _run(["docker", "compose", "exec", "-T", "backend", "python", "scripts/apply_migrations.py"])
     if not args.skip_index_rebuild:

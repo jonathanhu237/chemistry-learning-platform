@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from server.app.auth import AuthUser, require_roles
+from server.app.auth import AuthUser, require_teacher_console_user
 from server.app.experiment_admin_schemas import GenerationRequest
 from server.app.domains.platform.settings import ai_feature_enabled
 from server.app.domains.questions.generation import OBJECTIVE_TYPES, generate_question_drafts
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/admin", tags=["experiment-admin"])
 @router.post("/question-banks/generate")
 async def admin_generate_questions(
     payload: GenerationRequest,
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     if not ai_feature_enabled("question_bank_assistant"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="题库助手当前未启用。")

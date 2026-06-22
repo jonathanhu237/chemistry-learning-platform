@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from server.app.auth import AuthUser, require_roles
+from server.app.auth import AuthUser, require_teacher_console_user
 from server.app.experiment_admin_schemas import PointAwareSuggestionRequest
 from server.app.domains.platform.settings import ai_feature_enabled
 from server.app.domains.questions.point_aware import create_point_aware_suggestions
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/admin", tags=["experiment-admin"])
 @router.post("/question-banks/point-aware-suggestions")
 async def admin_create_point_aware_suggestions(
     payload: PointAwareSuggestionRequest,
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     if not ai_feature_enabled("question_bank_assistant"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Question bank assistant is disabled")

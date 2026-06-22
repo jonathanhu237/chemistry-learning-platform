@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "errors": [],
+  "counts": {
+    "total_nodes": 569,
+    "directory_nodes": 176,
+    "point_nodes": 393,
+    "point_placements": 393,
+    "canonical_points": 357,
+    "duplicate_group_count": 32,
+    "duplicate_placement_surplus": 36,
+    "chapter_21_nodes": 0,
+    "placeholder_nodes": 0,
+    "point_content_records": 76,
+    "equation_content_records": 71,
+    "text_content_records": 5,
+    "reaction_equation_rows": 122,
+    "unique_target_seed_keys": 76,
+    "unique_target_canonical_point_ids": 76,
+    "semantic_mapped_records": 76,
+    "user_kept_source_records": 3,
+    "researched_update_records": 7
+  },
+  "corrected_hypochlorite_points": [
+    "NaClO + MnSO₄",
+    "NaClO + 品红溶液"
+  ],
+  "corrected_sample_wording": "NaClO + 品红溶液",
+  "catalog_seed": "data/seed/experiment_catalog/catalog_tree.json",
+  "point_content_seed": "data/seed/experiment_catalog/point_content_seed.json"
+}

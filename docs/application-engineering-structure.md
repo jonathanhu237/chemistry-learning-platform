@@ -7,8 +7,9 @@ It is intentionally about ownership and validation, not feature behavior.
 
 ```text
 chemistry-admin
-  apps/student-web     Student H5 mobile learning experience
-  apps/admin-web       Teacher/admin console
+  apps/web-student     Student H5 mobile learning experience
+  apps/web-teacher     Teacher console
+  apps/web-admin       Platform operations console
   server/app           Backend runtime, APIs, domains, infrastructure, workers
   docker-compose.yml   Required local/prod-like service graph with separate frontend services
   scripts/             Validation, migrations, imports, rebuilds, maintenance
@@ -27,7 +28,7 @@ Structural work must name the surfaces it touches. If a change touches two or mo
 Canonical starting shape:
 
 ```text
-apps/student-web/src/
+apps/web-student/src/
   app/
     router/        route definitions, typed route search, navigation helpers, route visibility
     shell/         authenticated layout, header, bottom tabs, detail frame
@@ -63,7 +64,7 @@ An experiment point detail page may be opened from a learning card, video-librar
 
 Rules:
 
-- Cross-page navigation should use `apps/student-web/src/app/router/navigation.ts` or an equivalent typed owner.
+- Cross-page navigation should use `apps/web-student/src/app/router/navigation.ts` or an equivalent typed owner.
 - Route pages should remain composition boundaries and move reusable display logic into `features/*`.
 - Shared modules must not import route or feature owners.
 - New endpoint clients should move toward domain-specific client/schema modules instead of expanding one monolithic `api.ts`.
@@ -71,7 +72,7 @@ Rules:
 
 Current follow-up debt:
 
-- `apps/student-web/src/api.ts` is a split candidate.
+- `apps/web-student/src/api.ts` is a split candidate.
 - `features/atom-viewer/AtomViewerZdog.tsx` is a split candidate.
 - `features/assistant/StudentAiChatPanel.tsx` is a split candidate.
 - Large global CSS files should be gradually moved toward feature or shell ownership.
@@ -81,7 +82,7 @@ Current follow-up debt:
 Target shape:
 
 ```text
-apps/admin-web/src/
+apps/web-teacher/src/
   app/             app providers, auth guard, route registry, nav model, shell layout, theme
   api/             HTTP primitives plus domain-specific clients and schemas
   features/        teacher/admin workflows by business capability
@@ -105,7 +106,7 @@ Rules:
 Current experiment feature baseline:
 
 ```text
-apps/admin-web/src/features/experiments/
+apps/web-teacher/src/features/experiments/
   ExperimentsPage.tsx        route-level composition only
   experimentHooks.ts         React Query queries, mutations, and invalidation
   experimentFilters.ts       pure point filtering helpers
@@ -117,13 +118,13 @@ apps/admin-web/src/features/experiments/
 
 Cross-feature helper baseline:
 
-- Reusable resource/catalog display helpers live in `apps/admin-web/src/lib/resourceUtils.ts`, not inside a sibling feature folder.
+- Reusable resource/catalog display helpers live in `apps/web-teacher/src/lib/resourceUtils.ts`, not inside a sibling feature folder.
 - Feature pages should not import sibling feature private UI/helper modules. Promote stable cross-feature helpers to `lib/` or a shared component owner first.
 
 Current follow-up debt:
 
 - Large feature pages such as learning assistant, question bank, media resources, and analytics should be decomposed inside their feature folders.
-- `apps/admin-web/src/styles.css` and large feature CSS files should be reduced toward explicit style ownership.
+- `apps/web-teacher/src/styles.css` and large feature CSS files should be reduced toward explicit style ownership.
 
 ## Backend
 
@@ -159,14 +160,14 @@ Rules:
 Current follow-up debt:
 
 - Large domain files such as question workbench, student learning detail, assistant agent runtime, analytics read models, roster classes, and assessment modules should be evaluated before they become new service-layer monoliths.
-- Root-level backend modules that remain outside `domains` and `infrastructure` are migration candidates, not compatibility owners.
+- Root-level backend modules that remain outside `domains` and `infrastructure` are migration candidates, process entrypoints, or seed-backed support modules, not compatibility owners. Retired demo/RAG/report modules must stay deleted rather than returning as wrappers.
 
 ## Validation Gates
 
 Default gates by surface:
 
 - Backend package ownership: `python scripts/validate_backend_architecture.py` and backend tests.
-- Backend service graph or required service changes: Compose smoke through `python scripts/validate_production_readiness.py --run-compose-smoke`, covering `backend`, `student-web`, `admin-web`, `postgres`, `elasticsearch`, `tusd`, and `video-worker`.
+- Backend service graph or required service changes: Compose smoke through `python scripts/validate_production_readiness.py --run-compose-smoke`, covering `backend`, `web-student`, `web-teacher`, `web-admin`, `postgres`, `elasticsearch`, `tusd`, and `video-worker`.
 - Student H5 routing/shell/layout: typecheck, tests, build, and `npm run qa:mobile`.
 - Admin shell/routing/top-level pages: import-boundary validation, typecheck, tests, build, chunk report, and `npm run e2e:smoke`.
 - Multi-surface structural changes: full production readiness with e2e when the local runtime prerequisites are available.

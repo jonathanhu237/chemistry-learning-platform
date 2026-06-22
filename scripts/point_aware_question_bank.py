@@ -1678,7 +1678,12 @@ def import_point_aware_rows(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Point-aware experiment question bank tools.")
+    parser = argparse.ArgumentParser(description="Retired point-aware experiment question bank tools.")
+    parser.add_argument(
+        "--allow-retired-legacy-workflow",
+        action="store_true",
+        help="Explicitly run the retired experiment_id + point_key question-bank workflow for historical recovery only.",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     inventory_parser = subparsers.add_parser("inventory", help="Export formal experiment point inventory.")
@@ -1716,6 +1721,13 @@ def main() -> None:
     import_parser.add_argument("--skip-migrations", action="store_true")
 
     args = parser.parse_args()
+    if not args.allow_retired_legacy_workflow:
+        raise SystemExit(
+            "This point-aware question-bank seed workflow is retired for the catalog-outline seed. "
+            "The current baseline intentionally has an empty experiment question bank; "
+            "regenerate catalog-node evidence before creating a new bank. "
+            "Pass --allow-retired-legacy-workflow only for historical artifact inspection."
+        )
     if args.command == "inventory":
         inventory = build_inventory()
         _json_dump(args.output, inventory)

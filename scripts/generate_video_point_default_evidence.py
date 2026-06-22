@@ -20,7 +20,7 @@ if str(ROOT) not in sys.path:
 from server.app.domains.experiment_points.canonical_points import candidate_point_key as _candidate_point_key
 
 
-DEFAULT_DATABASE_URL = "postgresql+psycopg://chemistry:chemistry@localhost:5432/chemistry_exam"
+DEFAULT_DATABASE_URL = "postgresql+psycopg://chemistry:chemistry@127.0.0.1:15432/chemistry_exam"
 DEFAULT_BGE_URL = "http://127.0.0.1:8011"
 EXPERIMENT_COLLECTION = "textbook_experiment_clean_v1"
 THEORY_COLLECTION = "textbook_inorganic_lower_v1"
@@ -886,7 +886,12 @@ def write_summary(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate temporary default evidence chunks for video points.")
+    parser = argparse.ArgumentParser(description="Generate retired temporary default evidence chunks for legacy video points.")
+    parser.add_argument(
+        "--allow-retired-legacy-workflow",
+        action="store_true",
+        help="Explicitly run the retired experiment_id + point_key workflow for historical recovery only.",
+    )
     parser.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
     parser.add_argument("--bge-url", default=DEFAULT_BGE_URL)
     parser.add_argument("--output-root", type=Path, default=Path("artifacts/video-point-default-evidence"))
@@ -906,6 +911,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if not args.allow_retired_legacy_workflow:
+        raise SystemExit(
+            "This legacy video-point evidence workflow is retired. "
+            "Use scripts/generate_catalog_node_default_evidence.py for catalog-node evidence planning, "
+            "then run the future GPU/BGE rerank job against catalog_node_id or catalog_seed_key."
+        )
     if args.rerank_batch_size < 1 or args.rerank_batch_size > 64:
         raise ValueError("--rerank-batch-size must be between 1 and 64")
     experiment_ids = set(args.experiment_id)

@@ -1,5 +1,5 @@
 {
-  "description": "Canonical FastAPI route inventory after split-frontend-deployment-admin-shell; backend owns API and health, not frontend SPA fallbacks.",
+  "description": "Canonical FastAPI route inventory after experiment-catalog-tree-point-architecture; catalog node ids own point authoring and student navigation.",
   "runtime_entrypoint": "server.app.app_runtime.main:app",
   "routes": [
     {
@@ -36,6 +36,144 @@
       "method": "GET",
       "path": "/api/admin/analytics/classes/{class_id}/weak-points",
       "name": "admin_class_weak_points",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/chapters/{chapter_id}/roots",
+      "name": "admin_catalog_chapter_roots",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/equations/preview",
+      "name": "admin_catalog_preview_equations",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/equations/assist",
+      "name": "admin_catalog_assist_equations",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/media-bindings/{binding_id}/{action}",
+      "name": "admin_catalog_media_binding_status",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes",
+      "name": "admin_catalog_create_node",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/reorder",
+      "name": "admin_catalog_reorder_nodes",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/nodes/{node_id}",
+      "name": "admin_catalog_node_detail",
+      "owner": "admin-api"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/catalog/nodes/{node_id}",
+      "name": "admin_catalog_update_node",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/nodes/{node_id}/children",
+      "name": "admin_catalog_node_children",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/copy",
+      "name": "admin_catalog_copy_node",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/media-bindings",
+      "name": "admin_catalog_bind_media",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/move",
+      "name": "admin_catalog_move_node",
+      "owner": "admin-api"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/catalog/nodes/{node_id}/point-content",
+      "name": "admin_catalog_save_point_content",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/point-content/publication",
+      "name": "admin_catalog_point_content_publication",
+      "owner": "admin-api"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/catalog/nodes/{node_id}/related-links",
+      "name": "admin_catalog_replace_related_links",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/status",
+      "name": "admin_catalog_node_status",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/preview-token",
+      "name": "admin_catalog_point_preview_token",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/nodes/{node_id}/validation",
+      "name": "admin_catalog_validate_node",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/nodes/{node_id}/job-state",
+      "name": "admin_catalog_point_job_state",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/nodes/{node_id}/ai-context",
+      "name": "admin_catalog_point_ai_context",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/rag-probe",
+      "name": "admin_catalog_point_rag_probe",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/jobs/{action}",
+      "name": "admin_catalog_trigger_point_job",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/search",
+      "name": "admin_catalog_search",
       "owner": "admin-api"
     },
     {
@@ -171,69 +309,9 @@
       "owner": "admin-api"
     },
     {
-      "method": "POST",
-      "path": "/api/admin/experiments",
-      "name": "admin_create_experiment",
-      "owner": "admin-api"
-    },
-    {
       "method": "GET",
       "path": "/api/admin/experiments/{experiment_id}",
       "name": "admin_get_experiment",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/experiments/{experiment_id}",
-      "name": "admin_update_experiment",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/experiments/{experiment_id}/chapter-bindings",
-      "name": "admin_replace_chapter_bindings",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/experiments/{experiment_id}/video-points",
-      "name": "admin_get_experiment_video_points",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/experiments/{experiment_id}/video-points/{point_key}/content",
-      "name": "admin_save_experiment_point_content",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/experiments/{experiment_id}/video-points/{point_key}/publication",
-      "name": "admin_set_experiment_point_publication",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/experiments/{experiment_id}/video-points/{point_key}/related-links",
-      "name": "admin_replace_experiment_point_related_links",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/experiments/{experiment_id}/video-points/{point_key}/resources",
-      "name": "admin_add_experiment_video_point_resource",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/experiments/{experiment_id}/videos/bind",
-      "name": "admin_bind_existing_experiment_video",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/experiments/{experiment_id}/videos/upload",
-      "name": "admin_upload_experiment_video",
       "owner": "admin-api"
     },
     {
@@ -321,6 +399,18 @@
       "owner": "admin-api"
     },
     {
+      "method": "POST",
+      "path": "/api/admin/media/assets/{asset_id}/archive",
+      "name": "admin_archive_media_asset",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/media/assets/{asset_id}/archive-plan",
+      "name": "admin_media_asset_archive_plan",
+      "owner": "admin-api"
+    },
+    {
       "method": "GET",
       "path": "/api/admin/media/assets/{asset_id}/file",
       "name": "admin_get_media_asset_file",
@@ -348,6 +438,12 @@
       "method": "GET",
       "path": "/api/admin/media/assets/{asset_id}/thumbnail",
       "name": "admin_get_media_asset_thumbnail",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/media/assets/{asset_id}/thumbnail-stream",
+      "name": "admin_stream_media_asset_thumbnail",
       "owner": "admin-api"
     },
     {
@@ -573,52 +669,124 @@
       "owner": "admin-api"
     },
     {
+      "method": "GET",
+      "path": "/api/admin/video-library/search/diagnostics",
+      "name": "admin_video_library_search_diagnostics",
+      "owner": "admin-api"
+    },
+    {
       "method": "POST",
       "path": "/api/auth/login",
       "name": "login",
-      "owner": "auth-api"
+      "owner": "runtime"
     },
     {
       "method": "POST",
       "path": "/api/auth/logout",
       "name": "logout",
-      "owner": "auth-api"
+      "owner": "runtime"
     },
     {
       "method": "GET",
       "path": "/api/auth/me",
       "name": "me",
-      "owner": "auth-api"
+      "owner": "runtime"
     },
     {
       "method": "POST",
       "path": "/api/auth/password",
       "name": "change_password",
-      "owner": "auth-api"
+      "owner": "runtime"
     },
     {
       "method": "POST",
       "path": "/api/auth/student/login",
       "name": "student_login",
-      "owner": "auth-api"
+      "owner": "runtime"
     },
     {
       "method": "POST",
       "path": "/api/auth/student/password",
       "name": "change_student_password",
-      "owner": "auth-api"
+      "owner": "runtime"
+    },
+    {
+      "method": "GET",
+      "path": "/api/preview/catalog/points/{node_id}",
+      "name": "preview_catalog_point_detail_route",
+      "owner": "student-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/preview/media/assets/{asset_id}/stream",
+      "name": "preview_media_stream",
+      "owner": "student-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/preview/media/assets/{asset_id}/thumbnail",
+      "name": "preview_media_thumbnail",
+      "owner": "student-api"
     },
     {
       "method": "GET",
       "path": "/api/chapters",
       "name": "api_chapters",
-      "owner": "student-api"
+      "owner": "runtime"
     },
     {
       "method": "POST",
       "path": "/api/experiment-questions/submit",
       "name": "submit_experiment_questions",
       "owner": "student-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/web-admin/session",
+      "name": "web_admin_session",
+      "owner": "web-admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/web-admin/teacher-accounts",
+      "name": "web_admin_list_teacher_accounts",
+      "owner": "web-admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/teacher-accounts",
+      "name": "web_admin_create_teacher_account",
+      "owner": "web-admin-api"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/web-admin/teacher-accounts/{account_id}",
+      "name": "web_admin_delete_teacher_account",
+      "owner": "web-admin-api"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/web-admin/teacher-accounts/{account_id}",
+      "name": "web_admin_patch_teacher_account",
+      "owner": "web-admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/teacher-accounts/{account_id}/disable",
+      "name": "web_admin_disable_teacher_account",
+      "owner": "web-admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/teacher-accounts/{account_id}/enable",
+      "name": "web_admin_enable_teacher_account",
+      "owner": "web-admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/teacher-accounts/{account_id}/reset-password",
+      "name": "web_admin_reset_teacher_account_password",
+      "owner": "web-admin-api"
     },
     {
       "method": "GET",
@@ -646,14 +814,20 @@
     },
     {
       "method": "GET",
-      "path": "/api/student/experiment-groups/{parent_code}",
-      "name": "experiment_group",
+      "path": "/api/student/catalog/nodes/{node_id}",
+      "name": "student_catalog_node_route",
       "owner": "student-api"
     },
     {
       "method": "GET",
-      "path": "/api/student/experiments/{experiment_id}",
-      "name": "experiment_detail",
+      "path": "/api/student/catalog/points/{node_id}",
+      "name": "student_point_detail_route",
+      "owner": "student-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/student/chapters/{chapter_id}/catalog",
+      "name": "student_chapter_catalog_route",
       "owner": "student-api"
     },
     {
@@ -759,6 +933,48 @@
       "path": "/api/admin/media/bindings/{binding_id}/archive",
       "replacement": "DELETE /api/admin/media/bindings/{binding_id}",
       "reason": "Deprecated archive compatibility alias removed by backend slim refactor."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/experiments/{experiment_id}/video-points",
+      "replacement": "Use GET /api/admin/catalog/nodes/{node_id} and catalog search.",
+      "reason": "Removed by experiment catalog tree point architecture refactor; stable catalog node ids are authoritative."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/experiments/{experiment_id}/video-points/{point_key}/resources",
+      "replacement": "Use POST /api/admin/catalog/nodes/{node_id}/media-bindings.",
+      "reason": "Removed by experiment catalog tree point architecture refactor; stable catalog node ids are authoritative."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/experiments/{experiment_id}/video-points/{point_key}/content",
+      "replacement": "Use PUT /api/admin/catalog/nodes/{node_id}/point-content.",
+      "reason": "Removed by experiment catalog tree point architecture refactor; stable catalog node ids are authoritative."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/experiments/{experiment_id}/video-points/{point_key}/publication",
+      "replacement": "Use POST /api/admin/catalog/nodes/{node_id}/point-content/publication.",
+      "reason": "Removed by experiment catalog tree point architecture refactor; stable catalog node ids are authoritative."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/experiments/{experiment_id}/video-points/{point_key}/related-links",
+      "replacement": "Use PUT /api/admin/catalog/nodes/{node_id}/related-links.",
+      "reason": "Removed by experiment catalog tree point architecture refactor; stable catalog node ids are authoritative."
+    },
+    {
+      "method": "GET",
+      "path": "/api/student/experiment-groups/{parent_code}",
+      "replacement": "Use GET /api/student/chapters/{chapter_id}/catalog and catalog node routes.",
+      "reason": "Removed by experiment catalog tree point architecture refactor; stable catalog node ids are authoritative."
+    },
+    {
+      "method": "GET",
+      "path": "/api/student/experiments/{experiment_id}",
+      "replacement": "Use GET /api/student/catalog/points/{node_id}.",
+      "reason": "Removed by experiment catalog tree point architecture refactor; stable catalog node ids are authoritative."
     }
   ]
 }

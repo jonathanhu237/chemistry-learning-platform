@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
@@ -14,6 +14,7 @@ from server.app.mastery import DEFAULT_EXPERIMENT_MASTERY_SCORE, MasterySnapshot
 from server.app.domains.platform.settings import get_learning_behavior_settings
 from server.app.domains.assessments.mastery import update_experiment_mastery_from_attempt_rows
 from server.app.domains.assessments.student_experiment import _grade_answer
+from server.app.domains.questions.point_identity import unique_strings
 from server.app.domains.assessments.pretest import _ensure_student_row, _load_student_context
 from server.app.student_posttest_schemas import (
     PosttestExperimentSummary,
@@ -39,6 +40,9 @@ class PosttestQuestionCandidate:
     difficulty: str
     related_chapter_ids: list[str]
     related_knowledge_point_ids: list[str]
+    primary_point_node_ids: list[str]
+    primary_canonical_point_ids: list[str] = field(default_factory=list)
+    source_placement_node_ids: list[str] = field(default_factory=list)
 
 
 def _json(value: Any) -> str:
@@ -57,6 +61,18 @@ def _as_list(value: Any) -> list[Any]:
     if isinstance(value, tuple):
         return list(value)
     return [value]
+
+
+def _question_point_node_ids(question: PosttestQuestionCandidate) -> list[str]:
+    return [str(item) for item in question.primary_point_node_ids if str(item).strip()]
+
+
+def _question_source_placement_node_ids(question: PosttestQuestionCandidate) -> list[str]:
+    return unique_strings(question.source_placement_node_ids, question.primary_point_node_ids)
+
+
+def _question_canonical_point_ids(question: PosttestQuestionCandidate) -> list[str]:
+    return unique_strings(question.primary_canonical_point_ids)
 
 
 def _stable_hash(value: str) -> int:
@@ -199,7 +215,8 @@ def _load_questions_by_ids(session: Any, question_ids: list[str]) -> dict[str, P
             """
             SELECT q.id::text AS id, q.experiment_id, fe.title AS experiment_title,
                    q.question_type, q.stem, q.options, q.answer, q.explanation,
-                   q.difficulty, q.related_chapter_ids, q.related_knowledge_point_ids
+                   q.difficulty, q.related_chapter_ids, q.related_knowledge_point_ids,
+                   q.primary_point_node_ids, q.primary_canonical_point_ids, q.source_placement_node_ids
             FROM experiment_questions q
             JOIN formal_experiments fe ON fe.id = q.experiment_id
             WHERE q.id::text = ANY(:question_ids)
@@ -225,6 +242,9 @@ def _load_questions_by_ids(session: Any, question_ids: list[str]) -> dict[str, P
             related_knowledge_point_ids=[
                 str(item) for item in _as_list(row.get("related_knowledge_point_ids")) if str(item).strip()
             ],
+            primary_point_node_ids=[str(item) for item in _as_list(row.get("primary_point_node_ids")) if str(item).strip()],
+            primary_canonical_point_ids=[str(item) for item in _as_list(row.get("primary_canonical_point_ids")) if str(item).strip()],
+            source_placement_node_ids=[str(item) for item in _as_list(row.get("source_placement_node_ids")) if str(item).strip()],
         )
     return questions
 
@@ -237,7 +257,8 @@ def _load_published_candidates(session: Any, experiment_ids: list[str]) -> list[
             """
             SELECT q.id::text AS id, q.experiment_id, fe.title AS experiment_title,
                    q.question_type, q.stem, q.options, q.answer, q.explanation,
-                   q.difficulty, q.related_chapter_ids, q.related_knowledge_point_ids
+                   q.difficulty, q.related_chapter_ids, q.related_knowledge_point_ids,
+                   q.primary_point_node_ids, q.primary_canonical_point_ids, q.source_placement_node_ids
             FROM experiment_questions q
             JOIN formal_experiments fe ON fe.id = q.experiment_id
             WHERE q.experiment_id = ANY(:experiment_ids)
@@ -268,6 +289,9 @@ def _load_published_candidates(session: Any, experiment_ids: list[str]) -> list[
                 related_knowledge_point_ids=[
                     str(item) for item in _as_list(row.get("related_knowledge_point_ids")) if str(item).strip()
                 ],
+                primary_point_node_ids=[str(item) for item in _as_list(row.get("primary_point_node_ids")) if str(item).strip()],
+                primary_canonical_point_ids=[str(item) for item in _as_list(row.get("primary_canonical_point_ids")) if str(item).strip()],
+                source_placement_node_ids=[str(item) for item in _as_list(row.get("source_placement_node_ids")) if str(item).strip()],
             )
         )
     return candidates
@@ -437,6 +461,11 @@ def start_student_posttest(user: Any) -> StudentPosttestResponse:
         mastery_before = _experiment_mastery_snapshot(session, student_id=context.student_id, experiments=experiments)
         metadata = {
             "experiments": [experiment.model_dump() for experiment in experiments],
+            "point_node_ids": sorted({node_id for question in selected for node_id in _question_point_node_ids(question)}),
+            "source_placement_node_ids": sorted(
+                {node_id for question in selected for node_id in _question_source_placement_node_ids(question)}
+            ),
+            "canonical_point_ids": sorted({node_id for question in selected for node_id in _question_canonical_point_ids(question)}),
             "target_question_count": target_count,
             "warnings": {"underfilled": len(selected) < target_count},
         }
@@ -446,11 +475,13 @@ def start_student_posttest(user: Any) -> StudentPosttestResponse:
                     """
                     INSERT INTO student_posttest_sessions (
                       student_id, class_id, status, experiment_ids, question_ids,
-                      mastery_before, metadata
+                      point_node_ids, canonical_point_ids, source_placement_node_ids, mastery_before, metadata
                     )
                     VALUES (
                       :student_id, :class_id, 'in_progress', CAST(:experiment_ids AS jsonb),
-                      CAST(:question_ids AS jsonb), CAST(:mastery_before AS jsonb),
+                      CAST(:question_ids AS jsonb), CAST(:point_node_ids AS jsonb),
+                      CAST(:canonical_point_ids AS jsonb), CAST(:source_placement_node_ids AS jsonb),
+                      CAST(:mastery_before AS jsonb),
                       CAST(:metadata AS jsonb)
                     )
                     RETURNING *
@@ -461,6 +492,9 @@ def start_student_posttest(user: Any) -> StudentPosttestResponse:
                     "class_id": context.class_id,
                     "experiment_ids": _json_array(experiment_ids),
                     "question_ids": _json_array(_question_ids(selected)),
+                    "point_node_ids": _json_array(metadata["point_node_ids"]),
+                    "canonical_point_ids": _json_array(metadata["canonical_point_ids"]),
+                    "source_placement_node_ids": _json_array(metadata["source_placement_node_ids"]),
                     "mastery_before": _json(mastery_before),
                     "metadata": _json(metadata),
                 },
@@ -521,10 +555,12 @@ def _insert_attempts(
                 """
                 INSERT INTO experiment_question_attempts (
                   student_id, class_id, experiment_id, question_id, question_type,
+                  point_node_id, canonical_point_id, source_placement_node_id,
                   submitted_answer, correct, score, attempt_kind, metadata
                 )
                 VALUES (
                   :student_id, :class_id, :experiment_id, CAST(:question_id AS uuid), :question_type,
+                  :point_node_id, :canonical_point_id, :source_placement_node_id,
                   CAST(:submitted_answer AS jsonb), :correct, :score, 'posttest', CAST(:metadata AS jsonb)
                 )
                 """
@@ -535,12 +571,18 @@ def _insert_attempts(
                 "experiment_id": question.experiment_id,
                 "question_id": question.id,
                 "question_type": question.question_type,
+                "point_node_id": next(iter(_question_source_placement_node_ids(question)), None),
+                "canonical_point_id": next(iter(_question_canonical_point_ids(question)), None),
+                "source_placement_node_id": next(iter(_question_source_placement_node_ids(question)), None),
                 "submitted_answer": _json({"value": submitted}),
                 "correct": correct,
                 "score": 1 if correct else 0,
                 "metadata": _json(
                     {
                         "posttest_session_id": posttest_session_id,
+                        "point_node_ids": _question_point_node_ids(question),
+                        "source_placement_node_ids": _question_source_placement_node_ids(question),
+                        "canonical_point_ids": _question_canonical_point_ids(question),
                         "related_chapter_ids": question.related_chapter_ids,
                         "related_knowledge_point_ids": question.related_knowledge_point_ids,
                     }
@@ -556,7 +598,8 @@ def _update_mastery_from_posttest(session: Any, *, student_id: str, posttest_ses
         for row in session.execute(
             text(
                 """
-                SELECT a.correct, a.class_id, a.experiment_id, a.question_type,
+                SELECT a.correct, a.class_id, a.experiment_id, a.point_node_id,
+                       a.canonical_point_id, a.source_placement_node_id, a.question_type,
                        q.difficulty, q.related_knowledge_point_ids
                 FROM experiment_question_attempts a
                 JOIN experiment_questions q ON q.id = a.question_id

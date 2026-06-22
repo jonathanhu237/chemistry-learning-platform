@@ -4,7 +4,7 @@ This map records the current large-file boundaries before behavior-preserving mo
 
 ## Frontend Route Map
 
-Source: `apps/admin-web/src/App.tsx`.
+Source: historical `apps/admin-web/src/App.tsx`, now `apps/web-teacher/src/app/*`.
 
 Current shell and route components:
 
@@ -52,7 +52,7 @@ Heavy dependencies currently imported at the top of `App.tsx` and suitable for l
 
 ## Frontend Style Split Map
 
-Source: `apps/admin-web/src/styles.css`.
+Source: `apps/web-teacher/src/styles.css`.
 
 Suggested first-pass style files:
 

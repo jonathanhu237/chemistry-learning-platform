@@ -29,12 +29,6 @@ ADMIN_ROUTE_CONTRACTS = [
     ("PUT", "/api/admin/registration-settings"),
     ("GET", "/api/admin/classes/{class_id}/registration-settings"),
     ("PUT", "/api/admin/classes/{class_id}/registration-settings"),
-    ("GET", "/api/admin/classes/{class_id}/smart-assessment-strategy"),
-    ("PUT", "/api/admin/classes/{class_id}/smart-assessment-strategy"),
-    ("DELETE", "/api/admin/classes/{class_id}/smart-assessment-strategy"),
-    ("GET", "/api/admin/classes/{class_id}/custom-assessment-settings"),
-    ("PUT", "/api/admin/classes/{class_id}/custom-assessment-settings"),
-    ("DELETE", "/api/admin/classes/{class_id}/custom-assessment-settings"),
     ("POST", "/api/admin/classes/{class_id}/roster/preview"),
     ("POST", "/api/admin/classes/{class_id}/roster/import"),
     ("GET", "/api/admin/classes/{class_id}/students"),
@@ -65,6 +59,7 @@ ADMIN_ROUTE_CONTRACTS = [
     ("POST", "/api/admin/media/bindings/{binding_id}/publish"),
     ("POST", "/api/admin/media/bindings/{binding_id}/unpublish"),
     ("DELETE", "/api/admin/media/bindings/{binding_id}"),
+    ("POST", "/api/admin/student-preview/session"),
 ]
 
 

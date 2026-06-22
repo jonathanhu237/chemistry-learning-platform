@@ -5,30 +5,11 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
-class ExperimentChapterBinding(BaseModel):
-    chapter_id: str = Field(min_length=1)
-    coverage_type: str = Field(default="primary", pattern="^(primary|partial|supporting)$")
-    notes: str | None = None
-    sort_order: int = 0
-
-
-class ExperimentCreateRequest(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
-    summary: str | None = None
-    status: str = Field(default="draft", pattern="^(draft|published|archived)$")
-    chapter_ids: list[str] = Field(default_factory=list)
-
-
-class ExperimentUpdateRequest(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=200)
-    summary: str | None = None
-    status: str | None = Field(default=None, pattern="^(draft|published|archived)$")
-    chapter_ids: list[str] | None = None
-    chapter_bindings: list[ExperimentChapterBinding] | None = None
-
-
 class QuestionRequest(BaseModel):
     experiment_id: str = Field(min_length=1)
+    primary_point_node_ids: list[str] = Field(default_factory=list)
+    primary_canonical_point_ids: list[str] = Field(default_factory=list)
+    source_placement_node_ids: list[str] = Field(default_factory=list)
     question_type: str = Field(pattern="^(single_choice|true_false|fill_blank)$")
     stem: str = Field(min_length=1)
     options: list[Any] = Field(default_factory=list)
@@ -45,6 +26,9 @@ class QuestionRequest(BaseModel):
 
 
 class QuestionUpdateRequest(BaseModel):
+    primary_point_node_ids: list[str] | None = None
+    primary_canonical_point_ids: list[str] | None = None
+    source_placement_node_ids: list[str] | None = None
     stem: str | None = Field(default=None, min_length=1)
     options: list[Any] | None = None
     answer: Any | None = None
@@ -66,6 +50,7 @@ class GenerationRequest(BaseModel):
     difficulty: str | None = "basic"
     chapter_ids: list[str] = Field(default_factory=list)
     knowledge_point_ids: list[str] = Field(default_factory=list)
+    target_point_node_ids: list[str] = Field(default_factory=list)
 
 
 class QuestionBankAssistantRequest(BaseModel):
@@ -84,6 +69,8 @@ class PointAwareSuggestionRequest(BaseModel):
     experiment_id: str = Field(min_length=1)
     prompt: str = Field(min_length=1, max_length=2000)
     question_id: str | None = None
+    point_node_id: str | None = None
+    point_node_ids: list[str] = Field(default_factory=list)
     point_key: str | None = None
     point_keys: list[str] = Field(default_factory=list)
     question_types: list[str] = Field(default_factory=lambda: ["single_choice", "true_false"])
@@ -95,6 +82,8 @@ class WorkbenchSessionRequest(BaseModel):
     mode: str = Field(pattern="^(repair|create)$")
     experiment_id: str = Field(min_length=1)
     question_id: str | None = None
+    point_node_id: str | None = None
+    point_node_ids: list[str] = Field(default_factory=list)
     point_key: str | None = None
     point_keys: list[str] = Field(default_factory=list)
 
@@ -121,45 +110,3 @@ class ExperimentQuestionSubmitRequest(BaseModel):
     experiment_id: str = Field(min_length=1)
     attempt_kind: str = "practice"
     answers: list[ExperimentAnswer]
-
-
-class ExperimentExistingVideoBindRequest(BaseModel):
-    media_asset_id: str = Field(min_length=1)
-    title: str | None = None
-    status: str = Field(default="draft", pattern="^(draft|published)$")
-    point_key: str | None = None
-    point_title: str | None = None
-
-
-class ExperimentVideoPointResourceRequest(BaseModel):
-    media_asset_id: str = Field(min_length=1)
-    title: str | None = None
-    status: str = Field(default="draft", pattern="^(draft|published)$")
-
-
-class ExperimentPointLearningContentRequest(BaseModel):
-    point_title: str | None = Field(default=None, min_length=1, max_length=200)
-    principle_mode: str = Field(default="text", pattern="^(equation|text)$")
-    principle_equation: str | None = None
-    principle_text: str | None = None
-    phenomenon_explanation: str | None = None
-    safety_note: str | None = None
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-
-class ExperimentPointPublicationRequest(BaseModel):
-    action: str = Field(pattern="^(publish|unpublish|archive)$")
-
-
-class ExperimentPointRelatedLinkRequest(BaseModel):
-    target_experiment_id: str = Field(min_length=1)
-    target_point_key: str = Field(min_length=1)
-    relation_type: str = Field(default="manual", pattern="^(manual|default_override)$")
-    hidden: bool = False
-    sort_order: int = 0
-    label: str | None = Field(default=None, max_length=200)
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-
-class ExperimentPointRelatedLinksRequest(BaseModel):
-    links: list[ExperimentPointRelatedLinkRequest] = Field(default_factory=list)

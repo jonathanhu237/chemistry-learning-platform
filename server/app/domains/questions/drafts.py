@@ -13,6 +13,7 @@ from server.app.domains.questions.bank import (
     _json_array,
     _validate_question_payload,
 )
+from server.app.domains.questions.generation import question_payload_has_catalog_evidence_lineage
 
 
 def list_question_drafts(
@@ -101,6 +102,11 @@ def publish_question_draft(
         if draft["status"] != "draft":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only draft questions can be published")
         payload = dict(draft["payload"] or {})
+        if not question_payload_has_catalog_evidence_lineage(payload):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"errors": ["catalog-node evidence lineage is required before publication"]},
+            )
         payload["status"] = "published"
         inserted = _insert_question(
             session,

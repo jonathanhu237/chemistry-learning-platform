@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "baseUrl": "http://localhost:5175",
+  "screenshots": [
+    "after-tree-default.png",
+    "after-selected-point-content.png",
+    "after-video-panel.png",
+    "after-advanced-panel.png",
+    "after-narrow-content.png"
+  ],
+  "overlap": false,
+  "hasTabs": 1,
+  "stillOld": 0,
+  "diagnostics": {
+    "console": [],
+    "pageErrors": [],
+    "failedRequests": []
+  }
+}

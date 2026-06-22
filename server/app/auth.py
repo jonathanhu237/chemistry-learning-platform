@@ -8,6 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
+from server.app.domains.platform.roles import PLATFORM_ADMIN_ROLE, TEACHER_CONSOLE_ROLES, is_teacher_console_role
 from server.app.infrastructure.database import db_session
 from server.app.security import AuthError, create_access_token, hash_password, verify_password, decode_access_token
 
@@ -53,6 +54,11 @@ class AuthUser(BaseModel):
     student_id: str | None = None
     class_id: str | None = None
     class_name: str | None = None
+    preview_mode: bool = False
+    preview_purpose: str | None = None
+    preview_teacher_user_id: str | None = None
+    preview_class_id: str | None = None
+    preview_student_id: str | None = None
 
 
 class LoginResponse(BaseModel):
@@ -582,6 +588,12 @@ def get_user_from_access_token(access_token: str) -> AuthUser:
         raise _auth_error("Session is no longer active")
 
     user = _user_from_row(dict(row))
+    if claims.get("preview") or claims.get("preview_purpose"):
+        user.preview_mode = True
+        user.preview_purpose = claims.get("preview_purpose") or claims.get("purpose")
+        user.preview_teacher_user_id = claims.get("teacher_user_id")
+        user.preview_class_id = claims.get("preview_class_id") or user.class_id
+        user.preview_student_id = claims.get("preview_student_id") or user.student_id
     if user.status != "active" or user.password_version != int(claims.get("password_version") or 0):
         raise _auth_error("User session is no longer valid")
     return user
@@ -602,6 +614,18 @@ def require_roles(*roles: str) -> Callable[[AuthUser], AuthUser]:
         return user
 
     return dependency
+
+
+async def require_platform_admin(user: AuthUser = Depends(get_current_user)) -> AuthUser:
+    if user.role != PLATFORM_ADMIN_ROLE:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Platform admin account required")
+    return user
+
+
+async def require_teacher_console_user(user: AuthUser = Depends(get_current_user)) -> AuthUser:
+    if not is_teacher_console_role(user.role):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teacher console account required")
+    return user
 
 
 @router.get("/me", response_model=AuthUser)
@@ -682,6 +706,8 @@ def change_student_password(
 ) -> LoginResponse:
     if user.role != "student":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Student account required")
+    if user.preview_mode:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Preview student account mutation is disabled")
     with db_session() as session:
         row = (
             session.execute(

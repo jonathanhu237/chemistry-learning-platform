@@ -53,7 +53,7 @@ def _split_csv(value: str) -> list[str]:
 class Settings:
     app_env: str = "development"
     data_backend: str = "json"
-    database_url: str = "postgresql+psycopg://chemistry:chemistry@localhost:5432/chemistry_exam"
+    database_url: str = "postgresql+psycopg://chemistry:chemistry@127.0.0.1:15432/chemistry_exam"
     run_db_check_on_startup: bool = False
     media_root: Path = ROOT / "data" / "media"
     api_public_base_url: str = "http://127.0.0.1:8000"
@@ -72,6 +72,15 @@ class Settings:
     video_similarity_threshold: float = 0.86
     auth_secret_key: str = "dev-only-secret"
     access_token_expire_minutes: int = 720
+    web_admin_access_token: str = ""
+    student_preview_app_base_url: str = "http://222.200.189.249:5173"
+    student_preview_allowed_origins: tuple[str, ...] = (
+        "http://222.200.189.249:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+    )
+    student_preview_ticket_expire_minutes: int = 10
+    student_preview_session_expire_minutes: int = 240
     max_media_upload_mb: int = 1024
     agent_llm_provider: str = "disabled"
     agent_llm_base_url: str = ""
@@ -85,6 +94,7 @@ class Settings:
     rag_vector_top_k: int = 24
     rag_rerank_top_k: int = 9
     rag_final_top_k: int = 5
+    catalog_point_evidence_auto_refresh: bool = False
     chemistry_rag_root: Path = Path("E:/chemistry-rag") if os.name == "nt" else Path("/chemistry-rag")
     textbook_rag_enabled: bool = False
     textbook_rag_elasticsearch_url: str = ""
@@ -107,6 +117,13 @@ class Settings:
     video_library_search_timeout_seconds: float = 3.0
     video_library_search_local_fallback: bool = True
     video_library_search_require_es_in_production: bool = True
+    teacher_catalog_search_enabled: bool = True
+    teacher_catalog_search_backend: str = "elasticsearch"
+    teacher_catalog_search_url: str = ""
+    teacher_catalog_search_index: str = "teacher-catalog-admin-search"
+    teacher_catalog_search_analyzer: str = "ik_max_word"
+    teacher_catalog_search_timeout_seconds: float = 3.0
+    teacher_catalog_search_local_fallback: bool = True
 
     @property
     def is_production(self) -> bool:
@@ -118,6 +135,8 @@ class Settings:
             errors.append("DATA_BACKEND must be json or postgres")
         if self.video_library_search_backend not in {"local", "elasticsearch", "disabled"}:
             errors.append("VIDEO_LIBRARY_SEARCH_BACKEND must be local, elasticsearch, or disabled")
+        if self.teacher_catalog_search_backend not in {"elasticsearch", "disabled"}:
+            errors.append("TEACHER_CATALOG_SEARCH_BACKEND must be elasticsearch or disabled")
         if self.is_production:
             if self.data_backend != "postgres":
                 errors.append("DATA_BACKEND must be postgres in production")
@@ -129,6 +148,12 @@ class Settings:
                 errors.append("API_PUBLIC_BASE_URL is required in production")
             if not _getenv("AUTH_SECRET_KEY") or self.auth_secret_key in {"", "dev-only-secret", "dev-only-change-me"}:
                 errors.append("AUTH_SECRET_KEY must be set to a non-development value in production")
+            if (
+                not _getenv("WEB_ADMIN_ACCESS_TOKEN")
+                or len(self.web_admin_access_token) < 32
+                or self.web_admin_access_token.startswith("dev-only-")
+            ):
+                errors.append("WEB_ADMIN_ACCESS_TOKEN must be set to a long non-development value in production")
             if not _getenv("AGENT_LLM_PROVIDER"):
                 errors.append("AGENT_LLM_PROVIDER must be explicit in production, use disabled when no LLM is configured")
             if self.agent_llm_provider and self.agent_llm_provider != "disabled":
@@ -190,6 +215,28 @@ def get_settings() -> Settings:
         video_similarity_threshold=_get_float("VIDEO_SIMILARITY_THRESHOLD", Settings.video_similarity_threshold),
         auth_secret_key=_getenv("AUTH_SECRET_KEY", Settings.auth_secret_key),
         access_token_expire_minutes=_get_int("ACCESS_TOKEN_EXPIRE_MINUTES", Settings.access_token_expire_minutes),
+        web_admin_access_token=_getenv("WEB_ADMIN_ACCESS_TOKEN", Settings.web_admin_access_token),
+        student_preview_app_base_url=_getenv(
+            "STUDENT_PREVIEW_APP_BASE_URL",
+            Settings.student_preview_app_base_url,
+        ).rstrip("/"),
+        student_preview_allowed_origins=tuple(
+            _split_csv(
+                _getenv(
+                    "STUDENT_PREVIEW_ALLOWED_ORIGINS",
+                    ",".join(Settings.student_preview_allowed_origins),
+                )
+            )
+            or list(Settings.student_preview_allowed_origins)
+        ),
+        student_preview_ticket_expire_minutes=_get_int(
+            "STUDENT_PREVIEW_TICKET_EXPIRE_MINUTES",
+            Settings.student_preview_ticket_expire_minutes,
+        ),
+        student_preview_session_expire_minutes=_get_int(
+            "STUDENT_PREVIEW_SESSION_EXPIRE_MINUTES",
+            Settings.student_preview_session_expire_minutes,
+        ),
         max_media_upload_mb=_get_int("MAX_MEDIA_UPLOAD_MB", Settings.max_media_upload_mb),
         agent_llm_provider=_getenv("AGENT_LLM_PROVIDER", Settings.agent_llm_provider).lower(),
         agent_llm_base_url=_getenv("AGENT_LLM_BASE_URL"),
@@ -203,6 +250,10 @@ def get_settings() -> Settings:
         rag_vector_top_k=_get_int("RAG_VECTOR_TOP_K", Settings.rag_vector_top_k),
         rag_rerank_top_k=_get_int("RAG_RERANK_TOP_K", Settings.rag_rerank_top_k),
         rag_final_top_k=_get_int("RAG_FINAL_TOP_K", Settings.rag_final_top_k),
+        catalog_point_evidence_auto_refresh=_get_bool(
+            "CATALOG_POINT_EVIDENCE_AUTO_REFRESH",
+            Settings.catalog_point_evidence_auto_refresh,
+        ),
         chemistry_rag_root=Path(_getenv("CHEMISTRY_RAG_ROOT", str(Settings.chemistry_rag_root))),
         textbook_rag_enabled=_get_bool("TEXTBOOK_RAG_ENABLED", Settings.textbook_rag_enabled),
         textbook_rag_elasticsearch_url=_getenv("TEXTBOOK_RAG_ELASTICSEARCH_URL").rstrip("/"),
@@ -260,5 +311,33 @@ def get_settings() -> Settings:
         video_library_search_require_es_in_production=_get_bool(
             "VIDEO_LIBRARY_SEARCH_REQUIRE_ES_IN_PRODUCTION",
             Settings.video_library_search_require_es_in_production,
+        ),
+        teacher_catalog_search_enabled=_get_bool(
+            "TEACHER_CATALOG_SEARCH_ENABLED",
+            Settings.teacher_catalog_search_enabled,
+        ),
+        teacher_catalog_search_backend=_getenv(
+            "TEACHER_CATALOG_SEARCH_BACKEND",
+            Settings.teacher_catalog_search_backend,
+        ).lower(),
+        teacher_catalog_search_url=_getenv(
+            "TEACHER_CATALOG_SEARCH_URL",
+            _getenv("VIDEO_LIBRARY_SEARCH_URL", Settings.teacher_catalog_search_url),
+        ).rstrip("/"),
+        teacher_catalog_search_index=_getenv(
+            "TEACHER_CATALOG_SEARCH_INDEX",
+            Settings.teacher_catalog_search_index,
+        ),
+        teacher_catalog_search_analyzer=_getenv(
+            "TEACHER_CATALOG_SEARCH_ANALYZER",
+            Settings.teacher_catalog_search_analyzer,
+        ),
+        teacher_catalog_search_timeout_seconds=_get_float(
+            "TEACHER_CATALOG_SEARCH_TIMEOUT_SECONDS",
+            Settings.teacher_catalog_search_timeout_seconds,
+        ),
+        teacher_catalog_search_local_fallback=_get_bool(
+            "TEACHER_CATALOG_SEARCH_LOCAL_FALLBACK",
+            Settings.teacher_catalog_search_local_fallback,
         ),
     )

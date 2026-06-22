@@ -21,6 +21,13 @@ def test_extract_formulae_strips_equation_noise() -> None:
     assert formulae == ["NA2S2O3", "HCL", "NACL", "S", "SO2", "H2O"]
 
 
+def test_extract_formulae_normalizes_unicode_ion_charges_without_count_pollution() -> None:
+    formulae = extract_formulae("Mn\u00b2\u207a + ClO\u207b + OH\u207b")
+
+    assert formulae == ["MN", "CLO", "OH"]
+    assert "MN2" not in formulae
+
+
 def test_formula_aliases_expand_common_chemistry_names() -> None:
     aliases = expand_formula_aliases(["HCl", "Na2S2O3"])
 

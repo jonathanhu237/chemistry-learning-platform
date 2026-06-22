@@ -30,7 +30,7 @@ The admin web uses Uppy with tus support when `VITE_TUS_ENDPOINT` is configured.
 
 Exact duplicates are byte-identical only. Different encodings of similar content are not exact duplicates and are never auto-skipped.
 
-For local admin builds, copy `apps/admin-web/.env.example` to `apps/admin-web/.env` or provide `VITE_TUS_ENDPOINT=http://127.0.0.1:10980/files/` in the build environment.
+For local teacher-console builds, copy `apps/web-teacher/.env.example` to `apps/web-teacher/.env` or provide `VITE_TUS_ENDPOINT=http://127.0.0.1:10980/files/` in the build environment.
 
 ## Processing Policy
 
@@ -89,7 +89,13 @@ Implementation review checklist:
 Start local services:
 
 ```powershell
-docker compose up --build
+docker compose up -d --build backend tusd video-worker postgres
+```
+
+After the stack exists, rebuild only `video-worker` for worker code or dependency changes:
+
+```powershell
+docker compose up -d --build video-worker
 ```
 
 Queue non-blocking backfill jobs for existing ready media:

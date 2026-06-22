@@ -5,8 +5,9 @@
 artifacts
 logs
 
-apps/admin-web/node_modules
-apps/student-web/node_modules
+apps/web-admin/node_modules
+apps/web-student/node_modules
+apps/web-teacher/node_modules
 
 data/media
 data/processed

@@ -1,0 +1,180 @@
+.periodic-card {
+  padding: 14px;
+  border: 1px solid rgba(0, 88, 38, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 253, 246, 0.94);
+  box-shadow: 0 18px 44px rgba(21, 49, 34, 0.12);
+}
+
+.periodic-card-head,
+.selection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.periodic-card-head {
+  margin-bottom: 12px;
+}
+
+.periodic-card-head > div {
+  min-width: 0;
+}
+
+.periodic-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  width: clamp(104px, 34vw, 132px);
+  min-height: 31px;
+  border: 1px solid rgba(0, 88, 38, 0.14);
+  border-radius: 8px;
+  padding: 0 9px;
+  color: var(--green);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.periodic-search svg {
+  flex: none;
+  color: var(--green);
+}
+
+.periodic-search input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  color: var(--ink);
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.periodic-search input::placeholder {
+  color: rgba(90, 111, 101, 0.74);
+}
+
+.area-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.area-legend button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 34px;
+  border: 1px solid rgba(0, 88, 38, 0.12);
+  border-radius: 8px;
+  color: var(--area-ink);
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  font-weight: 850;
+  cursor: pointer;
+  overflow: visible;
+}
+
+.area-legend button span {
+  white-space: nowrap;
+}
+
+.area-legend button i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--area-color);
+}
+
+.periodic-caption {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.periodic-grid {
+  display: grid;
+  grid-template-columns: 14px repeat(18, minmax(0, 1fr));
+  grid-template-rows: 18px repeat(7, 18px) 14px repeat(2, 18px);
+  gap: 3px;
+}
+
+.group-number,
+.period-number {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.period-number {
+  writing-mode: vertical-rl;
+}
+
+.element-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 18px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  border-radius: 4px;
+  overflow: hidden;
+  color: var(--cell-ink);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 140ms ease, filter 140ms ease;
+}
+
+.element-cell span {
+  max-width: 100%;
+  padding: 0 1px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.area-legend button:focus,
+.element-cell:focus,
+.periodic-search:focus-within {
+  outline-style: none;
+  outline-width: 0;
+}
+
+.area-legend button:focus-visible,
+.element-cell:focus-visible {
+  outline: 2px solid rgba(0, 88, 38, 0.42);
+  outline-offset: 2px;
+}
+
+.periodic-search:focus-within {
+  border-color: rgba(0, 88, 38, 0.34);
+  box-shadow: 0 0 0 2px rgba(0, 88, 38, 0.08);
+}
+
+.element-cell.search-dimmed {
+  filter: saturate(0.72);
+  opacity: 0.34;
+}
+
+.element-cell.search-match {
+  filter: saturate(1.2) brightness(1.05);
+  box-shadow: 0 0 0 2px rgba(255, 253, 246, 0.9), 0 6px 12px rgba(21, 49, 34, 0.18);
+}
+
+.element-cell:active {
+  transform: scale(0.92);
+}

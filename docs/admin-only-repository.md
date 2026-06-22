@@ -8,8 +8,9 @@ This repository originally described the standalone admin-management application
 
 It includes:
 
-- React + Ant Design admin frontend in `apps/admin-web`
-- React student H5 login frontend in `apps/student-web`
+- React + Ant Design platform operations frontend in `apps/web-admin`
+- React + Ant Design teacher console frontend in `apps/web-teacher`
+- React student H5 frontend in `apps/web-student`
 - FastAPI admin backend in `server`
 - database migrations in `server/migrations`
 - admin bootstrap/import scripts in `scripts`
@@ -35,9 +36,11 @@ python -m pip install -r requirements.txt
 Install frontend dependencies:
 
 ```powershell
-Set-Location apps/admin-web
+Set-Location apps/web-admin
 npm install
-Set-Location ../student-web
+Set-Location ../web-teacher
+npm install
+Set-Location ../web-student
 npm install
 ```
 
@@ -47,31 +50,39 @@ Run the admin backend:
 python -m uvicorn server.app.app_runtime.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Run the admin frontend:
+Run the platform operations frontend:
 
 ```powershell
-Set-Location apps/admin-web
+Set-Location apps/web-admin
+npm run dev
+```
+
+Run the teacher console frontend:
+
+```powershell
+Set-Location apps/web-teacher
 npm run dev
 ```
 
 Run the student H5 frontend:
 
 ```powershell
-Set-Location apps/student-web
+Set-Location apps/web-student
 npm run dev
 ```
 
-The admin frontend runs at `http://127.0.0.1:5174/login`, the student H5 runs at `http://127.0.0.1:5173/`, and both proxy `/api` to the backend in local development.
+The platform operations frontend runs at `http://127.0.0.1:5175/`, the teacher console runs at `http://127.0.0.1:5174/login`, the student H5 runs at `http://127.0.0.1:5173/`, and all three proxy `/api` to the backend in local development.
+The platform operations frontend is opened with the configured `WEB_ADMIN_ACCESS_TOKEN`, not an `app_users` username/password login.
 
 ## Production-Style Local Run
 
 For Docker Compose, copy `.env.example` to `.env`, adjust secrets and database settings, then run the whole application graph:
 
 ```powershell
-docker compose up --build
+python scripts/deploy_compose_stack.py
 ```
 
-Compose builds and serves the student and admin frontend images separately. The backend remains an API service and does not mount or serve frontend `dist` directories.
+Compose builds and serves the `web-student`, `web-teacher`, and `web-admin` frontend images separately. The backend remains an API service and does not mount or serve frontend `dist` directories.
 
 ## Bootstrap
 
@@ -81,10 +92,16 @@ Apply migrations:
 python scripts/apply_migrations.py
 ```
 
-Create or update an admin user:
+Create or update a teacher-console account:
 
 ```powershell
 python scripts/bootstrap_admin.py --username admin
+```
+
+Configure the platform operations token:
+
+```powershell
+$env:WEB_ADMIN_ACCESS_TOKEN = "<long-random-token>"
 ```
 
 Import seed data when needed:
@@ -93,6 +110,9 @@ Import seed data when needed:
 python scripts/import_seed_to_postgres.py
 python scripts/seed_formal_experiments.py
 python scripts/publish_reviewed_curriculum.py
+python scripts/generate_experiment_catalog_seed.py
+python scripts/validate_experiment_catalog_seed.py --write-report
+python scripts/import_experiment_catalog_seed.py --skip-migrations
 ```
 
 ## Validation
@@ -106,11 +126,14 @@ python -c "import server.app.app_runtime.main as m; print(m.app.title)"
 Validate the frontend:
 
 ```powershell
-Set-Location apps/admin-web
+Set-Location apps/web-admin
+npm run typecheck
+npm run build
+Set-Location ../web-teacher
 npm run typecheck
 npm test
 npm run build
-Set-Location ../student-web
+Set-Location ../web-student
 npm run typecheck
 npm run build
 ```

@@ -58,6 +58,7 @@ def create_access_token(
     display_name: str,
     password_version: int,
     expires_minutes: int | None = None,
+    extra_claims: dict[str, Any] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     settings = get_settings()
     now = datetime.now(timezone.utc)
@@ -72,6 +73,8 @@ def create_access_token(
         "iat": int(now.timestamp()),
         "exp": int(expires.timestamp()),
     }
+    if extra_claims:
+        payload.update(extra_claims)
     header = {"typ": "JWT", "alg": TOKEN_ALGORITHM}
     signing_input = ".".join(
         [

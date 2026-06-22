@@ -209,30 +209,6 @@ The system SHALL support a small, non-published demo workflow for reviewing poin
 - **THEN** it SHALL be answerable with a short phone-friendly accepted answer
 - **AND** it SHALL NOT rely on AI semantic grading to decide correctness.
 
-### Requirement: Point-aware default bank review
-The system SHALL support replacing the default experiment question bank with a validated point-aware reviewed version of the existing bank.
-
-#### Scenario: Full reviewed artifact is produced
-- **WHEN** the existing 2,310-question bank is reviewed
-- **THEN** the artifact SHALL cover all published formal experiments selected for the default bank
-- **AND** every accepted experiment-derived question SHALL bind to one or more existing experiment video point keys.
-
-#### Scenario: Existing draft bank is used as the primary review source
-- **WHEN** the current 2,310-question bank is inspected during review
-- **THEN** every old question SHALL receive a review decision of `keep`, `rewrite`, or `reject`
-- **AND** no old question SHALL be preserved without source audit, quality review, and point-key binding
-- **AND** every `rewrite` or `reject` decision SHOULD include a concrete replacement question unless the source evidence is insufficient.
-
-#### Scenario: Reviewed bank is imported
-- **WHEN** an administrator imports the reviewed default bank
-- **THEN** the backend SHALL validate the artifact before mutating the active bank
-- **AND** it SHALL record bank version, import source, validation report, import time, and operator or process.
-
-#### Scenario: Validation fails
-- **WHEN** any accepted item has invalid type, invalid answer shape, missing point keys, unresolved point keys, missing source audit, or unsupported evidence
-- **THEN** the import SHALL fail with item-level errors
-- **AND** it SHALL NOT partially publish the invalid bank.
-
 ### Requirement: Objective reviewed question quality
 The reviewed default bank SHALL keep student-facing questions objective, deterministic, and suitable for the mobile learning client.
 
@@ -330,31 +306,29 @@ The teacher-facing point-aware question-bank page SHALL expose AI add and repair
 - **THEN** the page SHALL show draft suggestions with validation status
 - **AND** the teacher SHALL be able to publish or reject each draft without leaving the point-aware question-bank workflow.
 
-### Requirement: Point-aware diagnostic bank migration closure
-The system SHALL treat the imported reviewed point-aware default bank as the current production migration target for experiment question-bank diagnostics.
+### Requirement: Catalog reset leaves default experiment question bank empty
+The system SHALL treat the legacy default experiment question bank as invalid after the canonical catalog seed replacement.
 
-#### Scenario: Production point-aware bank is used
-- **WHEN** the teacher-facing question bank is opened after the reviewed bank import
-- **THEN** the system SHALL use the imported default bank with formal experiment ids, primary point keys, source audit metadata, option links, and deterministic answer data
-- **AND** it SHALL NOT require a separate fixed-mix enhanced-bank artifact for the current release.
+#### Scenario: Catalog seed replacement runs
+- **WHEN** the canonical catalog seed replacement resets seed-derived experiment data
+- **THEN** it MUST remove or disable legacy experiment question banks and questions that were generated from old formal experiment and old point identities
+- **AND** it MUST NOT preserve the old 2,310-question bank as current, draft, review, or candidate seed data.
 
-#### Scenario: Objective question type mix is preserved
-- **WHEN** imported point-aware questions are validated or displayed
-- **THEN** the accepted student-facing types SHALL remain `single_choice`, `true_false`, and deterministic phone-friendly `fill_blank`
-- **AND** the system SHALL NOT reject an otherwise valid imported fill-blank question merely because an older enhanced-bank plan excluded fill blanks.
+#### Scenario: Teacher opens question bank after reset
+- **WHEN** a teacher opens the experiment question bank page before a new evidence-backed bank is generated
+- **THEN** the page MUST represent the current bank as empty for the affected experiment catalog scope
+- **AND** it MUST NOT imply old question coverage is still valid.
 
-#### Scenario: Fixed-mix diagnostic generation is reconsidered
-- **WHEN** a future product requirement asks for exactly two single-choice and one true/false item per experiment video point
-- **THEN** that requirement SHALL be proposed as a new explicit change
-- **AND** it SHALL NOT silently override the current imported default bank.
+### Requirement: New question-bank generation depends on catalog-node evidence
+The system SHALL require fresh catalog-node source evidence before creating a new default experiment question bank.
 
-### Requirement: Point-aware diagnostic release evidence
-The system SHALL keep the release evidence for the imported point-aware default bank inspectable by administrators and teachers.
+#### Scenario: Question generation is requested for the new catalog
+- **WHEN** an administrator or teacher requests default question-bank generation for the new experiment catalog
+- **THEN** the generation workflow MUST use catalog point node identities
+- **AND** it MUST require fresh source evidence bound to those catalog point nodes.
 
-#### Scenario: Release bank is audited
-- **WHEN** an administrator inspects the imported default bank
-- **THEN** the system SHALL expose or preserve validation evidence showing question count, experiment coverage, point bindings, source refs, source audit status, option links, and deterministic answer shape.
+#### Scenario: Evidence has not been regenerated
+- **WHEN** a question-bank generation workflow has no fresh catalog-node evidence for the requested point scope
+- **THEN** it MUST block or mark generation as unavailable
+- **AND** it MUST NOT fall back to legacy point keys, legacy reviewed bank artifacts, or old point evidence bindings.
 
-#### Scenario: Teacher inspects a migrated question
-- **WHEN** a teacher opens a migrated question detail
-- **THEN** the console SHALL show the linked experiment, primary point titles, evidence status, source references, answer, explanation, and option-level diagnostic links where available.

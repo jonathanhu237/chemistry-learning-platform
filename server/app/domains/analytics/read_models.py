@@ -9,6 +9,8 @@ from typing import Any
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
 from sqlalchemy import text
 
+from server.app.domains.platform.roles import is_teacher_console_role
+from server.app.domains.preview.student_device_preview import TEACHER_PREVIEW_ACCOUNT_PURPOSE, TEACHER_PREVIEW_CLASS_PURPOSE
 from server.app.infrastructure.database import db_session
 from server.app.mastery import DEFAULT_EXPERIMENT_MASTERY_SCORE
 
@@ -123,7 +125,7 @@ def _build_experiment_groups(experiments: list[dict[str, Any]]) -> list[dict[str
 
 
 def _teacher_can_access_class(user: Any, class_id: str) -> bool:
-    if user.role == "admin":
+    if is_teacher_console_role(user.role):
         return True
     with db_session() as session:
         row = session.execute(
@@ -139,7 +141,27 @@ def _teacher_can_access_class(user: Any, class_id: str) -> bool:
         ).first()
     return row is not None
 
+def _is_teacher_preview_class(class_id: str) -> bool:
+    with db_session() as session:
+        row = (
+            session.execute(
+                text(
+                    """
+                    SELECT COALESCE(class_purpose, 'instructional') = :preview_purpose AS is_preview
+                    FROM classes
+                    WHERE id = :class_id
+                    """
+                ),
+                {"class_id": class_id, "preview_purpose": TEACHER_PREVIEW_CLASS_PURPOSE},
+            )
+            .mappings()
+            .first()
+        )
+    return bool(row and row["is_preview"])
+
 def _require_class_access(class_id: str, user: Any) -> None:
+    if _is_teacher_preview_class(class_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
     if not _teacher_can_access_class(user, class_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this class")
 
@@ -197,6 +219,7 @@ def _experiment_select_sql(where_clause: str = "") -> str:
             WHERE mb.target_type = 'experiment'
               AND mb.target_id = fe.id
               AND mb.status <> 'archived'
+              AND COALESCE(ma.lifecycle_status, 'active') = 'active'
           ), '[]'::jsonb) AS media_resources,
           (SELECT COUNT(*) FROM experiment_questions q WHERE q.experiment_id = fe.id AND q.status = 'published') AS published_question_count,
           (SELECT COUNT(*) FROM experiment_questions q WHERE q.experiment_id = fe.id AND q.status = 'draft') AS draft_question_count,
@@ -238,6 +261,7 @@ def _list_experiments(
               SELECT 1 FROM media_bindings mb
               JOIN media_assets ma ON ma.id = mb.media_asset_id
               WHERE mb.target_type = 'experiment' AND mb.target_id = fe.id AND mb.status <> 'archived'
+                AND COALESCE(ma.lifecycle_status, 'active') = 'active'
             )
             """
         )
@@ -250,6 +274,7 @@ def _list_experiments(
               WHERE mb.target_type = 'experiment'
                 AND mb.target_id = fe.id
                 AND mb.status <> 'archived'
+                AND COALESCE(ma.lifecycle_status, 'active') = 'active'
                 AND (ma.upload_status = :video_status OR mb.status = :video_status)
             )
             """
@@ -275,8 +300,40 @@ def _attempt_primary_points(attempt: dict[str, Any]) -> list[dict[str, Any]]:
     metadata = attempt.get("metadata") if isinstance(attempt.get("metadata"), dict) else {}
     question_metadata = attempt.get("question_metadata") if isinstance(attempt.get("question_metadata"), dict) else {}
     points = metadata.get("primary_points") or question_metadata.get("primary_points") or []
+    node_ids = [
+        str(node_id)
+        for node_id in (metadata.get("primary_point_node_ids") or question_metadata.get("primary_point_node_ids") or [])
+        if str(node_id).strip()
+    ]
+    if not node_ids and attempt.get("point_node_id"):
+        node_ids = [str(attempt.get("point_node_id"))]
     if points:
-        return [item for item in points if isinstance(item, dict) and item.get("point_key")]
+        output: list[dict[str, Any]] = []
+        seen_node_ids: set[str] = set()
+        for index, item in enumerate(points):
+            if not isinstance(item, dict) or not (item.get("point_node_id") or item.get("point_key")):
+                continue
+            point = dict(item)
+            node_id = str(point.get("point_node_id") or "").strip()
+            if not node_id and index < len(node_ids):
+                node_id = node_ids[index]
+                point["point_node_id"] = node_id
+            if node_id:
+                seen_node_ids.add(node_id)
+            output.append(point)
+        output.extend(
+            {"point_node_id": node_id, "point_title": node_id, "point_key": ""}
+            for node_id in node_ids
+            if node_id not in seen_node_ids
+        )
+        if output:
+            return output
+    if node_ids:
+        return [
+            {"point_node_id": str(node_id), "point_title": str(node_id), "point_key": ""}
+            for node_id in node_ids
+            if str(node_id).strip()
+        ]
     keys = metadata.get("primary_point_keys") or question_metadata.get("primary_point_keys") or []
     return [{"point_key": str(key), "point_title": str(key)} for key in keys if str(key).strip()]
 
@@ -290,16 +347,18 @@ def _class_students(session: Any, class_id: str) -> list[dict[str, Any]]:
                 FROM roster_entries re
                 WHERE re.class_id = :class_id
                   AND re.status <> 'disabled'
+                  AND COALESCE(re.entry_purpose, 'instructional') <> :preview_account_purpose
                 UNION
                 SELECT sp.student_id, sp.student_name, au.status, sp.class_id
                 FROM student_profiles sp
                 JOIN app_users au ON au.id = sp.user_id
                 WHERE sp.class_id = :class_id
                   AND au.status <> 'disabled'
+                  AND COALESCE(sp.profile_purpose, 'instructional') <> :preview_account_purpose
                 ORDER BY student_id
                 """
             ),
-            {"class_id": class_id},
+            {"class_id": class_id, "preview_account_purpose": TEACHER_PREVIEW_ACCOUNT_PURPOSE},
         )
         .mappings()
         .all()
@@ -357,7 +416,7 @@ def get_class_dashboard(
                 for row in session.execute(
                     text(
                         """
-                        SELECT student_id, experiment_id, mastery_score, evidence_count, updated_at
+                        SELECT student_id, experiment_id, point_node_id, mastery_score, evidence_count, updated_at
                         FROM student_experiment_mastery
                         WHERE student_id = ANY(:student_ids)
                         """
@@ -522,6 +581,29 @@ def _shape_attempt_for_teacher(attempt: dict[str, Any]) -> dict[str, Any]:
     return shaped
 
 
+def _catalog_point_titles(node_ids: list[str]) -> dict[str, str]:
+    ids = sorted({str(node_id) for node_id in node_ids if str(node_id).strip()})
+    if not ids:
+        return {}
+    with db_session() as session:
+        return {
+            str(row["id"]): str(row.get("title") or row["id"])
+            for row in session.execute(
+                text("SELECT id, title FROM experiment_catalog_nodes WHERE id = ANY(:node_ids)"),
+                {"node_ids": ids},
+            ).mappings()
+        }
+
+
+def _enrich_point_titles(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    titles = _catalog_point_titles([str(item.get("point_node_id") or "") for item in items])
+    for item in items:
+        node_id = str(item.get("point_node_id") or "")
+        if node_id and titles.get(node_id):
+            item["point_title"] = titles[node_id]
+    return items
+
+
 def _attempt_session_id(attempt: dict[str, Any]) -> str | None:
     metadata = _metadata(attempt)
     value = metadata.get("posttest_session_id")
@@ -590,16 +672,22 @@ def get_student_report(
                     LEFT JOIN classes c ON c.id = sp.class_id
                     WHERE sp.student_id = :student_id
                       AND sp.class_id = :class_id
+                      AND COALESCE(sp.profile_purpose, 'instructional') <> :preview_account_purpose
                     UNION
                     SELECT re.student_id, re.student_name, re.class_id, c.class_name
                     FROM roster_entries re
                     LEFT JOIN classes c ON c.id = re.class_id
                     WHERE re.student_id = :student_id
                       AND re.class_id = :class_id
+                      AND COALESCE(re.entry_purpose, 'instructional') <> :preview_account_purpose
                     LIMIT 1
                     """
                 ),
-                {"student_id": student_id, "class_id": class_id},
+                {
+                    "student_id": student_id,
+                    "class_id": class_id,
+                    "preview_account_purpose": TEACHER_PREVIEW_ACCOUNT_PURPOSE,
+                },
             )
             .mappings()
             .first()
@@ -708,21 +796,23 @@ def get_student_report(
         if attempt.get("correct") is True:
             continue
         for point in _attempt_primary_points(attempt):
-            point_key = str(point.get("point_key") or "")
-            if not point_key:
+            point_node_id = str(point.get("point_node_id") or attempt.get("point_node_id") or "").strip()
+            point_key = str(point.get("point_key") or point_node_id).strip()
+            if not point_key and not point_node_id:
                 continue
             weak_video_points.setdefault(
-                point_key,
+                point_node_id or point_key,
                 {
+                    "point_node_id": point_node_id or None,
                     "point_key": point_key,
-                    "point_title": point.get("point_title") or point_key,
+                    "point_title": point.get("point_title") or point_key or point_node_id,
                     "experiment_id": attempt.get("experiment_id"),
                     "experiment_code": attempt.get("experiment_code"),
                     "experiment_title": attempt.get("experiment_title"),
                     "incorrect_count": 0,
                 },
             )
-            weak_video_points[point_key]["incorrect_count"] += 1
+            weak_video_points[point_node_id or point_key]["incorrect_count"] += 1
         kp_ids = attempt.get("related_knowledge_point_ids") or []
         if not kp_ids:
             weak_points.setdefault("unmapped", {"knowledge_point_id": None, "title": "未映射理论 KP", "incorrect_count": 0})
@@ -739,7 +829,9 @@ def get_student_report(
         "latest_posttest_report": latest_posttest_report,
         "posttest_reports": posttest_reports,
         "weak_points": sorted(weak_points.values(), key=lambda row: row["incorrect_count"], reverse=True),
-        "weak_video_points": sorted(weak_video_points.values(), key=lambda row: row["incorrect_count"], reverse=True),
+        "weak_video_points": _enrich_point_titles(
+            sorted(weak_video_points.values(), key=lambda row: row["incorrect_count"], reverse=True)
+        ),
         "timeline": timeline,
     }
 
@@ -787,6 +879,7 @@ def get_class_weak_points(
                 text(
                     f"""
                     SELECT a.experiment_id,
+                           a.point_node_id,
                            fe.code AS experiment_code,
                            fe.title AS experiment_title,
                            a.question_id,
@@ -828,14 +921,16 @@ def get_class_weak_points(
         if isinstance(metadata.get("selected_option_link"), dict):
             selected_link = metadata["selected_option_link"]
         for point in points:
-            point_key = str(point.get("point_key") or "")
-            if not point_key:
+            point_node_id = str(point.get("point_node_id") or attempt.get("point_node_id") or "").strip()
+            point_key = str(point.get("point_key") or point_node_id).strip()
+            if not point_key and not point_node_id:
                 continue
             item = point_items_by_key.setdefault(
-                point_key,
+                point_node_id or point_key,
                 {
+                    "point_node_id": point_node_id or None,
                     "point_key": point_key,
-                    "point_title": point.get("point_title") or point_key,
+                    "point_title": point.get("point_title") or point_key or point_node_id,
                     "experiment_id": attempt.get("experiment_id"),
                     "experiment_code": attempt.get("experiment_code"),
                     "experiment_title": attempt.get("experiment_title"),
@@ -859,6 +954,7 @@ def get_class_weak_points(
     for item in point_items_by_key.values():
         item["incorrect_rate"] = round(100 * int(item["incorrect_count"]) / max(1, int(item["attempt_count"])), 2)
         point_items.append(item)
+    point_items = _enrich_point_titles(point_items)
     point_items.sort(key=lambda row: (row["incorrect_count"], row["attempt_count"]), reverse=True)
     return {"items": items, "total": len(items), "point_items": point_items, "point_total": len(point_items)}
 

@@ -4,6 +4,7 @@ server {
 
     root /usr/share/nginx/html;
     index index.html;
+    add_header Content-Security-Policy "frame-ancestors ${FRAME_ANCESTORS}" always;
 
     location = /health {
         default_type text/plain;

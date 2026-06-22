@@ -109,13 +109,35 @@ CREATE TABLE IF NOT EXISTS media_assets (
   file_size_bytes bigint,
   duration_seconds numeric,
   upload_status text NOT NULL DEFAULT 'pending' CHECK (upload_status IN ('pending', 'processing', 'ready', 'failed', 'replaced')),
+  lifecycle_status text NOT NULL DEFAULT 'active' CHECK (lifecycle_status IN ('active', 'archived', 'tombstoned')),
   error_reason text,
   uploaded_by uuid REFERENCES app_users(id) ON DELETE SET NULL,
   replaced_by uuid REFERENCES media_assets(id) ON DELETE SET NULL,
+  archived_at timestamptz,
+  archived_by uuid REFERENCES app_users(id) ON DELETE SET NULL,
+  archive_reason text,
+  archive_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
   metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (relative_path)
+);
+
+CREATE TABLE IF NOT EXISTS media_asset_lifecycle_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  media_asset_id uuid NOT NULL REFERENCES media_assets(id) ON DELETE CASCADE,
+  event_type text NOT NULL CHECK (event_type IN ('media_asset_archived')),
+  actor_user_id uuid REFERENCES app_users(id) ON DELETE SET NULL,
+  reason text,
+  previous_lifecycle_status text,
+  new_lifecycle_status text NOT NULL,
+  affected_binding_summary jsonb NOT NULL DEFAULT '{}'::jsonb,
+  payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  handler_status text NOT NULL DEFAULT 'pending' CHECK (handler_status IN ('pending', 'succeeded', 'failed')),
+  handler_error text,
+  handled_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS media_bindings (
@@ -155,6 +177,11 @@ CREATE INDEX IF NOT EXISTS idx_review_items_status_type ON review_items(status, 
 CREATE INDEX IF NOT EXISTS idx_review_items_chapter ON review_items(chapter_id);
 CREATE INDEX IF NOT EXISTS idx_review_actions_item ON review_actions(review_item_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_media_assets_status ON media_assets(upload_status);
+CREATE INDEX IF NOT EXISTS idx_media_assets_lifecycle_status ON media_assets(lifecycle_status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_media_asset_lifecycle_events_asset ON media_asset_lifecycle_events(media_asset_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_media_asset_lifecycle_events_handler
+  ON media_asset_lifecycle_events(handler_status, created_at)
+  WHERE handler_status IN ('pending', 'failed');
 CREATE INDEX IF NOT EXISTS idx_media_bindings_target_status ON media_bindings(target_type, target_id, status);
 CREATE INDEX IF NOT EXISTS idx_agent_logs_student_time ON agent_logs(student_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_agent_logs_user_time ON agent_logs(user_id, created_at DESC);

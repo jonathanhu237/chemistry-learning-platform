@@ -1,0 +1,50 @@
+{
+  "failedRequests": [],
+  "pageErrors": [],
+  "consoleMessages": [],
+  "screenshots": [
+    "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-desktop-default-rows.png",
+    "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-desktop-hover-menu.png",
+    "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-desktop-drag-indicator.png",
+    "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-desktop-search-results.png",
+    "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-desktop-manual-row-unsaved.png",
+    "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-narrow-manual-row.png",
+    "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-desktop-empty-default-state.png"
+  ],
+  "bootstrap": {
+    "skipped": false,
+    "username": "codex_related_links_admin"
+  },
+  "baseUrl": "http://127.0.0.1:5176",
+  "rowCountAfterEmptySelection": 0,
+  "viewportDiagnostics": {
+    "failedRequests": [],
+    "pageErrors": [],
+    "consoleMessages": [],
+    "screenshots": [
+      "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-desktop-default-rows-viewport.png",
+      "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-desktop-hover-menu-viewport.png",
+      "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-desktop-drag-indicator-viewport.png",
+      "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-desktop-manual-search-viewport.png",
+      "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-narrow-panel-viewport.png",
+      "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-desktop-empty-default-state-viewport.png"
+    ],
+    "baseUrl": "http://127.0.0.1:5176",
+    "viewportOnly": true
+  },
+  "focusedPanelDiagnostics": {
+    "failedRequests": [],
+    "pageErrors": [],
+    "consoleMessages": [],
+    "screenshots": [
+      "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-tab-default-rows-element.png",
+      "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-tab-hover-menu-focused.png",
+      "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-tab-drag-indicator-element.png",
+      "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-tab-manual-search-element.png",
+      "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-tab-narrow-element.png",
+      "E:\\chemistry-admin\\artifacts\\related-experiments-simplification\\related-tab-empty-default-element.png"
+    ],
+    "baseUrl": "http://127.0.0.1:5176",
+    "focusedRelatedPanel": true
+  }
+}

@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from pydantic import BaseModel, Field
 
-from server.app.auth import AuthUser, require_roles
+from server.app.auth import AuthUser, require_teacher_console_user
 from server.app.curriculum import (
     archive_curriculum_version,
     create_curriculum_draft,
@@ -33,7 +33,7 @@ class ReviewActionRequest(BaseModel):
 
 @router.get("/curriculum/versions")
 async def admin_list_curriculum_versions(
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> list[dict[str, Any]]:
     return list_curriculum_versions()
 
@@ -41,7 +41,7 @@ async def admin_list_curriculum_versions(
 @router.post("/curriculum/versions")
 async def admin_create_curriculum_version(
     payload: CurriculumCreateRequest,
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     curriculum = load_curriculum_artifact(FilePath(payload.artifact_path))
     return create_curriculum_draft(curriculum, actor_user_id=user.id)
@@ -50,7 +50,7 @@ async def admin_create_curriculum_version(
 @router.get("/curriculum/versions/{version_id}")
 async def admin_get_curriculum_version(
     version_id: str = Path(min_length=1),
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     version = get_curriculum_version(version_id)
     if not version:
@@ -61,7 +61,7 @@ async def admin_get_curriculum_version(
 @router.post("/curriculum/versions/{version_id}/publish")
 async def admin_publish_curriculum_version(
     version_id: str = Path(min_length=1),
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     try:
         return publish_curriculum_version(version_id, actor_user_id=user.id)
@@ -72,7 +72,7 @@ async def admin_publish_curriculum_version(
 @router.post("/curriculum/versions/{version_id}/archive")
 async def admin_archive_curriculum_version(
     version_id: str = Path(min_length=1),
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     try:
         return archive_curriculum_version(version_id)
@@ -87,7 +87,7 @@ async def admin_list_review_items(
     chapter_id: str | None = None,
     search: str | None = None,
     limit: int = 300,
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     return list_review_items(
         item_type=item_type,
@@ -101,7 +101,7 @@ async def admin_list_review_items(
 @router.get("/review/items/{item_id}")
 async def admin_get_review_item(
     item_id: str = Path(min_length=1),
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     item = get_review_item(item_id)
     if not item:
@@ -113,7 +113,7 @@ async def admin_get_review_item(
 async def admin_apply_review_action(
     payload: ReviewActionRequest,
     item_id: str = Path(min_length=1),
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     try:
         return apply_review_action(

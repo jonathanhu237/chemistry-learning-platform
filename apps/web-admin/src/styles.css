@@ -1,0 +1,250 @@
+:root {
+  --sysu-primary: #005826;
+  --sysu-secondary: #0b6a37;
+  --sysu-soft: #e8f2ec;
+  --sysu-soft-2: #eef7f1;
+  --sysu-ink: #0d1f17;
+  --sysu-ink-soft: #2d4037;
+  --sysu-muted: #697a72;
+  --sysu-line: #dfe8e2;
+  --sysu-paper: #ffffff;
+  --sysu-wash: #f6f8f5;
+  --sysu-panel: #f8fbf9;
+  --sysu-danger: #b42318;
+  --sysu-shadow: 0 18px 44px rgba(13, 31, 23, 0.08);
+  color: var(--sysu-ink);
+  background: var(--sysu-wash);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-width: 1180px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+body {
+  background:
+    linear-gradient(90deg, rgba(0, 88, 38, 0.022) 1px, transparent 1px 44px),
+    var(--sysu-wash);
+}
+
+.full-width {
+  width: 100%;
+}
+
+.block-text {
+  display: block;
+}
+
+.center-screen,
+.login-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(90deg, rgba(0, 88, 38, 0.035) 1px, transparent 1px 36px),
+    linear-gradient(145deg, rgba(0, 88, 38, 0.12), rgba(53, 111, 156, 0.06)),
+    var(--sysu-wash);
+}
+
+.login-panel {
+  width: 430px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 88, 38, 0.16);
+  box-shadow: var(--sysu-shadow);
+}
+
+.brand-lockup,
+.sider-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark,
+.sider-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: var(--sysu-primary);
+  box-shadow: 0 10px 22px rgba(0, 88, 38, 0.16);
+  font-size: 22px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin-bottom: 8px;
+  padding: 0 9px;
+  border-radius: 999px;
+  color: var(--sysu-primary);
+  background: var(--sysu-soft);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.admin-layout {
+  min-height: 100vh;
+  background:
+    linear-gradient(90deg, rgba(0, 88, 38, 0.018) 1px, transparent 1px 44px),
+    var(--sysu-wash);
+}
+
+.admin-sider {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-right: 1px solid var(--sysu-line);
+  box-shadow: 8px 0 22px rgba(13, 31, 23, 0.035);
+  color: var(--sysu-ink);
+  padding: 20px 16px;
+}
+
+.admin-sider .ant-typography {
+  color: var(--sysu-ink);
+}
+
+.admin-sider .ant-typography-secondary {
+  color: var(--sysu-muted) !important;
+}
+
+.sider-brand {
+  padding-bottom: 22px;
+  border-bottom: 1px solid rgba(0, 88, 38, 0.1);
+  margin-bottom: 18px;
+}
+
+.sider-menu-item {
+  height: 44px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  color: var(--sysu-ink-soft);
+  background: transparent;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: left;
+  margin-bottom: 8px;
+}
+
+.sider-menu-item.active {
+  color: var(--sysu-primary);
+  background: var(--sysu-soft);
+  box-shadow: inset 3px 0 0 var(--sysu-primary);
+}
+
+.admin-header {
+  height: 72px;
+  padding: 0 28px;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid var(--sysu-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-header .ant-typography {
+  margin: 0;
+}
+
+.admin-content {
+  padding: 24px 28px 32px;
+}
+
+.metrics-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.metrics-strip .ant-card,
+.workbench-section {
+  border-radius: 8px;
+  border: 1px solid var(--sysu-line);
+  box-shadow: 0 10px 26px rgba(13, 31, 23, 0.032);
+}
+
+.workbench-section {
+  background: rgba(255, 255, 255, 0.96);
+  padding: 16px;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.search-input {
+  max-width: 420px;
+}
+
+.preview-teacher-select {
+  min-width: 320px;
+}
+
+.account-cell {
+  width: 100%;
+}
+
+.account-name {
+  max-width: 172px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-id {
+  max-width: 172px;
+  color: #8a9891 !important;
+  word-break: break-all;
+}
+
+.modal-note {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.access-result {
+  min-height: 100vh;
+  display: grid;
+  align-content: center;
+  background: var(--sysu-wash);
+}
+
+.ant-card {
+  border-color: var(--sysu-line);
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th {
+  color: var(--sysu-ink-soft);
+  font-weight: 800;
+}
+
+.ant-table-wrapper .ant-table-tbody > tr > td {
+  border-bottom-color: #edf2ee;
+}
+
+.ant-tag {
+  border-radius: 999px;
+  font-weight: 700;
+}

@@ -1,5 +1,6 @@
 .env
-apps/admin-web/.env.local
+apps/web-admin/.env.local
+apps/web-teacher/.env.local
 .tmp/
 .venv/
 venv/
@@ -10,7 +11,9 @@ __pycache__/
 .ruff_cache/
 node_modules/
 dist/
-apps/admin-web/dist/
+apps/web-admin/dist/
+apps/web-teacher/dist/
+apps/web-student/dist/
 data/media/
 *.log
 

@@ -1,0 +1,15 @@
+{
+  "screenshots": [
+    "phase2-empty-state.png",
+    "phase2-chapter-switcher.png",
+    "phase2-selected-workbench.png",
+    "phase2-after-chapter-switch.png"
+  ],
+  "initialChapter": "第 13 章 卤族元素",
+  "switchedChapter": "通识/跨章节",
+  "rowCount": 11,
+  "hasEmptyState": true,
+  "hasHeader": true,
+  "hasTabs": true,
+  "hasTeachingNote": true
+}

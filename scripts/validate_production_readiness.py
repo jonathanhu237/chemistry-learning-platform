@@ -11,13 +11,15 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+WEB_ADMIN_DIR = ROOT / "apps" / "web-admin"
+WEB_TEACHER_DIR = ROOT / "apps" / "web-teacher"
+WEB_STUDENT_DIR = ROOT / "apps" / "web-student"
 FRONTENDS = [
-    ("admin frontend", ROOT / "apps" / "admin-web", True),
-    ("student H5 frontend", ROOT / "apps" / "student-web", True),
+    ("web-admin frontend", WEB_ADMIN_DIR, False),
+    ("web-teacher frontend", WEB_TEACHER_DIR, True),
+    ("web-student frontend", WEB_STUDENT_DIR, True),
 ]
-ADMIN_FRONTEND_DIR = ROOT / "apps" / "admin-web"
-STUDENT_FRONTEND_DIR = ROOT / "apps" / "student-web"
-DEFAULT_CHANGE = "split-admin-api-and-experiments-feature"
+DEFAULT_CHANGE = "split-web-admin-teacher-student-consoles"
 
 
 @dataclass
@@ -120,6 +122,15 @@ def _compose_host_env() -> dict[str, str]:
     }
 
 
+def _student_mobile_qa_env() -> dict[str, str]:
+    has_credentials = bool(os.environ.get("STUDENT_H5_QA_STUDENT_ID") and os.environ.get("STUDENT_H5_QA_PASSWORD"))
+    has_auth_override = os.environ.get("STUDENT_H5_QA_ALLOW_AUTH_SKIP") == "1"
+    has_mock_override = os.environ.get("STUDENT_H5_QA_MOCK") == "1"
+    if has_credentials or has_auth_override or has_mock_override:
+        return {}
+    return {"STUDENT_H5_QA_MOCK": "1"}
+
+
 def _stages(args: argparse.Namespace) -> list[Stage]:
     stages: list[Stage] = []
     compose_host_env = _compose_host_env() if args.run_compose_smoke else None
@@ -131,6 +142,12 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
             )
         )
     if not args.skip_resource_validation:
+        stages.append(
+            Stage(
+                "catalog outline seed validation",
+                [sys.executable, "scripts/validate_experiment_catalog_seed.py", "--write-report"],
+            )
+        )
         stages.append(
             Stage(
                 "protected resource manifest",
@@ -146,7 +163,7 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
         )
         stages.append(
             Stage(
-                "experiment point identity validation",
+                "catalog point identity validation",
                 [sys.executable, "scripts/validate_experiment_points.py"],
                 env=compose_host_env,
             )
@@ -175,20 +192,25 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
 
     stages.extend(_frontend_dependencies_stage(args))
     if not args.skip_frontend:
-        stages.append(
-            Stage("admin frontend import boundaries", [_npm(), "run", "validate:boundaries"], cwd=ADMIN_FRONTEND_DIR)
-        )
+        stages.append(Stage("web-teacher import boundaries", [_npm(), "run", "validate:boundaries"], cwd=WEB_TEACHER_DIR))
         for name, frontend_dir, has_tests in FRONTENDS:
             stages.append(Stage(f"{name} typecheck", [_npm(), "run", "typecheck"], cwd=frontend_dir))
             if has_tests:
                 stages.append(Stage(f"{name} tests", [_npm(), "test"], cwd=frontend_dir))
             stages.append(Stage(f"{name} build", [_npm(), "run", "build"], cwd=frontend_dir))
         stages.append(
-            Stage("admin frontend build chunk report", [_npm(), "run", "build:report"], cwd=ADMIN_FRONTEND_DIR)
+            Stage("web-teacher build chunk report", [_npm(), "run", "build:report"], cwd=WEB_TEACHER_DIR)
         )
     if args.run_e2e:
-        stages.append(Stage("admin frontend e2e smoke", [_npm(), "run", "e2e:smoke"], cwd=ADMIN_FRONTEND_DIR))
-        stages.append(Stage("student H5 mobile route-stack QA", [_npm(), "run", "qa:mobile"], cwd=STUDENT_FRONTEND_DIR))
+        stages.append(Stage("web-teacher e2e smoke", [_npm(), "run", "e2e:smoke"], cwd=WEB_TEACHER_DIR))
+        stages.append(
+            Stage(
+                "web-student mobile route-stack QA",
+                [_npm(), "run", "qa:mobile"],
+                cwd=WEB_STUDENT_DIR,
+                env=_student_mobile_qa_env(),
+            )
+        )
     return stages
 
 

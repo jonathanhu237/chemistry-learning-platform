@@ -1,0 +1,52 @@
+{
+  "ok": true,
+  "baseUrl": "http://127.0.0.1:5174",
+  "apiBaseUrl": "http://127.0.0.1:8000",
+  "username": "codex_guardrail_qa",
+  "chromePath": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "screenshots": {
+    "guardrailDesktop": "E:\\chemistry-admin\\openspec\\changes\\restore-ai-monitoring-guardrail-polish\\qa\\guardrail-desktop.png",
+    "guardrailNarrow": "E:\\chemistry-admin\\openspec\\changes\\restore-ai-monitoring-guardrail-polish\\qa\\guardrail-narrow.png",
+    "trendsDesktop": "E:\\chemistry-admin\\openspec\\changes\\restore-ai-monitoring-guardrail-polish\\qa\\trends-desktop.png"
+  },
+  "assertions": {
+    "guardrailDesktopOverflow": {
+      "documentScrollWidth": 1440,
+      "documentClientWidth": 1440,
+      "bodyScrollWidth": 1440,
+      "bodyClientWidth": 1440,
+      "ok": true
+    },
+    "guardrailNarrowOverflow": {
+      "documentScrollWidth": 1100,
+      "documentClientWidth": 1100,
+      "bodyScrollWidth": 1100,
+      "bodyClientWidth": 1100,
+      "ok": true
+    },
+    "trendsDesktopOverflow": {
+      "documentScrollWidth": 1440,
+      "documentClientWidth": 1440,
+      "bodyScrollWidth": 1440,
+      "bodyClientWidth": 1440,
+      "ok": true
+    },
+    "guardrailAssertions": {
+      "hasRadar": true,
+      "hasPipeline": true,
+      "hasLayers": true,
+      "hasOutcomesOrEmpty": true
+    },
+    "trendsAssertions": {
+      "hasChart": true,
+      "hasRangeControl": true
+    }
+  },
+  "diagnostics": {
+    "console": [],
+    "failedRequests": [],
+    "pageErrors": [],
+    "responses404": []
+  },
+  "generatedAt": "2026-06-21T18:58:00.951Z"
+}

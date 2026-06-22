@@ -24,6 +24,7 @@ def _candidate(question_id: str, *, experiment_id: str) -> PosttestQuestionCandi
         difficulty="basic",
         related_chapter_ids=["CH13"],
         related_knowledge_point_ids=[f"kp_{question_id}"],
+        primary_point_node_ids=[f"cat-point-{question_id}"],
     )
 
 

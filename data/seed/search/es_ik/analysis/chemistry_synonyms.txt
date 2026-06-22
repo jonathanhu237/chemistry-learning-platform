@@ -1,0 +1,42 @@
+# Strict chemistry identity synonyms for IK synonym analyzer.
+# Keep phenomenon/property/reagent-context terms out of this file; those are
+# modeled by application-side retrieval facets in chemistry_vocabulary.json.
+HCl, 盐酸, 氯化氢, hydrochloric acid
+H2SO4, 硫酸, sulfuric acid
+HNO3, 硝酸, nitric acid
+NaOH, 氢氧化钠, 烧碱, 苛性钠, sodium hydroxide
+KOH, 氢氧化钾, potassium hydroxide
+NH3, 氨, 氨气, ammonia
+NH3·H2O, 氨水, 一水合氨
+H2O2, 过氧化氢, 双氧水, hydrogen peroxide
+KMnO4, 高锰酸钾, potassium permanganate
+K2Cr2O7, 重铬酸钾, potassium dichromate
+K2S2O8, 过二硫酸钾, 过硫酸钾, potassium persulfate
+Na2S2O3, 硫代硫酸钠, 大苏打, 海波, sodium thiosulfate
+Na2CO3, 碳酸钠, 纯碱, 苏打, sodium carbonate
+NaHCO3, 碳酸氢钠, 小苏打, sodium bicarbonate
+CaCO3, 碳酸钙, 石灰石, calcium carbonate
+Ca(OH)2, 氢氧化钙, 澄清石灰水, 石灰水, calcium hydroxide
+AgNO3, 硝酸银, silver nitrate
+CuSO4, 硫酸铜, copper sulfate
+FeSO4, 硫酸亚铁, ferrous sulfate
+FeCl2, 氯化亚铁, ferrous chloride
+FeCl3, 氯化铁, ferric chloride
+MnSO4, 硫酸锰, 硫酸锰(II), manganese sulfate
+MnO2, 二氧化锰, manganese dioxide
+SO2, 二氧化硫, sulfur dioxide
+SO3, 三氧化硫, sulfur trioxide
+CO2, 二氧化碳, carbon dioxide
+Cl2, 氯气, chlorine
+Br2, 溴, bromine
+I2, 碘, iodine
+S, 硫, sulfur
+CCl4, 四氯化碳, carbon tetrachloride
+KI, 碘化钾, potassium iodide
+KBr, 溴化钾, potassium bromide
+KCl, 氯化钾, potassium chloride
+NaCl, 氯化钠, 食盐, sodium chloride
+NaI, 碘化钠, sodium iodide
+NaNO2, 亚硝酸钠, sodium nitrite
+Na2S, 硫化钠, sodium sulfide
+H2S, 硫化氢, hydrogen sulfide

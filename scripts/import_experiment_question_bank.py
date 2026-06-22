@@ -403,7 +403,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
             "Import the legacy flat offline experiment question bank. "
-            "Current production point-aware imports use scripts/point_aware_question_bank.py import."
+            "The current catalog-outline baseline intentionally keeps experiment question banks empty "
+            "until fresh catalog-node evidence is generated."
         )
     )
     parser.add_argument("--file", type=Path)
@@ -413,7 +414,8 @@ def main() -> None:
     if args.file is None:
         raise SystemExit(
             "This legacy importer no longer has a default file. "
-            "Pass --file explicitly, or use scripts/point_aware_question_bank.py import for the production seed bank. "
+            "Pass --file explicitly only for historical recovery. "
+            "The production seed bank is currently empty until catalog-node evidence is regenerated. "
             f"Previous legacy path was: {LEGACY_BANK_PATH}"
         )
 

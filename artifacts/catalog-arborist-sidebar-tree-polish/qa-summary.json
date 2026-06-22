@@ -1,0 +1,131 @@
+{
+  "ok": true,
+  "baseUrl": "http://localhost:5175",
+  "loginUser": "codex_smoke_admin",
+  "screenshots": [
+    "qa-full.png",
+    "qa-tree-panel.png",
+    "qa-tree-hover-actions.png",
+    "qa-tree-expanded.png",
+    "qa-directory-editor.png",
+    "qa-point-editor.png",
+    "qa-tree-narrow.png"
+  ],
+  "checks": {
+    "directoryTabText": "内容\n学生卡片\n发布检查\n高级",
+    "directoryHasNoVideoTab": true,
+    "directoryHasNoRelatedTab": true,
+    "hasPointRow": true,
+    "pointTabText": "内容\n视频\n相关实验\n学生卡片\n发布检查\n高级",
+    "pointHasVideoTab": true,
+    "pointHasRelatedTab": true,
+    "overlap": [
+      {
+        "title": "氯、溴、碘的置换次序",
+        "iconCopyOverlap": false,
+        "copyTrailingOverlap": false,
+        "trailingActionsOverlap": false
+      },
+      {
+        "title": "氯水 + KI 溶液 + CCl₄",
+        "iconCopyOverlap": false,
+        "copyTrailingOverlap": false,
+        "trailingActionsOverlap": false
+      },
+      {
+        "title": "溴水 + KI 溶液 + CCl₄",
+        "iconCopyOverlap": false,
+        "copyTrailingOverlap": false,
+        "trailingActionsOverlap": false
+      },
+      {
+        "title": "氯水 + KBr 溶液 + CCl₄",
+        "iconCopyOverlap": false,
+        "copyTrailingOverlap": false,
+        "trailingActionsOverlap": false
+      },
+      {
+        "title": "氯水、溴水、碘水氧化性差异的比较",
+        "iconCopyOverlap": false,
+        "copyTrailingOverlap": false,
+        "trailingActionsOverlap": false
+      },
+      {
+        "title": "氯水对溴离子、碘离子混合溶液的氧化顺序",
+        "iconCopyOverlap": false,
+        "copyTrailingOverlap": false,
+        "trailingActionsOverlap": false
+      },
+      {
+        "title": "卤素离子的还原性（通风橱内进行）",
+        "iconCopyOverlap": false,
+        "copyTrailingOverlap": false,
+        "trailingActionsOverlap": false
+      },
+      {
+        "title": "次氯酸盐的氧化性",
+        "iconCopyOverlap": false,
+        "copyTrailingOverlap": false,
+        "trailingActionsOverlap": false
+      },
+      {
+        "title": "氯酸盐的氧化性",
+        "iconCopyOverlap": false,
+        "copyTrailingOverlap": false,
+        "trailingActionsOverlap": false
+      },
+      {
+        "title": "氯含氧酸盐的氧化性",
+        "iconCopyOverlap": false,
+        "copyTrailingOverlap": false,
+        "trailingActionsOverlap": false
+      },
+      {
+        "title": "卤化银的感光性",
+        "iconCopyOverlap": false,
+        "copyTrailingOverlap": false,
+        "trailingActionsOverlap": false
+      }
+    ],
+    "noDetectedOverlap": true
+  },
+  "diagnostics": {
+    "console": [
+      {
+        "type": "debug",
+        "text": "[vite] connecting..."
+      },
+      {
+        "type": "info",
+        "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+      },
+      {
+        "type": "debug",
+        "text": "[vite] connected."
+      },
+      {
+        "type": "debug",
+        "text": "[vite] connecting..."
+      },
+      {
+        "type": "info",
+        "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+      },
+      {
+        "type": "debug",
+        "text": "[vite] connected."
+      }
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      {
+        "url": "http://localhost:5175/sysu-logo.svg",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "url": "http://localhost:5175/sysu-logo.svg",
+        "error": "net::ERR_ABORTED"
+      }
+    ]
+  }
+}

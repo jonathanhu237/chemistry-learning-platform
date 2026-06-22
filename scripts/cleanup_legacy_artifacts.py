@@ -22,7 +22,7 @@ TARGETS = [
     {
         "path": "artifacts/point-aware-question-bank",
         "category": "historical_question_bank_review",
-        "reason": "Current point inventory, schema, and merged bank are protected in data/seed.",
+        "reason": "Retired experiment_id + point_key question-bank review artifacts are no longer production seed.",
     },
     {
         "path": "artifacts/point-aware-question-demo",
@@ -32,7 +32,22 @@ TARGETS = [
     {
         "path": "artifacts/video-point-default-evidence",
         "category": "historical_point_evidence_generation",
-        "reason": "Final reviewed point evidence and run manifest are protected in data/seed.",
+        "reason": "Retired video-point evidence generation used old experiment_id + point_key identity.",
+    },
+    {
+        "path": "data/seed/experiment_points",
+        "category": "retired_legacy_point_seed",
+        "reason": "The current catalog seed uses experiment_catalog/catalog_tree.json and no longer protects the 300 old point inventory.",
+    },
+    {
+        "path": "data/seed/question_bank",
+        "category": "retired_legacy_question_bank_seed",
+        "reason": "The current baseline intentionally keeps experiment question banks empty until catalog-node evidence is regenerated.",
+    },
+    {
+        "path": "data/seed/point_evidence",
+        "category": "retired_legacy_point_evidence_seed",
+        "reason": "Old point-to-chunk bindings are invalid; canonical chunks and embeddings remain protected separately.",
     },
     {
         "path": "artifacts/playwright",
@@ -60,12 +75,12 @@ TARGETS = [
         "reason": "Pytest cache is generated locally.",
     },
     {
-        "path": "apps/admin-web/dist",
+        "path": "apps/web-teacher/dist",
         "category": "frontend_build_output",
         "reason": "Vite build output is reproducible.",
     },
     {
-        "path": "apps/admin-web/node_modules",
+        "path": "apps/web-teacher/node_modules",
         "category": "frontend_dependency_directory",
         "reason": "Dependencies are restored from package-lock.json.",
     },
@@ -78,7 +93,7 @@ GLOB_TARGETS = [
         "reason": "Root artifact screenshots are generated verification output.",
     },
     {
-        "pattern": "apps/admin-web/*.log",
+        "pattern": "apps/web-teacher/*.log",
         "category": "frontend_dev_server_log",
         "reason": "Vite dev-server logs are generated locally.",
     },

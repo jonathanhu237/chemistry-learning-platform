@@ -88,6 +88,12 @@ def feedback_submit_from_event(payload: StudentEventRequest) -> FeedbackSubmitRe
         unit_id=_clean_optional(data.get("unit_id")),
         knowledge_point_id=_clean_optional(data.get("knowledge_point_id")),
         experiment_id=_clean_optional(data.get("experiment_id")),
+        point_node_id=_clean_optional(data.get("point_node_id") or metadata.get("point_node_id")),
+        catalog_path=[
+            str(item)
+            for item in (data.get("catalog_path") or metadata.get("catalog_path") or [])
+            if str(item).strip()
+        ],
         page_path=_clean_optional(metadata.get("page_path") or metadata.get("page")),
         metadata=metadata,
     )
@@ -160,6 +166,7 @@ def _memory_feedback_record(payload: FeedbackSubmitRequest, source_event_id: int
         "unit_id": data.get("unit_id"),
         "knowledge_point_id": data.get("knowledge_point_id"),
         "experiment_id": data.get("experiment_id"),
+        "point_node_id": data.get("point_node_id"),
         "page_path": data.get("page_path"),
         "source_event_id": source_event_id,
         "handler_user_id": None,
@@ -386,12 +393,12 @@ def create_feedback_record(
                 INSERT INTO student_feedback (
                   student_id, class_id, student_name_snapshot, class_name_snapshot,
                   feedback_type, content, status, chapter_id, unit_id, knowledge_point_id,
-                  experiment_id, page_path, source_event_id, metadata, updated_at
+                  experiment_id, point_node_id, page_path, source_event_id, metadata, updated_at
                 )
                 VALUES (
                   :student_id, :class_id, :student_name_snapshot, :class_name_snapshot,
                   :feedback_type, :content, 'open', :chapter_id, :unit_id, :knowledge_point_id,
-                  :experiment_id, :page_path, :source_event_id, CAST(:metadata AS jsonb), now()
+                  :experiment_id, :point_node_id, :page_path, :source_event_id, CAST(:metadata AS jsonb), now()
                 )
                 RETURNING *
                 """
@@ -407,9 +414,19 @@ def create_feedback_record(
                 "unit_id": _clean_optional(data.get("unit_id")),
                 "knowledge_point_id": _clean_optional(data.get("knowledge_point_id")),
                 "experiment_id": _clean_optional(data.get("experiment_id")),
+                "point_node_id": _clean_optional(data.get("point_node_id")),
                 "page_path": _clean_optional(data.get("page_path")),
                 "source_event_id": source_event_id,
-                "metadata": _json(data.get("metadata") or {}),
+                "metadata": _json(
+                    {
+                        **(data.get("metadata") or {}),
+                        "point_node_id": _clean_optional(data.get("point_node_id"))
+                        or (data.get("metadata") or {}).get("point_node_id"),
+                        "catalog_path": data.get("catalog_path")
+                        or (data.get("metadata") or {}).get("catalog_path")
+                        or [],
+                    }
+                ),
             },
         )
         .mappings()

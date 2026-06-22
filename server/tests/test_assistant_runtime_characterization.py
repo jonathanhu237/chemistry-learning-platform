@@ -4,6 +4,7 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
+import server.app.domains.assistant.agent as agent_module
 from server.app.domains.assistant.agent import AgentPolicy, run_agent
 from server.app.infrastructure.settings import Settings
 from server.app.repositories import EmptyMediaRepository, NoopAgentLogRepository, RepositoryProvider
@@ -167,6 +168,89 @@ def test_run_agent_uses_fixed_point_evidence_before_supplemental_rag():
     assert response.rag_trace["point_context"]["manual_reviewed"] is True
     assert response.rag_trace["point_context"]["source_count"] == 2
     assert any(item["code"] == "point_context_fixed" for item in response.guardrail_decisions)
+
+
+def test_run_agent_uses_catalog_node_static_evidence_before_supplemental_rag(monkeypatch):
+    content = _ContentRepository(
+        source_chunk_items=[
+            {
+                "chunk_id": "catalog-chunk",
+                "source_file": "catalog-source.md",
+                "text": "Catalog-node evidence explains chlorine water bleaching dyed solution.",
+                "metadata": {"content_type": "text"},
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        agent_module,
+        "catalog_point_static_evidence_package",
+        lambda point_node_id: {
+            "enabled": True,
+            "evidence_source": "catalog_node_static_evidence",
+            "static_evidence_role": "fallback_or_supplemental",
+            "point_node_id": point_node_id,
+            "point_title": "Chlorine bleaching",
+            "catalog_path": ["Chapter", "Chlorine"],
+            "chunk_ids": ["catalog-chunk"],
+            "chunk_roles": {"catalog-chunk": "fallback"},
+            "static_fallback_missing": False,
+            "static_evidence_status": "available_static_fallback",
+            "source_count": 1,
+            "bindings": [{"chunk_id": "catalog-chunk", "evidence_role": "fallback", "freshness_status": "fresh"}],
+            "dynamic_rag_available": True,
+        },
+    )
+    request = AgentAskRequest(
+        question="Explain this point.",
+        chapter_id="CH13",
+        point_node_id="cat-point-bleaching",
+        allow_rag_lookup=False,
+    )
+
+    response = asyncio.run(run_agent(request, repositories=_repositories(content), settings=_settings(), policy=_policy()))
+
+    assert response.mode == "point_context_local"
+    assert "chlorine water bleaching" in response.answer
+    point_context = response.rag_trace["point_context"]
+    assert point_context["evidence_source"] == "catalog_node_static_evidence"
+    assert point_context["static_evidence_role"] == "fallback_or_supplemental"
+    assert point_context["sources"][0]["source_boundary"] == "catalog_node_static_evidence"
+    assert point_context["sources"][0]["evidence_kind"] == "fallback"
+    assert any(item["code"] == "catalog_node_static_evidence_loaded" for item in response.guardrail_decisions)
+
+
+def test_run_agent_marks_missing_catalog_node_static_evidence_as_dynamic_rag_eligible(monkeypatch):
+    monkeypatch.setattr(
+        agent_module,
+        "catalog_point_static_evidence_package",
+        lambda point_node_id: {
+            "enabled": True,
+            "evidence_source": "catalog_node_static_evidence",
+            "static_evidence_role": "fallback_or_supplemental",
+            "point_node_id": point_node_id,
+            "chunk_ids": [],
+            "chunk_roles": {},
+            "static_fallback_missing": True,
+            "static_evidence_status": "missing_fallback_evidence",
+            "source_count": 0,
+            "bindings": [],
+            "dynamic_rag_available": True,
+        },
+    )
+    request = AgentAskRequest(
+        question="Explain this new point.",
+        chapter_id="CH13",
+        point_node_id="cat-point-new",
+        allow_rag_lookup=True,
+    )
+
+    response = asyncio.run(run_agent(request, repositories=_repositories(_ContentRepository()), settings=_settings(), policy=_policy()))
+
+    point_context = response.rag_trace["point_context"]
+    assert point_context["evidence_source"] == "catalog_node_static_evidence"
+    assert point_context["static_fallback_missing"] is True
+    assert point_context["supplemental_dynamic_rag_allowed"] is True
+    assert any(item["code"] == "catalog_node_static_evidence_missing" for item in response.guardrail_decisions)
 
 
 def test_run_agent_respects_disabled_rag_and_uses_curriculum_context():

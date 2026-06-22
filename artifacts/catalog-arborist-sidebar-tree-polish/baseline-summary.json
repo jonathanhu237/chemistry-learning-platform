@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "baseUrl": "http://localhost:5175",
+  "tabCount": 6,
+  "rowCount": 8,
+  "screenshots": [
+    "baseline-current-full.png",
+    "baseline-current-tree.png",
+    "baseline-current-tree-hover.png",
+    "baseline-directory-second-tab-visible.png"
+  ],
+  "diagnostics": {
+    "console": [],
+    "pageErrors": [],
+    "failedRequests": []
+  }
+}

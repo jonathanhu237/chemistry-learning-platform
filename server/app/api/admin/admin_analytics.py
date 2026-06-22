@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Path, Response
 
-from server.app.auth import AuthUser, require_roles
+from server.app.auth import AuthUser, require_teacher_console_user
 from server.app.domains.analytics.read_models import (
     export_class_report_csv,
     get_class_dashboard,
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/admin", tags=["experiment-admin"])
 async def admin_class_dashboard(
     class_id: str = Path(min_length=1),
     experiment_id: str | None = None,
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     return get_class_dashboard(class_id=class_id, experiment_id=experiment_id, user=user)
 
@@ -29,7 +29,7 @@ async def admin_class_dashboard(
 async def admin_student_report(
     class_id: str = Path(min_length=1),
     student_id: str = Path(min_length=1),
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     return get_student_report(class_id=class_id, student_id=student_id, user=user)
 
@@ -38,7 +38,7 @@ async def admin_student_report(
 async def admin_class_weak_points(
     class_id: str = Path(min_length=1),
     experiment_id: str | None = None,
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     return get_class_weak_points(class_id=class_id, experiment_id=experiment_id, user=user)
 
@@ -46,7 +46,7 @@ async def admin_class_weak_points(
 @router.get("/analytics/classes/{class_id}/export")
 async def admin_export_class_report(
     class_id: str = Path(min_length=1),
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> Response:
     csv_payload = export_class_report_csv(class_id=class_id, user=user)
     return Response(

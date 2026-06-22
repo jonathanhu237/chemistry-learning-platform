@@ -17,8 +17,7 @@ def _clean(value: Any) -> str:
 def queue_index_state(
     session: Any,
     *,
-    experiment_id: str,
-    point_key: str,
+    node_id: str,
     action: str,
     status_value: str = "pending",
     last_error: str | None = None,
@@ -26,15 +25,15 @@ def queue_index_state(
     session.execute(
         text(
             """
-            INSERT INTO experiment_video_point_search_index_state (
-              experiment_id, point_key, document_id, desired_action, sync_status,
+            INSERT INTO experiment_catalog_point_search_index_state (
+              node_id, document_id, desired_action, sync_status,
               attempts, last_error, updated_at
             )
             VALUES (
-              :experiment_id, :point_key, :document_id, :desired_action, :sync_status,
+              :node_id, :document_id, :desired_action, :sync_status,
               0, :last_error, now()
             )
-            ON CONFLICT (experiment_id, point_key) DO UPDATE SET
+            ON CONFLICT (node_id) DO UPDATE SET
               document_id = EXCLUDED.document_id,
               desired_action = EXCLUDED.desired_action,
               sync_status = EXCLUDED.sync_status,
@@ -43,9 +42,8 @@ def queue_index_state(
             """
         ),
         {
-            "experiment_id": experiment_id,
-            "point_key": point_key,
-            "document_id": f"point:{experiment_id}:{point_key}",
+            "node_id": node_id,
+            "document_id": node_id,
             "desired_action": action,
             "sync_status": status_value,
             "last_error": last_error,
@@ -65,16 +63,16 @@ def queue_point_search_index_for_media_binding(session: Any, binding: dict[str, 
         session.execute(
             text(
                 """
-                SELECT evp.status AS point_status,
-                       fe.status AS experiment_status,
-                       plc.content_status
-                FROM experiment_video_points evp
-                JOIN formal_experiments fe ON fe.id = evp.experiment_id
-                LEFT JOIN experiment_point_learning_content plc
-                  ON plc.experiment_id = evp.experiment_id
-                 AND plc.point_key = evp.point_key
-                WHERE evp.experiment_id = :experiment_id
-                  AND evp.point_key = :point_key
+                SELECT n.id AS node_id,
+                       n.status AS node_status,
+                       pc.content_status
+                FROM experiment_catalog_legacy_identity_map lm
+                JOIN experiment_catalog_nodes n ON n.id = lm.catalog_node_id
+                LEFT JOIN experiment_catalog_point_content pc ON pc.node_id = n.id
+                WHERE lm.legacy_kind = 'point'
+                  AND lm.legacy_experiment_id = :experiment_id
+                  AND lm.legacy_point_key = :point_key
+                  AND n.node_kind = 'point'
                 """
             ),
             {"experiment_id": experiment_id, "point_key": point_key},
@@ -85,13 +83,11 @@ def queue_point_search_index_for_media_binding(session: Any, binding: dict[str, 
     if not row:
         return
     should_upsert = (
-        row.get("point_status") == "active"
-        and row.get("experiment_status") == "published"
+        row.get("node_status") == "published"
         and row.get("content_status") == "published"
     )
     queue_index_state(
         session,
-        experiment_id=experiment_id,
-        point_key=point_key,
+        node_id=str(row["node_id"]),
         action="upsert" if should_upsert else "delete",
     )

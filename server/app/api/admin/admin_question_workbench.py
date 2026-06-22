@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from fastapi.responses import StreamingResponse
 
-from server.app.auth import AuthUser, require_roles
+from server.app.auth import AuthUser, require_teacher_console_user
 from server.app.domains.errors import DomainHTTPException
 from server.app.experiment_admin_schemas import WorkbenchMessageRequest, WorkbenchSessionRequest
 from server.app.domains.platform.settings import ai_feature_enabled
@@ -30,7 +30,7 @@ def _sse_event(event: str, data: dict[str, Any]) -> str:
 @router.post("/question-banks/workbench-sessions")
 async def admin_create_question_workbench_session(
     payload: WorkbenchSessionRequest,
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     return create_question_workbench_session(payload=payload, user=user)
 
@@ -38,7 +38,7 @@ async def admin_create_question_workbench_session(
 @router.get("/question-banks/workbench-sessions/{session_id}")
 async def admin_get_question_workbench_session(
     session_id: str = Path(min_length=1),
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     return get_question_workbench_session(session_id=session_id)
 
@@ -47,7 +47,7 @@ async def admin_get_question_workbench_session(
 async def admin_stream_question_workbench_message(
     payload: WorkbenchMessageRequest,
     session_id: str = Path(min_length=1),
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> StreamingResponse:
     if not ai_feature_enabled("question_bank_assistant"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Question bank assistant is disabled")
@@ -77,7 +77,7 @@ async def admin_stream_question_workbench_message(
 async def admin_send_question_workbench_message(
     payload: WorkbenchMessageRequest,
     session_id: str = Path(min_length=1),
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     return send_question_workbench_message(payload=payload, session_id=session_id, user=user)
 
@@ -85,7 +85,7 @@ async def admin_send_question_workbench_message(
 @router.post("/question-banks/workbench-candidates/{candidate_id}/reject")
 async def admin_reject_question_workbench_candidate(
     candidate_id: str = Path(min_length=1),
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     return reject_question_workbench_candidate(candidate_id=candidate_id)
 
@@ -93,6 +93,6 @@ async def admin_reject_question_workbench_candidate(
 @router.post("/question-banks/workbench-candidates/{candidate_id}/publish")
 async def admin_publish_question_workbench_candidate(
     candidate_id: str = Path(min_length=1),
-    user: AuthUser = Depends(require_roles("admin", "teacher")),
+    user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     return publish_question_workbench_candidate(candidate_id=candidate_id, user=user)

@@ -43,13 +43,17 @@ def update_experiment_mastery_from_attempt_rows(
 
     current = {
         str(row["experiment_id"]): {
+            "point_node_id": str(row.get("point_node_id") or "") or None,
+            "canonical_point_id": str(row.get("canonical_point_id") or "") or None,
+            "source_placement_node_id": str(row.get("source_placement_node_id") or "") or None,
             "mastery_prob": float(row["mastery_prob"]),
             "evidence_count": int(row["evidence_count"] or 0),
         }
         for row in session.execute(
             text(
                 """
-                SELECT experiment_id, mastery_prob, evidence_count
+                SELECT experiment_id, point_node_id, canonical_point_id, source_placement_node_id,
+                       mastery_prob, evidence_count
                 FROM student_experiment_mastery
                 WHERE student_id = :student_id
                   AND experiment_id = ANY(:experiment_ids)
@@ -64,6 +68,9 @@ def update_experiment_mastery_from_attempt_rows(
         experiment_id = str(row.get("experiment_id") or "").strip()
         if experiment_id not in valid_experiment_ids:
             continue
+        point_node_id = str(row.get("point_node_id") or "").strip() or None
+        canonical_point_id = str(row.get("canonical_point_id") or "").strip() or None
+        source_placement_node_id = str(row.get("source_placement_node_id") or "").strip() or point_node_id
         state = next_states.get(experiment_id) or current.get(
             experiment_id,
             {"mastery_prob": DEFAULT_EXPERIMENT_MASTERY_PROB, "evidence_count": 0},
@@ -75,6 +82,9 @@ def update_experiment_mastery_from_attempt_rows(
         )
         next_states[experiment_id] = {
             **updated,
+            "point_node_id": point_node_id or state.get("point_node_id"),
+            "canonical_point_id": canonical_point_id or state.get("canonical_point_id"),
+            "source_placement_node_id": source_placement_node_id or state.get("source_placement_node_id"),
             "evidence_count": int(state.get("evidence_count") or 0) + 1,
         }
 
@@ -83,16 +93,21 @@ def update_experiment_mastery_from_attempt_rows(
             text(
                 """
                 INSERT INTO student_experiment_mastery (
-                  student_id, class_id, experiment_id, mastery_prob, mastery_score,
+                  student_id, class_id, experiment_id, point_node_id, canonical_point_id,
+                  source_placement_node_id, mastery_prob, mastery_score,
                   evidence_count, last_evidence_kind, metadata, updated_at
                 )
                 VALUES (
-                  :student_id, :class_id, :experiment_id, :mastery_prob, :mastery_score,
+                  :student_id, :class_id, :experiment_id, :point_node_id, :canonical_point_id,
+                  :source_placement_node_id, :mastery_prob, :mastery_score,
                   :evidence_count, :last_evidence_kind, CAST(:metadata AS jsonb), now()
                 )
                 ON CONFLICT (student_id, experiment_id)
                 DO UPDATE SET
                   class_id = COALESCE(EXCLUDED.class_id, student_experiment_mastery.class_id),
+                  point_node_id = COALESCE(EXCLUDED.point_node_id, student_experiment_mastery.point_node_id),
+                  canonical_point_id = COALESCE(EXCLUDED.canonical_point_id, student_experiment_mastery.canonical_point_id),
+                  source_placement_node_id = COALESCE(EXCLUDED.source_placement_node_id, student_experiment_mastery.source_placement_node_id),
                   mastery_prob = EXCLUDED.mastery_prob,
                   mastery_score = EXCLUDED.mastery_score,
                   evidence_count = EXCLUDED.evidence_count,
@@ -105,10 +120,21 @@ def update_experiment_mastery_from_attempt_rows(
                 "student_id": student_id,
                 "class_id": class_id,
                 "experiment_id": experiment_id,
+                "point_node_id": state.get("point_node_id"),
+                "canonical_point_id": state.get("canonical_point_id"),
+                "source_placement_node_id": state.get("source_placement_node_id"),
                 "mastery_prob": state["mastery_prob"],
                 "mastery_score": state["mastery_score"],
                 "evidence_count": state["evidence_count"],
                 "last_evidence_kind": evidence_kind,
-                "metadata": _json({"evidence_kind": evidence_kind, "evidence_id": evidence_id}),
+                "metadata": _json(
+                    {
+                        "evidence_kind": evidence_kind,
+                        "evidence_id": evidence_id,
+                        "point_node_id": state.get("point_node_id"),
+                        "canonical_point_id": state.get("canonical_point_id"),
+                        "source_placement_node_id": state.get("source_placement_node_id"),
+                    }
+                ),
             },
         )

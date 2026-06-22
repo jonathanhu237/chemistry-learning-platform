@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-16T17:20:06.744103+00:00",
+  "generated_at": "2026-06-20T18:28:42.738478+00:00",
   "manifest": "data/seed/manifests/core_resources.json",
   "mode": "dry_run",
   "media_cleanup": {
@@ -8,17 +8,17 @@
     "reason": "media_assets rows can point to local files, so media deletion is not automatic."
   },
   "summary": {
-    "target_count": 10,
-    "existing_target_count": 0,
-    "delete_file_count": 0,
-    "delete_size_bytes": 0
+    "target_count": 39,
+    "existing_target_count": 34,
+    "delete_file_count": 49547,
+    "delete_size_bytes": 510050303
   },
   "targets": [
     {
       "path": "artifacts/point-aware-question-bank",
       "source": "target",
       "category": "historical_question_bank_review",
-      "reason": "Current point inventory, schema, and merged bank are protected in data/seed.",
+      "reason": "Retired experiment_id + point_key question-bank review artifacts are no longer production seed.",
       "exists": false,
       "kind": "file",
       "file_count": 0,
@@ -40,12 +40,45 @@
       "path": "artifacts/video-point-default-evidence",
       "source": "target",
       "category": "historical_point_evidence_generation",
-      "reason": "Final reviewed point evidence and run manifest are protected in data/seed.",
+      "reason": "Retired video-point evidence generation used old experiment_id + point_key identity.",
       "exists": false,
       "kind": "file",
       "file_count": 0,
       "size_bytes": 0,
       "action": "skip_missing"
+    },
+    {
+      "path": "data/seed/experiment_points",
+      "source": "target",
+      "category": "retired_legacy_point_seed",
+      "reason": "The current catalog seed uses experiment_catalog/catalog_tree.json and no longer protects the 300 old point inventory.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 1,
+      "size_bytes": 3133725,
+      "action": "delete"
+    },
+    {
+      "path": "data/seed/question_bank",
+      "source": "target",
+      "category": "retired_legacy_question_bank_seed",
+      "reason": "The current baseline intentionally keeps experiment question banks empty until catalog-node evidence is regenerated.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 2,
+      "size_bytes": 5766310,
+      "action": "delete"
+    },
+    {
+      "path": "data/seed/point_evidence",
+      "source": "target",
+      "category": "retired_legacy_point_evidence_seed",
+      "reason": "Old point-to-chunk bindings are invalid; canonical chunks and embeddings remain protected separately.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 3,
+      "size_bytes": 108173,
+      "action": "delete"
     },
     {
       "path": "artifacts/playwright",
@@ -74,55 +107,341 @@
       "source": "target",
       "category": "local_temporary_output",
       "reason": "Temporary validation and scratch output.",
-      "exists": false,
-      "kind": "file",
-      "file_count": 0,
-      "size_bytes": 0,
-      "action": "skip_missing"
+      "exists": true,
+      "kind": "directory",
+      "file_count": 1495,
+      "size_bytes": 146625619,
+      "action": "delete"
     },
     {
       "path": "logs",
       "source": "target",
       "category": "local_logs",
       "reason": "Local runtime logs are not production seed resources.",
-      "exists": false,
-      "kind": "file",
-      "file_count": 0,
-      "size_bytes": 0,
-      "action": "skip_missing"
+      "exists": true,
+      "kind": "directory",
+      "file_count": 4,
+      "size_bytes": 231368,
+      "action": "delete"
     },
     {
       "path": ".pytest_cache",
       "source": "target",
       "category": "test_cache",
       "reason": "Pytest cache is generated locally.",
-      "exists": false,
-      "kind": "file",
-      "file_count": 0,
-      "size_bytes": 0,
-      "action": "skip_missing"
+      "exists": true,
+      "kind": "directory",
+      "file_count": 5,
+      "size_bytes": 29970,
+      "action": "delete"
     },
     {
-      "path": "apps/admin-web/dist",
+      "path": "apps/web-teacher/dist",
       "source": "target",
       "category": "frontend_build_output",
       "reason": "Vite build output is reproducible.",
-      "exists": false,
-      "kind": "file",
-      "file_count": 0,
-      "size_bytes": 0,
-      "action": "skip_missing"
+      "exists": true,
+      "kind": "directory",
+      "file_count": 97,
+      "size_bytes": 5179137,
+      "action": "delete"
     },
     {
-      "path": "apps/admin-web/node_modules",
+      "path": "apps/web-teacher/node_modules",
       "source": "target",
       "category": "frontend_dependency_directory",
       "reason": "Dependencies are restored from package-lock.json.",
-      "exists": false,
-      "kind": "file",
-      "file_count": 0,
-      "size_bytes": 0,
-      "action": "skip_missing"
+      "exists": true,
+      "kind": "directory",
+      "file_count": 47725,
+      "size_bytes": 346480385,
+      "action": "delete"
+    },
+    {
+      "path": "scripts/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 17,
+      "size_bytes": 336117,
+      "action": "delete"
+    },
+    {
+      "path": "server/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 1,
+      "size_bytes": 134,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 31,
+      "size_bytes": 447856,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/api/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 2,
+      "size_bytes": 902,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/api/admin/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 16,
+      "size_bytes": 85530,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/api/auth/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 2,
+      "size_bytes": 1161,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/api/student/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 9,
+      "size_bytes": 23891,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/api/web_admin/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 3,
+      "size_bytes": 5082,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/app_runtime/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 2,
+      "size_bytes": 7715,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/domains/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 3,
+      "size_bytes": 1544,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/domains/analytics/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 2,
+      "size_bytes": 48899,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/domains/assessments/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 5,
+      "size_bytes": 108179,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/domains/assistant/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 10,
+      "size_bytes": 138501,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/domains/catalog/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 3,
+      "size_bytes": 51668,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/domains/catalog_tree/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 12,
+      "size_bytes": 118133,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/domains/experiment_points/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 7,
+      "size_bytes": 47997,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/domains/feedback/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 2,
+      "size_bytes": 10304,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/domains/media/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 7,
+      "size_bytes": 64958,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/domains/platform/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 3,
+      "size_bytes": 44348,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/domains/questions/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 6,
+      "size_bytes": 162342,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/domains/roster/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 2,
+      "size_bytes": 42923,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/domains/student_learning/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 3,
+      "size_bytes": 75708,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/domains/video_library/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 3,
+      "size_bytes": 49448,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/infrastructure/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 3,
+      "size_bytes": 19519,
+      "action": "delete"
+    },
+    {
+      "path": "server/app/workers/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 1,
+      "size_bytes": 19556,
+      "action": "delete"
+    },
+    {
+      "path": "server/tests/__pycache__",
+      "source": "**/__pycache__",
+      "category": "python_bytecode_cache",
+      "reason": "Python bytecode caches are generated locally.",
+      "exists": true,
+      "kind": "directory",
+      "file_count": 60,
+      "size_bytes": 583201,
+      "action": "delete"
     }
   ]
 }

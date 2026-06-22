@@ -19,16 +19,18 @@ EXPECTED_DATABASE_COUNTS = {
     "chapters": 11,
     "knowledge_units": 133,
     "knowledge_points": 385,
-    "experiment_points": 300,
-    "experiment_question_banks": 77,
-    "experiment_questions": 2310,
+    "experiment_catalog_nodes": 569,
+    "experiment_catalog_directory_nodes": 176,
+    "experiment_catalog_point_nodes": 393,
+    "experiment_catalog_point_content_records": 76,
+    "experiment_question_banks": 0,
+    "experiment_questions": 0,
     "source_documents": 2,
     "source_chunks": 3637,
     "chunk_embeddings": 3637,
-    "stable_experiment_video_points": 300,
-    "published_point_learning_content_min": 0,
-    "point_related_links_min": 0,
-    "point_evidence_bindings": 300,
+    "published_catalog_point_content_min": 76,
+    "catalog_point_related_links_min": 0,
+    "point_evidence_bindings_with_node": 0,
 }
 
 
@@ -47,6 +49,10 @@ def _json(path: Path) -> Any:
 def _jsonl_count(path: Path) -> int:
     with path.open("r", encoding="utf-8-sig") as handle:
         return sum(1 for line in handle if line.strip())
+
+
+def _text_line_count(path: Path) -> int:
+    return sum(1 for line in path.read_text(encoding="utf-8-sig").splitlines() if line.strip())
 
 
 def _formal_experiment_count(path: Path) -> int:
@@ -75,6 +81,54 @@ def _point_inventory_count(path: Path) -> dict[str, int]:
     return {
         "experiments": int(summary.get("experiment_count") or len(data.get("experiments") or [])),
         "points": int(summary.get("total_video_points") or 0),
+    }
+
+
+def _catalog_tree_count(path: Path) -> dict[str, int]:
+    data = _json(path)
+    nodes = data.get("nodes") or []
+    if not isinstance(nodes, list):
+        raise ValueError(f"{path} nodes is not a JSON list")
+    return {
+        "total_nodes": len(nodes),
+        "directory_nodes": sum(1 for node in nodes if isinstance(node, dict) and node.get("node_kind") == "directory"),
+        "point_nodes": sum(1 for node in nodes if isinstance(node, dict) and node.get("node_kind") == "point"),
+        "chapter_21_nodes": sum(1 for node in nodes if isinstance(node, dict) and int(node.get("chapter_number") or 0) == 21),
+    }
+
+
+def _catalog_point_content_seed_count(path: Path) -> dict[str, int]:
+    data = _json(path)
+    records = data.get("records") or []
+    if not isinstance(records, list):
+        raise ValueError(f"{path} records is not a JSON list")
+    return {
+        "records": len(records),
+        "equation_mode_records": sum(1 for item in records if isinstance(item, dict) and item.get("principle_mode") == "equation"),
+        "text_mode_records": sum(1 for item in records if isinstance(item, dict) and item.get("principle_mode") == "text"),
+        "reaction_equation_rows": sum(
+            len(item.get("reaction_equations") or []) for item in records if isinstance(item, dict)
+        ),
+        "unique_target_seed_keys": len({str(item.get("target_seed_key") or "") for item in records if isinstance(item, dict)}),
+        "semantic_mapped_records": sum(
+            1 for item in records if isinstance(item, dict) and isinstance(item.get("semantic_mapping"), dict)
+        ),
+    }
+
+
+def _catalog_validation_report_count(path: Path) -> dict[str, int | bool]:
+    data = _json(path)
+    counts = data.get("counts") or {}
+    return {
+        "ok": bool(data.get("ok")),
+        "total_nodes": int(counts.get("total_nodes") or 0),
+        "directory_nodes": int(counts.get("directory_nodes") or 0),
+        "point_nodes": int(counts.get("point_nodes") or 0),
+        "point_content_records": int(counts.get("point_content_records") or 0),
+        "equation_content_records": int(counts.get("equation_content_records") or 0),
+        "text_content_records": int(counts.get("text_content_records") or 0),
+        "reaction_equation_rows": int(counts.get("reaction_equation_rows") or 0),
+        "semantic_mapped_records": int(counts.get("semantic_mapped_records") or 0),
     }
 
 
@@ -295,13 +349,29 @@ RESOURCE_SPECS: list[dict[str, Any]] = [
         "source_path": "data/processed/reviewed_curriculum.json",
     },
     {
-        "id": "experiment_point_inventory",
-        "role": "Current stable formal experiment video point inventory",
-        "path": "data/seed/experiment_points/formal_experiment_point_inventory.json",
+        "id": "experiment_catalog_tree",
+        "role": "Canonical outline-backed experiment catalog tree seed",
+        "path": "data/seed/experiment_catalog/catalog_tree.json",
         "kind": "json",
-        "count": _point_inventory_count,
-        "expected_counts": {"experiments": 77, "points": 300},
-        "source_path": "artifacts/point-aware-question-bank/formal_experiment_point_inventory.json",
+        "count": _catalog_tree_count,
+        "expected_counts": {"total_nodes": 569, "directory_nodes": 176, "point_nodes": 393, "chapter_21_nodes": 0},
+        "source_path": "docs/实验目录_整理版.md",
+    },
+    {
+        "id": "experiment_catalog_point_content_seed",
+        "role": "Reviewed catalog point-content seed with structured reaction equations for ES/search tests",
+        "path": "data/seed/experiment_catalog/point_content_seed.json",
+        "kind": "json",
+        "count": _catalog_point_content_seed_count,
+        "expected_counts": {
+            "records": 76,
+            "equation_mode_records": 71,
+            "text_mode_records": 5,
+            "reaction_equation_rows": 122,
+            "unique_target_seed_keys": 76,
+            "semantic_mapped_records": 76,
+        },
+        "source_path": "data/seed/experiment_catalog/normalized_three_element_candidates.md",
     },
     {
         "id": "chemical_search_aliases",
@@ -318,36 +388,65 @@ RESOURCE_SPECS: list[dict[str, Any]] = [
         "source_path": "data/seed/search/chemical_stopwords.txt",
     },
     {
-        "id": "point_aware_question_bank",
-        "role": "Current imported point-aware default question bank",
-        "path": "data/seed/question_bank/rebuilt_question_bank_merged_v1.json",
+        "id": "es_ik_chemistry_manifest",
+        "role": "Versioned ES/IK chemistry analyzer asset manifest",
+        "path": "data/seed/search/es_ik/manifest.json",
         "kind": "json",
-        "count": _question_bank_count,
-        "expected_counts": {"experiments": 77, "questions": 2310},
-        "source_path": "artifacts/point-aware-question-bank/reviewed_old_bank_chunks/slim_release_work_v1/rebuilt_question_bank_merged_v1.json",
+        "source_path": "data/seed/search/es_ik/manifest.json",
     },
     {
-        "id": "point_aware_question_bank_schema",
-        "role": "Schema used to validate the point-aware question bank",
-        "path": "data/seed/question_bank/point_aware_question_bank_schema.json",
-        "kind": "json",
-        "source_path": "artifacts/point-aware-question-bank/point_aware_question_bank_schema.json",
+        "id": "es_ik_analyzer_config",
+        "role": "ES/IK analyzer external dictionary configuration",
+        "path": "data/seed/search/es_ik/analysis-ik/IKAnalyzer.cfg.xml",
+        "kind": "text",
+        "count": _text_line_count,
+        "expected_count": 7,
+        "source_path": "data/seed/search/es_ik/analysis-ik/IKAnalyzer.cfg.xml",
     },
     {
-        "id": "manual_reviewed_point_evidence",
-        "role": "Assistant-only manually reviewed experiment point to canonical chunk evidence bindings",
-        "path": "data/seed/point_evidence/manual_reviewed_point_evidence.jsonl",
-        "kind": "jsonl",
-        "count": _jsonl_count,
-        "expected_count": 300,
-        "source_path": "artifacts/video-point-default-evidence/gpu-rerank-direct-v2-20260616T1140Z/manual-reviewed-from-start-20260616T2135Z/manual_reviewed_point_evidence.jsonl",
+        "id": "es_ik_hit_stopwords",
+        "role": "Harbin Institute of Technology stopword baseline for IK",
+        "path": "data/seed/search/es_ik/analysis-ik/custom/hit_stopwords.dic",
+        "kind": "text",
+        "count": _text_line_count,
+        "expected_count": 59,
+        "source_path": "data/seed/search/es_ik/analysis-ik/custom/hit_stopwords.dic",
     },
     {
-        "id": "manual_review_point_evidence_manifest",
-        "role": "Manifest for the manually reviewed point evidence source run",
-        "path": "data/seed/point_evidence/manual_review_manifest.json",
-        "kind": "json",
-        "source_path": "artifacts/video-point-default-evidence/gpu-rerank-direct-v2-20260616T1140Z/manual-reviewed-from-start-20260616T2135Z/manifest.json",
+        "id": "es_ik_project_chemistry_stopwords",
+        "role": "Project chemistry stopwords for IK",
+        "path": "data/seed/search/es_ik/analysis-ik/custom/project_chemistry_stopwords.dic",
+        "kind": "text",
+        "count": _text_line_count,
+        "expected_count": 22,
+        "source_path": "data/seed/search/es_ik/analysis-ik/custom/project_chemistry_stopwords.dic",
+    },
+    {
+        "id": "es_ik_chemistry_custom_dictionary",
+        "role": "Chemistry custom IK dictionary",
+        "path": "data/seed/search/es_ik/analysis-ik/custom/chemistry_custom.dic",
+        "kind": "text",
+        "count": _text_line_count,
+        "expected_count": 66,
+        "source_path": "data/seed/search/es_ik/analysis-ik/custom/chemistry_custom.dic",
+    },
+    {
+        "id": "es_ik_chemistry_stopwords_filter",
+        "role": "Elasticsearch chemistry analyzer stopword filter list",
+        "path": "data/seed/search/es_ik/analysis/chemistry_stopwords.txt",
+        "kind": "text",
+        "count": _text_line_count,
+        "expected_count": 81,
+        "source_path": "data/seed/search/es_ik/analysis/chemistry_stopwords.txt",
+    },
+    {
+        "id": "es_ik_chemistry_synonyms",
+        "role": "Elasticsearch chemistry synonym graph filter list",
+        "path": "data/seed/search/es_ik/analysis/chemistry_synonyms.txt",
+        "kind": "text",
+        "count": _text_line_count,
+        "expected_count": 29,
+        "source_path": "data/seed/search/es_ik/analysis/chemistry_synonyms.txt",
     },
     {
         "id": "student_learning_profiles",
@@ -424,11 +523,23 @@ RESOURCE_SPECS: list[dict[str, Any]] = [
         "source_path": "artifacts/experiment_knowledge_framework_import_report.json",
     },
     {
-        "id": "point_aware_question_bank_import_report",
-        "role": "Current point-aware question bank import report",
-        "path": "data/seed/import_reports/rebuilt_question_bank_merged_v1_import_report.json",
+        "id": "catalog_outline_seed_validation_report",
+        "role": "Current catalog outline seed validation report",
+        "path": "data/seed/import_reports/catalog_outline_seed_validation_report.json",
         "kind": "json",
-        "source_path": "artifacts/point-aware-question-bank/reviewed_old_bank_chunks/slim_release_work_v1/rebuilt_question_bank_merged_v1_import_report.json",
+        "count": _catalog_validation_report_count,
+        "expected_counts": {
+            "ok": True,
+            "total_nodes": 569,
+            "directory_nodes": 176,
+            "point_nodes": 393,
+            "point_content_records": 76,
+            "equation_content_records": 71,
+            "text_content_records": 5,
+            "reaction_equation_rows": 122,
+            "semantic_mapped_records": 76,
+        },
+        "source_path": "data/seed/experiment_catalog/catalog_tree.json",
     },
 ]
 

@@ -192,11 +192,23 @@ def import_point_evidence(path: Path, *, skip_migrations: bool = False, source_l
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Import manual-reviewed video point evidence bindings.")
+    parser = argparse.ArgumentParser(description="Import retired manual-reviewed video point evidence bindings.")
     parser.add_argument("--path", type=Path, default=DEFAULT_EVIDENCE_PATH)
     parser.add_argument("--source-label", default=None)
     parser.add_argument("--skip-migrations", action="store_true")
+    parser.add_argument(
+        "--allow-retired-legacy-import",
+        action="store_true",
+        help="Explicitly run the retired experiment_id + point_key importer for historical recovery only.",
+    )
     args = parser.parse_args()
+    if not args.allow_retired_legacy_import:
+        raise SystemExit(
+            "This importer is retired for the current catalog-outline seed. "
+            "Old experiment_id + point_key evidence bindings are invalid after reset; "
+            "generate fresh catalog-node evidence before rebuilding question banks. "
+            "Pass --allow-retired-legacy-import only for historical recovery."
+        )
     result = import_point_evidence(args.path, skip_migrations=args.skip_migrations, source_label=args.source_label)
     print(json.dumps(result, ensure_ascii=False, indent=2))
 

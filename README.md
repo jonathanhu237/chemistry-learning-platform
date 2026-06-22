@@ -4,8 +4,9 @@ This repository contains the standalone admin-management application and the stu
 
 It includes:
 
-- React + Ant Design admin frontend in `apps/admin-web`
-- React student H5 login frontend in `apps/student-web`
+- React + Ant Design platform operations frontend in `apps/web-admin`
+- React + Ant Design teacher console frontend in `apps/web-teacher`
+- React student H5 frontend in `apps/web-student`
 - FastAPI admin backend in `server`
 - database migrations in `server/migrations`
 - admin bootstrap/import scripts in `scripts`
@@ -34,9 +35,11 @@ Use Node.js `^20.19.0 || >=22.12.0` for the frontend workspaces. The repository 
 Install frontend dependencies:
 
 ```powershell
-Set-Location apps/admin-web
+Set-Location apps/web-admin
 npm install
-Set-Location ../student-web
+Set-Location ../web-teacher
+npm install
+Set-Location ../web-student
 npm install
 ```
 
@@ -46,21 +49,29 @@ Run the admin backend:
 python -m uvicorn server.app.app_runtime.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Run the admin frontend:
+Run the platform operations frontend:
 
 ```powershell
-Set-Location apps/admin-web
+Set-Location apps/web-admin
+npm run dev
+```
+
+Run the teacher console frontend:
+
+```powershell
+Set-Location apps/web-teacher
 npm run dev
 ```
 
 Run the student H5 frontend:
 
 ```powershell
-Set-Location apps/student-web
+Set-Location apps/web-student
 npm run dev
 ```
 
-The student H5 runs at `http://127.0.0.1:5173/` and the admin frontend runs at `http://127.0.0.1:5174/login`. Both proxy `/api` to the backend.
+The student H5 runs at `http://127.0.0.1:5173/`, the teacher console runs at `http://127.0.0.1:5174/login`, and the platform operations console runs at `http://127.0.0.1:5175/`. All three proxy `/api` to the backend.
+The platform operations console uses the backend `WEB_ADMIN_ACCESS_TOKEN` value as its login token; it does not use an `app_users` username/password session.
 
 ## Production-Style Local Run
 
@@ -70,15 +81,28 @@ Copy the example environment:
 Copy-Item .env.example .env
 ```
 
-For Docker Compose, adjust secrets and database settings, then run:
+For Docker Compose, adjust secrets and database settings, then deploy the default service graph:
 
 ```powershell
-docker compose up --build
+python scripts/deploy_compose_stack.py
 ```
 
-The default Compose stack is the production-style application unit: Postgres, Elasticsearch with IK analysis, the FastAPI backend API, independent `student-web` and `admin-web` frontend services, tusd uploads, and the local video worker. The optional RAG service is behind the `rag` profile.
+The default Compose stack is the production-style application unit: Postgres, Elasticsearch with IK analysis, the FastAPI backend API, independent `web-student`, `web-teacher`, and `web-admin` frontend services, tusd uploads, and the local video worker. The optional RAG service is behind the `rag` profile.
 
-See `docs/production-operations.md` for health checks, migration discipline, backup/restore, and restore-from-seed instructions.
+For routine development after the stack already exists, rebuild only the service that owns your change:
+
+```powershell
+docker compose up -d --build backend
+docker compose up -d --build web-teacher
+docker compose up -d --build web-student
+docker compose up -d --build web-admin
+docker compose up -d --build video-worker
+docker compose --profile rag up -d --build bge-rag
+```
+
+Do not clear Docker build cache or run no-cache/full-stack rebuilds as normal startup. Use cache prune only as an explicit recovery step for cache corruption or disk pressure.
+
+See `docs/production-operations.md` for health checks, migration discipline, backup/restore, and restore-from-seed instructions. See `docs/catalog-tree-architecture.md` for the chapter catalog tree and point-node authoring model.
 
 ## Bootstrap
 
@@ -88,10 +112,16 @@ Apply migrations:
 python scripts/apply_migrations.py
 ```
 
-Create or update an admin user:
+Create or update a teacher-console account:
 
 ```powershell
 python scripts/bootstrap_admin.py --username admin
+```
+
+Set the `web-admin` access token in configuration:
+
+```powershell
+$env:WEB_ADMIN_ACCESS_TOKEN = "<long-random-token>"
 ```
 
 Import formal admin data and canonical evidence when needed:
@@ -101,8 +131,10 @@ python scripts/seed_formal_experiments.py
 python scripts/publish_reviewed_curriculum.py
 python scripts/import_canonical_evidence.py
 python scripts/import_experiment_knowledge_framework.py --skip-migrations
-python scripts/point_aware_question_bank.py import --bank-kind default --bank-status published --question-status published --skip-migrations
-python scripts/import_manual_reviewed_point_evidence.py --skip-migrations
+python scripts/generate_experiment_catalog_seed.py
+python scripts/validate_experiment_catalog_seed.py --write-report
+python scripts/import_experiment_catalog_seed.py --skip-migrations
+python scripts/rebuild_video_library_index.py --recreate
 python scripts/verify_canonical_evidence.py
 ```
 
@@ -129,11 +161,14 @@ python scripts/validate_production_readiness.py --skip-frontend
 For focused frontend validation:
 
 ```powershell
-Set-Location apps/admin-web
+Set-Location apps/web-admin
+npm run typecheck
+npm run build
+Set-Location ../web-teacher
 npm run typecheck
 npm test
 npm run build
-Set-Location ../student-web
+Set-Location ../web-student
 npm run typecheck
 npm test
 npm run build
@@ -142,7 +177,7 @@ npm run build
 Validate OpenSpec:
 
 ```powershell
-openspec validate split-frontend-deployment-admin-shell --strict
+openspec validate experiment-catalog-tree-point-architecture --strict
 ```
 
 ## GitHub Publishing
