@@ -340,7 +340,10 @@ def _try_openai_point_aware_suggestions(
                         "Generate teacher-review draft chemistry objective questions for a point-aware experiment question bank. "
                         "Return JSON only: {\"questions\":[...]}. "
                         "Each question must include question_type, stem, options, answer, explanation, primary_point_keys, "
-                        "source_audit, and option_links for single_choice. Do not publish."
+                        "source_audit, and option_links for single_choice. "
+                        "Use options as [{\"label\":\"A\",\"text\":\"...\"}] for single_choice, answer as {\"value\":\"A\"} "
+                        "or {\"value\":true} for true_false, and source_audit with canonical_chunk_ids, "
+                        "supporting_theory_chunk_ids, evidence_sufficient, and reviewer_note. Do not publish."
                     ),
                 },
                 {
@@ -365,6 +368,7 @@ def _try_openai_point_aware_suggestions(
                             "evidence_package": evidence_package or {},
                         },
                         ensure_ascii=False,
+                        default=str,
                     ),
                 },
             ],
