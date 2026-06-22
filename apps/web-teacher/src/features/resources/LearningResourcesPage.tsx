@@ -108,14 +108,14 @@ const periodicElementSymbols: Record<string, string> = {
 };
 
 const fBlockSymbols = [
-  ["Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu"],
-  ["Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"],
+  ["La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu"],
+  ["Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"],
 ];
 
-const hydrogenNobleGasPositions = new Set(["1-1", "1-18", "2-18", "3-18", "4-18", "5-18", "6-18", "7-18"]);
-
 function periodicAreaForPosition(defaultArea: string, period: number, group: number) {
-  return hydrogenNobleGasPositions.has(`${period}-${group}`) ? "integrated" : defaultArea;
+  if (period === 1 && group === 1) return "hydrogen";
+  if (group === 18) return "p";
+  return defaultArea;
 }
 
 const periodicAreaCells = [
@@ -133,7 +133,7 @@ const periodicAreaCells = [
       period: periodIndex + 4,
       symbol: periodicElementSymbols[`${periodIndex + 4}-${groupIndex + 3}`],
     })),
-  ).flat(),
+  ).flat().filter((cell) => !(cell.group === 3 && (cell.period === 6 || cell.period === 7))),
   ...Array.from({ length: 4 }, (_, periodIndex) =>
     Array.from({ length: 2 }, (_, groupIndex) => ({
       area: "ds",
@@ -151,14 +151,14 @@ const periodicAreaCells = [
     })),
   ).flat(),
   ...Array.from({ length: 2 }, (_, periodIndex) =>
-    Array.from({ length: 14 }, (_, groupIndex) => ({
+    Array.from({ length: 15 }, (_, groupIndex) => ({
       area: "f",
-      group: groupIndex + 5,
+      group: groupIndex + 3,
       period: periodIndex + 8,
       symbol: fBlockSymbols[periodIndex][groupIndex],
     })),
   ).flat(),
-  { area: "integrated", group: 18, period: 1, symbol: periodicElementSymbols["1-18"] },
+  { area: "p", group: 18, period: 1, symbol: periodicElementSymbols["1-18"] },
 ];
 
 function ResourceMiniStat({

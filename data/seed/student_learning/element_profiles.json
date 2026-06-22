@@ -2098,9 +2098,246 @@
       "reference_media": []
     },
     {
+      "profile_id": "f-block-lanthanides-actinides",
+      "chapter_id": "CH21",
+      "display_order": 9,
+      "enabled": true,
+      "coverage_optional": true,
+      "title": "f区（镧系和锕系）",
+      "subtitle": "La、Ce、Th、U",
+      "family_number": "f",
+      "family_name": "镧系和锕系元素",
+      "hero": {
+        "eyebrow": "f区元素性质",
+        "title": "镧系和锕系：内过渡元素的电子层次",
+        "summary": "从 4f/5f 轨道、常见价态和收缩效应理解 f 区元素的相似性与差异。"
+      },
+      "element_symbols": [
+        "La",
+        "Ce",
+        "Th",
+        "U"
+      ],
+      "elements": [
+        {
+          "symbol": "La",
+          "name": "镧",
+          "atomic_number": 57,
+          "state": "银白色金属",
+          "group_label": "镧系起点",
+          "electron_configuration": "[Xe]5d1 6s2",
+          "common_valence": "+3",
+          "redox_tendency": "La: 以 +3 价为主，金属性较强，易形成稳定离子化合物。",
+          "note": "镧常作为镧系性质的入口，用来比较原子半径、价态和配合能力的变化。",
+          "relative_atomic_mass": "138.91",
+          "group": "3",
+          "period": 6,
+          "block": "f",
+          "state_at_20c": "Solid",
+          "density": "6.15 g/cm3",
+          "rsc_url": "https://periodic-table.rsc.org/element/57/lanthanum",
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "镧系起点与 +3 价稳定性",
+          "card_relevance": "帮助学生把 f 区和主族、过渡金属的价态规律区分开。",
+          "card_tags": [
+            "镧系",
+            "+3价",
+            "内过渡元素"
+          ]
+        },
+        {
+          "symbol": "Ce",
+          "name": "铈",
+          "atomic_number": 58,
+          "state": "银灰色金属",
+          "group_label": "镧系",
+          "electron_configuration": "[Xe]4f1 5d1 6s2",
+          "common_valence": "+3, +4",
+          "redox_tendency": "Ce: +3 与 +4 价态均重要，Ce4+ 具有较典型的氧化性。",
+          "note": "铈适合用来说明镧系元素并非只有单一价态。",
+          "relative_atomic_mass": "140.12",
+          "group": "f",
+          "period": 6,
+          "block": "f",
+          "state_at_20c": "Solid",
+          "density": "6.77 g/cm3",
+          "rsc_url": "https://periodic-table.rsc.org/element/58/cerium",
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "Ce3+/Ce4+ 的可变价态",
+          "card_relevance": "可连接氧化还原、催化和材料情境中的铈化合物。",
+          "card_tags": [
+            "镧系",
+            "可变价态",
+            "Ce4+"
+          ]
+        },
+        {
+          "symbol": "Th",
+          "name": "钍",
+          "atomic_number": 90,
+          "state": "银白色放射性金属",
+          "group_label": "锕系",
+          "electron_configuration": "[Rn]6d2 7s2",
+          "common_valence": "+4",
+          "redox_tendency": "Th: +4 价较稳定，化学性质体现锕系早期元素特征。",
+          "note": "钍用于引出锕系元素的放射性和高价态稳定性。",
+          "relative_atomic_mass": "232.04",
+          "group": "f",
+          "period": 7,
+          "block": "f",
+          "state_at_20c": "Solid",
+          "density": "11.7 g/cm3",
+          "rsc_url": "https://periodic-table.rsc.org/element/90/thorium",
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "锕系早期元素与 +4 价",
+          "card_relevance": "帮助区分镧系的相似性和锕系的放射性、价态变化。",
+          "card_tags": [
+            "锕系",
+            "放射性",
+            "+4价"
+          ]
+        },
+        {
+          "symbol": "U",
+          "name": "铀",
+          "atomic_number": 92,
+          "state": "银灰色放射性金属",
+          "group_label": "锕系",
+          "electron_configuration": "[Rn]5f3 6d1 7s2",
+          "common_valence": "+4, +6",
+          "redox_tendency": "U: 常见 +4 和 +6 价态，含氧铀酰离子体现较强配位特征。",
+          "note": "铀是理解锕系多价态和核化学应用的重要代表。",
+          "relative_atomic_mass": "238.03",
+          "group": "f",
+          "period": 7,
+          "block": "f",
+          "state_at_20c": "Solid",
+          "density": "19.1 g/cm3",
+          "rsc_url": "https://periodic-table.rsc.org/element/92/uranium",
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "U4+/U6+ 与铀酰离子",
+          "card_relevance": "把元素周期表位置和氧化态、配位结构、应用安全联系起来。",
+          "card_tags": [
+            "锕系",
+            "多价态",
+            "铀酰"
+          ]
+        }
+      ],
+      "property_cards": [
+        {
+          "key": "atomic_number",
+          "label": "原子序数",
+          "value": "La 57 / Ce 58 / Th 90 / U 92",
+          "description": "镧系和锕系位于第 6、7 周期的内过渡元素区域。"
+        },
+        {
+          "key": "electron_configuration",
+          "label": "电子排布",
+          "value": "4f / 5f 轨道逐步填充",
+          "description": "f 轨道电子导致元素性质相近，同时带来价态和磁性差异。"
+        },
+        {
+          "key": "group",
+          "label": "所属区",
+          "value": "f区 / 内过渡元素",
+          "description": "镧系和锕系在周期表中以 detached rows 呈现。"
+        },
+        {
+          "key": "common_valence",
+          "label": "常见化合价",
+          "value": "镧系多为 +3；锕系可出现 +4、+6",
+          "description": "锕系价态变化通常比镧系更丰富。"
+        },
+        {
+          "key": "elemental_state",
+          "label": "单质状态",
+          "value": "常温多为金属固体",
+          "description": "金属性强，锕系元素需要注意放射性与安全边界。"
+        },
+        {
+          "key": "redox",
+          "label": "氧化还原",
+          "value": "Ce4+、U6+ 是典型高价态代表",
+          "description": "可用 Ce、U 对比 f 区元素的变价和氧化性。"
+        }
+      ],
+      "property_sections": [
+        {
+          "key": "f_orbital",
+          "title": "f轨道填充",
+          "subtitle": "4f 与 5f",
+          "summary": "镧系主要体现 4f 轨道填充，锕系主要体现 5f 轨道参与，性质相近但价态变化不同。",
+          "formula": "Ln: 4f / An: 5f",
+          "tone": "purple",
+          "experiment_keywords": [
+            "镧系",
+            "锕系",
+            "f轨道"
+          ]
+        },
+        {
+          "key": "lanthanide_contraction",
+          "title": "镧系收缩",
+          "subtitle": "半径缓慢减小",
+          "summary": "随着原子序数增加，4f 电子屏蔽效应弱，镧系离子半径整体缓慢减小。",
+          "formula": "r(La3+) > r(Lu3+)",
+          "tone": "green",
+          "experiment_keywords": [
+            "镧系收缩",
+            "离子半径"
+          ]
+        },
+        {
+          "key": "variable_valence",
+          "title": "可变价态",
+          "subtitle": "Ce 与 U",
+          "summary": "Ce3+/Ce4+ 和 U4+/U6+ 是理解 f 区氧化还原与配位化学的代表。",
+          "formula": "Ce3+ ⇄ Ce4+ / U4+ ⇄ U6+",
+          "tone": "blue",
+          "experiment_keywords": [
+            "可变价态",
+            "氧化还原"
+          ]
+        }
+      ],
+      "default_element_symbol": "Ce",
+      "family_common_properties": [
+        {
+          "key": "family_redox_trend",
+          "label": "氧化还原",
+          "value": "镧系多 +3，锕系价态更丰富",
+          "description": "用 Ce、U 对比可变价态与氧化性。",
+          "tone": "green"
+        },
+        {
+          "key": "valence_pattern",
+          "label": "常见价态",
+          "value": "+3 / +4 / +6",
+          "description": "从镧系到锕系，价态变化和放射性语境逐渐增强。",
+          "tone": "gold"
+        },
+        {
+          "key": "elemental_state_trend",
+          "label": "单质状态",
+          "value": "金属固体",
+          "description": "内过渡金属普遍具有金属性。",
+          "tone": "blue"
+        },
+        {
+          "key": "experiment_focus",
+          "label": "学习重点",
+          "value": "f轨道 / 镧系收缩 / 可变价态",
+          "description": "先建立周期表位置，再理解代表元素的差异。",
+          "tone": "purple"
+        }
+      ],
+      "reference_media": []
+    },
+    {
       "profile_id": "hydrogen-noble-gases",
       "chapter_id": "CH22",
-      "display_order": 9,
+      "display_order": 10,
       "enabled": true,
       "title": "氢和稀有气体",
       "subtitle": "特殊位置与稳定构型",
@@ -2117,7 +2354,9 @@
         "Ne",
         "Ar",
         "Kr",
-        "Xe"
+        "Xe",
+        "Rn",
+        "Og"
       ],
       "elements": [
         {
@@ -2275,13 +2514,65 @@
             "气体",
             "可成化合物"
           ]
+        },
+        {
+          "symbol": "Rn",
+          "name": "氡",
+          "atomic_number": 86,
+          "state": "无色放射性气体",
+          "group_label": "特殊 / 氢与稀有气体",
+          "electron_configuration": "[Xe]4f14 5d10 6s2 6p6",
+          "common_valence": "0",
+          "redox_tendency": "Rn: 闭壳层构型带来低反应性，作为重稀有气体用于趋势延伸。",
+          "note": "氡: 放射性重稀有气体，课堂中用于理解稀有气体向下极化性增强和安全边界。",
+          "relative_atomic_mass": "[222]",
+          "group": "18",
+          "period": 6,
+          "block": "p",
+          "state_at_20c": "Gas",
+          "density": "0.009074 g/cm3",
+          "rsc_url": "https://periodic-table.rsc.org/element/86/radon",
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "放射性重稀有气体",
+          "card_relevance": "用于说明稀有气体族向下反应性、极化性和安全限制的延伸趋势。",
+          "card_tags": [
+            "18族稀有气体",
+            "放射性",
+            "趋势延伸"
+          ]
+        },
+        {
+          "symbol": "Og",
+          "name": "鿫",
+          "atomic_number": 118,
+          "state": "人工合成元素",
+          "group_label": "特殊 / 氢与稀有气体",
+          "electron_configuration": "[Rn]5f14 6d10 7s2 7p6",
+          "common_valence": "0",
+          "redox_tendency": "Og: 第7周期稀有气体元素，化学性质主要作为周期趋势边界讨论。",
+          "note": "鿫: 超重人工合成元素，用于补全 18 族和第 7 周期的周期表结构。",
+          "relative_atomic_mass": "[294]",
+          "group": "18",
+          "period": 7,
+          "block": "p",
+          "state_at_20c": "Unknown",
+          "density": "Unknown g/cm3",
+          "rsc_url": "https://periodic-table.rsc.org/element/118/oganesson",
+          "fact_source": "Royal Society of Chemistry Periodic Table",
+          "card_focus": "第7周期稀有气体边界元素",
+          "card_relevance": "用于补全周期表位置，帮助学生看到稀有气体列的完整结构。",
+          "card_tags": [
+            "18族稀有气体",
+            "超重元素",
+            "周期边界"
+          ]
         }
       ],
       "property_cards": [
         {
           "key": "atomic_number",
           "label": "原子序数",
-          "value": "H 1；He 2 / Ne 10 / Ar 18 / Kr 36 / Xe 54",
+          "value": "H 1；He 2 / Ne 10 / Ar 18 / Kr 36 / Xe 54 / Rn 86 / Og 118",
           "description": "氢是最轻元素，稀有气体位于 18 族。"
         },
         {

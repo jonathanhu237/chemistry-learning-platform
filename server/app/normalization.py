@@ -20,15 +20,27 @@ CHAPTER_AREA_MAP: dict[str, dict[str, str]] = {
     "CH19": {"area_id": "ds", "area_name": "ds区", "chapter_title": "第 19 章 铜锌副族元素"},
     "CH20": {"area_id": "d", "area_name": "d区", "chapter_title": "第 20 章 d区过渡金属元素"},
     "CH21": {"area_id": "f", "area_name": "f区", "chapter_title": "第 21 章 镧系和锕系元素"},
-    "CH22": {"area_id": "integrated", "area_name": "氢和稀有气体", "chapter_title": "第 22 章 氢和稀有气体"},
+    "CH22": {"area_id": "hydrogen", "area_name": "氢元素", "chapter_title": "第 22 章 氢和稀有气体"},
 }
 
+CHAPTER_AREA_CONTEXTS: dict[str, tuple[str, ...]] = {
+    chapter_id: (chapter["area_id"],)
+    for chapter_id, chapter in CHAPTER_AREA_MAP.items()
+}
+CHAPTER_AREA_CONTEXTS["CH22"] = ("hydrogen", "p")
+
 AREA_DEFINITIONS: list[dict[str, Any]] = [
+    {
+        "area_id": "hydrogen",
+        "area_name": "氢元素",
+        "description": "氢元素的特殊位置、成键方式和氧化还原语境。",
+        "chapter_ids": ["CH22"],
+    },
     {
         "area_id": "p",
         "area_name": "p区",
         "description": "主族 p 区元素性质、氧化还原与典型实验。",
-        "chapter_ids": ["CH13", "CH14", "CH15", "CH16", "CH17"],
+        "chapter_ids": ["CH13", "CH14", "CH15", "CH16", "CH17", "CH22"],
     },
     {
         "area_id": "s",
@@ -53,12 +65,6 @@ AREA_DEFINITIONS: list[dict[str, Any]] = [
         "area_name": "f区",
         "description": "镧系与锕系元素的电子构型、收缩效应和分离规律。",
         "chapter_ids": ["CH21"],
-    },
-    {
-        "area_id": "integrated",
-        "area_name": "氢和稀有气体",
-        "description": "氢与稀有气体的结构、性质、制备和应用。",
-        "chapter_ids": ["CH22"],
     },
     {
         "area_id": "general",

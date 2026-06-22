@@ -24,6 +24,7 @@ CLASS_STATUS_ORDER = ("active", "archived", "disabled")
 ROSTER_STATUS_ORDER = ("pending", "active", "disabled")
 
 THEORY_AREA_BY_CHAPTER = {
+    "CH22": ("hydrogen", "氢元素"),
     "CH13": ("p", "p 区元素"),
     "CH14": ("p", "p 区元素"),
     "CH15": ("p", "p 区元素"),
@@ -33,8 +34,16 @@ THEORY_AREA_BY_CHAPTER = {
     "CH19": ("ds", "ds 区元素"),
     "CH20": ("d", "d 区元素"),
     "CH21": ("f", "f 区元素"),
-    "CH22": ("integrated", "氢和稀有气体"),
 }
+
+THEORY_AREA_CONTEXTS_BY_CHAPTER = {
+    chapter_id: (area,)
+    for chapter_id, area in THEORY_AREA_BY_CHAPTER.items()
+}
+THEORY_AREA_CONTEXTS_BY_CHAPTER["CH22"] = (
+    ("hydrogen", "氢元素"),
+    ("p", "p 区元素"),
+)
 
 GENERAL_RESOURCE_AREA_ID = "general"
 
@@ -226,12 +235,12 @@ def _is_general_learning_resource(chapter: dict[str, Any]) -> bool:
     text_value = " ".join(str(chapter.get(key) or "") for key in ("chapter_title", "area_id", "source_label"))
     return any(keyword in text_value for keyword in ("无机化学综合", "通识", "跨章节", "未标章节"))
 
-def _learning_resource_group_display(chapter: dict[str, Any]) -> dict[str, Any]:
+def _learning_resource_group_displays(chapter: dict[str, Any]) -> list[dict[str, Any]]:
     chapter_id = str(chapter.get("chapter_id") or chapter.get("id") or "")
     raw_title = str(chapter.get("chapter_title") or chapter_id or "").strip()
     if _is_general_learning_resource({**chapter, "chapter_id": chapter_id}):
         title = _strip_chapter_number(raw_title) or "通识/跨章节"
-        return {
+        return [{
             "id": f"general:{chapter_id}",
             "kind": "general",
             "chapter_id": chapter_id,
@@ -240,18 +249,28 @@ def _learning_resource_group_display(chapter: dict[str, Any]) -> dict[str, Any]:
             "subtitle": GENERAL_RESOURCE_AREA_NAME,
             "area_id": GENERAL_RESOURCE_AREA_ID,
             "area_name": GENERAL_RESOURCE_AREA_NAME,
+        }]
+    area_contexts = THEORY_AREA_CONTEXTS_BY_CHAPTER.get(
+        chapter_id,
+        (("other", str(chapter.get("element_area") or "其他资源")),),
+    )
+    return [
+        {
+            "id": f"chapter:{chapter_id}:{area_id}" if len(area_contexts) > 1 else f"chapter:{chapter_id}",
+            "kind": "chapter",
+            "chapter_id": chapter_id,
+            "chapter_number": chapter.get("chapter_number"),
+            "title": _format_numbered_chapter_title(raw_title, chapter.get("chapter_number")) or chapter_id,
+            "subtitle": area_name,
+            "area_id": area_id,
+            "area_name": area_name,
         }
-    area_id, area_name = THEORY_AREA_BY_CHAPTER.get(chapter_id, ("other", str(chapter.get("element_area") or "其他资源")))
-    return {
-        "id": f"chapter:{chapter_id}",
-        "kind": "chapter",
-        "chapter_id": chapter_id,
-        "chapter_number": chapter.get("chapter_number"),
-        "title": _format_numbered_chapter_title(raw_title, chapter.get("chapter_number")) or chapter_id,
-        "subtitle": area_name,
-        "area_id": area_id,
-        "area_name": area_name,
-    }
+        for area_id, area_name in area_contexts
+    ]
+
+
+def _learning_resource_group_display(chapter: dict[str, Any]) -> dict[str, Any]:
+    return _learning_resource_group_displays(chapter)[0]
 
 def _chapter_sort_key(chapter: dict[str, Any]) -> tuple[int, int, str]:
     display = _learning_resource_group_display(chapter)
@@ -391,36 +410,36 @@ def _build_learning_resource_overview(
     total_question_count = int(question_summary["total_count"])
 
     sorted_chapters = sorted(chapters, key=_chapter_sort_key)
-    group_by_chapter: dict[str, dict[str, Any]] = {}
+    groups_by_chapter: dict[str, list[dict[str, Any]]] = defaultdict(list)
     groups: list[dict[str, Any]] = []
     for chapter in sorted_chapters:
-        display = _learning_resource_group_display(chapter)
-        chapter_id = display["chapter_id"]
-        group = {
-            **display,
-            "knowledge_unit_count": 0,
-            "knowledge_point_count": 0,
-            "experiment_count": 0,
-            "question_count": int(question_counts_by_chapter.get(chapter_id, 0)),
-            "question_status_counts": question_summary["by_chapter_status_counts"].get(chapter_id, _zero_counts(QUESTION_STATUS_ORDER)),
-            "question_type_counts": question_summary["by_chapter_type_counts"].get(chapter_id, _zero_counts(QUESTION_TYPE_ORDER)),
-            "media_count": 0,
-            "media_ready_count": 0,
-            "media_published_count": 0,
-            "media_asset_status_counts": _zero_counts(MEDIA_UPLOAD_STATUS_ORDER),
-            "media_binding_status_counts": _zero_counts(MEDIA_BINDING_STATUS_ORDER),
-            "units": [],
-            "experiments": [],
-        }
-        group_by_chapter[chapter_id] = group
-        groups.append(group)
+        for display in _learning_resource_group_displays(chapter):
+            chapter_id = display["chapter_id"]
+            group = {
+                **display,
+                "knowledge_unit_count": 0,
+                "knowledge_point_count": 0,
+                "experiment_count": 0,
+                "question_count": int(question_counts_by_chapter.get(chapter_id, 0)),
+                "question_status_counts": question_summary["by_chapter_status_counts"].get(chapter_id, _zero_counts(QUESTION_STATUS_ORDER)),
+                "question_type_counts": question_summary["by_chapter_type_counts"].get(chapter_id, _zero_counts(QUESTION_TYPE_ORDER)),
+                "media_count": 0,
+                "media_ready_count": 0,
+                "media_published_count": 0,
+                "media_asset_status_counts": _zero_counts(MEDIA_UPLOAD_STATUS_ORDER),
+                "media_binding_status_counts": _zero_counts(MEDIA_BINDING_STATUS_ORDER),
+                "units": [],
+                "experiments": [],
+            }
+            groups_by_chapter[chapter_id].append(group)
+            groups.append(group)
 
     points_by_unit: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for point in knowledge_points:
         kp_id = str(point.get("knowledge_point_id") or point.get("id") or "")
         unit_id = str(point.get("unit_id") or "")
         chapter_id = str(point.get("chapter_id") or "")
-        if not kp_id or not unit_id or chapter_id not in group_by_chapter:
+        if not kp_id or not unit_id or chapter_id not in groups_by_chapter:
             continue
         points_by_unit[unit_id].append(
             {
@@ -435,21 +454,22 @@ def _build_learning_resource_overview(
     for unit in sorted(units, key=lambda item: (str(item.get("chapter_id") or ""), int(item.get("unit_index") or 999), str(item.get("unit_id") or ""))):
         unit_id = str(unit.get("unit_id") or unit.get("id") or "")
         chapter_id = str(unit.get("chapter_id") or "")
-        group = group_by_chapter.get(chapter_id)
-        if not unit_id or not group:
+        chapter_groups = groups_by_chapter.get(chapter_id) or []
+        if not unit_id or not chapter_groups:
             continue
         kp_nodes = points_by_unit.get(unit_id, [])
-        group["units"].append(
-            {
-                "unit_id": unit_id,
-                "unit_index": unit.get("unit_index"),
-                "unit_title": unit.get("unit_title") or unit_id,
-                "knowledge_point_count": len(kp_nodes),
-                "knowledge_points": kp_nodes,
-            }
-        )
-        group["knowledge_unit_count"] += 1
-        group["knowledge_point_count"] += len(kp_nodes)
+        for group in chapter_groups:
+            group["units"].append(
+                {
+                    "unit_id": unit_id,
+                    "unit_index": unit.get("unit_index"),
+                    "unit_title": unit.get("unit_title") or unit_id,
+                    "knowledge_point_count": len(kp_nodes),
+                    "knowledge_points": kp_nodes,
+                }
+            )
+            group["knowledge_unit_count"] += 1
+            group["knowledge_point_count"] += len(kp_nodes)
 
     seen_experiments_by_group: dict[str, set[str]] = defaultdict(set)
     all_experiment_ids: set[str] = set()
@@ -470,37 +490,37 @@ def _build_learning_resource_overview(
             if isinstance(binding, dict) and binding.get("chapter_id")
         ] or bindings_by_experiment.get(experiment_id, [])
         for chapter_id in chapter_ids:
-            group = group_by_chapter.get(chapter_id)
-            if not group or experiment_id in seen_experiments_by_group[group["id"]]:
-                continue
-            seen_experiments_by_group[group["id"]].add(experiment_id)
-            group["experiments"].append(
-                {
-                    "id": experiment_id,
-                    "code": experiment.get("code") or "",
-                    "title": experiment.get("title") or experiment.get("name") or experiment_id,
-                    "status": experiment.get("status") or experiment.get("content_status") or "published",
-                    "display_order": experiment.get("display_order"),
-                    "media_count": experiment_media_count,
-                    "media_ready_count": media_summary["ready_count"],
-                    "media_published_count": media_summary["published_count"],
-                    "media_asset_status_counts": media_summary["asset_status_counts"],
-                    "media_binding_status_counts": media_summary["binding_status_counts"],
-                    "question_count": int(question_counts_by_experiment.get(experiment_id, 0)),
-                    "question_status_counts": question_summary["by_experiment_status_counts"].get(experiment_id, _zero_counts(QUESTION_STATUS_ORDER)),
-                    "question_type_counts": question_summary["by_experiment_type_counts"].get(experiment_id, _zero_counts(QUESTION_TYPE_ORDER)),
-                }
-            )
-            group["experiment_count"] += 1
-            group["media_count"] += experiment_media_count
-            group["media_ready_count"] += media_summary["ready_count"]
-            group["media_published_count"] += media_summary["published_count"]
-            for key, value in media_summary["asset_status_counts"].items():
-                group["media_asset_status_counts"][key] = group["media_asset_status_counts"].get(key, 0) + int(value)
-            for key, value in media_summary["binding_status_counts"].items():
-                group["media_binding_status_counts"][key] = group["media_binding_status_counts"].get(key, 0) + int(value)
+            for group in groups_by_chapter.get(chapter_id) or []:
+                if experiment_id in seen_experiments_by_group[group["id"]]:
+                    continue
+                seen_experiments_by_group[group["id"]].add(experiment_id)
+                group["experiments"].append(
+                    {
+                        "id": experiment_id,
+                        "code": experiment.get("code") or "",
+                        "title": experiment.get("title") or experiment.get("name") or experiment_id,
+                        "status": experiment.get("status") or experiment.get("content_status") or "published",
+                        "display_order": experiment.get("display_order"),
+                        "media_count": experiment_media_count,
+                        "media_ready_count": media_summary["ready_count"],
+                        "media_published_count": media_summary["published_count"],
+                        "media_asset_status_counts": media_summary["asset_status_counts"],
+                        "media_binding_status_counts": media_summary["binding_status_counts"],
+                        "question_count": int(question_counts_by_experiment.get(experiment_id, 0)),
+                        "question_status_counts": question_summary["by_experiment_status_counts"].get(experiment_id, _zero_counts(QUESTION_STATUS_ORDER)),
+                        "question_type_counts": question_summary["by_experiment_type_counts"].get(experiment_id, _zero_counts(QUESTION_TYPE_ORDER)),
+                    }
+                )
+                group["experiment_count"] += 1
+                group["media_count"] += experiment_media_count
+                group["media_ready_count"] += media_summary["ready_count"]
+                group["media_published_count"] += media_summary["published_count"]
+                for key, value in media_summary["asset_status_counts"].items():
+                    group["media_asset_status_counts"][key] = group["media_asset_status_counts"].get(key, 0) + int(value)
+                for key, value in media_summary["binding_status_counts"].items():
+                    group["media_binding_status_counts"][key] = group["media_binding_status_counts"].get(key, 0) + int(value)
 
-    area_order = ["p", "s", "ds", "d", "f", "integrated", GENERAL_RESOURCE_AREA_ID, "other"]
+    area_order = ["hydrogen", "p", "s", "ds", "d", "f", GENERAL_RESOURCE_AREA_ID, "other"]
     area_by_id: dict[str, dict[str, Any]] = {}
     for group in groups:
         area_id = str(group["area_id"])
@@ -545,8 +565,8 @@ def _build_learning_resource_overview(
     media_stats = dashboard_stats.get("media") or {}
     class_stats = dashboard_stats.get("classes_students") or {}
     metrics = {
-        "knowledge_unit_count": sum(int(group.get("knowledge_unit_count") or 0) for group in groups),
-        "knowledge_point_count": sum(int(group.get("knowledge_point_count") or 0) for group in groups),
+        "knowledge_unit_count": len({str(unit.get("unit_id") or unit.get("id") or "") for unit in units if unit.get("unit_id") or unit.get("id")}),
+        "knowledge_point_count": len({str(point.get("knowledge_point_id") or point.get("id") or "") for point in knowledge_points if point.get("knowledge_point_id") or point.get("id")}),
         "experiment_count": len(all_experiment_ids),
         "media_resource_count": len(all_media_ids),
         "question_count": total_question_count,

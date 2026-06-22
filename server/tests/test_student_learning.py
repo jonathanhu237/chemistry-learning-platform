@@ -17,6 +17,7 @@ from server.app.domains.student_learning.point_detail import (
     validate_student_learning_experiment_coverage,
     validate_student_learning_profiles,
 )
+from server.app.normalization import AREA_DEFINITIONS, CHAPTER_AREA_CONTEXTS, CHAPTER_AREA_MAP
 from server.tests.route_helpers import assert_route
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -71,12 +72,21 @@ def test_student_learning_routes_are_registered() -> None:
     assert_route("/api/student/catalog/points/{node_id}", "GET")
 
 
+def test_periodic_area_definitions_use_new_learning_taxonomy() -> None:
+    area_ids = [area["area_id"] for area in AREA_DEFINITIONS]
+
+    assert area_ids[:6] == ["hydrogen", "p", "s", "ds", "d", "f"]
+    assert "integrated" not in area_ids
+    assert CHAPTER_AREA_MAP["CH22"]["area_id"] == "hydrogen"
+    assert CHAPTER_AREA_CONTEXTS["CH22"] == ("hydrogen", "p")
+
+
 def test_student_learning_profile_seed_is_valid() -> None:
     result = validate_student_learning_profiles()
 
     assert result["ok"] is True
-    assert result["profile_count"] == 9
-    assert result["enabled_profile_count"] == 9
+    assert result["profile_count"] == 10
+    assert result["enabled_profile_count"] == 10
 
 
 def test_student_learning_profile_seed_has_element_card_copy() -> None:
@@ -84,6 +94,14 @@ def test_student_learning_profile_seed_has_element_card_copy() -> None:
 
     assert result["ok"] is True
     assert not [error for error in result["errors"] if "missing card copy" in error]
+
+
+def test_hydrogen_noble_gas_profile_covers_complete_18th_group() -> None:
+    seed = learning_service._student_learning_seed()
+    profile = next(profile for profile in seed["profiles"] if profile["chapter_id"] == "CH22")
+
+    assert profile["element_symbols"] == ["H", "He", "Ne", "Ar", "Kr", "Xe", "Rn", "Og"]
+    assert [element["symbol"] for element in profile["elements"]] == profile["element_symbols"]
 
 
 def test_student_learning_profile_validation_reports_missing_element_card_copy(monkeypatch) -> None:
@@ -167,7 +185,7 @@ def test_element_badges_allow_missing_card_copy_during_mapping_migration() -> No
 
 
 def test_student_learning_experiment_coverage_requires_every_profile_chapter() -> None:
-    chapters = ["CH13", "CH14", "CH15", "CH16", "CH17", "CH18", "CH19", "CH20", "CH22"]
+    chapters = ["CH13", "CH14", "CH15", "CH16", "CH17", "CH18", "CH19", "CH20", "CH21", "CH22"]
     experiments = [
         _experiment(
             f"EXP_{chapter_id}",
@@ -190,7 +208,7 @@ def test_student_learning_experiment_coverage_requires_every_profile_chapter() -
 
 
 def test_student_learning_experiment_coverage_rejects_unmapped_published_experiments() -> None:
-    chapters = ["CH13", "CH14", "CH15", "CH16", "CH17", "CH18", "CH19", "CH20", "CH22"]
+    chapters = ["CH13", "CH14", "CH15", "CH16", "CH17", "CH18", "CH19", "CH20", "CH21", "CH22"]
     experiments = [
         _experiment(
             f"EXP_{chapter_id}",
@@ -266,7 +284,7 @@ def test_student_learning_event_recording_is_best_effort() -> None:
     assert session.rolled_back is True
 
 
-def test_parent_groups_follow_experiment_parent_titles_and_hide_empty_f_area() -> None:
+def test_parent_groups_follow_experiment_parent_titles_and_include_f_area() -> None:
     groups = _build_parent_groups(
         [
             _experiment(
@@ -301,13 +319,35 @@ def test_parent_groups_follow_experiment_parent_titles_and_hide_empty_f_area() -
         ]
     )
 
-    assert [group.parent_code for group in groups] == ["19-1", "20-2"]
+    assert [group.parent_code for group in groups] == ["19-1", "20-2", "21-1"]
     assert groups[0].area_id == "p"
     assert groups[0].parent_title == "Experiment 19-1 Halogens"
 
     areas = {area.area_id: area for area in _areas_for_groups(groups)}
-    assert areas["f"].enabled is False
+    assert areas["f"].enabled is True
     assert areas["p"].question_count == 4
+
+
+def test_student_learning_area_taxonomy_exposes_hydrogen_and_ch22_p_context() -> None:
+    groups = _build_parent_groups(
+        [
+            _experiment(
+                "EXP_22_1_01",
+                code="22-1-01",
+                title="Hydrogen and noble gas properties",
+                parent_code="22-1",
+                parent_title="Experiment 22-1 Hydrogen and noble gases",
+                chapter_id="CH22",
+                display_order=22,
+            ),
+        ]
+    )
+
+    assert [(group.area_id, group.parent_code) for group in groups] == [
+        ("hydrogen", "22-1"),
+        ("p", "22-1"),
+    ]
+    assert [area.area_id for area in _areas_for_groups(groups)] == ["hydrogen", "p", "s", "ds", "d", "f"]
 
 
 def test_recommendation_falls_back_when_pretest_area_has_no_experiments() -> None:

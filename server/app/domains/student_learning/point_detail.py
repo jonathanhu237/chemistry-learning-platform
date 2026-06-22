@@ -15,7 +15,7 @@ from server.app.infrastructure.settings import ROOT, get_settings
 from server.app.infrastructure.database import db_session
 from server.app.mastery import DEFAULT_EXPERIMENT_MASTERY_SCORE
 from server.app.domains.media.visibility import is_student_visible_media
-from server.app.normalization import CHAPTER_AREA_MAP
+from server.app.normalization import CHAPTER_AREA_CONTEXTS, CHAPTER_AREA_MAP
 from server.app.student_learning_schemas import (
     StudentExperimentGroupSummary,
     StudentLearningElementBadge,
@@ -30,8 +30,9 @@ from server.app.student_learning_schemas import (
     StudentLearningReferenceMedia,
 )
 
-AREA_ORDER = ["p", "s", "ds", "d", "f"]
+AREA_ORDER = ["hydrogen", "p", "s", "ds", "d", "f"]
 AREA_NAMES = {
+    "hydrogen": "氢元素",
     "p": "p区",
     "s": "s区",
     "ds": "ds区",
@@ -39,6 +40,7 @@ AREA_NAMES = {
     "f": "f区",
 }
 PRETEST_AREA_IDS = {
+    "氢元素": "hydrogen",
     "p区": "p",
     "s区": "s",
     "ds区": "ds",
@@ -122,6 +124,12 @@ def _chapter_area_id(chapter_id: str | None) -> str | None:
         return None
     chapter = CHAPTER_AREA_MAP.get(str(chapter_id))
     return str(chapter["area_id"]) if chapter else None
+
+
+def _chapter_area_ids(chapter_id: str | None) -> tuple[str, ...]:
+    if not chapter_id:
+        return ()
+    return CHAPTER_AREA_CONTEXTS.get(str(chapter_id), ())
 
 
 def _chapter_area_name(area_id: str) -> str:
@@ -378,7 +386,7 @@ def _experiment_chapter_ids(experiment: dict[str, Any]) -> tuple[str, ...]:
     return tuple(ids)
 
 
-def _experiment_area_id(experiment: dict[str, Any]) -> str | None:
+def _experiment_area_ids(experiment: dict[str, Any]) -> tuple[str, ...]:
     bindings = sorted(
         _chapter_bindings(experiment),
         key=lambda item: (
@@ -388,10 +396,10 @@ def _experiment_area_id(experiment: dict[str, Any]) -> str | None:
         ),
     )
     for binding in bindings:
-        area_id = _chapter_area_id(str(binding.get("chapter_id") or ""))
-        if area_id in AREA_NAMES:
-            return area_id
-    return None
+        area_ids = tuple(area_id for area_id in _chapter_area_ids(str(binding.get("chapter_id") or "")) if area_id in AREA_NAMES)
+        if area_ids:
+            return area_ids
+    return ()
 
 
 def _group_summary(group: ParentGroup, *, recommended_parent_code: str | None = None) -> StudentExperimentGroupSummary:
@@ -411,10 +419,8 @@ def _group_summary(group: ParentGroup, *, recommended_parent_code: str | None = 
 def _build_parent_groups(experiments: list[dict[str, Any]]) -> list[ParentGroup]:
     buckets: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     for experiment in experiments:
-        area_id = _experiment_area_id(experiment)
-        if area_id not in AREA_NAMES or area_id == "f":
-            continue
-        buckets[(area_id, _parent_code(experiment))].append(experiment)
+        for area_id in _experiment_area_ids(experiment):
+            buckets[(area_id, _parent_code(experiment))].append(experiment)
 
     groups: list[ParentGroup] = []
     for (area_id, parent_code), items in buckets.items():
@@ -539,7 +545,11 @@ def _latest_pretest_area_id(session: Any, student_id: str) -> str | None:
 
 
 def _lowest_mastery_chapter_id(session: Any, *, student_id: str, area_id: str) -> str | None:
-    chapter_ids = [chapter_id for chapter_id, chapter in CHAPTER_AREA_MAP.items() if chapter.get("area_id") == area_id]
+    chapter_ids = [
+        chapter_id
+        for chapter_id in CHAPTER_AREA_MAP
+        if area_id in _chapter_area_ids(chapter_id)
+    ]
     if not chapter_ids:
         return None
     try:
@@ -832,6 +842,7 @@ def validate_student_learning_experiment_coverage(experiments: list[dict[str, An
     strict_coverage: dict[str, list[str]] = defaultdict(list)
     actual_coverage: dict[str, list[str]] = defaultdict(list)
     profile_counts: dict[str, int] = {}
+    optional_coverage_profiles: set[str] = set()
     errors: list[str] = []
 
     profile_chapter_ids: dict[str, str] = {}
@@ -844,17 +855,19 @@ def validate_student_learning_experiment_coverage(experiments: list[dict[str, An
         if chapter_id in profile_chapter_ids:
             errors.append(f"{profile_id}: duplicate learning profile chapter_id {chapter_id}")
         profile_chapter_ids[chapter_id] = profile_id
+        if profile.get("coverage_optional"):
+            optional_coverage_profiles.add(profile_id)
 
         strict_matches = [
             experiment
             for experiment in experiments
             if chapter_id in _experiment_chapter_ids(experiment)
         ]
-        actual_matches = _profile_experiments(profile, experiments)
+        actual_matches = [] if profile_id in optional_coverage_profiles and not strict_matches else _profile_experiments(profile, experiments)
         strict_ids = {str(experiment["id"]) for experiment in strict_matches}
         actual_ids = {str(experiment["id"]) for experiment in actual_matches}
         profile_counts[profile_id] = len(strict_ids)
-        if not strict_ids:
+        if not strict_ids and profile_id not in optional_coverage_profiles:
             errors.append(f"{profile_id}: chapter {chapter_id} has no published experiments")
         extra_ids = sorted(actual_ids - strict_ids)
         if extra_ids:
@@ -897,7 +910,9 @@ def validate_student_learning_experiment_coverage(experiments: list[dict[str, An
         "covered_experiment_count": len(strict_covered_ids),
         "uncovered_experiment_count": len(uncovered_ids),
         "profiles_without_experiments": sorted(
-            profile_id for profile_id, count in profile_counts.items() if count == 0
+            profile_id
+            for profile_id, count in profile_counts.items()
+            if count == 0 and profile_id not in optional_coverage_profiles
         ),
         "multi_profile_experiment_count": len(multi_profile_experiment_ids),
         "multi_profile_experiment_ids": multi_profile_experiment_ids,
@@ -935,8 +950,8 @@ def _select_learning_profile(
     if pretest_area_id:
         area_chapters = {
             chapter_id
-            for chapter_id, chapter in CHAPTER_AREA_MAP.items()
-            if chapter.get("area_id") == pretest_area_id
+            for chapter_id in CHAPTER_AREA_MAP
+            if pretest_area_id in _chapter_area_ids(chapter_id)
         }
         match = next((profile for profile in enabled if str(profile.get("chapter_id") or "") in area_chapters), None)
         if match:

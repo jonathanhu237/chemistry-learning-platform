@@ -18,8 +18,44 @@
   margin-bottom: 12px;
 }
 
-.periodic-card-head svg {
+.periodic-card-head > div {
+  min-width: 0;
+}
+
+.periodic-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  width: clamp(104px, 34vw, 132px);
+  min-height: 31px;
+  border: 1px solid rgba(0, 88, 38, 0.14);
+  border-radius: 8px;
+  padding: 0 9px;
   color: var(--green);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.periodic-search svg {
+  flex: none;
+  color: var(--green);
+}
+
+.periodic-search input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  color: var(--ink);
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.periodic-search input::placeholder {
+  color: rgba(90, 111, 101, 0.74);
 }
 
 .area-legend {
@@ -51,69 +87,11 @@
   white-space: nowrap;
 }
 
-.area-legend button em {
-  position: absolute;
-  top: -11px;
-  left: 50%;
-  z-index: 2;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  width: max-content;
-  max-width: calc(100% + 22px);
-  transform: translateX(-50%);
-  border-radius: 999px;
-  border: 1px solid rgba(172, 117, 25, 0.22);
-  padding: 2px 4px 2px 6px;
-  color: #6e4a10;
-  background: #f3dfb1;
-  box-shadow: 0 0 0 3px rgba(255, 253, 246, 0.96), 0 2px 5px rgba(109, 74, 16, 0.12);
-  font-size: 9px;
-  font-style: normal;
-  font-weight: 900;
-  line-height: 1;
-  pointer-events: none;
-  white-space: nowrap;
-}
-
-.area-legend button em b {
-  flex: 1 1 auto;
-  display: grid;
-  place-items: center;
-  min-width: 20px;
-  max-width: 72px;
-  height: 13px;
-  padding: 0 4px;
-  border-radius: 999px;
-  color: #fffaf0;
-  background: #a96f13;
-  font-size: 8px;
-  font-weight: 900;
-  line-height: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.area-legend button em > span {
-  flex: 0 0 auto;
-}
-
 .area-legend button i {
   width: 8px;
   height: 8px;
   border-radius: 999px;
   background: var(--area-color);
-}
-
-.area-legend button.selected {
-  border-color: color-mix(in srgb, var(--area-color), #1a3b2c 18%);
-  background: color-mix(in srgb, var(--area-color), white 78%);
-}
-
-.area-legend button.recommended-area:not(.selected) {
-  border-color: rgba(210, 155, 45, 0.32);
-  background: rgba(255, 253, 246, 0.86);
 }
 
 .periodic-caption {
@@ -159,43 +137,42 @@
   letter-spacing: 0;
   line-height: 1;
   cursor: pointer;
-  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease, opacity 140ms ease;
+  transition: transform 140ms ease, filter 140ms ease;
 }
 
-.element-cell.selected-area {
-  box-shadow: 0 4px 10px rgba(21, 49, 34, 0.16);
-  filter: saturate(1.18) brightness(1.03);
-}
-
-.element-cell.learnable-element {
-  box-shadow: 0 4px 10px rgba(21, 49, 34, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.66);
-}
-
-.element-cell.learnable-element span {
+.element-cell span {
   max-width: 100%;
   padding: 0 1px;
   pointer-events: none;
   white-space: nowrap;
 }
 
-.element-cell.recommended-element {
-  border-color: #c99022;
-  box-shadow: 0 3px 8px rgba(109, 74, 16, 0.12), inset 0 0 0 1px rgba(201, 144, 34, 0.78);
+.area-legend button:focus,
+.element-cell:focus,
+.periodic-search:focus-within {
+  outline-style: none;
+  outline-width: 0;
 }
 
-.element-cell.recommended-element.learnable-element,
-.element-cell.recommended-element.selected-area {
-  box-shadow: 0 4px 10px rgba(21, 49, 34, 0.16), inset 0 0 0 1px rgba(201, 144, 34, 0.82);
+.area-legend button:focus-visible,
+.element-cell:focus-visible {
+  outline: 2px solid rgba(0, 88, 38, 0.42);
+  outline-offset: 2px;
 }
 
-.element-cell.muted-area {
-  opacity: 0.44;
-  filter: saturate(0.82);
+.periodic-search:focus-within {
+  border-color: rgba(0, 88, 38, 0.34);
+  box-shadow: 0 0 0 2px rgba(0, 88, 38, 0.08);
 }
 
-.element-cell.recommended-element.muted-area {
-  opacity: 0.7;
-  filter: saturate(0.95) brightness(1.02);
+.element-cell.search-dimmed {
+  filter: saturate(0.72);
+  opacity: 0.34;
+}
+
+.element-cell.search-match {
+  filter: saturate(1.2) brightness(1.05);
+  box-shadow: 0 0 0 2px rgba(255, 253, 246, 0.9), 0 6px 12px rgba(21, 49, 34, 0.18);
 }
 
 .element-cell:active {

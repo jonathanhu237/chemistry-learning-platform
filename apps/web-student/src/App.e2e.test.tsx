@@ -682,12 +682,19 @@ describe("student app route stack", () => {
 
     await clickRoot("learn");
     expect(document.querySelector(".periodic-grid")).not.toBeNull();
+    expect(screen.getByText("元素周期表")).toBeInTheDocument();
+    expect(screen.getByText("选择元素分区")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "搜索元素" })).toBeInTheDocument();
+    expect(document.querySelector(".learning-recommendation-card")).not.toBeNull();
     expect(document.querySelector(".chapter-entry-card")).toBeNull();
-    fireEvent.click(document.querySelector<HTMLButtonElement>(".area-legend button")!);
+    fireEvent.click(screen.getByRole("button", { name: "p区元素" }));
     await waitFor(() => expect(window.location.pathname).toBe("/learn/area/p"));
     expectBottomNavHidden();
-    await waitFor(() => expect(document.querySelector(".chapter-entry-card.recommended")).not.toBeNull());
-    fireEvent.click(document.querySelector<HTMLButtonElement>(".chapter-entry-card.recommended")!);
+    expect(screen.getByText("p区元素")).toBeInTheDocument();
+    expect(screen.queryByText("当前选区")).not.toBeInTheDocument();
+    expect(screen.queryByText("推荐学习")).not.toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector(".chapter-entry-card")).not.toBeNull());
+    fireEvent.click(document.querySelector<HTMLButtonElement>(".chapter-entry-card")!);
     await waitFor(() => expect(window.location.pathname).toBe("/chapter/halogens-17"));
     expectBottomNavHidden();
     await waitFor(() => expect(document.querySelector(".chapter-element-summary")).not.toBeNull());

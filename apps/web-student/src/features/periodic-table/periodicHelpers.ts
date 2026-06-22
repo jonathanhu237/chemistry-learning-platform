@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import type { StudentLearningArea, StudentLearningElementBadge, StudentLearningProfileSummary } from "../../api";
 import { periodicElements } from "../../periodic";
 
-export type AreaId = "p" | "s" | "ds" | "d" | "f" | "integrated";
+export type AreaId = "hydrogen" | "p" | "s" | "ds" | "d" | "f";
 type PeriodicArea = "s区" | "p区" | "d区" | "ds区" | "f区";
 
 const areaIdByPeriodicArea: Record<PeriodicArea, AreaId> = {
@@ -14,30 +14,31 @@ const areaIdByPeriodicArea: Record<PeriodicArea, AreaId> = {
 };
 
 export const periodicAreaByAreaId: Record<AreaId, string> = {
+  hydrogen: "氢元素",
   p: "p区",
   s: "s区",
   ds: "ds区",
   d: "d区",
   f: "f区",
-  integrated: "氢和稀有气体",
 };
 
 export const periodicLegendLabelByAreaId: Record<AreaId, string> = {
+  hydrogen: "氢元素",
   p: "p区元素",
   s: "s区元素",
   ds: "ds区元素",
   d: "d区元素",
   f: "f区元素",
-  integrated: "氢和稀有气体",
 };
 
-export const periodicAreaOrder: AreaId[] = ["p", "s", "ds", "d", "f", "integrated"];
+export const periodicAreaOrder: AreaId[] = ["hydrogen", "p", "s", "ds", "d", "f"];
 export const periodicPeriodLabels = ["一", "二", "三", "四", "五", "六", "七", "镧系", "锕系"];
-const integratedElementSymbols = new Set(["H", "He", "Ne", "Ar", "Kr", "Xe", "Rn", "Og"]);
+const nobleGasSymbols = new Set(["He", "Ne", "Ar", "Kr", "Xe", "Rn", "Og"]);
 export type PeriodicElementMeta = (typeof periodicElements)[number];
 
 export function periodicAreaIdForElement(element: PeriodicElementMeta): AreaId {
-  if (integratedElementSymbols.has(element.symbol)) return "integrated";
+  if (element.symbol === "H") return "hydrogen";
+  if (nobleGasSymbols.has(element.symbol)) return "p";
   return areaIdByPeriodicArea[element.area as PeriodicArea];
 }
 
@@ -51,34 +52,34 @@ export function periodicGridRowForPeriod(period: number): number {
 }
 
 export const areaSwatches: Record<AreaId, string> = {
-  p: "#2f9d70",
-  s: "#8cc95f",
-  ds: "#d7ab3c",
-  d: "#6fa3d8",
-  f: "#a77bd2",
-  integrated: "#86b4d2",
+  hydrogen: "#6f9f2e",
+  p: "#0f8f72",
+  s: "#9a6a11",
+  ds: "#c89a2d",
+  d: "#9e2f3d",
+  f: "#8d4f9f",
 };
 
 export const areaInk: Record<AreaId, string> = {
-  p: "#0f3d2b",
-  s: "#28430e",
-  ds: "#4d3510",
-  d: "#123556",
-  f: "#3a2452",
-  integrated: "#205071",
+  hydrogen: "#254509",
+  p: "#063f31",
+  s: "#46310a",
+  ds: "#523a0c",
+  d: "#4e1018",
+  f: "#42204d",
 };
 
-const profileAreaByChapterId: Record<string, AreaId> = {
-  CH13: "p",
-  CH14: "p",
-  CH15: "p",
-  CH16: "p",
-  CH17: "p",
-  CH18: "s",
-  CH19: "ds",
-  CH20: "d",
-  CH21: "f",
-  CH22: "integrated",
+const profileAreasByChapterId: Record<string, AreaId[]> = {
+  CH13: ["p"],
+  CH14: ["p"],
+  CH15: ["p"],
+  CH16: ["p"],
+  CH17: ["p"],
+  CH18: ["s"],
+  CH19: ["ds"],
+  CH20: ["d"],
+  CH21: ["f"],
+  CH22: ["hydrogen", "p"],
 };
 
 const elementEnglishNames: Record<string, string> = {
@@ -150,7 +151,7 @@ export function elementTileStyle(element: StudentLearningElementBadge): CSSPrope
 }
 
 export function normalizeAreaId(value: string | null | undefined): AreaId | null {
-  if (value === "p" || value === "s" || value === "d" || value === "ds" || value === "f" || value === "integrated") return value;
+  if (value === "hydrogen" || value === "p" || value === "s" || value === "d" || value === "ds" || value === "f") return value;
   return null;
 }
 
@@ -159,15 +160,20 @@ export function firstEnabledArea(areas: StudentLearningArea[]): AreaId | null {
   return normalizeAreaId(match?.area_id);
 }
 
-export function profileAreaId(profile: StudentLearningProfileSummary): AreaId | null {
-  const mappedArea = profileAreaByChapterId[profile.chapter_id];
-  if (mappedArea) return mappedArea;
+export function profileAreaIds(profile: StudentLearningProfileSummary): AreaId[] {
+  const mappedAreas = profileAreasByChapterId[profile.chapter_id];
+  if (mappedAreas) return mappedAreas;
 
   const text = `${profile.title} ${profile.subtitle} ${profile.family_name}`;
-  if (text.includes("ds")) return "ds";
-  if (text.includes("s区")) return "s";
-  if (text.includes("p区")) return "p";
-  if (text.includes("d区")) return "d";
-  if (text.includes("f区")) return "f";
-  return null;
+  if (text.includes("氢")) return ["hydrogen"];
+  if (text.includes("ds")) return ["ds"];
+  if (text.includes("s区")) return ["s"];
+  if (text.includes("p区")) return ["p"];
+  if (text.includes("d区")) return ["d"];
+  if (text.includes("f区")) return ["f"];
+  return [];
+}
+
+export function profileAreaId(profile: StudentLearningProfileSummary): AreaId | null {
+  return profileAreaIds(profile)[0] || null;
 }

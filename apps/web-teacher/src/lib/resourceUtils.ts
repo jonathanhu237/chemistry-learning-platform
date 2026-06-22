@@ -21,16 +21,16 @@ export const theoryChapters: TheoryChapter[] = [
   { chapter_id: "CH19", chapter_number: 19, chapter_title: "第19章 铜锌副族元素", area_id: "ds", area_name: "ds 区元素" },
   { chapter_id: "CH20", chapter_number: 20, chapter_title: "第20章 d 区过渡金属元素", area_id: "d", area_name: "d 区元素" },
   { chapter_id: "CH21", chapter_number: 21, chapter_title: "第21章 镧系和锕系元素", area_id: "f", area_name: "f 区元素" },
-  { chapter_id: "CH22", chapter_number: 22, chapter_title: "第22章 氢和稀有气体", area_id: "integrated", area_name: "氢和稀有气体" },
+  { chapter_id: "CH22", chapter_number: 22, chapter_title: "第22章 氢和稀有气体", area_id: "hydrogen", area_name: "氢元素" },
 ];
 
 const resourceAreaMeta: Record<string, { label: string; shortLabel: string; color: string; ink: string; selected: string }> = {
-  s: { label: "s 区元素", shortLabel: "s", color: "#d9f0c7", ink: "#355b16", selected: "#91c96d" },
-  p: { label: "p 区元素", shortLabel: "p", color: "#cdeee1", ink: "#005826", selected: "#2fa66d" },
-  d: { label: "d 区元素", shortLabel: "d", color: "#d8e7ff", ink: "#254a7a", selected: "#83a9e8" },
-  ds: { label: "ds 区元素", shortLabel: "ds", color: "#f3dfb8", ink: "#76531b", selected: "#e1b94f" },
-  f: { label: "f 区元素", shortLabel: "f", color: "#eadcf8", ink: "#6b4a86", selected: "#ba8cde" },
-  integrated: { label: "氢和稀有气体", shortLabel: "氢/稀气", color: "#e8f1f7", ink: "#356f9c", selected: "#7ba3c9" },
+  hydrogen: { label: "氢元素", shortLabel: "氢", color: "#e4f0cf", ink: "#254509", selected: "#6f9f2e" },
+  p: { label: "p 区元素", shortLabel: "p", color: "#cceee6", ink: "#063f31", selected: "#0f8f72" },
+  s: { label: "s 区元素", shortLabel: "s", color: "#ead8ae", ink: "#46310a", selected: "#9a6a11" },
+  ds: { label: "ds 区元素", shortLabel: "ds", color: "#f2dfa9", ink: "#523a0c", selected: "#c89a2d" },
+  d: { label: "d 区元素", shortLabel: "d", color: "#efd0d4", ink: "#4e1018", selected: "#9e2f3d" },
+  f: { label: "f 区元素", shortLabel: "f", color: "#ead8ef", ink: "#42204d", selected: "#8d4f9f" },
   general: { label: "通识资源", shortLabel: "通识", color: "#edf3ee", ink: "#375247", selected: "#9bbbaa" },
   other: { label: "其他资源", shortLabel: "其他", color: "#eef1ef", ink: "#53635b", selected: "#aebbb4" },
 };

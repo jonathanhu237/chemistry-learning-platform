@@ -1,5 +1,4 @@
 import type { StudentLearningProfileSummary } from "../../api";
-import { profileAreaId } from "../periodic-table/periodicHelpers";
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -42,8 +41,6 @@ export function stripLearningChapterPrefix(value: string): string {
 }
 
 export function formatAreaProfileLabel(profile: StudentLearningProfileSummary): string {
-  if (profileAreaId(profile) === "integrated") return "氢和稀有气体";
-
   const rawLabel = profile.family_name || profile.title || profile.subtitle || "";
   const withoutChapter = stripLearningChapterPrefix(rawLabel).trim();
   const parenthesizedAreaLabel = withoutChapter.match(/^(?:s|p|d|ds|f)\s*区\s*[（(](.+)[）)]$/i);
@@ -57,7 +54,6 @@ export function formatAreaProfileLabel(profile: StudentLearningProfileSummary): 
 
 export function formatRecommendedAreaCueLabel(profile: StudentLearningProfileSummary | null): string | null {
   if (!profile) return null;
-  if (profileAreaId(profile) === "integrated") return "氢和稀有气体";
 
   const familyLabel = formatFamilyNumberLabel(profile.family_number);
   if (familyLabel) return familyLabel;

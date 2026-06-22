@@ -903,11 +903,12 @@ async function checkAuthenticatedFlows(page, viewportName) {
 
   await clickRoot(page, 'learn');
   await page.locator('.periodic-grid').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.learning-recommendation-card').first().waitFor({ state: 'visible', timeout: 10000 });
   const rootChapterEntryCount = await page.locator('.chapter-entry-card').count();
   if (rootChapterEntryCount > 0) {
     throw new Error(viewportName + ': learning root should not render selected-area chapter cards');
   }
-  await page.locator('.area-legend button').first().click();
+  await page.getByRole('button', { name: 'p区元素' }).click();
   await page.waitForURL(/\/learn\/area\/p/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': selected area detail');
   await page.locator('.chapter-entry-card').first().click();

@@ -6,7 +6,15 @@ import authUtilsSource from "./features/auth/authUtils.ts?raw";
 import assistantPanelSource from "./features/assistant/StudentAiChatPanel.tsx?raw";
 import authenticatedAppLayoutSource from "./app/shell/AuthenticatedAppLayout.tsx?raw";
 import previewInputRuntimeSource from "./app/preview/input/PreviewInputRuntime.tsx?raw";
+import periodicTableSource from "./features/periodic-table/PeriodicTable.tsx?raw";
 import studentPackageSource from "../package.json?raw";
+import { periodicElements } from "./periodic";
+import {
+  areaSwatches,
+  periodicAreaIdForElement,
+  periodicAreaOrder,
+  profileAreaIds,
+} from "./features/periodic-table/periodicHelpers";
 
 const routeAndFeatureSources = import.meta.glob("./{routes,features}/**/*.{ts,tsx}", {
   query: "?raw",
@@ -117,5 +125,47 @@ describe("student console role boundaries", () => {
     expect(appShellCssSource).toContain("outline-style: none;");
     expect(appShellCssSource).toContain("outline-width: 0;");
     expect(appShellCssSource).toContain(".student-bottom-nav button:focus-visible");
+  });
+
+  it("locks the student periodic learning taxonomy without the removed combined area", () => {
+    const bySymbol = new Map(periodicElements.map((element) => [element.symbol, element]));
+
+    expect(periodicAreaOrder).toEqual(["hydrogen", "p", "s", "ds", "d", "f"]);
+    expect(Object.keys(areaSwatches)).toEqual(["hydrogen", "p", "s", "ds", "d", "f"]);
+    expect(areaSwatches).toMatchObject({
+      hydrogen: "#6f9f2e",
+      p: "#0f8f72",
+      s: "#9a6a11",
+      ds: "#c89a2d",
+      d: "#9e2f3d",
+      f: "#8d4f9f",
+    });
+    expect(periodicAreaIdForElement(bySymbol.get("H")!)).toBe("hydrogen");
+    ["He", "Ne", "Ar", "Kr", "Xe", "Rn", "Og"].forEach((symbol) => {
+      expect(periodicAreaIdForElement(bySymbol.get(symbol)!)).toBe("p");
+    });
+    ["La", "Lu", "Ac", "Lr"].forEach((symbol) => {
+      expect(periodicAreaIdForElement(bySymbol.get(symbol)!)).toBe("f");
+    });
+    expect(profileAreaIds({ chapter_id: "CH21" } as Parameters<typeof profileAreaIds>[0])).toEqual(["f"]);
+    expect(profileAreaIds({ chapter_id: "CH22" } as Parameters<typeof profileAreaIds>[0])).toEqual(["hydrogen", "p"]);
+  });
+
+  it("keeps recommendation chrome out of the periodic table selector", async () => {
+    // @ts-expect-error The frontend tsconfig intentionally omits Node types, but Vitest runs this contract in Node.
+    const { readFileSync } = await import("node:fs");
+    const cwd = (globalThis as unknown as { process: { cwd: () => string } }).process.cwd();
+    const periodicCssSource = readFileSync(`${cwd}/src/styles/periodic-table.css`, "utf8");
+
+    expect(periodicTableSource).not.toContain("recommendedArea");
+    expect(periodicTableSource).not.toContain("recommendedSymbols");
+    expect(periodicTableSource).not.toContain("selectedArea");
+    expect(periodicTableSource).not.toContain("learnableSymbols");
+    expect(periodicCssSource).not.toContain("area-legend button.selected");
+    expect(periodicCssSource).not.toContain("selected-area");
+    expect(periodicCssSource).not.toContain("learnable-element");
+    expect(periodicCssSource).not.toContain("muted-area");
+    expect(periodicCssSource).not.toContain("recommended-area");
+    expect(periodicCssSource).not.toContain("recommended-element");
   });
 });

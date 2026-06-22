@@ -8,7 +8,7 @@ import { StudentLearningPageResponse, errorMessage, getStudentLearningPage } fro
 import { MobileEmptyState } from "../../mobile/primitives";
 import { LearningAreaChapterList } from "../../features/learning/LearningAreaChapterList";
 import { LearningState } from "../../shared/mobile/LearningState";
-import { normalizeAreaId, periodicAreaByAreaId } from "../../features/periodic-table/periodicHelpers";
+import { normalizeAreaId, periodicLegendLabelByAreaId } from "../../features/periodic-table/periodicHelpers";
 
 export function LearningAreaPage() {
   const navigate = useNavigate();
@@ -45,8 +45,7 @@ export function LearningAreaPage() {
   }, [selectedArea]);
 
   const profiles = page?.profiles || [];
-  const recommendedProfileId = page?.recommended_profile_id || page?.active_profile?.profile_id || profiles[0]?.profile_id || "";
-  const title = selectedArea ? `${periodicAreaByAreaId[selectedArea]}选区` : "学习选区";
+  const title = selectedArea ? periodicLegendLabelByAreaId[selectedArea] : "学习选区";
 
   return (
     <DetailPageFrame title={title} source={search.from || "learn"}>
@@ -62,7 +61,6 @@ export function LearningAreaPage() {
           <LearningAreaChapterList
             selectedArea={selectedArea}
             profiles={profiles}
-            recommendedProfileId={recommendedProfileId}
             onSelectProfile={(profile) => {
               navigateToChapter(navigate, profile.profile_id, { from: "learn" });
             }}
