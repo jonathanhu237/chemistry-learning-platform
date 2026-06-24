@@ -7,6 +7,7 @@ Protected resource groups:
 - `formal_experiments.json`: 77 current formal experiments.
 - `knowledge_framework/`: 11 chapters, 133 knowledge units, 385 knowledge points, plus the reviewed curriculum source used to publish them.
 - `experiment_catalog/`: the current catalog-outline seed from `docs/实验目录_整理版.md`, with 569 nodes, 176 directories, 393 points, and 76 reviewed point-content records, including 71 equation-mode records and 122 structured reaction-equation rows.
+- `experiment_catalog/point_textbook_evidence_seed.json`: precomputed catalog point to textbook chunk evidence bindings for question generation. Import it after the catalog outline and canonical RAG chunks so colleagues do not need to rerun paid embedding/rerank calls for the same bindings.
 - `canonical_rag/`: mirrored canonical chunks and embeddings from `E:/chemistry-rag/data/rag_ready`, including 3637 chunks/embeddings.
 - `student_learning/`: explicit student-facing family and element learning profiles used by the H5 learning page; these display facts are curated seed data, not dynamically inferred from chunks.
 - `import_reports/`: current import/validation reports retained for auditability.
@@ -41,6 +42,12 @@ Validate the catalog outline seed and mapping report before import:
 
 ```bash
 python scripts/validate_experiment_catalog_seed.py --write-report
+```
+
+Restore precomputed point textbook evidence bindings after importing the catalog outline and canonical RAG chunks:
+
+```bash
+python scripts/seed_catalog_point_evidence.py import
 ```
 
 Regenerate the manifest only after intentionally replacing the protected seed resources:

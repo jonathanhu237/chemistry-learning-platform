@@ -38,6 +38,7 @@ from server.app.domains.questions.bank import (
     _insert_question,
     _validate_question_payload,
 )
+from server.app.domains.questions.duplicate_risk import attach_duplicate_risk_for_payload
 from server.app.domains.questions.generation import (
     CATALOG_NODE_EVIDENCE_REQUIRED_DETAIL,
     attach_evidence_to_point_contexts,
@@ -1033,6 +1034,7 @@ def send_question_workbench_message(*, payload: WorkbenchMessageRequest, session
                     },
                 ).scalar_one()
             )
+            created_draft_ids: list[str] = []
             for index, row in enumerate(generated[: payload.count]):
                 row_payload = _with_point_aware_metadata(
                     row={**row, "status": "draft", "difficulty": row.get("difficulty") or payload.difficulty or "basic"},
@@ -1085,6 +1087,22 @@ def send_question_workbench_message(*, payload: WorkbenchMessageRequest, session
                     .mappings()
                     .one()
                 )
+                candidate_payload = attach_duplicate_risk_for_payload(
+                    session,
+                    payload=candidate_payload,
+                    owner_kind="draft",
+                    owner_id=str(draft["id"]),
+                )
+                session.execute(
+                    text(
+                        """
+                        UPDATE experiment_question_drafts
+                        SET payload = CAST(:payload AS jsonb), updated_at = now()
+                        WHERE id = CAST(:id AS uuid)
+                        """
+                    ),
+                    {"id": str(draft["id"]), "payload": _json(candidate_payload)},
+                )
                 session.execute(
                     text(
                         """
@@ -1105,6 +1123,43 @@ def send_question_workbench_message(*, payload: WorkbenchMessageRequest, session
                         "errors": _json_array(errors),
                         "lineage": _json(metadata.get("review_lineage") or {}),
                     },
+                )
+                created_draft_ids.append(str(draft["id"]))
+            for draft_id in created_draft_ids:
+                draft_row = (
+                    session.execute(
+                        text("SELECT payload FROM experiment_question_drafts WHERE id = CAST(:id AS uuid)"),
+                        {"id": draft_id},
+                    )
+                    .mappings()
+                    .one()
+                )
+                refreshed_payload = attach_duplicate_risk_for_payload(
+                    session,
+                    payload=dict(draft_row["payload"] or {}),
+                    owner_kind="draft",
+                    owner_id=draft_id,
+                )
+                session.execute(
+                    text(
+                        """
+                        UPDATE experiment_question_drafts
+                        SET payload = CAST(:payload AS jsonb), updated_at = now()
+                        WHERE id = CAST(:id AS uuid)
+                        """
+                    ),
+                    {"id": draft_id, "payload": _json(refreshed_payload)},
+                )
+                session.execute(
+                    text(
+                        """
+                        UPDATE experiment_question_workbench_candidates
+                        SET payload = CAST(:payload AS jsonb), updated_at = now()
+                        WHERE draft_id = CAST(:draft_id AS uuid)
+                          AND status = 'draft'
+                        """
+                    ),
+                    {"draft_id": draft_id, "payload": _json(refreshed_payload)},
                 )
             session.execute(
                 text(
@@ -1206,6 +1261,12 @@ def publish_question_workbench_candidate(*, candidate_id: str, user: Any) -> dic
             "published_from_workbench_at": datetime.now(timezone.utc).isoformat(),
         }
         payload_data["metadata"] = metadata
+        payload_data = attach_duplicate_risk_for_payload(
+            session,
+            payload=payload_data,
+            owner_kind="draft" if candidate.get("draft_id") else None,
+            owner_id=str(candidate["draft_id"]) if candidate.get("draft_id") else None,
+        )
         if not question_payload_has_catalog_evidence_lineage(payload_data):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -1222,14 +1283,21 @@ def publish_question_workbench_candidate(*, candidate_id: str, user: Any) -> dic
         )
         if candidate.get("draft_id"):
             session.execute(
-                text("UPDATE experiment_question_drafts SET status = 'published', updated_at = now() WHERE id = CAST(:id AS uuid)"),
-                {"id": str(candidate["draft_id"])},
+                text(
+                    """
+                    UPDATE experiment_question_drafts
+                    SET payload = CAST(:payload AS jsonb), status = 'published', updated_at = now()
+                    WHERE id = CAST(:id AS uuid)
+                    """
+                ),
+                {"id": str(candidate["draft_id"]), "payload": _json(payload_data)},
             )
         session.execute(
             text(
                 """
                 UPDATE experiment_question_workbench_candidates
                 SET status = 'published',
+                    payload = CAST(:payload AS jsonb),
                     lineage = lineage || CAST(:lineage AS jsonb),
                     updated_at = now()
                 WHERE id = CAST(:id AS uuid)
@@ -1237,6 +1305,7 @@ def publish_question_workbench_candidate(*, candidate_id: str, user: Any) -> dic
             ),
             {
                 "id": candidate_id,
+                "payload": _json(payload_data),
                 "lineage": _json({"published_question_id": str(inserted["id"])}),
             },
         )

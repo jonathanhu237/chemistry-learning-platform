@@ -280,6 +280,32 @@
   max-height: 560px;
 }
 
+.question-duplicate-risk {
+  border-color: rgba(180, 112, 0, 0.2);
+  border-radius: 8px;
+}
+
+.question-duplicate-risk-list {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.question-duplicate-risk-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.question-duplicate-risk-stem {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .question-authoring-log {
   min-width: 0;
   padding-top: 2px;

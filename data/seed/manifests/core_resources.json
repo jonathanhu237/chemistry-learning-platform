@@ -19,7 +19,9 @@
     "chunk_embeddings": 3637,
     "published_catalog_point_content_min": 76,
     "catalog_point_related_links_min": 0,
-    "point_evidence_bindings_with_node": 0
+    "point_evidence_bindings_with_node": 0,
+    "catalog_point_textbook_evidence_states": 1,
+    "catalog_point_textbook_evidence_bindings": 9
   },
   "resources": [
     {
@@ -136,6 +138,28 @@
         "reaction_equation_rows": 122,
         "unique_target_seed_keys": 76,
         "semantic_mapped_records": 76
+      }
+    },
+    {
+      "id": "experiment_catalog_point_textbook_evidence_seed",
+      "role": "Precomputed catalog point textbook evidence bindings for question generation",
+      "path": "data/seed/experiment_catalog/point_textbook_evidence_seed.json",
+      "source_path": "experiment_catalog_point_evidence_state + experiment_catalog_point_evidence_bindings",
+      "required": true,
+      "kind": "json",
+      "size_bytes": 503400,
+      "sha256": "8d7c3ba5a92de2a87b9ad7936e4a5aa645715c237e891b15f979fa036cf3a37b",
+      "count": {
+        "states": 1,
+        "bindings": 9,
+        "unique_nodes": 1,
+        "unique_chunks": 5
+      },
+      "expected_counts": {
+        "states": 1,
+        "bindings": 9,
+        "unique_nodes": 1,
+        "unique_chunks": 5
       }
     },
     {

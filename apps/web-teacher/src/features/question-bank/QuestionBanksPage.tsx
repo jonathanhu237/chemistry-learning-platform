@@ -92,6 +92,22 @@ type DraftEditorState = {
   payload: Partial<Question> & Record<string, unknown>;
 };
 
+type DuplicateRiskMatch = {
+  kind?: string;
+  owner_kind?: string;
+  owner_id?: string;
+  question_type?: string;
+  stem?: string;
+  score?: number;
+  reason?: string;
+};
+
+type DuplicateRisk = {
+  has_risk?: boolean;
+  message?: string;
+  matches?: DuplicateRiskMatch[];
+};
+
 function nodePath(node?: CatalogQuestionBankNode | null) {
   return (node?.breadcrumb_titles || []).join(" / ");
 }
@@ -248,6 +264,25 @@ function draftStem(draft: QuestionDraft) {
 
 function draftValidationErrors(draft: QuestionDraft) {
   return draft.validation_errors || [];
+}
+
+function duplicateRiskFromPayload(payload: Partial<Question> & Record<string, unknown>): DuplicateRisk | null {
+  const metadata = payload.metadata && typeof payload.metadata === "object" ? (payload.metadata as Record<string, unknown>) : {};
+  const risk = metadata.duplicate_risk && typeof metadata.duplicate_risk === "object" ? (metadata.duplicate_risk as DuplicateRisk) : null;
+  return risk?.has_risk ? risk : null;
+}
+
+function duplicateRiskMatches(risk: DuplicateRisk | null) {
+  return Array.isArray(risk?.matches) ? risk.matches.filter((match) => match && typeof match === "object") : [];
+}
+
+function duplicateRiskMessage(risk: DuplicateRisk | null) {
+  const matches = duplicateRiskMatches(risk);
+  return risk?.message || `这道题可能与 ${matches.length || 1} 道同点位题目考察意图相近，请发布前确认。`;
+}
+
+function duplicateRiskKindLabel(match: DuplicateRiskMatch) {
+  return match.kind === "draft" || match.owner_kind === "draft" ? "待审" : "已发布";
 }
 
 function normalizeQuestionType(value: unknown): Question["question_type"] {
@@ -1025,6 +1060,8 @@ export function QuestionBanksPage() {
                               const errors = draft ? draftValidationErrors(draft) : isCandidate ? candidateValidationErrors(item.candidate) : draftValidationErrors(item.draft);
                               const status = draft ? draft.status : isCandidate ? item.candidate.status : item.draft.status;
                               const itemId = isCandidate ? item.candidate.id : item.draft.id;
+                              const duplicateRisk = duplicateRiskFromPayload(payload);
+                              const duplicateMatches = duplicateRiskMatches(duplicateRisk);
                               const questionType = normalizeQuestionType(payload.question_type);
                               const stem = cleanText(String(payload.stem || ""));
                               const pointTags = isCandidate
@@ -1056,6 +1093,7 @@ export function QuestionBanksPage() {
                                         <Tag color="blue">{questionTypeLabel(questionType)}</Tag>
                                         <Tag color={isCandidate ? "green" : "default"}>{isCandidate ? "本次生成" : "历史待审"}</Tag>
                                         {errors.length ? <Tag color="red">需修订</Tag> : <Tag color="green">可发布</Tag>}
+                                        {duplicateRisk ? <Tag color="orange">疑似重复 · {duplicateMatches.length || 1} 条</Tag> : null}
                                         {status !== "draft" ? <Tag>{status}</Tag> : null}
                                       </Space>
                                       <Text type="secondary">{itemId.slice(0, 8)}</Text>
@@ -1079,6 +1117,29 @@ export function QuestionBanksPage() {
                                       <Descriptions.Item label="答案">{answerText(payload.answer as Record<string, unknown>)}</Descriptions.Item>
                                       <Descriptions.Item label="解析">{String(payload.explanation || "暂无解析")}</Descriptions.Item>
                                     </Descriptions>
+                                    {duplicateRisk ? (
+                                      <Alert
+                                        type="warning"
+                                        showIcon
+                                        className="question-duplicate-risk"
+                                        message={duplicateRiskMessage(duplicateRisk)}
+                                        description={
+                                          duplicateMatches.length ? (
+                                            <div className="question-duplicate-risk-list">
+                                              {duplicateMatches.map((match, matchIndex) => (
+                                                <div key={`${item.key}-duplicate-${match.owner_id || matchIndex}`} className="question-duplicate-risk-item">
+                                                  <Tag color={match.kind === "draft" || match.owner_kind === "draft" ? "gold" : "default"}>
+                                                    {duplicateRiskKindLabel(match)}
+                                                  </Tag>
+                                                  <Text className="question-duplicate-risk-stem">{match.stem || "相似题目"}</Text>
+                                                  {match.reason ? <Text type="secondary">{match.reason}</Text> : null}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          ) : undefined
+                                        }
+                                      />
+                                    ) : null}
                                     <Space size={4} wrap>
                                       {pointTags.map((point) => (
                                         <Tag key={point.point_node_id || point.point_key || point.point_title} color="cyan">
@@ -1093,7 +1154,8 @@ export function QuestionBanksPage() {
                                       </Button>
                                       <Space size={4}>
                                         <Popconfirm
-                                          title="发布这条待审题目？"
+                                          title={duplicateRisk ? "这道题可能重复，仍要发布吗？" : "发布这条待审题目？"}
+                                          description={duplicateRisk ? duplicateRiskMessage(duplicateRisk) : undefined}
                                           onConfirm={() => (draftId ? publishDraft.mutate(draftId) : publishCandidate.mutate(candidateId))}
                                           disabled={Boolean(errors.length) || status !== "draft"}
                                         >

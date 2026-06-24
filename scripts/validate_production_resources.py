@@ -31,6 +31,8 @@ EXPECTED_DATABASE_COUNTS = {
     "published_catalog_point_content_min": 76,
     "catalog_point_related_links_min": 0,
     "point_evidence_bindings_with_node": 0,
+    "catalog_point_textbook_evidence_states": 1,
+    "catalog_point_textbook_evidence_bindings": 9,
 }
 
 
@@ -113,6 +115,20 @@ def _catalog_point_content_seed_count(path: Path) -> dict[str, int]:
         "semantic_mapped_records": sum(
             1 for item in records if isinstance(item, dict) and isinstance(item.get("semantic_mapping"), dict)
         ),
+    }
+
+
+def _catalog_point_textbook_evidence_seed_count(path: Path) -> dict[str, int]:
+    data = _json(path)
+    states = data.get("states") or []
+    bindings = data.get("bindings") or []
+    if not isinstance(states, list) or not isinstance(bindings, list):
+        raise ValueError(f"{path} must contain states and bindings lists")
+    return {
+        "states": len(states),
+        "bindings": len(bindings),
+        "unique_nodes": len({str(item.get("node_id") or "") for item in states if isinstance(item, dict)}),
+        "unique_chunks": len({str(item.get("chunk_id") or "") for item in bindings if isinstance(item, dict)}),
     }
 
 
@@ -372,6 +388,15 @@ RESOURCE_SPECS: list[dict[str, Any]] = [
             "semantic_mapped_records": 76,
         },
         "source_path": "data/seed/experiment_catalog/normalized_three_element_candidates.md",
+    },
+    {
+        "id": "experiment_catalog_point_textbook_evidence_seed",
+        "role": "Precomputed catalog point textbook evidence bindings for question generation",
+        "path": "data/seed/experiment_catalog/point_textbook_evidence_seed.json",
+        "kind": "json",
+        "count": _catalog_point_textbook_evidence_seed_count,
+        "expected_counts": {"states": 1, "bindings": 9, "unique_nodes": 1, "unique_chunks": 5},
+        "source_path": "experiment_catalog_point_evidence_state + experiment_catalog_point_evidence_bindings",
     },
     {
         "id": "chemical_search_aliases",
