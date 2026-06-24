@@ -107,6 +107,7 @@ export function AssessmentCustomPage() {
                 <div className="assessment-composition">
                   <span>已选 {selectedIds.size} 个实验</span>
                   <span>目标 {questionCount} 题</span>
+                  <span>按点位覆盖抽题</span>
                   <span>每实验最多 {data.settings.max_questions_per_experiment} 题</span>
                 </div>
               </div>
@@ -162,7 +163,7 @@ export function AssessmentCustomPage() {
                         <b>{option.title}</b>
                         <small>{option.parent_title || option.code}</small>
                       </span>
-                      <em>{option.question_count} 题</em>
+                      <em>{option.question_count} 道可用题</em>
                     </button>
                   );
                 })}

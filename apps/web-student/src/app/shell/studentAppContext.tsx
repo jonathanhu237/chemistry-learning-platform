@@ -14,6 +14,7 @@ export type StudentRuntimeContextValue = StudentShellBaseContextValue & {
   canUseAssistant: boolean;
   canUseFeedback: boolean;
   startAssessmentSession: () => Promise<StudentSmartAssessmentResponse | null>;
+  startPointAssessmentSession: (pointNodeId: string) => Promise<StudentSmartAssessmentResponse | null>;
   posttestLoading: boolean;
   posttestError: string;
 };

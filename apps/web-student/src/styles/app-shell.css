@@ -394,6 +394,126 @@
   transform: translateY(calc(100% + 2px));
 }
 
+.assessment-reminder-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--mobile-z-modal, 60);
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  padding: 18px var(--mobile-content-inline) calc(18px + env(safe-area-inset-bottom, 0px));
+  background: rgba(8, 31, 20, 0.34);
+}
+
+.assessment-reminder-dialog {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 13px 14px;
+  width: min(100%, 354px);
+  border: 1px solid rgba(0, 88, 38, 0.2);
+  border-radius: 8px;
+  padding: 17px;
+  color: var(--ink);
+  background:
+    linear-gradient(90deg, rgba(0, 88, 38, 0.055) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(0, 88, 38, 0.04) 1px, transparent 1px),
+    rgba(255, 253, 246, 0.98);
+  background-size: 28px 28px, 28px 28px, auto;
+  box-shadow: 0 24px 58px rgba(7, 28, 18, 0.32);
+}
+
+.assessment-reminder-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  color: rgba(25, 48, 36, 0.72);
+  background: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+}
+
+.assessment-reminder-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  color: #ffffff;
+  background: var(--green);
+  box-shadow: 0 12px 24px rgba(0, 88, 38, 0.22);
+}
+
+.assessment-reminder-copy {
+  display: grid;
+  gap: 5px;
+  padding-right: 26px;
+}
+
+.assessment-reminder-copy p,
+.assessment-reminder-copy h3,
+.assessment-reminder-copy span {
+  margin: 0;
+}
+
+.assessment-reminder-copy p {
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.assessment-reminder-copy h3 {
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.18;
+}
+
+.assessment-reminder-copy span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.assessment-reminder-error {
+  grid-column: 1 / -1;
+}
+
+.assessment-reminder-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 9px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.assessment-reminder-actions button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 14px;
+  color: #ffffff;
+  background: var(--green);
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.assessment-reminder-actions button.secondary {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: inset 0 0 0 1px rgba(0, 88, 38, 0.14);
+}
+
+.assessment-reminder-actions button:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+
 .student-bottom-nav button {
   position: relative;
   display: flex;

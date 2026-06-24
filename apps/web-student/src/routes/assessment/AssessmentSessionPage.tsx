@@ -2,7 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { ClipboardList, LoaderCircle } from "lucide-react";
 import { errorMessage, submitStudentSmartAssessment, type StudentSmartAssessmentResponse } from "../../api";
-import { loadPosttestSession, storePosttestReport, storePosttestSession } from "../../app/router/assessmentSessionStore";
+import {
+  consumePosttestSessionNotice,
+  loadPosttestSession,
+  storePosttestReport,
+  storePosttestSession,
+} from "../../app/router/assessmentSessionStore";
 import { navigateToAssessmentReport } from "../../app/router/navigation";
 import type { StudentRouteSearch } from "../../app/router/routeTypes";
 import { DetailPageFrame } from "../../app/shell/DetailPageFrame";
@@ -18,9 +23,14 @@ export function AssessmentSessionPage() {
   const { startAssessmentSession } = useStudentRuntime();
   const sessionId = params.sessionId || "";
   const [posttest, setPosttest] = useState<StudentSmartAssessmentResponse | null>(() => loadPosttestSession(sessionId));
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(!posttest);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setNotice(consumePosttestSessionNotice(sessionId));
+  }, [sessionId]);
 
   useEffect(() => {
     if (posttest || !sessionId) return;
@@ -75,7 +85,10 @@ export function AssessmentSessionPage() {
           </MobileEmptyState>
         </section>
       ) : posttest ? (
-        <PosttestPanel posttest={posttest} submitting={submitting} error={error} onSubmit={submit} />
+        <>
+          {notice ? <div className="form-hint">{notice}</div> : null}
+          <PosttestPanel posttest={posttest} submitting={submitting} error={error} onSubmit={submit} />
+        </>
       ) : (
         <section className="learning-panel">
           <MobileEmptyState className="empty-learning-card" icon={<ClipboardList size={20} />}>

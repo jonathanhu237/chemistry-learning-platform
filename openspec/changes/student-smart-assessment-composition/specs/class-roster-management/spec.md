@@ -7,7 +7,7 @@ The selected-class management workflow SHALL allow class-level smart assessment 
 - **GIVEN** a selected class has no smart assessment strategy override
 - **WHEN** an authorized teacher or admin opens class settings
 - **THEN** the UI MUST show that the class inherits the global smart assessment defaults
-- **AND** it MUST display the effective total question count, untested ratio, weak tendency, and max questions per experiment.
+- **AND** it MUST display the effective total question count, untested point ratio, weak tendency, and max questions per experiment.
 
 #### Scenario: Teacher saves class override
 - **GIVEN** a teacher is authorized to manage the selected class

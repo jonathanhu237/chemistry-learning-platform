@@ -40,7 +40,7 @@ class PosttestQuestionCandidate:
     difficulty: str
     related_chapter_ids: list[str]
     related_knowledge_point_ids: list[str]
-    primary_point_node_ids: list[str]
+    primary_point_node_ids: list[str] = field(default_factory=list)
     primary_canonical_point_ids: list[str] = field(default_factory=list)
     source_placement_node_ids: list[str] = field(default_factory=list)
 

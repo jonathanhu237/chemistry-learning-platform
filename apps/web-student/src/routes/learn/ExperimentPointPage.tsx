@@ -1,6 +1,7 @@
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { navigateToAiChat, navigateToAssessmentSession, navigateToPoint } from "../../app/router/navigation";
+import { storePosttestSessionNotice } from "../../app/router/assessmentSessionStore";
 import type { StudentRouteSearch } from "../../app/router/routeTypes";
 import { useDetailBack } from "../../app/shell/useDetailBack";
 import { useStudentRuntime } from "../../app/shell/studentAppContext";
@@ -12,12 +13,17 @@ export function ExperimentPointPage() {
   const params = useParams({ strict: false }) as { nodeId?: string };
   const search = useSearch({ strict: false }) as StudentRouteSearch;
   const goBack = useDetailBack(search.from || "chapter");
-  const { canUseAssistant, startAssessmentSession, posttestLoading, posttestError } = useStudentRuntime();
+  const { canUseAssistant, startPointAssessmentSession, posttestLoading, posttestError } = useStudentRuntime();
   const nodeId = params.nodeId || "";
 
-  const finishLearning = async (_detail: StudentPointDetailResponse | null) => {
-    const posttest = await startAssessmentSession();
-    if (posttest) navigateToAssessmentSession(navigate, posttest.session_id, "point");
+  const finishLearning = async (detail: StudentPointDetailResponse | null) => {
+    const pointNodeId = detail?.assessment_context.point_node_id || nodeId;
+    const posttest = await startPointAssessmentSession(pointNodeId);
+    if (!posttest) return;
+    if (posttest.assessment_mode !== "point") {
+      storePosttestSessionNotice(posttest.session_id, "你还有一轮未完成测评，已为你继续打开原测评。完成后再回到本点位测一测。");
+    }
+    navigateToAssessmentSession(navigate, posttest.session_id, "point");
   };
 
   return (

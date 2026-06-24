@@ -35,12 +35,14 @@ import {
   TeamOutlined,
 } from "@ant-design/icons";
 
+import { getSmartAssessmentPreview } from "../../api/classes";
 import type {
   ClassItem,
   CustomAssessmentSettingsResponse,
   RegistrationSettings,
   RosterImportResult,
   RosterStudent,
+  SmartAssessmentClassPreviewResponse,
   SmartAssessmentStrategyResponse,
 } from "../../api/classes";
 import type { CustomAssessmentSettings, SmartAssessmentSettings } from "../../api/settings";
@@ -110,6 +112,76 @@ function ClassSmartCurve({ settings }: { settings: SmartAssessmentSettings }) {
   );
 }
 
+const previewWarningLabels: Record<string, string> = {
+  no_candidate_points: "题库暂无可用于测评的点位题",
+  underfilled_by_candidate_points: "候选点位少于目标题数",
+  untested_pool_underfilled: "未测点位不足，正式组卷会回填已测点位",
+  measured_pool_empty: "暂无已测点位，正式组卷会优先覆盖未测点位",
+  experiment_cap_underfilled: "实验题数上限可能导致题量不足",
+};
+
+function ClassSmartDataPreview({
+  preview,
+  loading,
+}: {
+  preview?: SmartAssessmentClassPreviewResponse;
+  loading?: boolean;
+}) {
+  if (!preview) {
+    return (
+      <div className="class-smart-data-preview">
+        <Text type="secondary">{loading ? "正在估算当前班级分布..." : "暂无班级预估数据"}</Text>
+      </div>
+    );
+  }
+  const topExperiments = preview.experiments.slice(0, 6);
+  const maxEstimated = Math.max(1, ...topExperiments.map((item) => item.estimated_question_count));
+  const warnings = Object.entries(preview.warnings || {})
+    .filter(([, active]) => Boolean(active))
+    .map(([key]) => previewWarningLabels[key] || key);
+  return (
+    <div className="class-smart-data-preview">
+      <Flex justify="space-between" align="flex-start" gap={12}>
+        <div>
+          <Text strong>当前班级数据预估</Text>
+          <Text type="secondary" className="block-text">
+            估算值用于理解策略，正式试卷仍会按题库可用性和会话抽样生成。
+          </Text>
+        </div>
+        <Tag color={preview.source === "class" ? "green" : "default"}>{preview.has_override ? "本班策略" : "继承策略"}</Tag>
+      </Flex>
+      <div className="class-smart-preview-stats">
+        <Statistic title="班级学生" value={preview.class_student_count} />
+        <Statistic title="候选点位" value={preview.candidate_point_count} />
+        <Statistic title="未测点位" value={preview.untested_point_count} />
+        <Statistic title="未测目标" value={`${preview.untested_target_count}/${preview.target_question_count}`} />
+      </div>
+      {topExperiments.length ? (
+        <div className="class-smart-preview-bars">
+          {topExperiments.map((item) => (
+            <div key={item.id} className="class-smart-preview-row">
+              <span>{item.title}</span>
+              <b style={{ width: `${Math.max(6, (item.estimated_question_count / maxEstimated) * 100)}%` }} />
+              <small>
+                约 {item.estimated_question_count.toFixed(1)} 题 · 未测 {item.untested_point_count} · 已测 {item.measured_point_count}
+              </small>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {warnings.length ? (
+        <div className="class-smart-preview-warnings">
+          {warnings.map((item) => (
+            <Tag key={item} color="gold">
+              {item}
+            </Tag>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function PercentSlider({
   value = 0,
   onChange,
@@ -168,6 +240,11 @@ export function ClassesPage() {
   const smartAssessment = useQuery({
     queryKey: ["class-smart-assessment-strategy", selectedClassId],
     queryFn: () => api<SmartAssessmentStrategyResponse>(`/api/admin/classes/${selectedClassId}/smart-assessment-strategy`),
+    enabled: Boolean(selectedClassId),
+  });
+  const smartAssessmentPreview = useQuery({
+    queryKey: ["class-smart-assessment-preview", selectedClassId],
+    queryFn: () => getSmartAssessmentPreview(selectedClassId || ""),
     enabled: Boolean(selectedClassId),
   });
   const customAssessment = useQuery({
@@ -311,6 +388,7 @@ export function ClassesPage() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["class-smart-assessment-strategy", selectedClassId] });
+      void queryClient.invalidateQueries({ queryKey: ["class-smart-assessment-preview", selectedClassId] });
     },
     onError: (error) => message.error(errorMessage(error)),
   });
@@ -324,6 +402,7 @@ export function ClassesPage() {
       message.success("已恢复为全局智能组卷策略");
       smartAssessmentForm.setFieldsValue(response.strategy);
       void queryClient.invalidateQueries({ queryKey: ["class-smart-assessment-strategy", selectedClassId] });
+      void queryClient.invalidateQueries({ queryKey: ["class-smart-assessment-preview", selectedClassId] });
     },
     onError: (error) => message.error(errorMessage(error)),
   });
@@ -792,7 +871,7 @@ export function ClassesPage() {
                     <InputNumber min={1} max={10} precision={0} className="full" />
                   </Form.Item>
                 </div>
-                <Form.Item name="untested_ratio_percent" label="未测实验纳入比例">
+                <Form.Item name="untested_ratio_percent" label="未测点位纳入比例">
                   <PercentSlider />
                 </Form.Item>
                 <Form.Item name="weak_tendency_percent" label="薄弱倾向">
@@ -802,7 +881,7 @@ export function ClassesPage() {
                   <Form.Item
                     name="weak_curve"
                     label="薄弱曲线系数"
-                    help="数值越大，系统越集中照顾低掌握度实验。"
+                    help="数值越大，系统越集中照顾低掌握度点位。"
                     rules={[{ required: true, message: "请输入薄弱曲线系数" }]}
                   >
                     <InputNumber min={0.5} max={4} step={0.1} precision={1} className="full" />
@@ -810,13 +889,14 @@ export function ClassesPage() {
                   <Form.Item
                     name="weak_max_bonus"
                     label="最大权重加成"
-                    help="控制 0 分实验相对 100 分实验最多可增加多少抽题票。"
+                    help="控制 0 分点位相对 100 分点位最多可增加多少抽题票。"
                     rules={[{ required: true, message: "请输入最大权重加成" }]}
                   >
                     <InputNumber min={1} max={20} step={0.5} precision={1} className="full" />
                   </Form.Item>
                 </div>
                 <ClassSmartCurve settings={smartPreview} />
+                <ClassSmartDataPreview preview={smartAssessmentPreview.data} loading={smartAssessmentPreview.isLoading} />
               </Form>
             </div>
             <div className="modal-section">

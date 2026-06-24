@@ -8,18 +8,36 @@ from server.app.domains.platform.settings import CustomAssessmentSettings, Smart
 
 
 SmartAssessmentStatus = Literal["in_progress", "completed"]
-AssessmentMode = Literal["smart", "custom"]
+AssessmentMode = Literal["smart", "custom", "point"]
 
 
 class PublicSmartAssessmentQuestion(BaseModel):
     id: str
     experiment_id: str
     experiment_title: str
+    point_node_ids: list[str] = Field(default_factory=list)
+    canonical_point_ids: list[str] = Field(default_factory=list)
     question_type: Literal["single_choice", "true_false", "fill_blank"]
     stem: str
     options: list[Any] = Field(default_factory=list)
     related_chapter_ids: list[str] = Field(default_factory=list)
     related_knowledge_point_ids: list[str] = Field(default_factory=list)
+
+
+class SmartAssessmentPointSummary(BaseModel):
+    id: str
+    title: str
+    experiment_id: str | None = None
+    experiment_title: str | None = None
+    canonical_point_id: str | None = None
+    mastery_score: float | None = None
+    before_score: float | None = None
+    after_score: float | None = None
+    evidence_count: int = 0
+    source: Literal["measured", "untested", "custom", "point"] = "untested"
+    draw_tickets: float | None = None
+    question_count: int = 0
+    reason: str | None = None
 
 
 class SmartAssessmentExperimentSummary(BaseModel):
@@ -30,16 +48,22 @@ class SmartAssessmentExperimentSummary(BaseModel):
     parent_title: str | None = None
     mastery_score: float | None = None
     evidence_count: int = 0
-    source: Literal["measured", "untested", "custom"] = "untested"
+    source: Literal["measured", "untested", "custom", "point"] = "untested"
     draw_tickets: float | None = None
     question_count: int = 0
+    measured_point_count: int = 0
+    total_point_count: int = 0
+    weak_point_count: int = 0
     reason: str | None = None
+    points: list[SmartAssessmentPointSummary] = Field(default_factory=list)
 
 
 class SmartAssessmentCompositionSummary(BaseModel):
     total_questions: int
     target_question_count: int
     requested_question_count: int | None = None
+    selected_point_count: int = 0
+    candidate_point_count: int = 0
     untested_question_count: int = 0
     measured_question_count: int = 0
     custom_question_count: int = 0
@@ -73,6 +97,8 @@ class StudentSmartAssessmentWrongAnswer(BaseModel):
     question_id: str
     experiment_id: str
     experiment_title: str
+    point_node_ids: list[str] = Field(default_factory=list)
+    canonical_point_ids: list[str] = Field(default_factory=list)
     question_type: str
     stem: str
     options: list[Any] = Field(default_factory=list)
@@ -83,8 +109,11 @@ class StudentSmartAssessmentWrongAnswer(BaseModel):
 
 class StudentSmartAssessmentMasteryChange(BaseModel):
     knowledge_point_id: str
+    point_node_id: str | None = None
+    point_title: str | None = None
     experiment_id: str | None = None
     experiment_title: str | None = None
+    canonical_point_id: str | None = None
     content: str | None = None
     before_score: float
     after_score: float
@@ -112,6 +141,18 @@ class StudentSmartAssessmentReport(BaseModel):
 class StudentSmartAssessmentSubmitResponse(BaseModel):
     status: Literal["completed"]
     report: StudentSmartAssessmentReport
+
+
+class StudentAssessmentStatusResponse(BaseModel):
+    has_completed_smart_baseline: bool = False
+    has_open_assessment: bool = False
+    open_session_id: str | None = None
+    open_assessment_mode: AssessmentMode | None = None
+    smart_baseline_prompt_dismissed: bool = False
+
+
+class StudentPointAssessmentStartRequest(BaseModel):
+    point_node_id: str = Field(min_length=1)
 
 
 class SmartAssessmentStrategyResponse(BaseModel):
@@ -155,3 +196,29 @@ class CustomAssessmentSettingsResponse(BaseModel):
     source: Literal["system_default", "class"] = "system_default"
     has_override: bool = False
     can_edit: bool = False
+
+
+class SmartAssessmentClassPreviewExperiment(BaseModel):
+    id: str
+    title: str
+    candidate_point_count: int = 0
+    untested_point_count: int = 0
+    measured_point_count: int = 0
+    average_mastery_score: float | None = None
+    estimated_draw_tickets: float = 0
+    estimated_question_count: float = 0
+
+
+class SmartAssessmentClassPreviewResponse(BaseModel):
+    strategy: SmartAssessmentSettings
+    source: Literal["system_default", "class"] = "system_default"
+    has_override: bool = False
+    class_student_count: int = 0
+    candidate_point_count: int = 0
+    measured_point_count: int = 0
+    untested_point_count: int = 0
+    target_question_count: int = 0
+    untested_target_count: int = 0
+    measured_target_count: int = 0
+    experiments: list[SmartAssessmentClassPreviewExperiment] = Field(default_factory=list)
+    warnings: dict[str, Any] = Field(default_factory=dict)

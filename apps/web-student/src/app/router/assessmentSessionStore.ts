@@ -2,6 +2,7 @@ import type { StoredPosttestReport, StoredPosttestSession } from "./routeTypes";
 
 const sessionPrefix = "student-posttest-session:";
 const reportPrefix = "student-posttest-report:";
+const noticePrefix = "student-posttest-session-notice:";
 
 function storage(): Storage | null {
   try {
@@ -35,4 +36,16 @@ export function storePosttestReport(report: StoredPosttestReport): void {
 
 export function loadPosttestReport(sessionId: string): StoredPosttestReport | null {
   return readJson<StoredPosttestReport>(`${reportPrefix}${sessionId}`);
+}
+
+export function storePosttestSessionNotice(sessionId: string, message: string): void {
+  storage()?.setItem(`${noticePrefix}${sessionId}`, message);
+}
+
+export function consumePosttestSessionNotice(sessionId: string): string {
+  const key = `${noticePrefix}${sessionId}`;
+  const store = storage();
+  const message = store?.getItem(key) || "";
+  store?.removeItem(key);
+  return message;
 }

@@ -48,6 +48,32 @@ export type SmartAssessmentStrategyResponse = {
   can_edit: boolean;
 };
 
+export type SmartAssessmentClassPreviewExperiment = {
+  id: string;
+  title: string;
+  candidate_point_count: number;
+  untested_point_count: number;
+  measured_point_count: number;
+  average_mastery_score?: number | null;
+  estimated_draw_tickets: number;
+  estimated_question_count: number;
+};
+
+export type SmartAssessmentClassPreviewResponse = {
+  strategy: SmartAssessmentSettings;
+  source: "system_default" | "class";
+  has_override: boolean;
+  class_student_count: number;
+  candidate_point_count: number;
+  measured_point_count: number;
+  untested_point_count: number;
+  target_question_count: number;
+  untested_target_count: number;
+  measured_target_count: number;
+  experiments: SmartAssessmentClassPreviewExperiment[];
+  warnings: Record<string, unknown>;
+};
+
 export type CustomAssessmentSettingsResponse = {
   settings: CustomAssessmentSettings;
   inherited_settings: CustomAssessmentSettings;
@@ -93,6 +119,10 @@ export function updateSmartAssessmentStrategy(
 
 export function clearSmartAssessmentStrategy(classId: string): Promise<SmartAssessmentStrategyResponse> {
   return api<SmartAssessmentStrategyResponse>(`/api/admin/classes/${classId}/smart-assessment-strategy`, { method: "DELETE" });
+}
+
+export function getSmartAssessmentPreview(classId: string): Promise<SmartAssessmentClassPreviewResponse> {
+  return api<SmartAssessmentClassPreviewResponse>(`/api/admin/classes/${classId}/smart-assessment-preview`);
 }
 
 export function getCustomAssessmentSettings(classId: string): Promise<CustomAssessmentSettingsResponse> {

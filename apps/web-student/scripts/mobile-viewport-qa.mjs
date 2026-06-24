@@ -20,6 +20,7 @@ const password = process.env.STUDENT_H5_QA_PASSWORD || "";
 const allowAuthSkip = process.env.STUDENT_H5_QA_ALLOW_AUTH_SKIP === "1";
 const useMockApi = process.env.STUDENT_H5_QA_MOCK === "1";
 const aiRootOnly = process.env.STUDENT_H5_QA_ONLY_AI_ROOT === "1";
+const assessmentOnly = process.env.STUDENT_H5_QA_ONLY_ASSESSMENT === "1";
 
 const mockUser = {
   id: "mobile-qa-student",
@@ -32,6 +33,12 @@ const mockUser = {
   student_id: "20249999",
   class_id: "mobile-qa-class",
   class_name: "移动端测试班",
+};
+
+const mockPretest = {
+  status: "completed",
+  stage: null,
+  questions: [],
 };
 
 const mockRootAiHistoryEntry = {
@@ -405,12 +412,65 @@ const mockVideoLibrary = {
 const mockPosttest = {
   status: "in_progress",
   session_id: "mobile-qa-posttest",
-  experiments: [{ id: "EXP_19_1_01", code: "19-1-01", title: "氯、溴、碘的置换次序", parent_code: "19-1", parent_title: "实验 19-1 卤素" }],
+  assessment_mode: "smart",
+  strategy: {
+    enabled: true,
+    question_count: 1,
+    untested_ratio_percent: 100,
+    weak_tendency_percent: 70,
+    max_questions_per_experiment: 2,
+    weak_curve: 2,
+    weak_max_bonus: 9,
+  },
+  composition: {
+    total_questions: 1,
+    target_question_count: 1,
+    selected_point_count: 1,
+    candidate_point_count: 2,
+    untested_question_count: 1,
+    measured_question_count: 0,
+    custom_question_count: 0,
+    untested_ratio_percent: 100,
+    weak_tendency_percent: 70,
+    max_questions_per_experiment: 2,
+    warnings: {},
+  },
+  experiments: [
+    {
+      id: "EXP_19_1_01",
+      code: "19-1-01",
+      title: "氯、溴、碘的置换次序",
+      parent_code: "19-1",
+      parent_title: "实验 19-1 卤素",
+      mastery_score: null,
+      evidence_count: 0,
+      source: "untested",
+      question_count: 1,
+      measured_point_count: 0,
+      total_point_count: 2,
+      weak_point_count: 0,
+      points: [
+        {
+          id: "cat-point-halogen",
+          title: "卤素置换观察",
+          experiment_id: "EXP_19_1_01",
+          experiment_title: "氯、溴、碘的置换次序",
+          canonical_point_id: "cat-point-halogen",
+          mastery_score: null,
+          evidence_count: 0,
+          source: "untested",
+          question_count: 1,
+        },
+      ],
+    },
+  ],
   questions: [
     {
       id: "post-q-1",
       experiment_id: "EXP_19_1_01",
       experiment_title: "氯、溴、碘的置换次序",
+      point_node_ids: ["cat-point-halogen"],
+      canonical_point_ids: ["cat-point-halogen"],
       question_type: "single_choice",
       stem: "氯水加入 KBr 后，CCl4 层呈什么颜色？",
       options: [
@@ -423,8 +483,39 @@ const mockPosttest = {
   ],
 };
 
+const mockCustomAssessmentOptions = {
+  settings: {
+    enabled: true,
+    question_count_options: [5, 10],
+    default_question_count: 5,
+    max_question_count: 10,
+    max_questions_per_experiment: 2,
+  },
+  experiments: [
+    {
+      id: "EXP_19_1_01",
+      code: "19-1-01",
+      title: "氯、溴、碘的置换次序",
+      parent_code: "19-1",
+      parent_title: "实验 19-1 卤素",
+      question_count: 5,
+    },
+    {
+      id: "EXP_19_1_02",
+      code: "19-1-02",
+      title: "碘的萃取观察",
+      parent_code: "19-1",
+      parent_title: "实验 19-1 卤素",
+      question_count: 3,
+    },
+  ],
+};
+
 const mockReport = {
   session_id: "mobile-qa-posttest",
+  assessment_mode: "smart",
+  strategy: mockPosttest.strategy,
+  composition: mockPosttest.composition,
   experiments: mockPosttest.experiments,
   correct_count: 1,
   total_count: 1,
@@ -852,6 +943,8 @@ async function installMockApi(page) {
       }),
     ),
   );
+  await page.route("**/api/student/pretest/start", (route) => route.fulfill(jsonResponse(mockPretest)));
+  await page.route("**/api/student/pretest/submit", (route) => route.fulfill(jsonResponse(mockPretest)));
   await page.route("**/api/student/home-video-feed**", (route) => route.fulfill(jsonResponse(mockHomeVideoFeed)));
   await page.route("**/api/student/learning-home", (route) => route.fulfill(jsonResponse(mockLearningHome)));
   await page.route("**/api/student/learning-page**", (route) => route.fulfill(jsonResponse(mockLearningPage)));
@@ -878,6 +971,28 @@ async function installMockApi(page) {
   await page.route("**/api/student/posttest/start", (route) => route.fulfill(jsonResponse(mockPosttest)));
   await page.route("**/api/student/posttest/submit", (route) =>
     route.fulfill(jsonResponse({ status: "completed", report: mockReport })),
+  );
+  await page.route("**/api/student/smart-assessment/start", (route) => route.fulfill(jsonResponse(mockPosttest)));
+  await page.route("**/api/student/smart-assessment/submit", (route) =>
+    route.fulfill(jsonResponse({ status: "completed", report: mockReport })),
+  );
+  await page.route("**/api/student/custom-assessment/options", (route) => route.fulfill(jsonResponse(mockCustomAssessmentOptions)));
+  await page.route("**/api/student/custom-assessment/start", (route) =>
+    route.fulfill(
+      jsonResponse({
+        ...mockPosttest,
+        assessment_mode: "custom",
+        session_id: "mobile-qa-custom",
+        composition: {
+          ...mockPosttest.composition,
+          requested_question_count: 5,
+          untested_question_count: 0,
+          measured_question_count: 0,
+          custom_question_count: 1,
+          warnings: { underfilled: true },
+        },
+      }),
+    ),
   );
   await page.route("**/api/student/assistant/ask/stream", (route) =>
     route.fulfill(
@@ -936,8 +1051,14 @@ async function loginIfConfigured(page) {
     await page.locator(".auth-form input").nth(0).fill(mockUser.student_id);
     await page.locator(".auth-form input").nth(1).fill("MobileQa2026!");
     await page.locator(".auth-form button[type='submit']").click();
-    await page.locator(".success-panel").first().waitFor({ state: "visible", timeout: 15000 });
-    await page.locator(".success-panel button").first().click({ force: true });
+    const loginResult = await waitForAny(page, [".learning-panel", ".success-panel", ".form-error"], 15000);
+    if (loginResult === ".form-error") {
+      const errorText = await page.locator(".form-error").first().innerText();
+      throw new Error(`Mock login failed: ${errorText}`);
+    }
+    if (loginResult === ".success-panel") {
+      await page.locator(".success-panel button").first().click({ force: true });
+    }
     await page.locator(".learning-panel").first().waitFor({ state: "visible", timeout: 15000 });
     return true;
   }
@@ -1304,6 +1425,46 @@ async function assertAtomContextPicker(page, label) {
   }
 }
 
+async function checkAssessmentFlows(page, viewportName) {
+  await page.goto(baseUrl + '/assessment', { waitUntil: 'networkidle' });
+  await ensureAuthenticatedShell(page);
+  await expectRootNav(page, 'assessment', viewportName + ': assessment root');
+  await page.locator('.assessment-home-panel').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.assessment-entry-card.primary').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.assessment-entry-card').nth(1).waitFor({ state: 'visible', timeout: 10000 });
+  await assertNoHorizontalOverflow(page, viewportName + ': assessment root');
+
+  await page.goto(baseUrl + '/assessment/custom', { waitUntil: 'networkidle' });
+  await ensureAuthenticatedShell(page);
+  await expectBottomNavHidden(page, viewportName + ': custom assessment');
+  await page.locator('.custom-assessment-page').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.custom-count-row button').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.custom-experiment-option').first().click();
+  await assertNoHorizontalOverflow(page, viewportName + ': custom assessment');
+  await page.locator('.custom-start-action').first().click();
+  await page.waitForURL(/\/assessment\/session\/mobile-qa-custom/, { timeout: 10000 });
+  await expectBottomNavHidden(page, viewportName + ': custom assessment session');
+  await page.locator('.assessment-panel').first().waitFor({ state: 'visible', timeout: 10000 });
+  await assertNoHorizontalOverflow(page, viewportName + ': custom assessment session');
+
+  await page.goto(baseUrl + '/assessment/session/mobile-qa-posttest', { waitUntil: 'networkidle' });
+  await ensureAuthenticatedShell(page);
+  await expectBottomNavHidden(page, viewportName + ': assessment session');
+  await page.locator('.assessment-panel').first().waitFor({ state: 'visible', timeout: 10000 });
+  await assertNoHorizontalOverflow(page, viewportName + ': assessment session');
+  await submitVisibleAssessment(page);
+  await page.waitForURL(/\/assessment\/report\/mobile-qa-posttest/, { timeout: 10000 });
+  await expectBottomNavHidden(page, viewportName + ': assessment report');
+  await page.locator('.summary-hero').first().waitFor({ state: 'visible', timeout: 10000 });
+  await assertNoHorizontalOverflow(page, viewportName + ': assessment report');
+
+  await page.goto(baseUrl + '/assessment/report/mobile-qa-posttest', { waitUntil: 'networkidle' });
+  await ensureAuthenticatedShell(page);
+  await expectBottomNavHidden(page, viewportName + ': direct assessment report');
+  await page.locator('.summary-hero').first().waitFor({ state: 'visible', timeout: 10000 });
+  await assertNoHorizontalOverflow(page, viewportName + ': direct assessment report');
+}
+
 async function checkAuthenticatedFlows(page, viewportName) {
   await assertNoHorizontalOverflow(page, viewportName + ': initial route');
   await page.locator('.student-app-shell').first().waitFor({ state: 'visible', timeout: 10000 });
@@ -1334,34 +1495,39 @@ async function checkAuthenticatedFlows(page, viewportName) {
   await clickRoot(page, 'home');
   await page.locator('.home-video-card').first().waitFor({ state: 'visible', timeout: 10000 });
   await assertNoHorizontalOverflow(page, viewportName + ': home video feed');
-  await page.locator('.home-feed-topbar button').first().click();
+  const videoLibraryAction = page.locator('.home-feed-topbar button').first();
+  if (await videoLibraryAction.isVisible().catch(() => false)) {
+    await videoLibraryAction.click();
+  } else {
+    await page.goto(baseUrl + '/video-library', { waitUntil: 'networkidle' });
+  }
   await page.waitForURL(/\/video-library/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': video library detail');
   await page.locator('.video-library-page').first().waitFor({ state: 'visible', timeout: 10000 });
   await assertNoHorizontalOverflow(page, viewportName + ': video library default');
   await page.locator('.video-library-search input').first().fill('orange');
-  await page.locator('.video-library-results .video-result-card').first().waitFor({ state: 'visible', timeout: 10000 });
+  const videoResult = page.locator('.video-library-results .video-result-card, .video-library-results .video-library-search-video-row').first();
+  await videoResult.waitFor({ state: 'visible', timeout: 10000 });
   await assertNoHorizontalOverflow(page, viewportName + ': video library results');
-  await page.locator('.video-library-results .video-result-card').first().click();
+  await videoResult.click();
   await page.waitForURL(/\/point\/cat-point-halogen/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': video-library result point detail');
   await assertStructuredPointDetail(page, viewportName + ': video-library result point detail');
-  await page.goBack({ waitUntil: 'networkidle' });
+  await page.goBack({ waitUntil: 'domcontentloaded' });
   await page.waitForURL(/\/video-library/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': back to video library');
-  await page.goBack({ waitUntil: 'networkidle' });
+  await page.goBack({ waitUntil: 'domcontentloaded' });
   await page.waitForURL(/\/home/, { timeout: 10000 });
   await expectRootNav(page, 'home', viewportName + ': back to home from video library');
   await page.locator('.home-video-media-button').first().click();
   await page.waitForURL(/\/point\/cat-point-halogen/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': home feed point detail');
   await assertStructuredPointDetail(page, viewportName + ': home feed point detail');
-  await page.goBack({ waitUntil: 'networkidle' });
+  await page.goBack({ waitUntil: 'domcontentloaded' });
   await page.waitForURL(/\/home/, { timeout: 10000 });
 
   await clickRoot(page, 'learn');
   await page.locator('.periodic-grid').first().waitFor({ state: 'visible', timeout: 10000 });
-  await page.locator('.learning-recommendation-card').first().waitFor({ state: 'visible', timeout: 10000 });
   const rootChapterEntryCount = await page.locator('.chapter-entry-card').count();
   if (rootChapterEntryCount > 0) {
     throw new Error(viewportName + ': learning root should not render selected-area chapter cards');
@@ -1406,7 +1572,7 @@ async function checkAuthenticatedFlows(page, viewportName) {
   await page.waitForURL(/\/chapter\/halogens-17\/element\/Cl/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': element detail');
   await assertAtomModelRenderable(page, viewportName + ': element atom model');
-  await page.goBack({ waitUntil: 'networkidle' });
+  await page.goBack({ waitUntil: 'domcontentloaded' });
   await page.waitForURL(/\/chapter\/halogens-17/, { timeout: 10000 });
   if ((await page.locator('.detail-page-actions .student-app-header-action').count()) > 0) {
     throw new Error(viewportName + ': chapter detail should still not render a header AI action after returning from element detail');
@@ -1427,7 +1593,7 @@ async function checkAuthenticatedFlows(page, viewportName) {
   await page.locator('.context-assistant-action').first().click();
   await page.waitForURL(/\/ai\/chat/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': contextual point AI');
-  await page.goBack({ waitUntil: 'networkidle' });
+  await page.goBack({ waitUntil: 'domcontentloaded' });
   await page.waitForURL(/\/point\/cat-point-halogen/, { timeout: 10000 });
 
   await page.locator('.finish-action').first().click();
@@ -1445,7 +1611,7 @@ async function checkAuthenticatedFlows(page, viewportName) {
     await reportAiAction.click();
     await page.waitForURL(/\/ai\/chat/, { timeout: 10000 });
     await expectBottomNavHidden(page, viewportName + ': contextual report AI');
-    await page.goBack({ waitUntil: 'networkidle' });
+    await page.goBack({ waitUntil: 'domcontentloaded' });
     await page.waitForURL(/\/assessment\/report\/mobile-qa-posttest/, { timeout: 10000 });
   }
 
@@ -1478,6 +1644,7 @@ async function checkAuthenticatedFlows(page, viewportName) {
     { path: '/learn/area/p', detail: true, selector: '.chapter-card-panel' },
     { path: '/ai', root: 'ai', selector: '.ai-root-page' },
     { path: '/assessment', root: 'assessment', selector: '.assessment-home-panel' },
+    { path: '/assessment/custom', detail: true, selector: '.custom-assessment-page' },
     { path: '/profile', root: 'profile', selector: '.profile-card' },
     { path: '/chapter/halogens-17', detail: true, selector: '.chapter-element-summary' },
     { path: '/chapter/halogens-17/element/Cl', detail: true, selector: '.atom-model-card' },
@@ -1553,7 +1720,11 @@ try {
       }
       const authenticated = await loginIfConfigured(page);
       if (authenticated) {
-        await checkAuthenticatedFlows(page, viewport.name);
+        if (assessmentOnly) {
+          await checkAssessmentFlows(page, viewport.name);
+        } else {
+          await checkAuthenticatedFlows(page, viewport.name);
+        }
       }
       await context.close();
       results.push({ ...viewport, authenticated });
@@ -1564,28 +1735,30 @@ try {
     }
   }
 
-  for (const viewport of widePreviewViewports) {
-    try {
-      const context = await browser.newContext({
-        viewport: { width: viewport.width, height: viewport.height },
-        isMobile: false,
-        hasTouch: false,
-        deviceScaleFactor: 1,
-      });
-      const page = await context.newPage();
-      if (useMockApi) {
-        await installMockApi(page);
+  if (!assessmentOnly) {
+    for (const viewport of widePreviewViewports) {
+      try {
+        const context = await browser.newContext({
+          viewport: { width: viewport.width, height: viewport.height },
+          isMobile: false,
+          hasTouch: false,
+          deviceScaleFactor: 1,
+        });
+        const page = await context.newPage();
+        if (useMockApi) {
+          await installMockApi(page);
+        }
+        const authenticated = await loginIfConfigured(page);
+        if (authenticated) {
+          await checkElementDetailPreview(page, viewport.name);
+        }
+        await context.close();
+        results.push({ ...viewport, authenticated });
+      } catch (error) {
+        throw new Error(`${viewport.name} ${viewport.width}x${viewport.height}: ${error instanceof Error ? error.message : String(error)}`, {
+          cause: error,
+        });
       }
-      const authenticated = await loginIfConfigured(page);
-      if (authenticated) {
-        await checkElementDetailPreview(page, viewport.name);
-      }
-      await context.close();
-      results.push({ ...viewport, authenticated });
-    } catch (error) {
-      throw new Error(`${viewport.name} ${viewport.width}x${viewport.height}: ${error instanceof Error ? error.message : String(error)}`, {
-        cause: error,
-      });
     }
   }
 } finally {

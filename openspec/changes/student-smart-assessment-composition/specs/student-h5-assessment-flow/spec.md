@@ -27,7 +27,7 @@ The student H5 SHALL provide a separate custom assessment mode where students se
 #### Scenario: Student opens custom assessment options
 - **WHEN** an authenticated student opens the custom assessment selection page
 - **THEN** the backend MUST return the effective custom assessment settings
-- **AND** it MUST return only selectable published experiments that have at least one eligible published question
+- **AND** it MUST return only selectable published root or first-level experiments that have at least one eligible published point-backed question under their descendants
 - **AND** it MUST NOT return hidden answer keys or question bodies in the options payload.
 
 #### Scenario: Student searches and selects experiments
@@ -45,7 +45,7 @@ The student H5 SHALL provide a separate custom assessment mode where students se
 #### Scenario: Student starts custom assessment
 - **WHEN** a student starts custom assessment with selected experiments and a valid question count
 - **THEN** the backend MUST create or return that student's current open assessment session
-- **AND** if no open session exists, it MUST compose questions only from the selected experiments
+- **AND** if no open session exists, it MUST compose questions only from descendant point-backed questions under the selected experiments
 - **AND** it MUST mark the session as custom assessment.
 
 #### Scenario: Custom assessment rejects invalid selection
@@ -58,49 +58,59 @@ The student H5 SHALL provide a separate custom assessment mode where students se
 - **WHEN** the student starts smart assessment or custom assessment
 - **THEN** the backend MUST return the existing open session rather than creating a second session.
 
-### Requirement: Smart assessment composes by experiment mastery
-Smart assessment composition SHALL select experiments before selecting questions, using experiment mastery evidence and teacher-configured strategy.
+### Requirement: Smart assessment composes by point mastery
+Smart assessment composition SHALL select point-backed questions from the full eligible question bank, using point mastery evidence and teacher-configured strategy.
 
-#### Scenario: Composition separates untested experiments
+#### Scenario: Composition separates untested points
 - **WHEN** the system composes a smart assessment
-- **THEN** experiments with no mastery row or zero evidence count MUST be treated as untested
-- **AND** untested experiments MUST NOT be assigned a fake mastery score for the mastery curve.
+- **THEN** points with no mastery row or zero evidence count MUST be treated as untested
+- **AND** untested points MUST NOT be assigned a fake mastery score for the mastery curve.
 
 #### Scenario: Untested ratio reserves question quota
-- **WHEN** the effective strategy has a non-zero untested experiment ratio
-- **THEN** the composer MUST reserve the configured proportion of question slots for untested experiments where eligible untested questions exist
-- **AND** if untested questions are insufficient, it MUST backfill from eligible measured experiments and record a warning.
+- **WHEN** the effective strategy has a non-zero untested point ratio
+- **THEN** the composer MUST reserve the configured proportion of question slots for untested points where eligible untested questions exist
+- **AND** if untested questions are insufficient, it MUST backfill from eligible measured points and record a warning.
 
-#### Scenario: Measured experiments use mastery tickets
-- **WHEN** the system selects from measured experiments
+#### Scenario: Measured points use mastery tickets
+- **WHEN** the system selects from measured points
 - **THEN** lower mastery scores MUST produce higher relative draw tickets according to the effective weak-tendency strategy
-- **AND** high mastery experiments MUST retain non-zero draw opportunity unless no eligible questions exist.
+- **AND** high mastery points MUST retain non-zero draw opportunity unless no eligible questions exist.
+
+#### Scenario: Only point-backed questions are eligible
+- **WHEN** the backend builds smart assessment candidates
+- **THEN** it MUST include only published questions bound to at least one valid point node
+- **AND** questions without valid point binding MUST NOT be selected for smart assessment.
 
 #### Scenario: Experiment question cap is enforced
 - **WHEN** questions are selected for a smart assessment
-- **THEN** the system MUST respect the effective maximum questions per experiment where enough candidate experiments and questions exist
-- **AND** if a selected experiment lacks enough questions, the composer MUST backfill from remaining eligible experiments before returning an underfilled paper.
+- **THEN** the system MUST respect the effective maximum questions per root or first-level experiment where enough candidate points and questions exist
+- **AND** it SHOULD select at most one question per point before using any point-level backfill
+- **AND** if a selected experiment lacks enough point-backed questions, the composer MUST backfill from remaining eligible points before returning an underfilled paper.
 
-### Requirement: Smart assessment updates experiment mastery
-Smart assessment submissions SHALL update experiment-level mastery using the same experiment mastery evidence model as other graded assessment flows.
+### Requirement: Smart assessment updates point mastery
+Smart assessment submissions SHALL update point-level mastery using BKT updates and derive experiment summaries from affected points.
 
 #### Scenario: Completed smart assessment records mastery changes
-- **WHEN** a student submits a smart assessment with graded attempts linked to formal experiments
-- **THEN** the backend MUST update experiment-level mastery for those experiments
-- **AND** the report MUST include mastery before/after changes for affected experiments where available.
+- **WHEN** a student submits a smart assessment with graded attempts linked to point nodes
+- **THEN** the backend MUST update `student_point_mastery` for those points using the configured BKT update model
+- **AND** if a question is linked to multiple valid point nodes, every linked point MUST receive evidence from the graded result
+- **AND** the report MUST include point mastery before/after changes grouped under affected experiments where available.
 
 #### Scenario: Smart assessment report explains composition
 - **WHEN** a completed smart assessment report is returned
-- **THEN** it MUST include score, correct rate, selected experiment summaries, composition summary, mastery changes, and wrong-answer details where available
-- **AND** it MUST explain untested and low-mastery coverage in student-facing language without requiring the student to understand the internal ticket formula.
+- **THEN** it MUST include score, correct rate, experiment summary cards, point mastery changes, composition summary, and wrong-answer details where available
+- **AND** experiment mastery shown in the report MUST be derived from descendant point mastery rather than stored as an independent fact
+- **AND** it MUST explain untested and low-mastery point coverage in student-facing language without requiring the student to understand the internal ticket formula.
 
 ### Requirement: Custom assessment composes balanced papers from selected experiments
-Custom assessment composition SHALL sample questions only from student-selected experiments and SHOULD cover selected experiments as evenly as question availability allows.
+Custom assessment composition SHALL sample questions only from student-selected experiments and SHOULD cover selected experiments and their descendant points as evenly as question availability allows.
 
 #### Scenario: Custom assessment samples selected experiments evenly
 - **WHEN** the backend composes a custom assessment from multiple selected experiments
-- **THEN** it MUST stable-shuffle eligible questions within each selected experiment
-- **AND** it MUST select questions by round-robin across the selected experiments until the requested question count is reached or eligible questions are exhausted.
+- **THEN** it MUST allocate requested question slots approximately evenly across selected experiments
+- **AND** it MUST expand selected experiments to descendant point nodes
+- **AND** it MUST prefer at most one question per point before selecting additional questions from an already covered point
+- **AND** it MUST stable-shuffle eligible questions within each point or experiment bucket until the requested question count is reached or eligible questions are exhausted.
 
 #### Scenario: Custom assessment handles insufficient questions
 - **WHEN** selected experiments cannot fill the requested question count

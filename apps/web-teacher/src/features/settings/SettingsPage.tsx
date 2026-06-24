@@ -85,8 +85,8 @@ function SmartAssessmentCurve({ settings }: { settings: SmartAssessmentSettings 
     })
     .join(" ");
   return (
-    <div className="smart-curve-preview" aria-label="掌握度抽题权重预览">
-      <svg viewBox="0 0 260 146" role="img" aria-label="掌握度越低抽题票数越高">
+    <div className="smart-curve-preview" aria-label="点位掌握度抽题权重预览">
+      <svg viewBox="0 0 260 146" role="img" aria-label="点位掌握度越低抽题票数越高">
         <line x1="20" y1="118" x2="240" y2="118" />
         <line x1="20" y1="30" x2="20" y2="118" />
         <polyline points={points} />
@@ -98,11 +98,11 @@ function SmartAssessmentCurve({ settings }: { settings: SmartAssessmentSettings 
       </svg>
       <div className="smart-curve-axis">
         <span>0 分</span>
-        <span>掌握度</span>
+        <span>点位掌握度</span>
         <span>100 分</span>
       </div>
       <Text type="secondary" className="block-text">
-        当前设置下，掌握度 0 分约 {smartAssessmentTickets(settings, 0).toFixed(1)} 票，50 分约{" "}
+        当前设置下，点位掌握度 0 分约 {smartAssessmentTickets(settings, 0).toFixed(1)} 票，50 分约{" "}
         {smartAssessmentTickets(settings, 50).toFixed(1)} 票，100 分固定 1.0 票。
       </Text>
     </div>
@@ -370,7 +370,7 @@ export function SettingsPage() {
                     <div>
                       <Text strong>智能组卷</Text>
                       <Text type="secondary" className="block-text">
-                        学生可直接进入测评；系统按未测实验比例和掌握薄弱倾向抽取实验。
+                        学生可直接进入测评；系统按未测点位比例和掌握薄弱倾向抽取点位题。
                       </Text>
                     </div>
                     <Form.Item name={["assessment", "smart_assessment", "enabled"]} valuePropName="checked" noStyle>
@@ -395,8 +395,8 @@ export function SettingsPage() {
                   </div>
                   <Form.Item
                     name={["assessment", "smart_assessment", "untested_ratio_percent"]}
-                    label="未测实验纳入比例"
-                    rules={[{ required: true, message: "请选择未测实验纳入比例" }]}
+                    label="未测点位纳入比例"
+                    rules={[{ required: true, message: "请选择未测点位纳入比例" }]}
                   >
                     <PercentSlider disabled={!canEdit} />
                   </Form.Item>
@@ -411,7 +411,7 @@ export function SettingsPage() {
                     <Form.Item
                       name={["assessment", "smart_assessment", "weak_curve"]}
                       label="薄弱曲线系数"
-                      help="数值越大，系统越集中照顾低掌握度实验。"
+                      help="数值越大，系统越集中照顾低掌握度点位。"
                       rules={[{ required: true, message: "请输入薄弱曲线系数" }]}
                     >
                       <InputNumber min={0.5} max={4} step={0.1} precision={1} disabled={!canEdit} className="full" />
@@ -419,7 +419,7 @@ export function SettingsPage() {
                     <Form.Item
                       name={["assessment", "smart_assessment", "weak_max_bonus"]}
                       label="最大权重加成"
-                      help="控制 0 分实验相对 100 分实验最多可增加多少抽题票。"
+                      help="控制 0 分点位相对 100 分点位最多可增加多少抽题票。"
                       rules={[{ required: true, message: "请输入最大权重加成" }]}
                     >
                       <InputNumber min={1} max={20} step={0.5} precision={1} disabled={!canEdit} className="full" />

@@ -89,7 +89,10 @@ const apiMocks = vi.hoisted(() => ({
   searchStudentVideoLibrary: vi.fn(),
   startStudentPosttest: vi.fn(),
   submitStudentPosttest: vi.fn(),
+  getStudentAssessmentStatus: vi.fn(),
+  dismissStudentSmartBaselinePrompt: vi.fn(),
   startStudentSmartAssessment: vi.fn(),
+  startStudentPointAssessment: vi.fn(),
   submitStudentSmartAssessment: vi.fn(),
   getStudentCustomAssessmentOptions: vi.fn(),
   startStudentCustomAssessment: vi.fn(),
@@ -132,7 +135,10 @@ vi.mock("./api", () => ({
   searchStudentVideoLibrary: apiMocks.searchStudentVideoLibrary,
   startStudentPosttest: apiMocks.startStudentPosttest,
   submitStudentPosttest: apiMocks.submitStudentPosttest,
+  getStudentAssessmentStatus: apiMocks.getStudentAssessmentStatus,
+  dismissStudentSmartBaselinePrompt: apiMocks.dismissStudentSmartBaselinePrompt,
   startStudentSmartAssessment: apiMocks.startStudentSmartAssessment,
+  startStudentPointAssessment: apiMocks.startStudentPointAssessment,
   submitStudentSmartAssessment: apiMocks.submitStudentSmartAssessment,
   getStudentCustomAssessmentOptions: apiMocks.getStudentCustomAssessmentOptions,
   startStudentCustomAssessment: apiMocks.startStudentCustomAssessment,
@@ -938,6 +944,24 @@ function answerVisibleAssessment() {
   });
 }
 
+function installStorageStub(name: "localStorage" | "sessionStorage") {
+  if (window[name]) return;
+  const store = new Map<string, string>();
+  Object.defineProperty(window, name, {
+    configurable: true,
+    value: {
+      get length() {
+        return store.size;
+      },
+      clear: () => store.clear(),
+      getItem: (key: string) => store.get(key) ?? null,
+      key: (index: number) => Array.from(store.keys())[index] ?? null,
+      removeItem: (key: string) => store.delete(key),
+      setItem: (key: string, value: string) => store.set(key, String(value)),
+    },
+  });
+}
+
 async function submitVisibleAssessment() {
   answerVisibleAssessment();
   const submitButton = screen.getByRole("button", { name: "提交答案" });
@@ -959,6 +983,8 @@ describe("student app route stack", () => {
     apiMocks.authToken = "student-token";
     vi.clearAllMocks();
     artplayerInstances.length = 0;
+    installStorageStub("sessionStorage");
+    installStorageStub("localStorage");
     window.sessionStorage.clear();
     window.localStorage.clear();
     window.history.replaceState({}, "", "/");
@@ -986,6 +1012,20 @@ describe("student app route stack", () => {
     apiMocks.startStudentPretest.mockResolvedValue(completedPretestResponse);
     apiMocks.submitStudentPretest.mockResolvedValue({ status: "completed", stage: null, questions: [] } satisfies StudentPretestResponse);
     apiMocks.getStudentAppConfig.mockResolvedValue(appConfig);
+    apiMocks.getStudentAssessmentStatus.mockResolvedValue({
+      has_completed_smart_baseline: true,
+      has_open_assessment: false,
+      open_session_id: null,
+      open_assessment_mode: null,
+      smart_baseline_prompt_dismissed: false,
+    });
+    apiMocks.dismissStudentSmartBaselinePrompt.mockResolvedValue({
+      has_completed_smart_baseline: false,
+      has_open_assessment: false,
+      open_session_id: null,
+      open_assessment_mode: null,
+      smart_baseline_prompt_dismissed: true,
+    });
     apiMocks.getStudentHomeVideoFeed.mockResolvedValue(homeVideoFeedResponse);
     apiMocks.getStudentLearningHome.mockResolvedValue(learningHome);
     apiMocks.getStudentLearningPage.mockResolvedValue(learningPage);
@@ -1010,6 +1050,7 @@ describe("student app route stack", () => {
     apiMocks.startStudentPosttest.mockResolvedValue(posttestResponse);
     apiMocks.submitStudentPosttest.mockResolvedValue({ status: "completed", report });
     apiMocks.startStudentSmartAssessment.mockResolvedValue(posttestResponse);
+    apiMocks.startStudentPointAssessment.mockResolvedValue({ ...posttestResponse, assessment_mode: "point" });
     apiMocks.submitStudentSmartAssessment.mockResolvedValue({ status: "completed", report });
     apiMocks.getStudentCustomAssessmentOptions.mockResolvedValue({
       settings: {
@@ -1041,6 +1082,72 @@ describe("student app route stack", () => {
   });
 
   afterEach(() => cleanup());
+
+  it("prompts first-time students to start a smart baseline assessment", async () => {
+    apiMocks.getStudentAssessmentStatus
+      .mockResolvedValueOnce({
+        has_completed_smart_baseline: false,
+        has_open_assessment: false,
+        open_session_id: null,
+        open_assessment_mode: null,
+        smart_baseline_prompt_dismissed: false,
+      })
+      .mockResolvedValue({
+        has_completed_smart_baseline: true,
+        has_open_assessment: false,
+        open_session_id: null,
+        open_assessment_mode: null,
+        smart_baseline_prompt_dismissed: false,
+      });
+
+    await renderAuthenticatedApp("/");
+
+    expect(await screen.findByRole("dialog", { name: "先做一次智能测评" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "去测评" }));
+
+    await waitFor(() => expect(apiMocks.startStudentSmartAssessment).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(window.location.pathname).toBe("/assessment/session/posttest-session-e2e"));
+  });
+
+  it("lets students permanently dismiss the smart baseline prompt", async () => {
+    apiMocks.getStudentAssessmentStatus.mockResolvedValue({
+      has_completed_smart_baseline: false,
+      has_open_assessment: false,
+      open_session_id: null,
+      open_assessment_mode: null,
+      smart_baseline_prompt_dismissed: false,
+    });
+
+    await renderAuthenticatedApp("/");
+
+    expect(await screen.findByRole("dialog", { name: "先做一次智能测评" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "不再提醒" }));
+
+    await waitFor(() => expect(apiMocks.dismissStudentSmartBaselinePrompt).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "先做一次智能测评" })).not.toBeInTheDocument());
+  });
+
+  it("starts point-scoped assessment from a completed learning point", async () => {
+    await renderAuthenticatedApp("/point/cat-point-halogen?from=chapter&chapterId=CH17");
+
+    await waitFor(() => expect(apiMocks.getStudentCatalogPointDetail).toHaveBeenCalledWith("cat-point-halogen"));
+    fireEvent.click(screen.getByRole("button", { name: "测一测" }));
+
+    await waitFor(() => expect(apiMocks.startStudentPointAssessment).toHaveBeenCalledWith("cat-point-halogen"));
+    await waitFor(() => expect(window.location.pathname).toBe("/assessment/session/posttest-session-e2e"));
+    expect((await screen.findAllByRole("region", { name: "点位测评" })).length).toBeGreaterThan(0);
+  });
+
+  it("tells students when a point assessment entry continues an unfinished assessment", async () => {
+    apiMocks.startStudentPointAssessment.mockResolvedValueOnce({ ...posttestResponse, assessment_mode: "smart" });
+
+    await renderAuthenticatedApp("/point/cat-point-halogen?from=chapter&chapterId=CH17");
+
+    fireEvent.click(screen.getByRole("button", { name: "测一测" }));
+
+    await waitFor(() => expect(window.location.pathname).toBe("/assessment/session/posttest-session-e2e"));
+    expect(await screen.findByText("你还有一轮未完成测评，已为你继续打开原测评。完成后再回到本点位测一测。")).toBeInTheDocument();
+  });
 
   it("drives roots, details, contextual AI, assessment, and feedback through URLs instead of tab state", async () => {
     await renderAuthenticatedApp("/");

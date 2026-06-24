@@ -90,6 +90,7 @@ function previewRuntimeContext(preview = true): StudentRuntimeContextValue {
     canUseFeedback: true,
     onLogout: vi.fn(),
     startAssessmentSession: vi.fn(),
+    startPointAssessmentSession: vi.fn(),
     posttestLoading: false,
     posttestError: "",
   } as unknown as StudentRuntimeContextValue;

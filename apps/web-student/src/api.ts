@@ -494,21 +494,46 @@ export type SmartAssessmentStrategy = {
   weak_max_bonus: number;
 };
 
-export type PublicSmartAssessmentQuestion = PublicPosttestQuestion;
+export type PublicSmartAssessmentQuestion = PublicPosttestQuestion & {
+  point_node_ids?: string[];
+  canonical_point_ids?: string[];
+};
+
+export type SmartAssessmentPointSummary = {
+  id: string;
+  title: string;
+  experiment_id?: string | null;
+  experiment_title?: string | null;
+  canonical_point_id?: string | null;
+  mastery_score?: number | null;
+  before_score?: number | null;
+  after_score?: number | null;
+  evidence_count: number;
+  source: "measured" | "untested" | "custom" | "point";
+  draw_tickets?: number | null;
+  question_count: number;
+  reason?: string | null;
+};
 
 export type SmartAssessmentExperimentSummary = PosttestExperimentSummary & {
   mastery_score?: number | null;
   evidence_count: number;
-  source: "measured" | "untested" | "custom";
+  source: "measured" | "untested" | "custom" | "point";
   draw_tickets?: number | null;
   question_count: number;
+  measured_point_count?: number;
+  total_point_count?: number;
+  weak_point_count?: number;
   reason?: string | null;
+  points?: SmartAssessmentPointSummary[];
 };
 
 export type SmartAssessmentCompositionSummary = {
   total_questions: number;
   target_question_count: number;
   requested_question_count?: number | null;
+  selected_point_count?: number;
+  candidate_point_count?: number;
   untested_question_count: number;
   measured_question_count: number;
   custom_question_count?: number;
@@ -521,7 +546,7 @@ export type SmartAssessmentCompositionSummary = {
 export type StudentSmartAssessmentResponse = {
   status: "in_progress" | "completed";
   session_id: string;
-  assessment_mode?: "smart" | "custom";
+  assessment_mode?: "smart" | "custom" | "point";
   strategy: SmartAssessmentStrategy;
   composition: SmartAssessmentCompositionSummary;
   experiments: SmartAssessmentExperimentSummary[];
@@ -529,12 +554,19 @@ export type StudentSmartAssessmentResponse = {
 };
 
 export type StudentSmartAssessmentAnswer = StudentPosttestAnswer;
-export type StudentSmartAssessmentWrongAnswer = StudentPosttestWrongAnswer;
-export type StudentSmartAssessmentMasteryChange = StudentPosttestMasteryChange;
+export type StudentSmartAssessmentWrongAnswer = StudentPosttestWrongAnswer & {
+  point_node_ids?: string[];
+  canonical_point_ids?: string[];
+};
+export type StudentSmartAssessmentMasteryChange = StudentPosttestMasteryChange & {
+  point_node_id?: string | null;
+  point_title?: string | null;
+  canonical_point_id?: string | null;
+};
 
 export type StudentSmartAssessmentReport = {
   session_id: string;
-  assessment_mode?: "smart" | "custom";
+  assessment_mode?: "smart" | "custom" | "point";
   strategy: SmartAssessmentStrategy;
   composition: SmartAssessmentCompositionSummary;
   experiments: SmartAssessmentExperimentSummary[];
@@ -553,6 +585,14 @@ export type StudentSmartAssessmentReport = {
 export type StudentSmartAssessmentSubmitResponse = {
   status: "completed";
   report: StudentSmartAssessmentReport;
+};
+
+export type StudentAssessmentStatusResponse = {
+  has_completed_smart_baseline: boolean;
+  has_open_assessment: boolean;
+  open_session_id?: string | null;
+  open_assessment_mode?: "smart" | "custom" | "point" | null;
+  smart_baseline_prompt_dismissed: boolean;
 };
 
 export type CustomAssessmentOptionsSettings = {
@@ -992,6 +1032,20 @@ export function submitStudentPosttest(sessionId: string, answers: StudentPosttes
 
 export function startStudentSmartAssessment(): Promise<StudentSmartAssessmentResponse> {
   return postJson<StudentSmartAssessmentResponse>("/api/student/smart-assessment/start", {});
+}
+
+export function getStudentAssessmentStatus(): Promise<StudentAssessmentStatusResponse> {
+  return api<StudentAssessmentStatusResponse>("/api/student/assessment/status");
+}
+
+export function dismissStudentSmartBaselinePrompt(): Promise<StudentAssessmentStatusResponse> {
+  return postJson<StudentAssessmentStatusResponse>("/api/student/assessment/baseline-prompt-dismiss", {});
+}
+
+export function startStudentPointAssessment(pointNodeId: string): Promise<StudentSmartAssessmentResponse> {
+  return postJson<StudentSmartAssessmentResponse>("/api/student/point-assessment/start", {
+    point_node_id: pointNodeId,
+  });
 }
 
 export function getStudentCustomAssessmentOptions(): Promise<StudentCustomAssessmentOptionsResponse> {
