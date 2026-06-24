@@ -223,6 +223,25 @@ export function applyPreviewDragScroll(
   return applyPreviewDragScrollWithLock(initialTarget, hitTarget, previousPoint, point).scrolled;
 }
 
+export function applyPreviewWheelScroll(hitTarget: Element | null, deltaX = 0, deltaY = 0): boolean {
+  let scrolled = false;
+  if (deltaX !== 0) {
+    const target = findScrollablePreviewTarget(hitTarget, deltaX, "x");
+    if (target) {
+      applyPreviewScroll(target, deltaX, "x");
+      scrolled = true;
+    }
+  }
+  if (deltaY !== 0) {
+    const target = findScrollablePreviewTarget(hitTarget, deltaY, "y");
+    if (target) {
+      applyPreviewScroll(target, deltaY, "y");
+      scrolled = true;
+    }
+  }
+  return scrolled;
+}
+
 export function resolvePreviewActionTarget(initialTarget: Element | null, fallbackPoint: PreviewInputPoint): Element | null {
   const fallbackTarget = elementFromPreviewPoint(fallbackPoint);
   const candidate = initialTarget?.isConnected ? initialTarget : fallbackTarget;
@@ -363,6 +382,12 @@ export function PreviewInputRuntime() {
       if (!message || !messageMatchesHandshake(message, event.origin, frameId, teacherOrigin)) return;
 
       if (message.type === "hover") return;
+
+      if (message.type === "wheel") {
+        const hitTarget = elementFromPreviewPoint(message.point);
+        applyPreviewWheelScroll(hitTarget, message.deltaX || 0, message.deltaY || 0);
+        return;
+      }
 
       if (message.type === "touchCancel") {
         cancelActiveSequence();

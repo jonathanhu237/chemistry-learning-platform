@@ -4,7 +4,7 @@ export const studentPreviewInputVersion = 2;
 export const previewInputFrameIdKey = "chem_student_preview_frame_id";
 export const previewInputTeacherOriginKey = "chem_student_preview_teacher_origin";
 
-export type PreviewInputEventType = "hover" | "touchStart" | "touchMove" | "touchEnd" | "touchCancel";
+export type PreviewInputEventType = "hover" | "touchStart" | "touchMove" | "touchEnd" | "touchCancel" | "wheel";
 
 export type PreviewInputPoint = {
   x: number;
@@ -19,6 +19,8 @@ export type PreviewInputMessage = {
   type: PreviewInputEventType;
   point: PreviewInputPoint;
   previousPoint?: PreviewInputPoint;
+  deltaX?: number;
+  deltaY?: number;
   startedAt?: number;
   timestamp: number;
   primaryButton: boolean;
@@ -64,7 +66,8 @@ function isEventType(value: unknown): value is PreviewInputEventType {
     value === "touchStart" ||
     value === "touchMove" ||
     value === "touchEnd" ||
-    value === "touchCancel"
+    value === "touchCancel" ||
+    value === "wheel"
   );
 }
 
@@ -76,6 +79,9 @@ export function parsePreviewInputMessage(value: unknown): PreviewInputMessage | 
   if (!isEventType(value.type)) return null;
   if (!isPoint(value.point)) return null;
   if (value.previousPoint !== undefined && !isPoint(value.previousPoint)) return null;
+  if (value.deltaX !== undefined && !Number.isFinite(value.deltaX)) return null;
+  if (value.deltaY !== undefined && !Number.isFinite(value.deltaY)) return null;
+  if (value.type === "wheel" && value.deltaX === undefined && value.deltaY === undefined) return null;
   if (!Number.isFinite(value.timestamp)) return null;
   if (typeof value.primaryButton !== "boolean") return null;
   return value as PreviewInputMessage;

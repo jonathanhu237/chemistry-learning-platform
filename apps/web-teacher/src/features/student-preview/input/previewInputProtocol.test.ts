@@ -115,6 +115,39 @@ describe("teacher preview input protocol", () => {
     });
   });
 
+  it("forwards wheel input from the preview shell to the student iframe", () => {
+    const postMessage = vi.fn();
+    const iframeRef = {
+      current: { contentWindow: { postMessage } },
+    } as unknown as RefObject<HTMLIFrameElement | null>;
+
+    render(
+      createElement(PreviewGestureSurface, {
+        enabled: true,
+        iframeRef,
+        frameId: "frame-1",
+        targetOrigin: "http://127.0.0.1:5173",
+      }),
+    );
+    const surface = document.querySelector<HTMLElement>(".student-preview-gesture-surface")!;
+    defineSurfaceRect(surface);
+
+    fireEvent.wheel(surface, { clientX: 180, clientY: 320, deltaX: 4, deltaY: 64, deltaMode: 0 });
+
+    const messages = postMessage.mock.calls.map(([message]) => message as PreviewInputMessage);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toMatchObject({
+      namespace: studentPreviewInputNamespace,
+      version: studentPreviewInputVersion,
+      frameId: "frame-1",
+      type: "wheel",
+      point: { x: 80, y: 120 },
+      deltaX: 4,
+      deltaY: 64,
+      primaryButton: false,
+    });
+  });
+
   it("cancels active pointer sequences through lifecycle messages", () => {
     const postMessage = vi.fn();
     const iframeRef = {

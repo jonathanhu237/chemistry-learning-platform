@@ -7,6 +7,7 @@ import {
   applyPreviewDragScroll,
   applyPreviewDragScrollWithLock,
   applyPreviewScroll,
+  applyPreviewWheelScroll,
   dispatchPreviewPointerEvent,
   findScrollablePreviewTarget,
   PreviewInputRuntime,
@@ -157,10 +158,16 @@ describe("student preview input runtime helpers", () => {
 
     expect(parsePreviewInputMessage(valid)).toMatchObject(valid);
     expect(parsePreviewInputMessage({ ...valid, version: 1 })).toBeNull();
+    expect(parsePreviewInputMessage({ ...valid, type: "wheel", deltaY: 24, primaryButton: false })).toMatchObject({
+      type: "wheel",
+      deltaY: 24,
+    });
     expect(parsePreviewInputMessage({ ...valid, type: "tap" })).toBeNull();
     expect(parsePreviewInputMessage({ ...valid, type: "longPress" })).toBeNull();
     expect(parsePreviewInputMessage({ ...valid, namespace: "other" })).toBeNull();
     expect(parsePreviewInputMessage({ ...valid, point: { x: Number.NaN, y: 24 } })).toBeNull();
+    expect(parsePreviewInputMessage({ ...valid, type: "wheel", deltaX: Number.NaN })).toBeNull();
+    expect(parsePreviewInputMessage({ ...valid, type: "wheel", deltaX: undefined, deltaY: undefined })).toBeNull();
   });
 
   it("stores preview frame and teacher origin handshake data", () => {
@@ -269,6 +276,23 @@ describe("student preview input runtime helpers", () => {
     expect(rail.scrollLeft).toBe(360);
   });
 
+  it("applies preview wheel deltas to the nearest real scroll containers", () => {
+    const page = document.createElement("div");
+    const rail = document.createElement("div");
+    const tile = document.createElement("button");
+    page.style.overflowY = "auto";
+    rail.style.overflowX = "auto";
+    defineScrollMetrics(page, { scrollHeight: 900, clientHeight: 300, scrollTop: 10 });
+    defineScrollMetrics(rail, { scrollWidth: 620, clientWidth: 260, scrollLeft: 80 });
+    rail.appendChild(tile);
+    page.appendChild(rail);
+    document.body.appendChild(page);
+
+    expect(applyPreviewWheelScroll(tile, 40, 70)).toBe(true);
+    expect(rail.scrollLeft).toBe(120);
+    expect(page.scrollTop).toBe(80);
+  });
+
   it("keeps horizontal preview swipes locked to the starting rail when the pointer leaves it", () => {
     const rail = document.createElement("div");
     const tile = document.createElement("button");
@@ -368,6 +392,28 @@ describe("student preview input runtime helpers", () => {
 
     expect(scroller.scrollTop).toBe(40);
     expect(events).toEqual(["down", "move", "up"]);
+  });
+
+  it("scrolls real content from preview wheel messages", () => {
+    const scroller = document.createElement("div");
+    const tile = document.createElement("button");
+    scroller.style.overflowY = "auto";
+    defineScrollMetrics(scroller, { scrollHeight: 800, clientHeight: 200, scrollTop: 0 });
+    scroller.appendChild(tile);
+    document.body.appendChild(scroller);
+    vi.mocked(document.elementFromPoint).mockReturnValue(tile);
+
+    renderPreviewRuntime();
+    dispatchPreviewMessage(
+      previewMessage("wheel", {
+        point: { x: 40, y: 100 },
+        deltaY: 72,
+        timestamp: 1040,
+        primaryButton: false,
+      }),
+    );
+
+    expect(scroller.scrollTop).toBe(72);
   });
 
   it("suppresses normal tap activation after a long press", () => {

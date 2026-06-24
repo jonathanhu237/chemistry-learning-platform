@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
+import type { PointerEvent as ReactPointerEvent, RefObject, WheelEvent as ReactWheelEvent } from "react";
 
 import { createPreviewInputMessage, type PreviewInputMessage, type PreviewInputPoint } from "./previewInputProtocol";
 
@@ -50,6 +50,12 @@ function eventModifiers(event: UIEvent | Event): PreviewInputMessage["modifiers"
 
 function createSequenceId(): string {
   return `gesture-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function wheelDeltaScale(event: ReactWheelEvent<HTMLElement>, surface: HTMLElement): number {
+  if (event.deltaMode === 1) return 16;
+  if (event.deltaMode === 2) return surface.clientHeight || surface.offsetHeight || 600;
+  return 1;
 }
 
 export function mapClientPointToSurfacePoint(surface: HTMLElement, clientX: number, clientY: number): PreviewInputPoint {
@@ -333,6 +339,26 @@ export function PreviewGestureSurface({ enabled, iframeRef, frameId, targetOrigi
         cancelSequence(event.nativeEvent);
       }}
       onDragStart={(event) => event.preventDefault()}
+      onWheel={(event) => {
+        if (!enabled || activeSequenceRef.current) return;
+        const point = resolvePoint(event.clientX, event.clientY);
+        const surface = surfaceRef.current;
+        if (!point || !surface) return;
+        event.preventDefault();
+        const scale = wheelDeltaScale(event, surface);
+        scheduleIndicator(point, { visible: true, active: false });
+        hideIndicator(indicatorIdleMs);
+        postInput({
+          frameId,
+          sequenceId: createSequenceId(),
+          type: "wheel",
+          point,
+          deltaX: event.deltaX * scale,
+          deltaY: event.deltaY * scale,
+          primaryButton: false,
+          modifiers: eventModifiers(event.nativeEvent),
+        });
+      }}
       onContextMenu={(event) => {
         if (activeSequenceRef.current) event.preventDefault();
       }}
