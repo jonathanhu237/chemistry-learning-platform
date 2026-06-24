@@ -605,6 +605,26 @@ button.analytics-score-pill:focus-visible {
   line-height: 1.7;
 }
 
+.analytics-report-wrong-list {
+  display: grid;
+  gap: 10px;
+}
+
+.analytics-report-wrong-list article {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--sysu-line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+}
+
+.analytics-report-wrong-list article small,
+.analytics-report-wrong-list article span {
+  color: var(--sysu-muted);
+  line-height: 1.6;
+}
+
 .analytics-report-link {
   width: 100%;
   padding: 10px 12px;

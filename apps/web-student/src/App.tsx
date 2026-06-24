@@ -208,6 +208,10 @@ function App() {
         Object.entries(answers).map(([questionId, answer]) => ({ question_id: questionId, answer })),
       );
       setPretest(response);
+      if (response.status === "completed" && response.report?.id) {
+        window.history.replaceState({}, "", `/assessment/reports/${response.report.id}?from=assessment`);
+        setPretestSkipped(true);
+      }
     } catch (requestError) {
       setPretestError(errorMessage(requestError));
     } finally {

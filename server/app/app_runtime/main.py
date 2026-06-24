@@ -36,6 +36,7 @@ from server.app.api.preview.catalog_preview import router as catalog_preview_rou
 from server.app.api.preview.student_session import router as student_preview_session_router
 from server.app.api.student.student_experiment_questions import router as student_experiment_questions_router
 from server.app.api.student.student_assistant import router as student_assistant_router
+from server.app.api.student.student_assessment_reports import router as student_assessment_reports_router
 from server.app.api.student.student_custom_assessment import router as student_custom_assessment_router
 from server.app.api.student.student_learning import router as student_learning_router
 from server.app.api.student.student_home_feed import router as student_home_feed_router
@@ -99,6 +100,7 @@ app.include_router(catalog_preview_router)
 app.include_router(student_preview_session_router)
 app.include_router(student_experiment_questions_router)
 app.include_router(student_assistant_router)
+app.include_router(student_assessment_reports_router)
 app.include_router(student_custom_assessment_router)
 app.include_router(student_home_feed_router)
 app.include_router(student_learning_router)

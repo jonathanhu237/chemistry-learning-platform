@@ -8,7 +8,7 @@ import {
   storePosttestReport,
   storePosttestSession,
 } from "../../app/router/assessmentSessionStore";
-import { navigateToAssessmentReport } from "../../app/router/navigation";
+import { navigateToAssessmentReport, navigateToLegacyAssessmentReport } from "../../app/router/navigation";
 import type { StudentRouteSearch } from "../../app/router/routeTypes";
 import { DetailPageFrame } from "../../app/shell/DetailPageFrame";
 import { useStudentRuntime } from "../../app/shell/studentAppContext";
@@ -68,7 +68,11 @@ export function AssessmentSessionPage() {
         Object.entries(answers).map(([questionId, answer]) => ({ question_id: questionId, answer })),
       );
       storePosttestReport(response.report);
-      navigateToAssessmentReport(navigate, response.report.session_id, "assessment-session");
+      if (response.assessment_report?.id) {
+        navigateToAssessmentReport(navigate, response.assessment_report.id, "assessment-session");
+      } else {
+        navigateToLegacyAssessmentReport(navigate, response.report.session_id, "assessment-session");
+      }
     } catch (requestError) {
       setError(errorMessage(requestError));
     } finally {

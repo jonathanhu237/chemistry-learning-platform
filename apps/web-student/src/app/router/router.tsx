@@ -16,6 +16,7 @@ import { AssessmentCustomPage } from "../../routes/assessment/AssessmentCustomPa
 import { AssessmentSessionPage } from "../../routes/assessment/AssessmentSessionPage";
 import { AssessmentReportPage } from "../../routes/assessment/AssessmentReportPage";
 import { ProfileRootPage } from "../../routes/profile/ProfileRootPage";
+import { ProfileReportsPage } from "../../routes/profile/ProfileReportsPage";
 import { FeedbackPage } from "../../routes/profile/FeedbackPage";
 import { UnifiedSearchPage } from "../../routes/search/UnifiedSearchPage";
 import { VideoLibraryPage } from "../../routes/video-library/VideoLibraryPage";
@@ -153,10 +154,24 @@ const assessmentReportRoute = createRoute({
   component: AssessmentReportPage,
 });
 
+const assessmentPersistedReportRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/assessment/reports/$reportId",
+  validateSearch: parseStudentRouteSearch,
+  component: AssessmentReportPage,
+});
+
 const profileRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/profile",
   component: ProfileRootPage,
+});
+
+const profileReportsRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/profile/reports",
+  validateSearch: parseStudentRouteSearch,
+  component: ProfileReportsPage,
 });
 
 const feedbackRoute = createRoute({
@@ -186,7 +201,9 @@ const routeTree = rootRoute.addChildren([
     assessmentCustomRoute,
     assessmentSessionRoute,
     assessmentReportRoute,
+    assessmentPersistedReportRoute,
     profileRoute,
+    profileReportsRoute,
     feedbackRoute,
   ]),
 ]);

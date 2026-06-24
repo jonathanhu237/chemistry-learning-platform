@@ -4,6 +4,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from server.app.student_assessment_report_schemas import StudentAssessmentReport
+
 
 PretestStatus = Literal["in_progress", "completed"]
 PretestStage = Literal[1, 2]
@@ -21,8 +23,10 @@ class PublicPretestQuestion(BaseModel):
 
 class StudentPretestResponse(BaseModel):
     status: PretestStatus
+    session_id: str | None = None
     stage: PretestStage | None = None
     questions: list[PublicPretestQuestion] = Field(default_factory=list)
+    report: StudentAssessmentReport | None = None
 
 
 class StudentPretestAnswer(BaseModel):

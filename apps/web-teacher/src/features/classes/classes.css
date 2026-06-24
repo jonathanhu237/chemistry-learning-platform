@@ -252,6 +252,17 @@
   margin-top: 8px;
 }
 
+.class-report-prompt-vars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 2px;
+}
+
+.monospace-textarea {
+  font-family: "SFMono-Regular", "Cascadia Mono", monospace;
+}
+
 .class-smart-curve {
   display: grid;
   gap: 8px;

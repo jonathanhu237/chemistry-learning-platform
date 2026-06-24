@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ClipboardList, LogOut, MessageSquarePlus, UserRound } from "lucide-react";
+import { BarChart3, ClipboardList, LogOut, MessageSquarePlus, UserRound } from "lucide-react";
 import { getFeedbackCapability, getStudentProfilePresentation } from "../../app/preview/previewSandbox";
-import { navigateToFeedback } from "../../app/router/navigation";
+import { navigateToFeedback, navigateToProfileReports } from "../../app/router/navigation";
 import { useStudentRuntime } from "../../app/shell/studentAppContext";
 import { MobileButton, MobileEmptyState } from "../../mobile/primitives";
 
@@ -23,6 +23,13 @@ export function ProfileRootPage() {
           {profile.className ? <small>{profile.className}</small> : null}
         </div>
       </section>
+      <button className="profile-entry-card" type="button" onClick={() => navigateToProfileReports(navigate, "profile")}>
+        <BarChart3 size={20} />
+        <span>
+          <strong>测评报告</strong>
+          <small>查看课前测试、自主测评和智能测评的历史报告。</small>
+        </span>
+      </button>
       {feedbackCapability.canOpenEntry ? (
         <button className="profile-entry-card" type="button" onClick={() => navigateToFeedback(navigate, "profile")}>
           <MessageSquarePlus size={20} />

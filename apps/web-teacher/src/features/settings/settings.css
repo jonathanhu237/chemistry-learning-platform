@@ -121,6 +121,17 @@
   justify-content: flex-end;
 }
 
+.report-prompt-variable-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 4px;
+}
+
+.monospace-textarea {
+  font-family: "SFMono-Regular", "Cascadia Mono", monospace;
+}
+
 .settings-inline-control {
   max-width: 420px;
   margin-top: 16px;

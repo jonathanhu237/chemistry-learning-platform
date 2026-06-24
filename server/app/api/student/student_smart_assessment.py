@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from server.app.auth import AuthUser, require_roles
+from server.app.domains.assessments.reports import create_smart_assessment_report
 from server.app.domains.assessments.smart_assessment import (
     dismiss_student_smart_baseline_prompt,
     get_student_assessment_status,
@@ -53,4 +54,6 @@ async def submit_smart_assessment(
     payload: StudentSmartAssessmentSubmitRequest,
     user: StudentUser,
 ) -> StudentSmartAssessmentSubmitResponse:
-    return submit_student_smart_assessment(user, payload)
+    response = submit_student_smart_assessment(user, payload)
+    response.assessment_report = await create_smart_assessment_report(user, response.report)
+    return response

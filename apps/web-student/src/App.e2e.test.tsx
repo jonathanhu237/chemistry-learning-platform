@@ -7,6 +7,7 @@ import type {
   PublicPosttestQuestion,
   PublicPretestQuestion,
   CatalogPreviewNodeResponse,
+  StudentAssessmentReport,
   StudentAppConfigResponse,
   StudentCatalogChapterResponse,
   StudentCatalogNodeResponse,
@@ -90,6 +91,8 @@ const apiMocks = vi.hoisted(() => ({
   startStudentPosttest: vi.fn(),
   submitStudentPosttest: vi.fn(),
   getStudentAssessmentStatus: vi.fn(),
+  getStudentAssessmentReports: vi.fn(),
+  getStudentAssessmentReport: vi.fn(),
   dismissStudentSmartBaselinePrompt: vi.fn(),
   startStudentSmartAssessment: vi.fn(),
   startStudentPointAssessment: vi.fn(),
@@ -136,6 +139,8 @@ vi.mock("./api", () => ({
   startStudentPosttest: apiMocks.startStudentPosttest,
   submitStudentPosttest: apiMocks.submitStudentPosttest,
   getStudentAssessmentStatus: apiMocks.getStudentAssessmentStatus,
+  getStudentAssessmentReports: apiMocks.getStudentAssessmentReports,
+  getStudentAssessmentReport: apiMocks.getStudentAssessmentReport,
   dismissStudentSmartBaselinePrompt: apiMocks.dismissStudentSmartBaselinePrompt,
   startStudentSmartAssessment: apiMocks.startStudentSmartAssessment,
   startStudentPointAssessment: apiMocks.startStudentPointAssessment,
@@ -887,6 +892,35 @@ const report: StudentSmartAssessmentReport = {
   next_recommendation: "Review halogen displacement.",
 };
 
+const assessmentReport: StudentAssessmentReport = {
+  id: "assessment-report-e2e",
+  student_id: "20249999",
+  class_id: "class-1",
+  report_type: "smart",
+  source_session_id: report.session_id,
+  title: "智能测评报告",
+  score: report.score,
+  correct_count: report.correct_count,
+  total_count: report.total_count,
+  correct_rate: report.correct_rate,
+  wrong_count: report.wrong_answers.length,
+  completed_at: "2026-06-25T10:00:00Z",
+  summary: {
+    text: "### Study summary\n\n- Review **halogens**.",
+    source: "ai",
+    mode: "test",
+    generated_at: "2026-06-25T10:00:01Z",
+  },
+  mistake_explanation: {
+    text: "### Mistake explanation\n\n- Bromine in CCl4 is orange.",
+    source: "ai",
+    mode: "test",
+    generated_at: "2026-06-25T10:00:02Z",
+  },
+  prompt_snapshot: {},
+  payload: report,
+};
+
 function rootButton(root: string): HTMLButtonElement {
   const button = document.querySelector<HTMLButtonElement>(`.student-bottom-nav button[data-root="${root}"]`);
   if (!button) throw new Error(`Missing root nav button: ${root}`);
@@ -1051,7 +1085,9 @@ describe("student app route stack", () => {
     apiMocks.submitStudentPosttest.mockResolvedValue({ status: "completed", report });
     apiMocks.startStudentSmartAssessment.mockResolvedValue(posttestResponse);
     apiMocks.startStudentPointAssessment.mockResolvedValue({ ...posttestResponse, assessment_mode: "point" });
-    apiMocks.submitStudentSmartAssessment.mockResolvedValue({ status: "completed", report });
+    apiMocks.submitStudentSmartAssessment.mockResolvedValue({ status: "completed", report, assessment_report: assessmentReport });
+    apiMocks.getStudentAssessmentReports.mockResolvedValue({ reports: [assessmentReport] });
+    apiMocks.getStudentAssessmentReport.mockResolvedValue(assessmentReport);
     apiMocks.getStudentCustomAssessmentOptions.mockResolvedValue({
       settings: {
         enabled: true,
@@ -1401,22 +1437,32 @@ describe("student app route stack", () => {
     await waitFor(() => expect(window.location.pathname).toBe("/assessment/session/posttest-session-e2e"));
     expectBottomNavHidden();
     await submitVisibleAssessment();
-    await waitFor(() => expect(window.location.pathname).toBe("/assessment/report/posttest-session-e2e"));
+    await waitFor(() => expect(window.location.pathname).toBe("/assessment/reports/assessment-report-e2e"));
     expectBottomNavHidden();
+    await waitFor(() => expect(apiMocks.getStudentAssessmentReport).toHaveBeenCalledWith("assessment-report-e2e"));
     await waitFor(() => expect(document.querySelector(".summary-ai-text ul.ai-md-list")).not.toBeNull());
     fireEvent.click(screen.getByRole("button", { name: "问问Atom" }));
     await waitFor(() => expect(window.location.pathname).toBe("/ai/chat"));
     expectBottomNavHidden();
     act(() => window.history.back());
-    await waitFor(() => expect(window.location.pathname).toBe("/assessment/report/posttest-session-e2e"));
+    await waitFor(() => expect(window.location.pathname).toBe("/assessment/reports/assessment-report-e2e"));
 
     fireEvent.click(screen.getByRole("button", { name: "继续学习" }));
     await waitFor(() => expect(window.location.pathname).toBe("/learn"));
     expect(activeRoot()).toBe("learn");
 
     await clickRoot("profile");
+    fireEvent.click(screen.getByRole("button", { name: /测评报告/ }));
+    await waitFor(() => expect(window.location.pathname).toBe("/profile/reports"));
+    await waitFor(() => expect(apiMocks.getStudentAssessmentReports).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: /智能测评报告/ }));
+    await waitFor(() => expect(window.location.pathname).toBe("/assessment/reports/assessment-report-e2e"));
+    act(() => window.history.back());
+    await waitFor(() => expect(window.location.pathname).toBe("/profile/reports"));
+    act(() => window.history.back());
+    await waitFor(() => expect(window.location.pathname).toBe("/profile"));
     expect(screen.queryByRole("form", { name: "学生端反馈" })).not.toBeInTheDocument();
-    fireEvent.click(document.querySelector<HTMLButtonElement>(".profile-entry-card")!);
+    fireEvent.click(screen.getByRole("button", { name: /提交反馈/ }));
     await waitFor(() => expect(window.location.pathname).toBe("/feedback/new"));
     expectBottomNavHidden();
     fireEvent.click(screen.getByRole("button", { name: "内容问题" }));

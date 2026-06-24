@@ -16,6 +16,7 @@ export type StudentDetailSource =
   | "assessment-custom"
   | "assessment-session"
   | "assessment-report"
+  | "profile-reports"
   | "feedback";
 
 export type StudentRouteSearch = {

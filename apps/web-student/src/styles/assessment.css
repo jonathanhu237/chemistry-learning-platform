@@ -125,6 +125,16 @@
   font-weight: 900;
 }
 
+.assessment-report-panel {
+  gap: 12px;
+}
+
+.assessment-report-hero {
+  background:
+    linear-gradient(135deg, rgba(0, 88, 38, 0.08), rgba(255, 253, 246, 0.96) 58%),
+    rgba(255, 253, 246, 0.94);
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -564,6 +574,10 @@
   padding: 12px;
   color: var(--ink);
   background: rgba(0, 88, 38, 0.06);
+}
+
+.assessment-report-mistakes {
+  margin-top: 12px;
 }
 
 .mistake-ai-answer > span {

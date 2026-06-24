@@ -25,6 +25,12 @@ import type {
   PlatformSettingsResponse,
   SmartAssessmentSettings,
 } from "../../api/settings";
+import {
+  getGlobalAssessmentReportPrompts,
+  resetGlobalAssessmentReportPrompts,
+  updateGlobalAssessmentReportPrompts,
+  type AssessmentReportPromptSettings,
+} from "../../api/assessmentReports";
 import { api, putJson } from "../../api/http";
 import { PageTitle } from "../../components/PageTitle";
 import { QueryState } from "../../components/QueryState";
@@ -146,6 +152,7 @@ export function SettingsPage() {
   const [form] = Form.useForm();
   const [aiFeatureForm] = Form.useForm();
   const [aiConfigForm] = Form.useForm();
+  const [reportPromptForm] = Form.useForm();
   const platformSettings = useQuery({
     queryKey: ["platform-settings"],
     queryFn: () => api<PlatformSettingsResponse>("/api/admin/platform-settings"),
@@ -153,6 +160,10 @@ export function SettingsPage() {
   const aiConfig = useQuery({
     queryKey: ["ai-configuration", "settings"],
     queryFn: () => api<AIConfiguration>("/api/admin/ai-configuration"),
+  });
+  const reportPrompts = useQuery({
+    queryKey: ["assessment-report-prompts"],
+    queryFn: getGlobalAssessmentReportPrompts,
   });
 
   useEffect(() => {
@@ -195,6 +206,12 @@ export function SettingsPage() {
       aiFeatureForm.setFieldsValue({ enabled_features: aiConfig.data.enabled_features });
     }
   }, [aiConfig.data, aiConfigForm, aiFeatureForm]);
+
+  useEffect(() => {
+    if (reportPrompts.data) {
+      reportPromptForm.setFieldsValue(reportPrompts.data.settings);
+    }
+  }, [reportPromptForm, reportPrompts.data]);
 
   const save = useMutation({
     mutationFn: (values: LearningBehaviorSettings) => putJson<PlatformSettingsResponse>("/api/admin/platform-settings", values),
@@ -291,6 +308,24 @@ export function SettingsPage() {
         api_key: "",
         textbook_rag: { embedding: { api_key: "" }, rerank: { api_key: "" } },
       });
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+  const saveReportPrompts = useMutation({
+    mutationFn: (values: AssessmentReportPromptSettings) => updateGlobalAssessmentReportPrompts(values),
+    onSuccess: (response) => {
+      message.success("报告生成 Prompt 已保存");
+      reportPromptForm.setFieldsValue(response.settings);
+      void queryClient.invalidateQueries({ queryKey: ["assessment-report-prompts"] });
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+  const resetReportPrompts = useMutation({
+    mutationFn: resetGlobalAssessmentReportPrompts,
+    onSuccess: (response) => {
+      message.success("已恢复默认报告 Prompt");
+      reportPromptForm.setFieldsValue(response.settings);
+      void queryClient.invalidateQueries({ queryKey: ["assessment-report-prompts"] });
     },
     onError: (error) => message.error(errorMessage(error)),
   });
@@ -517,6 +552,46 @@ export function SettingsPage() {
             </Button>
           </Space>
           </Form>
+      </QueryState>
+      <QueryState loading={reportPrompts.isLoading} error={reportPrompts.error}>
+        <Form
+          form={reportPromptForm}
+          layout="vertical"
+          onFinish={(values) => saveReportPrompts.mutate(values as AssessmentReportPromptSettings)}
+        >
+          <Card
+            title="测评报告 Prompt"
+            extra={
+              <Space>
+                <Tag color={reportPrompts.data?.source === "global" ? "green" : "default"}>全局默认</Tag>
+                <Button size="small" loading={resetReportPrompts.isPending} disabled={!reportPrompts.data?.can_edit} onClick={() => resetReportPrompts.mutate()}>
+                  恢复默认
+                </Button>
+              </Space>
+            }
+          >
+            {!reportPrompts.data?.can_edit ? <Alert type="info" showIcon title="当前账号可查看报告 Prompt，只有管理员可以修改。" className="section-alert" /> : null}
+            <Text type="secondary" className="block-text ai-card-description">
+              学生提交课前测试、自主测评、智能测评或点位测评时，会用这里的 Prompt 生成报告总结和错题讲解并写入库。
+            </Text>
+            <div className="report-prompt-variable-list">
+              {(reportPrompts.data?.supported_variables || []).map((item) => (
+                <Tag key={item}>{item}</Tag>
+              ))}
+            </div>
+            <Form.Item name="summary_prompt" label="报告总结 Prompt" rules={[{ required: true, message: "请输入报告总结 Prompt" }]}>
+              <Input.TextArea rows={8} maxLength={6000} showCount disabled={!reportPrompts.data?.can_edit} className="fixed-textarea monospace-textarea" />
+            </Form.Item>
+            <Form.Item name="mistake_prompt" label="错题讲解 Prompt" rules={[{ required: true, message: "请输入错题讲解 Prompt" }]}>
+              <Input.TextArea rows={8} maxLength={6000} showCount disabled={!reportPrompts.data?.can_edit} className="fixed-textarea monospace-textarea" />
+            </Form.Item>
+            <div className="settings-card-actions">
+              <Button type="primary" htmlType="submit" loading={saveReportPrompts.isPending} disabled={!reportPrompts.data?.can_edit}>
+                保存报告 Prompt
+              </Button>
+            </div>
+          </Card>
+        </Form>
       </QueryState>
       <QueryState loading={aiConfig.isLoading} error={aiConfig.error}>
         <Form

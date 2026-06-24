@@ -467,7 +467,7 @@ def _public_question(question: QuestionCandidate, area: str | None = None) -> Pu
 
 def _response_for_session(session: Any, row: dict[str, Any]) -> StudentPretestResponse:
     if row.get("status") == "completed":
-        return StudentPretestResponse(status="completed", stage=None, questions=[])
+        return StudentPretestResponse(status="completed", session_id=str(row["id"]), stage=None, questions=[])
 
     stage = int(row.get("current_stage") or 1)
     question_ids = _stage_ids(row, stage)
@@ -480,7 +480,7 @@ def _response_for_session(session: Any, row: dict[str, Any]) -> StudentPretestRe
         for question_id in question_ids
         if question_id in questions
     ]
-    return StudentPretestResponse(status="in_progress", stage=stage, questions=public_questions)
+    return StudentPretestResponse(status="in_progress", session_id=str(row["id"]), stage=stage, questions=public_questions)
 
 
 def _load_current_session(session: Any, student_id: str) -> dict[str, Any] | None:

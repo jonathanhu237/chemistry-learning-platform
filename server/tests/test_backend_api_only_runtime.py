@@ -5,7 +5,13 @@ from server.app.app_runtime.main import app
 
 def _route_pairs() -> set[tuple[str, str]]:
     pairs: set[tuple[str, str]] = set()
-    for route in app.routes:
+    stack = list(app.routes)
+    while stack:
+        route = stack.pop(0)
+        original_router = getattr(route, "original_router", None)
+        if original_router is not None:
+            stack[0:0] = list(getattr(original_router, "routes", []) or [])
+            continue
         path = getattr(route, "path", "")
         methods = getattr(route, "methods", None)
         if not methods:
@@ -42,3 +48,5 @@ def test_backend_runtime_keeps_health_and_api_routes() -> None:
     assert ("POST", "/api/auth/login") in routes
     assert ("GET", "/api/admin/classes") in routes
     assert ("GET", "/api/student/app-config") in routes
+    assert ("GET", "/api/student/assessment-reports") in routes
+    assert ("GET", "/api/student/assessment-reports/{report_id}") in routes

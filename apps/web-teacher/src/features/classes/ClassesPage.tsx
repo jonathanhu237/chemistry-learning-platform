@@ -36,6 +36,13 @@ import {
 } from "@ant-design/icons";
 
 import { getSmartAssessmentPreview } from "../../api/classes";
+import {
+  getClassAssessmentReportPrompts,
+  resetClassAssessmentReportPrompts,
+  updateClassAssessmentReportPrompts,
+  type AssessmentReportPromptSettings,
+  type AssessmentReportPromptSettingsResponse,
+} from "../../api/assessmentReports";
 import type {
   ClassItem,
   CustomAssessmentSettingsResponse,
@@ -224,6 +231,7 @@ export function ClassesPage() {
   const [registrationForm] = Form.useForm();
   const [smartAssessmentForm] = Form.useForm();
   const [customAssessmentForm] = Form.useForm();
+  const [reportPromptForm] = Form.useForm();
   const [studentForm] = Form.useForm();
   const classes = useQuery({ queryKey: ["classes"], queryFn: () => api<ClassItem[]>("/api/admin/classes") });
   const selectedClass = (classes.data || []).find((item) => item.id === selectedClassId) || null;
@@ -250,6 +258,11 @@ export function ClassesPage() {
   const customAssessment = useQuery({
     queryKey: ["class-custom-assessment-settings", selectedClassId],
     queryFn: () => api<CustomAssessmentSettingsResponse>(`/api/admin/classes/${selectedClassId}/custom-assessment-settings`),
+    enabled: Boolean(selectedClassId),
+  });
+  const reportPrompts = useQuery({
+    queryKey: ["class-assessment-report-prompts", selectedClassId],
+    queryFn: () => getClassAssessmentReportPrompts(selectedClassId || ""),
     enabled: Boolean(selectedClassId),
   });
   const defaultPasswordMode =
@@ -330,6 +343,12 @@ export function ClassesPage() {
       customAssessmentForm.setFieldsValue(customAssessment.data.settings);
     }
   }, [customAssessment.data, customAssessmentForm]);
+
+  useEffect(() => {
+    if (reportPrompts.data) {
+      reportPromptForm.setFieldsValue(reportPrompts.data.settings);
+    }
+  }, [reportPromptForm, reportPrompts.data]);
 
   useEffect(() => {
     if (!studentOpen) return;
@@ -431,6 +450,30 @@ export function ClassesPage() {
     onError: (error) => message.error(errorMessage(error)),
   });
 
+  const updateReportPrompts = useMutation({
+    mutationFn: (values: AssessmentReportPromptSettings) => {
+      if (!selectedClassId) throw new Error("请先选择班级");
+      return updateClassAssessmentReportPrompts(selectedClassId, values);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["class-assessment-report-prompts", selectedClassId] });
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const resetReportPrompts = useMutation({
+    mutationFn: () => {
+      if (!selectedClassId) throw new Error("请先选择班级");
+      return resetClassAssessmentReportPrompts(selectedClassId);
+    },
+    onSuccess: (response: AssessmentReportPromptSettingsResponse) => {
+      message.success("已恢复继承全局报告 Prompt");
+      reportPromptForm.setFieldsValue(response.settings);
+      void queryClient.invalidateQueries({ queryKey: ["class-assessment-report-prompts", selectedClassId] });
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
   const saveStudent = useMutation({
     mutationFn: (values: Record<string, unknown>) => {
       if (!selectedClassId) throw new Error("请先选择班级");
@@ -489,16 +532,18 @@ export function ClassesPage() {
 
   const saveClassConfiguration = async () => {
     try {
-      const [classValues, registrationValues, smartValues, customValues] = await Promise.all([
+      const [classValues, registrationValues, smartValues, customValues, reportPromptValues] = await Promise.all([
         classSettingsForm.validateFields(),
         registrationForm.validateFields(),
         smartAssessmentForm.validateFields(),
         customAssessmentForm.validateFields(),
+        reportPromptForm.validateFields(),
       ]);
       await updateClass.mutateAsync(classValues);
       await updateRegistration.mutateAsync(registrationValues);
       await updateSmartAssessment.mutateAsync(normalizeSmartAssessment(smartValues as Partial<SmartAssessmentSettings>));
       await updateCustomAssessment.mutateAsync(normalizeCustomAssessment(customValues as Partial<CustomAssessmentSettings>));
+      await updateReportPrompts.mutateAsync(reportPromptValues as AssessmentReportPromptSettings);
       message.success("班级设置已保存");
       setSettingsOpen(false);
     } catch (error) {
@@ -727,13 +772,19 @@ export function ClassesPage() {
         okText="保存设置"
         cancelText="取消"
         width={720}
-        confirmLoading={updateClass.isPending || updateRegistration.isPending || updateSmartAssessment.isPending || updateCustomAssessment.isPending}
+        confirmLoading={
+          updateClass.isPending ||
+          updateRegistration.isPending ||
+          updateSmartAssessment.isPending ||
+          updateCustomAssessment.isPending ||
+          updateReportPrompts.isPending
+        }
         onCancel={() => setSettingsOpen(false)}
         onOk={() => void saveClassConfiguration()}
       >
         <QueryState
-          loading={registration.isLoading || smartAssessment.isLoading || customAssessment.isLoading}
-          error={registration.error || smartAssessment.error || customAssessment.error}
+          loading={registration.isLoading || smartAssessment.isLoading || customAssessment.isLoading || reportPrompts.isLoading}
+          error={registration.error || smartAssessment.error || customAssessment.error || reportPrompts.error}
         >
           <Space orientation="vertical" size={18} className="full">
             <div className="modal-section">
@@ -947,6 +998,37 @@ export function ClassesPage() {
                   学生端默认选中 {customPreview.default_question_count} 题，可选题量最高 {customPreview.max_question_count} 题；每个实验最多抽{" "}
                   {customPreview.max_questions_per_experiment} 题。
                 </Text>
+              </Form>
+            </div>
+            <div className="modal-section">
+              <Flex justify="space-between" align="flex-start" gap={12}>
+                <div>
+                  <Text strong>测评报告 Prompt</Text>
+                  <Text type="secondary" className="block-text">
+                    默认继承系统设置；保存后本班报告生成会优先使用这里的总结和错题讲解 Prompt。
+                  </Text>
+                </div>
+                <Space>
+                  <Tag color={reportPrompts.data?.has_override ? "green" : "default"}>
+                    {reportPrompts.data?.has_override ? "本班覆盖" : "继承全局"}
+                  </Tag>
+                  <Button size="small" loading={resetReportPrompts.isPending} onClick={() => resetReportPrompts.mutate()}>
+                    恢复默认
+                  </Button>
+                </Space>
+              </Flex>
+              <div className="class-report-prompt-vars">
+                {(reportPrompts.data?.supported_variables || []).map((item) => (
+                  <Tag key={item}>{item}</Tag>
+                ))}
+              </div>
+              <Form form={reportPromptForm} layout="vertical" className="modal-form">
+                <Form.Item name="summary_prompt" label="报告总结 Prompt" rules={[{ required: true, message: "请输入报告总结 Prompt" }]}>
+                  <Input.TextArea rows={6} maxLength={6000} showCount className="fixed-textarea monospace-textarea" />
+                </Form.Item>
+                <Form.Item name="mistake_prompt" label="错题讲解 Prompt" rules={[{ required: true, message: "请输入错题讲解 Prompt" }]}>
+                  <Input.TextArea rows={6} maxLength={6000} showCount className="fixed-textarea monospace-textarea" />
+                </Form.Item>
               </Form>
             </div>
           </Space>

@@ -7,6 +7,13 @@ import type { TableColumnsType } from "antd";
 import dayjs from "dayjs";
 
 import type { ClassItem } from "../../api/classes";
+import {
+  getTeacherStudentAssessmentReport,
+  listTeacherStudentAssessmentReports,
+  type AssessmentReportGeneratedText,
+  type StudentAssessmentReport,
+  type StudentAssessmentReportSummary,
+} from "../../api/assessmentReports";
 import type { Experiment } from "../../api/experiments";
 import type {
   AnalyticsDashboard,
@@ -206,6 +213,7 @@ export function AnalyticsPage() {
       </QueryState>
       <StudentReportDrawer
         open={detailTarget?.kind === "student"}
+        classId={activeClassId}
         studentId={selectedStudentId}
         studentName={selectedStudent?.student_name}
         report={studentReport.data}
@@ -334,6 +342,7 @@ function FamilyPreview({
 
 function StudentReportDrawer({
   open,
+  classId,
   studentId,
   studentName,
   report,
@@ -343,6 +352,7 @@ function StudentReportDrawer({
   onClose,
 }: {
   open: boolean;
+  classId?: string;
   studentId?: string;
   studentName?: string;
   report?: StudentReport;
@@ -351,18 +361,33 @@ function StudentReportDrawer({
   initialReportSessionId?: string;
   onClose: () => void;
 }) {
-  const reports = report?.posttest_reports?.length
+  const reportList = useQuery({
+    queryKey: ["student-assessment-reports", classId, studentId],
+    queryFn: () => listTeacherStudentAssessmentReports(classId || "", studentId || ""),
+    enabled: Boolean(open && classId && studentId),
+  });
+  const persistedReports = reportList.data?.reports || [];
+  const legacyReports = report?.posttest_reports?.length
     ? report.posttest_reports
     : report?.latest_posttest_report
-    ? [report.latest_posttest_report]
-    : [];
-  const [selectedSessionId, setSelectedSessionId] = useState<string>();
+      ? [report.latest_posttest_report]
+      : [];
+  const [selectedReportId, setSelectedReportId] = useState<string>();
   useEffect(() => {
     if (!open) return;
-    const nextSessionId = initialReportSessionId || reports[0]?.session_id;
-    setSelectedSessionId(nextSessionId);
-  }, [initialReportSessionId, open, report]);
-  const selectedReport = reports.find((item) => item.session_id === selectedSessionId) || reports[0] || null;
+    const bySession = initialReportSessionId
+      ? persistedReports.find((item) => item.source_session_id === initialReportSessionId)
+      : null;
+    setSelectedReportId(bySession?.id || persistedReports[0]?.id);
+  }, [initialReportSessionId, open, persistedReports]);
+  const selectedSummary = persistedReports.find((item) => item.id === selectedReportId) || persistedReports[0] || null;
+  const selectedReport = useQuery({
+    queryKey: ["student-assessment-report", classId, studentId, selectedSummary?.id],
+    queryFn: () => getTeacherStudentAssessmentReport(classId || "", studentId || "", selectedSummary?.id || ""),
+    enabled: Boolean(open && classId && studentId && selectedSummary?.id),
+  });
+  const legacySelectedReport =
+    legacyReports.find((item) => item.session_id === initialReportSessionId) || legacyReports[0] || null;
   return (
     <Drawer
       title={`${studentName || studentId || "学生"} · 报告中心`}
@@ -371,50 +396,106 @@ function StudentReportDrawer({
       onClose={onClose}
       destroyOnHidden
     >
-      <QueryState loading={loading} error={error}>
-        {selectedReport ? (
+      <QueryState loading={loading || reportList.isLoading} error={error || reportList.error}>
+        {selectedSummary ? (
           <Space orientation="vertical" size={16} className="full analytics-drawer-content">
             <Select
               className="analytics-report-select"
-              value={selectedReport.session_id}
-              onChange={setSelectedSessionId}
-              options={reports.map((item) => ({ value: item.session_id, label: reportOptionLabel(item) }))}
+              value={selectedSummary.id}
+              onChange={setSelectedReportId}
+              options={persistedReports.map((item) => ({ value: item.id, label: assessmentReportOptionLabel(item) }))}
             />
-            <div className="analytics-report-summary">
-              <Statistic title="后测得分" value={selectedReport.score ?? 0} precision={1} suffix="分" />
-              <Statistic title="正确题数" value={selectedReport.correct_count} suffix={`/ ${selectedReport.total_count}`} />
-              <div>
-                <Text type="secondary">完成时间</Text>
-                <strong>{formatDate(selectedReport.completed_at)}</strong>
-              </div>
-            </div>
-            <section className="analytics-drawer-section">
-              <Text type="secondary">本轮实验</Text>
-              <Space size={6} wrap>
-                {selectedReport.experiments.map((experiment) => (
-                  <Tag key={experiment.id}>{cleanExperimentTitle(String(experiment.title || experiment.code || experiment.id))}</Tag>
-                ))}
-              </Space>
-            </section>
-            <AiContentCard title="学习总结" value={selectedReport.ai_summary} />
-            <AiContentCard title="错题讲解" value={selectedReport.ai_mistake_explanation} />
-            <section className="analytics-drawer-section">
-              <div className="analytics-section-title">
-                <strong>错题明细</strong>
-                <Text type="secondary">{selectedReport.wrong_answers.length} 题</Text>
-              </div>
-              <AttemptTable
-                attempts={selectedReport.wrong_answers}
-                emptyText="本次后测没有错题"
-                pagination={selectedReport.wrong_answers.length > 5 ? { pageSize: 5, showSizeChanger: false } : false}
-              />
-            </section>
+            <QueryState loading={selectedReport.isLoading} error={selectedReport.error}>
+              {selectedReport.data ? <TeacherAssessmentReportDetail report={selectedReport.data} /> : null}
+            </QueryState>
           </Space>
+        ) : legacySelectedReport ? (
+          <LegacyPosttestReportDetail report={legacySelectedReport} />
         ) : (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="该学生暂无已完成后测报告" />
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="该学生暂无已完成测评报告" />
         )}
       </QueryState>
     </Drawer>
+  );
+}
+
+function TeacherAssessmentReportDetail({ report }: { report: StudentAssessmentReport }) {
+  const payload = asRecord(report.payload);
+  const experiments = asRecordArray(payload.experiments);
+  const wrongAnswers = asRecordArray(payload.wrong_answers);
+  return (
+    <>
+      <div className="analytics-report-summary">
+        <Statistic title="测评得分" value={report.score ?? 0} precision={1} suffix="分" />
+        <Statistic title="正确题数" value={report.correct_count} suffix={`/ ${report.total_count}`} />
+        <div>
+          <Text type="secondary">完成时间</Text>
+          <strong>{formatDate(report.completed_at)}</strong>
+        </div>
+      </div>
+      <section className="analytics-drawer-section">
+        <div className="analytics-section-title">
+          <strong>{report.title || assessmentReportTypeLabel(report.report_type)}</strong>
+          <Tag>{assessmentReportTypeLabel(report.report_type)}</Tag>
+        </div>
+        {experiments.length ? (
+          <Space size={6} wrap>
+            {experiments.map((experiment, index) => (
+              <Tag key={String(experiment.id || index)}>
+                {cleanExperimentTitle(String(experiment.title || experiment.experiment_title || experiment.id || "实验"))}
+              </Tag>
+            ))}
+          </Space>
+        ) : (
+          <Text type="secondary">暂无实验范围</Text>
+        )}
+      </section>
+      <AiContentCard title="学习总结" value={report.summary} />
+      <AiContentCard title="错题讲解" value={report.mistake_explanation} />
+      <section className="analytics-drawer-section">
+        <div className="analytics-section-title">
+          <strong>错题明细</strong>
+          <Text type="secondary">{wrongAnswers.length} 题</Text>
+        </div>
+        {wrongAnswers.length ? <ReportWrongAnswerList items={wrongAnswers} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="本次测评没有错题" />}
+      </section>
+    </>
+  );
+}
+
+function LegacyPosttestReportDetail({ report }: { report: TeacherLatestPosttestReport }) {
+  return (
+    <Space orientation="vertical" size={16} className="full analytics-drawer-content">
+      <div className="analytics-report-summary">
+        <Statistic title="后测得分" value={report.score ?? 0} precision={1} suffix="分" />
+        <Statistic title="正确题数" value={report.correct_count} suffix={`/ ${report.total_count}`} />
+        <div>
+          <Text type="secondary">完成时间</Text>
+          <strong>{formatDate(report.completed_at)}</strong>
+        </div>
+      </div>
+      <section className="analytics-drawer-section">
+        <Text type="secondary">本轮实验</Text>
+        <Space size={6} wrap>
+          {report.experiments.map((experiment) => (
+            <Tag key={experiment.id}>{cleanExperimentTitle(String(experiment.title || experiment.code || experiment.id))}</Tag>
+          ))}
+        </Space>
+      </section>
+      <AiContentCard title="学习总结" value={report.ai_summary} />
+      <AiContentCard title="错题讲解" value={report.ai_mistake_explanation} />
+      <section className="analytics-drawer-section">
+        <div className="analytics-section-title">
+          <strong>错题明细</strong>
+          <Text type="secondary">{report.wrong_answers.length} 题</Text>
+        </div>
+        <AttemptTable
+          attempts={report.wrong_answers}
+          emptyText="本次后测没有错题"
+          pagination={report.wrong_answers.length > 5 ? { pageSize: 5, showSizeChanger: false } : false}
+        />
+      </section>
+    </Space>
   );
 }
 
@@ -634,7 +715,23 @@ function ExperimentEvidenceDrawer({
   );
 }
 
-function AiContentCard({ title, value }: { title: string; value?: TeacherReportAiContent | null }) {
+function ReportWrongAnswerList({ items }: { items: Array<Record<string, unknown>> }) {
+  return (
+    <div className="analytics-report-wrong-list">
+      {items.map((item, index) => (
+        <article key={String(item.question_id || index)}>
+          <Text type="secondary">Q{index + 1}</Text>
+          <Text strong>{String(item.stem || "题目")}</Text>
+          <span>学生答案：{renderAnswerText(item.submitted_answer)}</span>
+          <span>参考答案：{renderAnswerText(item.correct_answer)}</span>
+          {item.explanation ? <small>{String(item.explanation)}</small> : null}
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function AiContentCard({ title, value }: { title: string; value?: TeacherReportAiContent | AssessmentReportGeneratedText | null }) {
   return (
     <Card size="small" title={title} extra={value ? <Tag>{value.source === "ai" ? "AI 总结" : "规则总结"}</Tag> : null}>
       {value ? (
@@ -647,6 +744,14 @@ function AiContentCard({ title, value }: { title: string; value?: TeacherReportA
       )}
     </Card>
   );
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function asRecordArray(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item))) : [];
 }
 
 function AttemptTable({
@@ -749,9 +854,29 @@ function reportOptionLabel(report: TeacherLatestPosttestReport) {
   return `${formatDate(report.completed_at)} · ${formatScore(report.score ?? 0)} 分${experimentLabel ? ` · ${experimentLabel}` : ""}`;
 }
 
+function assessmentReportTypeLabel(type: StudentAssessmentReportSummary["report_type"]) {
+  if (type === "pretest") return "课前测试";
+  if (type === "custom") return "自主测评";
+  if (type === "point") return "点位测评";
+  if (type === "posttest") return "学习后测";
+  return "智能测评";
+}
+
+function assessmentReportOptionLabel(report: StudentAssessmentReportSummary) {
+  return `${formatDate(report.completed_at)} · ${formatScore(report.score ?? 0)} 分 · ${assessmentReportTypeLabel(report.report_type)}`;
+}
+
 function renderAnswer(value: unknown) {
   if (value === null || value === undefined || value === "") return <Text type="secondary">-</Text>;
   if (Array.isArray(value)) return value.join("、");
+  if (typeof value === "boolean") return value ? "正确" : "错误";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function renderAnswerText(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "-";
+  if (Array.isArray(value)) return value.map(renderAnswerText).join("、");
   if (typeof value === "boolean") return value ? "正确" : "错误";
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);

@@ -5,6 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from server.app.domains.platform.settings import CustomAssessmentSettings, SmartAssessmentSettings
+from server.app.student_assessment_report_schemas import StudentAssessmentReport
 
 
 SmartAssessmentStatus = Literal["in_progress", "completed"]
@@ -141,6 +142,7 @@ class StudentSmartAssessmentReport(BaseModel):
 class StudentSmartAssessmentSubmitResponse(BaseModel):
     status: Literal["completed"]
     report: StudentSmartAssessmentReport
+    assessment_report: StudentAssessmentReport | None = None
 
 
 class StudentAssessmentStatusResponse(BaseModel):

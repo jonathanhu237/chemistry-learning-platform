@@ -80,6 +80,8 @@ export type StudentPretestResponse = {
   status: "in_progress" | "completed";
   stage: 1 | 2 | null;
   questions: PublicPretestQuestion[];
+  session_id?: string | null;
+  report?: StudentAssessmentReport | null;
 };
 
 export type StudentPretestAnswer = {
@@ -484,6 +486,54 @@ export type StudentPosttestSubmitResponse = {
   report: StudentPosttestReport;
 };
 
+export type StudentAssessmentReportType = "pretest" | "smart" | "custom" | "point" | "posttest";
+
+export type StudentAssessmentReportGeneratedText = {
+  text: string;
+  source: "ai" | "fallback";
+  mode: string;
+  generated_at?: string | null;
+};
+
+export type StudentAssessmentReportSummary = {
+  id: string;
+  student_id: string;
+  class_id?: string | null;
+  report_type: StudentAssessmentReportType;
+  source_session_id: string;
+  title: string;
+  score: number;
+  correct_count: number;
+  total_count: number;
+  correct_rate: number;
+  wrong_count: number;
+  completed_at: string;
+};
+
+export type StudentAssessmentReport = StudentAssessmentReportSummary & {
+  summary: StudentAssessmentReportGeneratedText;
+  mistake_explanation: StudentAssessmentReportGeneratedText;
+  prompt_snapshot: Record<string, unknown>;
+  payload: {
+    assessment_mode?: StudentAssessmentReportType | string;
+    strategy?: SmartAssessmentStrategy;
+    composition?: SmartAssessmentCompositionSummary;
+    experiments?: SmartAssessmentExperimentSummary[];
+    questions?: Array<Record<string, unknown>>;
+    wrong_answers?: StudentSmartAssessmentWrongAnswer[];
+    mastery_changes?: StudentSmartAssessmentMasteryChange[];
+    mastery_before_average?: number | null;
+    mastery_after_average?: number | null;
+    mastery_delta?: number | null;
+    next_recommendation?: string;
+    [key: string]: unknown;
+  };
+};
+
+export type StudentAssessmentReportListResponse = {
+  reports: StudentAssessmentReportSummary[];
+};
+
 export type SmartAssessmentStrategy = {
   enabled: boolean;
   question_count: number;
@@ -585,6 +635,7 @@ export type StudentSmartAssessmentReport = {
 export type StudentSmartAssessmentSubmitResponse = {
   status: "completed";
   report: StudentSmartAssessmentReport;
+  assessment_report?: StudentAssessmentReport | null;
 };
 
 export type StudentAssessmentStatusResponse = {
@@ -975,6 +1026,14 @@ export function submitStudentPretest(stage: 1 | 2, answers: StudentPretestAnswer
     stage,
     answers,
   });
+}
+
+export function getStudentAssessmentReports(): Promise<StudentAssessmentReportListResponse> {
+  return api<StudentAssessmentReportListResponse>("/api/student/assessment-reports");
+}
+
+export function getStudentAssessmentReport(reportId: string): Promise<StudentAssessmentReport> {
+  return api<StudentAssessmentReport>(`/api/student/assessment-reports/${encodeURIComponent(reportId)}`);
 }
 
 export function getStudentLearningHome(): Promise<StudentLearningHomeResponse> {
