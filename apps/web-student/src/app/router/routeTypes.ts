@@ -11,6 +11,7 @@ export type StudentDetailSource =
   | "chapter"
   | "element"
   | "point"
+  | "search"
   | "video-library"
   | "assessment-custom"
   | "assessment-session"

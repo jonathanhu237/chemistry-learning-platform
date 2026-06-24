@@ -1,5 +1,5 @@
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { MessageCircle, ClipboardList } from "lucide-react";
+import { Atom, ClipboardList } from "lucide-react";
 import { loadPosttestReport } from "../../app/router/assessmentSessionStore";
 import { navigateToAiChat, navigateToRoot } from "../../app/router/navigation";
 import type { StudentRouteSearch } from "../../app/router/routeTypes";
@@ -31,8 +31,8 @@ export function AssessmentReportPage() {
           navigateToAiChat(navigate, context, "assessment-report");
         }}
       >
-        <MessageCircle size={18} />
-        <span>问 AI</span>
+        <Atom size={18} />
+        <span>问问Atom</span>
       </button>
     ) : null;
 

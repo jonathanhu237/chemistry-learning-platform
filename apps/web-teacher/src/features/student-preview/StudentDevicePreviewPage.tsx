@@ -7,7 +7,6 @@ import { useMutation } from "@tanstack/react-query";
 import {
   DeviceFrame,
   devicePresets,
-  inferStudentAppBase,
   openDevicePreviewWindow,
   resolveStudentPreviewUrl,
   type DevicePreset,
@@ -31,12 +30,11 @@ function formatExpiry(value?: string): string {
 
 function allowedPreviewUrl(value: string): string {
   const resolved = resolveStudentPreviewUrl(value);
-  const expectedOrigin = new URL(inferStudentAppBase()).origin;
-  const actualOrigin = new URL(resolved).origin;
-  if (actualOrigin !== expectedOrigin) {
-    throw new Error(`Preview origin ${actualOrigin} is not allowed. Expected ${expectedOrigin}.`);
+  const url = new URL(resolved);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error(`Preview URL protocol ${url.protocol} is not allowed.`);
   }
-  return resolved;
+  return url.toString();
 }
 
 export function StudentDevicePreviewPage() {

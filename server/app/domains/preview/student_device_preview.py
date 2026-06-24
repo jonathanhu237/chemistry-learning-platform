@@ -9,7 +9,6 @@ from urllib.parse import urlencode
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
-from server.app.auth import AuthUser, LoginResponse
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
 from server.app.infrastructure.database import db_session
 from server.app.infrastructure.settings import get_settings
@@ -20,6 +19,31 @@ TEACHER_PREVIEW_CLASS_PURPOSE = "teacher_preview"
 TEACHER_PREVIEW_ACCOUNT_PURPOSE = "teacher_preview"
 STUDENT_DEVICE_PREVIEW_PURPOSE = "teacher_student_device_preview"
 STUDENT_PREVIEW_TICKET_ROLE = "student_preview_ticket"
+
+
+class PreviewAuthUser(BaseModel):
+    id: str
+    username: str
+    role: str
+    display_name: str
+    status: str
+    must_change_password: bool = False
+    password_version: int = 1
+    student_id: str | None = None
+    class_id: str | None = None
+    class_name: str | None = None
+    preview_mode: bool = False
+    preview_purpose: str | None = None
+    preview_teacher_user_id: str | None = None
+    preview_class_id: str | None = None
+    preview_student_id: str | None = None
+
+
+class PreviewLoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_at: str
+    user: PreviewAuthUser
 
 
 class StudentPreviewPolicy(BaseModel):
@@ -42,7 +66,7 @@ class StudentPreviewExchangeRequest(BaseModel):
     ticket: str
 
 
-class StudentPreviewExchangeResponse(LoginResponse):
+class StudentPreviewExchangeResponse(PreviewLoginResponse):
     preview_policy: StudentPreviewPolicy
 
 
@@ -91,8 +115,8 @@ def _json(value: dict[str, Any]) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
-def _auth_user_from_row(row: dict[str, Any], *, preview: bool = False) -> AuthUser:
-    return AuthUser(
+def _auth_user_from_row(row: dict[str, Any], *, preview: bool = False) -> PreviewAuthUser:
+    return PreviewAuthUser(
         id=str(row["id"]),
         username=str(row["username"]),
         role=str(row["role"]),
@@ -111,7 +135,7 @@ def _auth_user_from_row(row: dict[str, Any], *, preview: bool = False) -> AuthUs
     )
 
 
-def _load_teacher_user(teacher_id: str) -> AuthUser:
+def _load_teacher_user(teacher_id: str) -> PreviewAuthUser:
     with db_session() as session:
         row = (
             session.execute(

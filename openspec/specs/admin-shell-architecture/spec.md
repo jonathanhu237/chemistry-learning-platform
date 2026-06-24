@@ -3,17 +3,17 @@
 ## Purpose
 TBD - created by archiving change split-frontend-deployment-admin-shell. Update Purpose after archive.
 ## Requirements
-### Requirement: Admin app ownership moves under src/app
-The teacher/admin frontend SHALL use `apps/admin-web/src/app/*` as the canonical app-level owner for providers, theme, auth, routes, navigation, and shell layout.
+### Requirement: Teacher app ownership moves under src/app
+The teacher console frontend SHALL use `apps/web-teacher/src/app/*` as the canonical app-level owner for providers, theme, auth, routes, navigation, and shell layout.
 
-#### Scenario: Admin app entrypoint is inspected
-- **WHEN** `apps/admin-web/src/main.tsx` imports the admin app
-- **THEN** it MUST import the canonical app entrypoint from `apps/admin-web/src/app`
-- **AND** it MUST NOT import `apps/admin-web/src/App.tsx`.
+#### Scenario: Teacher app entrypoint is inspected
+- **WHEN** `apps/web-teacher/src/main.tsx` imports the teacher console app
+- **THEN** it MUST import the canonical app entrypoint from `apps/web-teacher/src/app`
+- **AND** it MUST NOT import `apps/web-teacher/src/App.tsx`.
 
 #### Scenario: Legacy root App owner is checked
 - **WHEN** the admin shell refactor is complete
-- **THEN** `apps/admin-web/src/App.tsx` MUST NOT exist as a compatibility wrapper
+- **THEN** `apps/web-teacher/src/App.tsx` MUST NOT exist as a compatibility wrapper
 - **AND** no source file MUST import from the deleted root App path.
 
 ### Requirement: Admin routes use frontend root paths
@@ -61,4 +61,3 @@ The teacher/admin frontend SHALL remove old route aliases that existed only beca
 - **WHEN** `/curriculum` or `/review` is opened on the admin frontend service
 - **THEN** the app MUST NOT preserve the old alias unless the route registry explicitly lists it as canonical
 - **AND** tests MUST reflect the canonical route set.
-

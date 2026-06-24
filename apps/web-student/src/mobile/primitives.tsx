@@ -1,5 +1,6 @@
 import {
   ButtonHTMLAttributes,
+  forwardRef,
   InputHTMLAttributes,
   ReactNode,
   TextareaHTMLAttributes,
@@ -43,9 +44,12 @@ export function MobileField({ className, ...props }: InputHTMLAttributes<HTMLInp
   return <input className={cx("mobile-field", className)} {...props} />;
 }
 
-export function MobileTextArea({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={cx("mobile-textarea", className)} {...props} />;
-}
+export const MobileTextArea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function MobileTextArea(
+  { className, ...props },
+  ref,
+) {
+  return <textarea ref={ref} className={cx("mobile-textarea", className)} {...props} />;
+});
 
 export function MobileStatus({
   icon,

@@ -586,9 +586,11 @@ export function changeCatalogNodeStatus(
   return postJson<CatalogNodeDetail>(`/api/admin/catalog/nodes/${encodeURIComponent(nodeId)}/status`, payload);
 }
 
-export function createCatalogPointPreviewToken(nodeId: string): Promise<CatalogPreviewTokenResponse> {
+export function createCatalogNodePreviewToken(nodeId: string): Promise<CatalogPreviewTokenResponse> {
   return postJson<CatalogPreviewTokenResponse>(`/api/admin/catalog/nodes/${encodeURIComponent(nodeId)}/preview-token`, {});
 }
+
+export const createCatalogPointPreviewToken = createCatalogNodePreviewToken;
 
 export function saveCatalogPointContent(nodeId: string, payload: CatalogPointContentPayload): Promise<CatalogNodeDetail> {
   return putJson<CatalogNodeDetail>(`/api/admin/catalog/nodes/${encodeURIComponent(nodeId)}/point-content`, payload);

@@ -7,7 +7,7 @@ TBD - created by archiving change split-admin-api-and-experiments-feature. Updat
 The admin experiments route SHALL keep `ExperimentsPage.tsx` as a route composition owner rather than a monolithic feature implementation.
 
 #### Scenario: Experiments page is inspected
-- **WHEN** reviewers inspect `apps/admin-web/src/features/experiments/ExperimentsPage.tsx`
+- **WHEN** reviewers inspect `apps/web-teacher/src/features/experiments/ExperimentsPage.tsx`
 - **THEN** the file MUST primarily compose feature-owned hooks and components
 - **AND** experiment list tables, point-content modal internals, video binding modal internals, preview modal internals, and pure request mappers MUST live in explicit child modules.
 
@@ -84,4 +84,3 @@ The experiments feature split SHALL be behavior-preserving and test-backed.
 #### Scenario: Admin e2e smoke runs
 - **WHEN** `npm run e2e:smoke` runs against the admin frontend root origin
 - **THEN** `/experiments` MUST render without login redirection, console errors, failed network requests, or missing route chunks.
-

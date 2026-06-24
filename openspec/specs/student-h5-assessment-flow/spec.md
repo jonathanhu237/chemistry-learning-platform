@@ -1,7 +1,7 @@
 # student-h5-assessment-flow Specification
 
 ## Purpose
-TBD - created by archiving change integrate-student-h5-platform. Update Purpose after archive.
+Define student H5 pretest, posttest, explanation caching, mastery update, and recommendation safety behavior.
 ## Requirements
 ### Requirement: Student pretest session lifecycle
 The system SHALL let students start, continue, and submit pretest sessions using server-side session records.
@@ -66,7 +66,7 @@ The student H5 learning recommendation logic SHALL be allowed to use experiment 
 #### Scenario: Mastery data exists for candidate chapters
 - **WHEN** experiment mastery data exists for a student's candidate chapter experiments
 - **THEN** the recommendation logic MAY choose the weakest relevant current-family chapter profile
-- **AND** the returned learning payload MUST still use the seed-backed profile and chapter experiment grouping contract.
+- **AND** the returned learning payload MUST still use the seed-backed profile, catalog chapter, and point grouping contract.
 
 #### Scenario: Mastery data is missing
 - **WHEN** no experiment mastery evidence exists or the mastery query is unavailable

@@ -1,7 +1,7 @@
 # production-engineering-governance Specification
 
 ## Purpose
-TBD - created by archiving change standardize-application-engineering-structure. Update Purpose after archive.
+Define engineering governance for structural changes, required validation gates, Compose service contracts, and OpenSpec capture/cleanup discipline.
 ## Requirements
 ### Requirement: Structural refactors declare their validation gate
 Every structural refactor SHALL declare which validation stages are required before commit.
@@ -38,7 +38,24 @@ The production engineering workflow SHALL treat required Compose services as par
 Large structure changes SHALL be captured in OpenSpec before implementation begins.
 
 #### Scenario: A future cleanup proposes moving many files
-- **WHEN** a cleanup proposes destructive movement across student H5, admin web, backend, scripts, or Docker/Compose
+- **WHEN** a cleanup proposes destructive movement across `web-student`, `web-teacher`, `web-admin`, backend, scripts, or Docker/Compose
 - **THEN** the OpenSpec proposal/design MUST include the current owner map, target owner map, validation plan, and rollback posture
 - **AND** implementation tasks MUST be granular enough to verify each surface independently.
 
+### Requirement: OpenSpec inventory cleanup preserves durable capability boundaries
+The engineering workflow SHALL consolidate OpenSpec capability specs when repeated implementation changes leave obsolete, empty, duplicate, or iteration-named specs behind.
+
+#### Scenario: Completed UI iterations create overlapping specs
+- **WHEN** several archived changes describe the same durable product surface through narrow implementation-era capability names
+- **THEN** a follow-up cleanup MUST merge those requirements into stable owner capabilities
+- **AND** it MUST preserve the normative requirements while removing obsolete or empty capability specs.
+
+#### Scenario: A spec becomes an obsolete placeholder
+- **WHEN** a capability spec has no requirements or describes a product path that has been replaced by current behavior
+- **THEN** the cleanup MUST either delete the empty capability or migrate any still-valid requirements into the current owner spec
+- **AND** the change summary MUST identify the replacement owner.
+
+#### Scenario: A cleanup touches only specs
+- **WHEN** an OpenSpec cleanup changes only `openspec/specs` and OpenSpec change artifacts
+- **THEN** strict spec validation is the required verification gate
+- **AND** application code tests are not required unless runtime code or generated artifacts are changed.

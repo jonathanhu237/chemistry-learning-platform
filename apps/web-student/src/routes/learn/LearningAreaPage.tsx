@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { Atom, FlaskConical, LoaderCircle } from "lucide-react";
+import { BookOpenCheck, FlaskConical, LoaderCircle } from "lucide-react";
 import { navigateToChapter } from "../../app/router/navigation";
 import type { StudentRouteSearch } from "../../app/router/routeTypes";
 import { DetailPageFrame } from "../../app/shell/DetailPageFrame";
@@ -51,7 +51,7 @@ export function LearningAreaPage() {
     <DetailPageFrame title={title} source={search.from || "learn"}>
       <section className="learning-panel" aria-label="元素周期表选区章节">
         {!selectedArea ? (
-          <MobileEmptyState className="empty-learning-card" icon={<Atom size={20} />}>
+          <MobileEmptyState className="empty-learning-card" icon={<BookOpenCheck size={20} />}>
             <span>这个学习选区暂不可用</span>
           </MobileEmptyState>
         ) : null}

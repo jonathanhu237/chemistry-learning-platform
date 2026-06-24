@@ -1,23 +1,23 @@
 ## Purpose
 
-Define the structure, runtime behavior, validation expectations, and publishing readiness for the standalone SYSU chemistry admin-management repository, including its student H5 login shell.
+Define the structure, runtime behavior, validation expectations, and publishing readiness for the standalone SYSU chemistry management repository, including the separated student H5, teacher console, and platform operations frontends.
 
 ## Requirements
 
 ### Requirement: Standalone Platform Repository Structure
-The extraction process SHALL produce a separate local repository containing the admin web application, the student H5 login shell, backend runtime, database migrations, and admin bootstrap/import utilities needed to operate the management console.
+The extraction process SHALL produce a separate local repository containing the platform operations frontend, teacher console frontend, student H5 frontend, backend runtime, database migrations, and bootstrap/import utilities needed to operate the system.
 
 #### Scenario: Extracted repository excludes student mini-program source
 - **WHEN** the standalone repository is generated
 - **THEN** it MUST NOT contain `apps/miniprogram`, root `miniprogram`, WXML/WXSS student mini-program pages, or generated student app bundles
-- **AND** it MAY contain `apps/student-web` for the browser-based H5 login surface
+- **AND** it MAY contain `apps/web-student` for the browser-based student H5 surface
 
 #### Scenario: Extracted repository retains runtime files
 - **WHEN** the standalone repository is generated
-- **THEN** it MUST contain `apps/admin-web`, `apps/student-web`, `server`, required backend migration files, selected admin/import scripts, runtime configuration examples, and documentation for local operation
+- **THEN** it MUST contain `apps/web-admin`, `apps/web-teacher`, `apps/web-student`, `server`, required backend migration files, selected import scripts, runtime configuration examples, and documentation for local operation
 
 ### Requirement: Scoped Backend Entrypoint
-The extracted repository SHALL run the backend through a scoped FastAPI entrypoint that serves the admin console, the student H5 login shell, and only the API surfaces required by those experiences by default.
+The extracted repository SHALL run the backend through a scoped FastAPI entrypoint that serves API routes only, while the frontend services serve their own SPA bundles.
 
 #### Scenario: Server starts without student learning routes
 - **WHEN** the extracted backend is imported through its scoped entrypoint
@@ -39,11 +39,11 @@ The extraction process SHALL exclude bulky or non-admin delivery artifacts that 
 - **THEN** the required seed files MUST be preserved or the scripts/documentation MUST explain how to regenerate them
 
 ### Requirement: Independent Validation
-The standalone repository SHALL include enough configuration and scripts to validate that the admin web app and admin backend can build or import independently.
+The standalone repository SHALL include enough configuration and scripts to validate that the separated frontend apps and scoped backend can build or import independently.
 
 #### Scenario: Frontend validation succeeds
 - **WHEN** validation is run in the standalone repository
-- **THEN** the admin web app typecheck and production build MUST complete successfully
+- **THEN** the relevant `web-admin`, `web-teacher`, and `web-student` frontend typechecks and production builds MUST complete successfully when those apps are included in the extracted repository
 
 #### Scenario: Backend validation succeeds
 - **WHEN** validation is run in the standalone repository

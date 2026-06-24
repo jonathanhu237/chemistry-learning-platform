@@ -1,14 +1,45 @@
-import { describe, expect, it } from "vitest";
+import { cleanup, render, fireEvent } from "@testing-library/react";
+import { createElement } from "react";
+import type { RefObject } from "react";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
-import { mapClientPointToSurfacePoint } from "./PreviewGestureSurface";
+import { mapClientPointToSurfacePoint, PreviewGestureSurface } from "./PreviewGestureSurface";
 import {
   appendPreviewFrameId,
   createPreviewInputMessage,
   studentPreviewInputNamespace,
   studentPreviewInputVersion,
+  type PreviewInputMessage,
 } from "./previewInputProtocol";
 
+function defineSurfaceRect(surface: HTMLElement) {
+  Object.defineProperty(surface, "offsetWidth", { configurable: true, value: 300 });
+  Object.defineProperty(surface, "offsetHeight", { configurable: true, value: 600 });
+  surface.getBoundingClientRect = () =>
+    ({
+      left: 100,
+      top: 200,
+      width: 300,
+      height: 600,
+      right: 400,
+      bottom: 800,
+      x: 100,
+      y: 200,
+      toJSON: () => ({}),
+    }) as DOMRect;
+}
+
 describe("teacher preview input protocol", () => {
+  beforeEach(() => {
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 0));
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => window.clearTimeout(id));
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
   it("adds frame and teacher-origin context to the student preview URL", () => {
     const url = appendPreviewFrameId("http://127.0.0.1:5173/preview/session?ticket=abc", "frame-1");
     const parsed = new URL(url);
@@ -22,7 +53,7 @@ describe("teacher preview input protocol", () => {
     const message = createPreviewInputMessage({
       frameId: "frame-1",
       sequenceId: "sequence-1",
-      type: "tap",
+      type: "touchEnd",
       point: { x: 10, y: 20 },
       primaryButton: false,
       timestamp: 12345,
@@ -34,11 +65,79 @@ describe("teacher preview input protocol", () => {
       version: studentPreviewInputVersion,
       frameId: "frame-1",
       sequenceId: "sequence-1",
-      type: "tap",
+      type: "touchEnd",
       point: { x: 10, y: 20 },
       primaryButton: false,
     });
     expect(message.timestamp).toBe(12345);
+  });
+
+  it("sends ordered lifecycle messages from native pointer events", () => {
+    const postMessage = vi.fn();
+    const iframeRef = {
+      current: { contentWindow: { postMessage } },
+    } as unknown as RefObject<HTMLIFrameElement | null>;
+
+    render(
+      createElement(PreviewGestureSurface, {
+        enabled: true,
+        iframeRef,
+        frameId: "frame-1",
+        targetOrigin: "http://127.0.0.1:5173",
+      }),
+    );
+    const surface = document.querySelector<HTMLElement>(".student-preview-gesture-surface")!;
+    defineSurfaceRect(surface);
+
+    fireEvent.pointerDown(surface, { pointerId: 7, isPrimary: true, button: 0, clientX: 150, clientY: 250 });
+    fireEvent.pointerMove(surface, { pointerId: 7, isPrimary: true, buttons: 1, clientX: 160, clientY: 255 });
+    fireEvent.pointerUp(surface, { pointerId: 7, isPrimary: true, button: 0, clientX: 160, clientY: 255 });
+
+    const messages = postMessage.mock.calls.map(([message]) => message as PreviewInputMessage);
+    expect(messages.map((message) => message.type)).toEqual(["touchStart", "touchMove", "touchEnd"]);
+    expect(new Set(messages.map((message) => message.sequenceId)).size).toBe(1);
+    expect(messages[0]).toMatchObject({
+      namespace: studentPreviewInputNamespace,
+      version: studentPreviewInputVersion,
+      frameId: "frame-1",
+      point: { x: 50, y: 50 },
+      primaryButton: true,
+    });
+    expect(messages[1]).toMatchObject({
+      point: { x: 60, y: 55 },
+      previousPoint: { x: 50, y: 50 },
+      primaryButton: true,
+    });
+    expect(messages[2]).toMatchObject({
+      point: { x: 60, y: 55 },
+      previousPoint: { x: 60, y: 55 },
+      primaryButton: false,
+    });
+  });
+
+  it("cancels active pointer sequences through lifecycle messages", () => {
+    const postMessage = vi.fn();
+    const iframeRef = {
+      current: { contentWindow: { postMessage } },
+    } as unknown as RefObject<HTMLIFrameElement | null>;
+
+    render(
+      createElement(PreviewGestureSurface, {
+        enabled: true,
+        iframeRef,
+        frameId: "frame-1",
+        targetOrigin: "http://127.0.0.1:5173",
+      }),
+    );
+    const surface = document.querySelector<HTMLElement>(".student-preview-gesture-surface")!;
+    defineSurfaceRect(surface);
+
+    fireEvent.pointerDown(surface, { pointerId: 7, isPrimary: true, button: 0, clientX: 150, clientY: 250 });
+    fireEvent.pointerCancel(surface, { pointerId: 7, isPrimary: true, clientX: 150, clientY: 250 });
+
+    const messages = postMessage.mock.calls.map(([message]) => message as PreviewInputMessage);
+    expect(messages.map((message) => message.type)).toEqual(["touchStart", "touchCancel"]);
+    expect(messages[1].sequenceId).toBe(messages[0].sequenceId);
   });
 
   it("maps teacher client coordinates into the phone screen viewport", () => {

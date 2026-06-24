@@ -76,6 +76,7 @@ The production-like Compose topology SHALL use `web-admin`, `web-teacher`, and `
 - **WHEN** Compose frontend port mappings are inspected
 - **THEN** `web-admin` MUST default to host port `5175`
 - **AND** `web-teacher` MUST default to host port `5174`
+- **AND** `web-student` MUST default to host address `222.200.189.249`
 - **AND** `web-student` MUST default to host port `5173`.
 
 ### Requirement: Retired root backend demo modules stay removed
@@ -109,7 +110,7 @@ Production engineering quality SHALL validate frontend services independently fr
 
 #### Scenario: Compose service list is checked
 - **WHEN** production quality checks required Compose services
-- **THEN** `student-web` and `admin-web` MUST be included in the required service list for full application validation
+- **THEN** `web-student`, `web-teacher`, and `web-admin` MUST be included in the required service list for full application validation
 - **AND** missing frontend services MUST fail the check.
 
 ### Requirement: Admin e2e smoke targets the admin frontend origin
@@ -149,4 +150,3 @@ Production engineering quality SHALL rely on git, tests, route inventory, Compos
 - **WHEN** a destructive backend slim refactor fails after deployment validation
 - **THEN** rollback MUST use git or deployment version rollback
 - **AND** the codebase MUST NOT add new compatibility layers as the rollback mechanism.
-

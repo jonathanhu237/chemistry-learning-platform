@@ -34,7 +34,7 @@ function App() {
   const [pretestLoading, setPretestLoading] = useState(false);
   const [pretestError, setPretestError] = useState("");
   const [pretestSkipped, setPretestSkipped] = useState(false);
-  const previewCatalogRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/preview/catalog/points/");
+  const previewCatalogRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/preview/catalog/");
   const previewSessionRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/preview/session");
 
   useEffect(() => {

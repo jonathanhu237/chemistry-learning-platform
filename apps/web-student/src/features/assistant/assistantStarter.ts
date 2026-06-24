@@ -19,7 +19,7 @@ export type AssistantStarterIntent = {
 };
 
 export function isGlobalAssistantContext(context: AssistantContext): boolean {
-  return context.context_type === "learning_home" && context.context_title === "AI 学习助手";
+  return context.context_type === "learning_home" && context.context_title === "Atom 学习助手";
 }
 
 function contextSubject(context: AssistantContext): string {

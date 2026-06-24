@@ -73,11 +73,11 @@ class Settings:
     auth_secret_key: str = "dev-only-secret"
     access_token_expire_minutes: int = 720
     web_admin_access_token: str = ""
-    student_preview_app_base_url: str = "http://222.200.189.249:5173"
+    student_preview_app_base_url: str = "http://222.200.189.249:15173"
     student_preview_allowed_origins: tuple[str, ...] = (
-        "http://222.200.189.249:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5173",
+        "http://222.200.189.249:15173",
+        "http://127.0.0.1:15173",
+        "http://localhost:15173",
     )
     student_preview_ticket_expire_minutes: int = 10
     student_preview_session_expire_minutes: int = 240
@@ -86,6 +86,9 @@ class Settings:
     agent_llm_base_url: str = ""
     agent_llm_api_key: str = ""
     agent_llm_model: str = ""
+    agent_reasoning_summary_enabled: bool = False
+    agent_reasoning_summary_mode: str = "auto"
+    agent_reasoning_effort: str = "low"
     rag_hybrid_bge_enabled: bool = False
     rag_query_generation_enabled: bool = True
     rag_bge_service_url: str = "http://bge-rag:8010"
@@ -187,6 +190,13 @@ class Settings:
 def get_settings() -> Settings:
     app_env = _getenv("CHEMISTRY_APP_ENV", _getenv("APP_ENV", "development"))
     origins = _split_csv(_getenv("FRONTEND_ALLOWED_ORIGINS", "*"))
+    student_preview_app_base_url = _getenv(
+        "STUDENT_PREVIEW_APP_BASE_URL",
+        Settings.student_preview_app_base_url,
+    ).rstrip("/")
+    student_preview_allowed_origins = _split_csv(_getenv("STUDENT_PREVIEW_ALLOWED_ORIGINS"))
+    if not student_preview_allowed_origins:
+        student_preview_allowed_origins = [student_preview_app_base_url]
     return Settings(
         app_env=app_env,
         data_backend=_getenv("DATA_BACKEND", Settings.data_backend).lower(),
@@ -216,19 +226,8 @@ def get_settings() -> Settings:
         auth_secret_key=_getenv("AUTH_SECRET_KEY", Settings.auth_secret_key),
         access_token_expire_minutes=_get_int("ACCESS_TOKEN_EXPIRE_MINUTES", Settings.access_token_expire_minutes),
         web_admin_access_token=_getenv("WEB_ADMIN_ACCESS_TOKEN", Settings.web_admin_access_token),
-        student_preview_app_base_url=_getenv(
-            "STUDENT_PREVIEW_APP_BASE_URL",
-            Settings.student_preview_app_base_url,
-        ).rstrip("/"),
-        student_preview_allowed_origins=tuple(
-            _split_csv(
-                _getenv(
-                    "STUDENT_PREVIEW_ALLOWED_ORIGINS",
-                    ",".join(Settings.student_preview_allowed_origins),
-                )
-            )
-            or list(Settings.student_preview_allowed_origins)
-        ),
+        student_preview_app_base_url=student_preview_app_base_url,
+        student_preview_allowed_origins=tuple(student_preview_allowed_origins),
         student_preview_ticket_expire_minutes=_get_int(
             "STUDENT_PREVIEW_TICKET_EXPIRE_MINUTES",
             Settings.student_preview_ticket_expire_minutes,
@@ -242,6 +241,18 @@ def get_settings() -> Settings:
         agent_llm_base_url=_getenv("AGENT_LLM_BASE_URL"),
         agent_llm_api_key=_getenv("AGENT_LLM_API_KEY"),
         agent_llm_model=_getenv("AGENT_LLM_MODEL"),
+        agent_reasoning_summary_enabled=_get_bool(
+            "AGENT_REASONING_SUMMARY_ENABLED",
+            Settings.agent_reasoning_summary_enabled,
+        ),
+        agent_reasoning_summary_mode=_getenv(
+            "AGENT_REASONING_SUMMARY_MODE",
+            Settings.agent_reasoning_summary_mode,
+        ).lower(),
+        agent_reasoning_effort=_getenv(
+            "AGENT_REASONING_EFFORT",
+            Settings.agent_reasoning_effort,
+        ).lower(),
         rag_hybrid_bge_enabled=_get_bool("RAG_HYBRID_BGE_ENABLED", Settings.rag_hybrid_bge_enabled),
         rag_query_generation_enabled=_get_bool("RAG_QUERY_GENERATION_ENABLED", Settings.rag_query_generation_enabled),
         rag_bge_service_url=_getenv("RAG_BGE_SERVICE_URL", Settings.rag_bge_service_url).rstrip("/"),

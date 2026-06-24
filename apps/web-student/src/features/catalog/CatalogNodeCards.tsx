@@ -28,12 +28,14 @@ export function CatalogNodeCards({
   nodes,
   breadcrumbs,
   searchQuery = "",
+  showSummaryFooter = false,
   onOpenDirectory,
   onOpenPoint,
 }: {
   nodes: StudentCatalogNodeCard[];
   breadcrumbs: StudentCatalogBreadcrumb[];
   searchQuery?: string;
+  showSummaryFooter?: boolean;
   onOpenDirectory: (node: StudentCatalogNodeCard) => void;
   onOpenPoint: (node: StudentCatalogNodeCard) => void;
 }) {
@@ -44,6 +46,10 @@ export function CatalogNodeCards({
         return [node.title, node.summary, nodeMeta(node), path].filter(Boolean).join(" ").toLowerCase().includes(query);
       })
     : nodes;
+  const directoryCount = visibleNodes.filter((node) => node.node_kind === "directory").length;
+  const experimentCount = visibleNodes.filter((node) => node.node_kind === "point").length;
+  const footerParts = [directoryCount ? `${directoryCount}目录` : "", experimentCount ? `${experimentCount}实验` : ""].filter(Boolean);
+  const footerLabel = footerParts.length ? `当前共${footerParts.join("，")}` : "";
 
   if (!visibleNodes.length) {
     return (
@@ -84,6 +90,11 @@ export function CatalogNodeCards({
           </div>
         );
       })}
+      {showSummaryFooter && footerLabel ? (
+        <div className="catalog-end-marker" aria-label={footerLabel}>
+          - {footerLabel} -
+        </div>
+      ) : null}
     </div>
   );
 }

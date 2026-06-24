@@ -191,6 +191,17 @@ class AIStatusSummary(BaseModel):
     last_request_summary: AILastRequestSummary | None = None
 
 
+class AIReasoningSummaryCapability(BaseModel):
+    enabled: bool = False
+    status: str = Field(
+        default="untested",
+        pattern="^(not_configured|untested|supported|unsupported|failed)$",
+    )
+    source: str = Field(default="agent_trace", pattern="^(reasoning_summary|agent_trace)$")
+    message: str = ""
+    last_checked_at: datetime | None = None
+
+
 class AIConfigurationResponse(BaseModel):
     provider: str
     base_url: str
@@ -200,6 +211,7 @@ class AIConfigurationResponse(BaseModel):
     api_key_fingerprint: str | None = None
     enabled_features: AIEnabledFeatureScopes = Field(default_factory=AIEnabledFeatureScopes)
     status: AIStatusSummary
+    reasoning_summary: AIReasoningSummaryCapability = Field(default_factory=AIReasoningSummaryCapability)
     student_ai_policy: StudentAIPolicyStatus = Field(default_factory=StudentAIPolicyStatus)
     rag_runtime: RAGRuntimeStatus = Field(default_factory=RAGRuntimeStatus)
     chat_provider: AIProviderRoleResponse | None = None
@@ -930,6 +942,38 @@ def _connection_status(effective: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _reasoning_summary_capability_status(effective: dict[str, Any]) -> dict[str, Any]:
+    check = effective.get("connection_check") or {}
+    capabilities = check.get("capabilities") if isinstance(check.get("capabilities"), dict) else {}
+    capability = capabilities.get("reasoning_summary") if isinstance(capabilities.get("reasoning_summary"), dict) else {}
+    checked_at = _parse_datetime(capability.get("checked_at") or check.get("checked_at"))
+    if not effective["model"] or not effective["api_key"]:
+        return {
+            "enabled": False,
+            "status": "not_configured",
+            "source": "agent_trace",
+            "message": "Model and API key must be saved before reasoning summary can be tested.",
+            "last_checked_at": checked_at,
+        }
+    status_value = str(capability.get("status") or "").strip()
+    if not status_value:
+        return {
+            "enabled": False,
+            "status": "untested",
+            "source": "agent_trace",
+            "message": "Reasoning summary capability has not been tested yet.",
+            "last_checked_at": checked_at,
+        }
+    enabled = bool(capability.get("supported")) and status_value == "supported"
+    return {
+        "enabled": enabled,
+        "status": status_value if status_value in {"supported", "unsupported", "failed"} else "untested",
+        "source": "reasoning_summary" if enabled else "agent_trace",
+        "message": str(capability.get("message") or ""),
+        "last_checked_at": checked_at,
+    }
+
+
 def get_ai_configuration_response(can_edit: bool = False, auto_check: bool = True) -> AIConfigurationResponse:
     effective = _effective_ai_configuration_payload()
     if auto_check and _connection_check_due(effective):
@@ -973,6 +1017,7 @@ def get_ai_configuration_response(can_edit: bool = False, auto_check: bool = Tru
             if isinstance(log_summary.get("last_request_summary"), dict)
             else None,
         ),
+        reasoning_summary=AIReasoningSummaryCapability(**_reasoning_summary_capability_status(effective)),
         student_ai_policy=_student_ai_policy_status(effective, log_summary),
         rag_runtime=_rag_runtime_status(effective["enabled_features"], effective.get("textbook_rag")),
         chat_provider=_role_response("chat_completion", effective["chat_provider"]),
@@ -1072,7 +1117,71 @@ def save_ai_configuration(payload: AIConfigurationUpdate, user_id: str | None = 
     ):
         value["connection_check"] = existing["connection_check"]
     _save_setting_value(AI_CONFIGURATION_KEY, value, user_id)
+    _run_ai_connection_check(user_id)
     return get_ai_configuration_response(can_edit=True, auto_check=False)
+
+
+def _check_openai_chat_connection(client: Any, effective: dict[str, Any]) -> None:
+    response = client.chat.completions.create(
+        model=effective["model"],
+        temperature=0,
+        max_tokens=1,
+        messages=[
+            {"role": "system", "content": "You are a connectivity probe. Reply with one short token."},
+            {"role": "user", "content": "ping"},
+        ],
+    )
+    if not getattr(response, "choices", None):
+        raise RuntimeError("OpenAI-compatible chat completion returned no choices")
+
+
+def _probe_reasoning_summary_capability(client: Any, effective: dict[str, Any], checked_at: str) -> dict[str, Any]:
+    responses = getattr(client, "responses", None)
+    if responses is None or not hasattr(responses, "stream"):
+        return {
+            "supported": False,
+            "status": "unsupported",
+            "checked_at": checked_at,
+            "message": "Responses streaming API is not available; student AI will show agent execution trace.",
+        }
+    event_types: set[str] = set()
+    try:
+        with responses.stream(
+            model=effective["model"],
+            instructions="You are a capability probe. Answer with OK only.",
+            input="Return OK.",
+            reasoning={"summary": "auto", "effort": "minimal"},
+            temperature=0,
+            max_output_tokens=16,
+        ) as stream:
+            for event in stream:
+                event_type = str(getattr(event, "type", "") or "")
+                if event_type:
+                    event_types.add(event_type)
+                if event_type in {"response.reasoning_summary_text.delta", "response.reasoning_summary_text.done"}:
+                    return {
+                        "supported": True,
+                        "status": "supported",
+                        "checked_at": checked_at,
+                        "message": "Reasoning summary events were detected; student AI will show model reasoning summaries.",
+                    }
+        return {
+            "supported": False,
+            "status": "unsupported",
+            "checked_at": checked_at,
+            "message": (
+                "Responses API completed but did not emit reasoning summary events; "
+                "student AI will show agent execution trace."
+            ),
+            "observed_event_types": sorted(event_types)[:12],
+        }
+    except Exception as exc:
+        return {
+            "supported": False,
+            "status": "unsupported",
+            "checked_at": checked_at,
+            "message": f"Reasoning summary probe failed: {str(exc)[:180]}",
+        }
 
 
 def _run_ai_connection_check(user_id: str | None = None) -> None:
@@ -1084,6 +1193,14 @@ def _run_ai_connection_check(user_id: str | None = None) -> None:
             "status": "not_configured",
             "checked_at": checked_at,
             "message": "请先保存模型名称和 API Key。",
+            "capabilities": {
+                "reasoning_summary": {
+                    "supported": False,
+                    "status": "not_configured",
+                    "checked_at": checked_at,
+                    "message": "Model and API key are required before reasoning summary can be tested.",
+                }
+            },
         }
         _save_setting_value(AI_CONFIGURATION_KEY, existing, user_id)
         return
@@ -1095,17 +1212,29 @@ def _run_ai_connection_check(user_id: str | None = None) -> None:
             base_url=effective["base_url"] or None,
             timeout=8.0,
         )
-        client.models.retrieve(effective["model"])
+        _check_openai_chat_connection(client, effective)
+        reasoning_summary = _probe_reasoning_summary_capability(client, effective, checked_at)
         existing["connection_check"] = {
             "status": "connected",
             "checked_at": checked_at,
             "message": f"模型 {effective['model']} 可访问。",
+            "capabilities": {
+                "reasoning_summary": reasoning_summary,
+            },
         }
     except Exception as exc:
         existing["connection_check"] = {
             "status": "failed",
             "checked_at": checked_at,
             "message": str(exc)[:220] or "连接检测失败。",
+            "capabilities": {
+                "reasoning_summary": {
+                    "supported": False,
+                    "status": "failed",
+                    "checked_at": checked_at,
+                    "message": "OpenAI-compatible chat connection failed; reasoning summary was not tested.",
+                }
+            },
         }
     _save_setting_value(AI_CONFIGURATION_KEY, existing, user_id)
 
@@ -1118,12 +1247,16 @@ def check_ai_connection(user_id: str | None = None) -> AIConfigurationResponse:
 def effective_ai_settings(base_settings: Settings | None = None) -> Settings:
     base = base_settings or get_settings()
     effective = _effective_ai_configuration_payload()
+    reasoning_summary = _reasoning_summary_capability_status(effective)
+    reasoning_summary_enabled = bool(reasoning_summary["enabled"])
     return replace(
         base,
         agent_llm_provider=effective["provider"],
         agent_llm_base_url=effective["base_url"],
         agent_llm_api_key=effective["api_key"],
         agent_llm_model=effective["model"],
+        agent_reasoning_summary_enabled=reasoning_summary_enabled,
+        agent_reasoning_summary_mode="compatible" if reasoning_summary_enabled and effective["base_url"] else "auto",
     )
 
 

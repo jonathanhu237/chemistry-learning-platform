@@ -186,6 +186,8 @@ describe("catalog tree UI contracts", () => {
   it("uses a Chinese natural multiline equation authoring workflow", () => {
     expect(contentPanelSource).toContain('name="reaction_equations_text"');
     expect(contentPanelSource).toContain("buildEquationReviewModel");
+    expect(contentPanelSource).toContain("buildReactionEquationRenderRow");
+    expect(contentPanelSource).toContain("CatalogReactionEquationRendered");
     expect(contentPanelSource).toContain("catalog-content-form-section");
     expect(contentPanelSource).toContain("catalog-content-section-actions");
     expect(contentPanelSource).toContain("catalog-equation-preview-scroll");

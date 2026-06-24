@@ -216,11 +216,12 @@ export function CatalogTreeEditor({
   );
 
   const openLearningCardPreview = async () => {
-    if (!node || !pointCapable) return;
+    if (!node) return;
     const response = await mutations.createPreviewToken.mutateAsync({ nodeId: node.node_id });
     const params = new URLSearchParams({
       nodeId: node.node_id,
-      title: displayCatalogPointTitle(detail) || node.title,
+      title: pointCapable ? displayCatalogPointTitle(detail) || node.title : node.title,
+      kind: node.node_kind,
       previewUrl: response.preview_url,
       expiresAt: response.expires_at,
     });
@@ -399,7 +400,7 @@ export function CatalogTreeEditor({
             />
           </Modal>
           <Modal
-            title="打开学习卡片预览"
+            title="打开学生端预览"
             open={Boolean(previewFallbackUrl)}
             onCancel={() => setPreviewFallbackUrl("")}
             footer={null}

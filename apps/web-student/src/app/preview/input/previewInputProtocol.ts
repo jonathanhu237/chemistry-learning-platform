@@ -1,10 +1,10 @@
 export const studentPreviewInputNamespace = "chemistry.studentPreview.input";
-export const studentPreviewInputVersion = 1;
+export const studentPreviewInputVersion = 2;
 
 export const previewInputFrameIdKey = "chem_student_preview_frame_id";
 export const previewInputTeacherOriginKey = "chem_student_preview_teacher_origin";
 
-export type PreviewInputEventType = "hover" | "touchStart" | "touchMove" | "touchEnd" | "touchCancel" | "tap" | "longPress";
+export type PreviewInputEventType = "hover" | "touchStart" | "touchMove" | "touchEnd" | "touchCancel";
 
 export type PreviewInputPoint = {
   x: number;
@@ -64,9 +64,7 @@ function isEventType(value: unknown): value is PreviewInputEventType {
     value === "touchStart" ||
     value === "touchMove" ||
     value === "touchEnd" ||
-    value === "touchCancel" ||
-    value === "tap" ||
-    value === "longPress"
+    value === "touchCancel"
   );
 }
 

@@ -35,6 +35,22 @@ class _NoMediaSessionScope:
         return None
 
 
+class _MediaRowSession:
+    def execute(self, *_args: object, **_kwargs: object) -> "_MediaRowSession":
+        return self
+
+    def first(self) -> tuple[str] | None:
+        return ("cat-point-a",)
+
+
+class _MediaRowSessionScope:
+    def __enter__(self) -> _MediaRowSession:
+        return _MediaRowSession()
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+
 def _teacher_user() -> AuthUser:
     return AuthUser(
         id="00000000-0000-0000-0000-000000000001",
@@ -56,7 +72,7 @@ def _teacher_identity() -> preview.PreviewTeacherIdentity:
     }
 
 
-def _preview_token(node_id: str) -> str:
+def _preview_token(node_id: str, node_kind: str = "point") -> str:
     token, _claims = create_access_token(
         subject="00000000-0000-0000-0000-000000000001",
         role="catalog_preview",
@@ -64,7 +80,13 @@ def _preview_token(node_id: str) -> str:
         display_name="Teacher",
         password_version=3,
         expires_minutes=15,
-        extra_claims={"purpose": preview.PREVIEW_PURPOSE, "node_id": node_id, "teacher_user_id": "teacher-1"},
+        extra_claims={
+            "purpose": preview.PREVIEW_PURPOSE,
+            "node_id": node_id,
+            "root_node_id": node_id,
+            "node_kind": node_kind,
+            "teacher_user_id": "teacher-1",
+        },
     )
     return token
 
@@ -106,8 +128,114 @@ def test_preview_token_is_scoped_to_one_catalog_point(monkeypatch: pytest.Monkey
     assert claims["purpose"] == preview.PREVIEW_PURPOSE
     assert claims["role"] == "catalog_preview"
     assert claims["node_id"] == "cat-point-a"
+    assert claims["root_node_id"] == "cat-point-a"
+    assert claims["node_kind"] == "point"
     with pytest.raises(DomainHTTPException) as exc:
         preview.decode_catalog_preview_token(response["token"], node_id="cat-point-b")
+    assert exc.value.status_code == 403
+
+
+def test_preview_token_can_scope_to_catalog_directory(monkeypatch: pytest.MonkeyPatch) -> None:
+    include_archived_values: list[bool] = []
+    monkeypatch.setattr(preview, "db_session", lambda: _SessionScope())
+    monkeypatch.setattr(
+        preview,
+        "get_node",
+        lambda _session, node_id, include_archived=False: include_archived_values.append(include_archived)
+        or {
+            "node_id": node_id,
+            "id": node_id,
+            "node_kind": "directory",
+            "chapter_id": "CH17",
+            "title": "Halogen directory",
+            "status": "draft",
+        },
+    )
+
+    response = preview.create_catalog_node_preview_token(node_id="cat-dir-a", teacher=_teacher_identity())
+
+    assert include_archived_values == [True]
+    assert response["preview_url"].startswith("/preview/catalog/nodes/cat-dir-a?preview_token=")
+    claims = preview.decode_catalog_preview_token(response["token"], node_id="cat-dir-a")
+    assert claims["root_node_id"] == "cat-dir-a"
+    assert claims["node_kind"] == "directory"
+
+
+def test_preview_catalog_node_returns_directory_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    token = _preview_token("cat-dir-a", "directory")
+    monkeypatch.setattr(preview, "db_session", lambda: _SessionScope())
+    monkeypatch.setattr(
+        preview,
+        "get_node",
+        lambda _session, node_id, include_archived=False: {
+            "node_id": node_id,
+            "id": node_id,
+            "node_kind": "directory",
+            "chapter_id": "CH17",
+            "parent_id": None,
+            "title": "Halogen directory",
+            "summary": "Preview this directory",
+            "status": "draft",
+            "display_order": 1,
+            "has_children": True,
+            "descendant_point_count": 1,
+            "has_point_content": False,
+            "media_count": 0,
+            "published_media_count": 0,
+        },
+    )
+    monkeypatch.setattr(
+        preview,
+        "breadcrumbs",
+        lambda _session, _node_id: [{"node_id": "cat-dir-a", "title": "Halogen directory", "node_kind": "directory", "chapter_id": "CH17"}],
+    )
+    monkeypatch.setattr(
+        preview,
+        "_preview_children",
+        lambda _session, parent_id: [
+            {
+                "node_id": "cat-point-a",
+                "chapter_id": "CH17",
+                "parent_id": parent_id,
+                "node_kind": "point",
+                "title": "Child point",
+                "summary": "",
+                "status": "draft",
+                "display_order": 1,
+                "actions": ["open_point"],
+                "has_children": False,
+                "has_point_content": True,
+                "media_count": 0,
+                "published_media_count": 0,
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        preview,
+        "get_student_learning_page_by_chapter",
+        lambda *, chapter_id: {
+            "recommended_profile_id": "halogens-17",
+            "profiles": [],
+            "active_profile": {"profile_id": "halogens-17", "chapter_id": chapter_id},
+        },
+    )
+
+    payload = preview.preview_catalog_node(node_id="cat-dir-a", preview_token=token)
+
+    assert payload["node_kind"] == "directory"
+    assert payload["directory"]["node"]["title"] == "Halogen directory"
+    assert payload["directory"]["children"][0]["node_id"] == "cat-point-a"
+    assert payload["learning_page"]["active_profile"]["profile_id"] == "halogens-17"
+    assert payload["point"] is None
+
+
+def test_directory_preview_scope_rejects_sibling_node(monkeypatch: pytest.MonkeyPatch) -> None:
+    token = _preview_token("cat-dir-a", "directory")
+    monkeypatch.setattr(preview, "db_session", lambda: _NoMediaSessionScope())
+
+    with pytest.raises(DomainHTTPException) as exc:
+        preview.preview_catalog_node(node_id="cat-point-outside", preview_token=token)
+
     assert exc.value.status_code == 403
 
 
@@ -302,3 +430,14 @@ def test_preview_media_scope_rejects_unbound_media(monkeypatch: pytest.MonkeyPat
         preview.assert_preview_media_scope(asset_id="00000000-0000-0000-0000-000000000099", preview_token=_preview_token("cat-point-a"))
 
     assert exc.value.status_code == 404
+
+
+def test_directory_preview_media_scope_returns_bound_descendant_point(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(preview, "db_session", lambda: _MediaRowSessionScope())
+
+    node_id = preview.assert_preview_media_scope(
+        asset_id="00000000-0000-0000-0000-000000000001",
+        preview_token=_preview_token("cat-dir-a", "directory"),
+    )
+
+    assert node_id == "cat-point-a"

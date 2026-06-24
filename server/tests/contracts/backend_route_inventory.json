@@ -45,6 +45,12 @@
       "owner": "admin-api"
     },
     {
+      "method": "GET",
+      "path": "/api/admin/catalog/chapters/{chapter_id}/summary",
+      "name": "admin_catalog_chapter_summary",
+      "owner": "admin-api"
+    },
+    {
       "method": "POST",
       "path": "/api/admin/catalog/equations/preview",
       "name": "admin_catalog_preview_equations",
@@ -137,7 +143,7 @@
     {
       "method": "POST",
       "path": "/api/admin/catalog/nodes/{node_id}/preview-token",
-      "name": "admin_catalog_point_preview_token",
+      "name": "admin_catalog_node_preview_token",
       "owner": "admin-api"
     },
     {
@@ -681,6 +687,12 @@
       "owner": "admin-api"
     },
     {
+      "method": "POST",
+      "path": "/api/admin/student-preview/session",
+      "name": "admin_create_student_preview_session",
+      "owner": "admin-api"
+    },
+    {
       "method": "GET",
       "path": "/api/admin/video-library/index/diagnostics",
       "name": "admin_video_library_index_diagnostics",
@@ -730,6 +742,12 @@
     },
     {
       "method": "GET",
+      "path": "/api/preview/catalog/nodes/{node_id}",
+      "name": "preview_catalog_node_route",
+      "owner": "student-api"
+    },
+    {
+      "method": "GET",
       "path": "/api/preview/catalog/points/{node_id}",
       "name": "preview_catalog_point_detail_route",
       "owner": "student-api"
@@ -744,6 +762,12 @@
       "method": "GET",
       "path": "/api/preview/media/assets/{asset_id}/thumbnail",
       "name": "preview_media_thumbnail",
+      "owner": "student-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/preview/student-session/exchange",
+      "name": "exchange_student_preview_session",
       "owner": "student-api"
     },
     {
@@ -762,6 +786,36 @@
       "method": "GET",
       "path": "/api/web-admin/session",
       "name": "web_admin_session",
+      "owner": "web-admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/web-admin/student-preview/classes",
+      "name": "web_admin_list_student_preview_classes",
+      "owner": "web-admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/disable",
+      "name": "web_admin_disable_student_preview",
+      "owner": "web-admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/ensure",
+      "name": "web_admin_ensure_student_preview",
+      "owner": "web-admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/reset",
+      "name": "web_admin_reset_student_preview",
+      "owner": "web-admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/restore",
+      "name": "web_admin_restore_student_preview",
       "owner": "web-admin-api"
     },
     {
@@ -810,6 +864,12 @@
       "method": "GET",
       "path": "/api/student/app-config",
       "name": "student_app_config",
+      "owner": "student-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/student/home-video-feed",
+      "name": "student_home_video_feed_route",
       "owner": "student-api"
     },
     {

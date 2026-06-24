@@ -49,7 +49,7 @@
   --mobile-sticky-bottom: max(16px, env(safe-area-inset-bottom));
   --mobile-shell-top: max(22px, env(safe-area-inset-top));
   --mobile-shell-bottom: max(24px, env(safe-area-inset-bottom));
-  --mobile-bottom-nav-height: 68px;
+  --mobile-bottom-nav-height: 56px;
   --mobile-bottom-action-space: calc(var(--mobile-bottom-nav-height) + 18px + env(safe-area-inset-bottom));
   --mobile-overlay-viewport-gap: 110px;
   --mobile-overlay-max-height: 620px;

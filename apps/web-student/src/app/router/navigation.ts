@@ -133,6 +133,34 @@ export function navigateToCatalogNode(
   });
 }
 
+export function navigateToSearch(
+  navigate: NavigateLike,
+  options: {
+    from?: StudentDetailSource;
+    profileId?: string | null;
+    chapterId?: string | null;
+    sourceNodeId?: string | null;
+    catalogPath?: string | null;
+    elementSymbol?: string | null;
+    q?: string | null;
+    replace?: boolean;
+  } = {},
+): void {
+  void navigate({
+    to: "/search",
+    replace: options.replace,
+    search: compactSearch({
+      from: options.from || "chapter",
+      profileId: options.profileId || "",
+      chapterId: options.chapterId || "",
+      sourceNodeId: options.sourceNodeId || "",
+      catalogPath: options.catalogPath || "",
+      elementSymbol: options.elementSymbol || "",
+      q: options.q || "",
+    }),
+  });
+}
+
 export function navigateToVideoLibrary(
   navigate: NavigateLike,
   options: {

@@ -959,17 +959,7 @@ def _select_learning_profile(
     return enabled[0]
 
 
-def get_student_learning_page(user: Any, profile_id: str | None = None) -> StudentLearningPageResponse:
-    profiles = _learning_profiles()
-    with db_session() as session:
-        active = _select_learning_profile(profiles=profiles, profile_id=profile_id, session=session, user=user)
-        if active:
-            _record_learning_event(
-                session,
-                user=user,
-                event_type="learning_profile_opened",
-                chapter_id=str(active.get("chapter_id") or "") or None,
-            )
+def _learning_page_response(*, profiles: list[dict[str, Any]], active: dict[str, Any] | None) -> StudentLearningPageResponse:
     if not active:
         return StudentLearningPageResponse(recommended_profile_id=None, profiles=[], active_profile=None)
 
@@ -1000,6 +990,33 @@ def get_student_learning_page(user: Any, profile_id: str | None = None) -> Stude
         profiles=[_profile_summary(profile) for profile in profiles if profile.get("enabled", True)],
         active_profile=active_profile,
     )
+
+
+def get_student_learning_page(user: Any, profile_id: str | None = None) -> StudentLearningPageResponse:
+    profiles = _learning_profiles()
+    with db_session() as session:
+        active = _select_learning_profile(profiles=profiles, profile_id=profile_id, session=session, user=user)
+        if active:
+            _record_learning_event(
+                session,
+                user=user,
+                event_type="learning_profile_opened",
+                chapter_id=str(active.get("chapter_id") or "") or None,
+            )
+    return _learning_page_response(profiles=profiles, active=active)
+
+
+def get_student_learning_page_by_chapter(*, chapter_id: str) -> StudentLearningPageResponse:
+    profiles = _learning_profiles()
+    active = next(
+        (
+            profile
+            for profile in profiles
+            if profile.get("enabled", True) and str(profile.get("chapter_id") or "") == str(chapter_id)
+        ),
+        None,
+    )
+    return _learning_page_response(profiles=profiles, active=active)
 
 
 def _published_student_media_row(asset_id: str) -> dict[str, Any]:

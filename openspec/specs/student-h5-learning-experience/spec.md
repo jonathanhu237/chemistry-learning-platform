@@ -1,7 +1,7 @@
 # student-h5-learning-experience Specification
 
 ## Purpose
-TBD - created by archiving change student-h5-real-learning-experience. Update Purpose after archive.
+Define general student H5 learning content behavior, including app configuration, learning payloads, point detail, element facts, feedback, chemistry notation, and home-vs-learning product boundaries. Catalog-browser navigation rules live in student-h5-learning-catalog.
 ## Requirements
 ### Requirement: Student H5 app configuration
 The platform SHALL provide an authenticated student app configuration endpoint that exposes student-visible feature flags without exposing admin-only settings internals.
@@ -48,7 +48,7 @@ The backend SHALL expose a student learning payload centered on a selected famil
 - **THEN** the H5 app MUST show catalog nodes according to the authored directory tree
 - **AND** directory node cards MUST derive visible display from directory title, hierarchy, child availability, and stable frontend defaults
 - **AND** point node cards MUST derive visible display from point title, point learning summary where available, binary video presence, and bound video thumbnail where available
-- **AND** the view MUST NOT depend on a fixed parent experiment group level or on teacher-authored card-presentation override fields.
+- **AND** the view MUST NOT depend on a fixed parent grouping level or on teacher-authored card-presentation override fields.
 
 #### Scenario: No video exists for a point
 - **WHEN** a published point node has no published video media
@@ -61,12 +61,12 @@ The student learning surface SHALL be treated as a phone-first H5 / mini-program
 #### Scenario: Student opens H5 on a phone viewport
 - **WHEN** the student H5 app is viewed at common phone widths from 360px to 430px CSS pixels
 - **THEN** primary learning screens MUST fit the viewport without horizontal scrolling
-- **AND** headings, cards, segmented chapter switcher, bottom navigation, chat page, profile feedback, and action buttons MUST remain tappable and non-overlapping
-- **AND** the layout MUST prioritize the phone flow: app-level tabs, current chapter context, A/B facts-or-experiments switching, experiment-point cards, point detail, chat, feedback, and assessment.
+- **AND** headings, cards, chapter catalog controls, bottom navigation, chat page, profile feedback, video controls, and action buttons MUST remain tappable and non-overlapping
+- **AND** the layout MUST prioritize the phone flow: app-level tabs, home video discovery, current chapter context, catalog browser navigation, point video detail, chat, feedback, and assessment.
 
 #### Scenario: Student uses touch-only interaction
 - **WHEN** a student uses the app without hover, precise mouse input, or desktop keyboard shortcuts
-- **THEN** all required learning, A/B switching, chat, feedback, login, password-change, pretest-skip, and logout actions MUST be reachable through touch controls
+- **THEN** all required learning, catalog navigation, video playback, chat, feedback, login, password-change, pretest-skip, and logout actions MUST be reachable through touch controls
 - **AND** interactive controls SHOULD use phone-appropriate hit areas and spacing.
 
 #### Scenario: Desktop browser is used only for development preview
@@ -74,7 +74,7 @@ The student learning surface SHALL be treated as a phone-first H5 / mini-program
 - **THEN** the app MAY center or constrain the phone layout for preview
 - **BUT** it MUST NOT introduce desktop-only navigation, table-first layouts, hover-only affordances, or admin-console density into the student H5 experience.
 
-### Requirement: Student experiment point detail
+### Requirement: Student point detail
 The student H5 app SHALL provide a point detail experience keyed by stable catalog point node identity.
 
 #### Scenario: Student opens a point detail
@@ -117,20 +117,6 @@ The student H5 app SHALL provide authenticated feedback from the `我的` profil
 - **THEN** the backend MUST derive the authoritative student and class identity from the authenticated token
 - **AND** it MUST NOT trust client-supplied identity fields.
 
-### Requirement: Current family chapter composition
-The student H5 element learning page SHALL render as the learning page for one current family or chapter selected from the periodic-table learning entry, not as a primary sibling-family browsing surface.
-
-#### Scenario: Student opens a selected family chapter
-- **WHEN** a student opens the H5 learning page for a selected profile such as `halogens-17`
-- **THEN** the page MUST show the selected family or chapter as the current learning context
-- **AND** it MUST NOT present sibling families as the page-level primary navigation
-- **AND** it MUST provide a secondary way to return to or switch through the periodic-table learning entry.
-
-#### Scenario: Student opens the default or recommended chapter
-- **WHEN** no explicit profile is selected and the system resolves a default or recommended profile
-- **THEN** the page MUST still render that profile as the current family or chapter
-- **AND** it MUST NOT imply that the student is on a cross-family index page.
-
 ### Requirement: Within-family element selection
 The student H5 element learning page SHALL let students select an element within the current family and view a model-led selected-element facts area for that element without changing the current family or chapter.
 
@@ -140,16 +126,15 @@ The student H5 element learning page SHALL let students select an element within
 - **AND** selecting a chip MUST update the selected-element atom model card and compact facts area
 - **AND** the selected property section and experiment-point groups MUST remain scoped to the same current family or chapter.
 
-#### Scenario: Selected element model and facts are shown
+#### Scenario: Selected element compact context is shown
 - **WHEN** a student selects an element inside the current family
-- **THEN** the page MUST show available element-specific facts including atomic number, electron configuration, family or group, common valence, elemental state, and oxidizing or reducing tendency where applicable
-- **AND** the page MUST present those facts through a selected-element atom model card rather than a primary 2x3 static fact-card grid
-- **AND** the card MUST preserve the selected element tile identity with atomic number, symbol, and English element name
-- **AND** the card MUST show the atom visualization when electron configuration or fallback model data is available
+- **THEN** the chapter page MUST show compact element-specific context such as atomic number, symbol, English name, focus copy, experiment relevance, and compact tags where available
+- **AND** the compact context MUST preserve the selected element tile identity with atomic number, symbol, and English element name
+- **AND** the full atom visualization and detailed physical facts MUST be opened through the element detail route
 - **AND** missing optional facts or unavailable model data MUST degrade to a clear empty or unavailable state rather than causing the page to fail.
 
 #### Scenario: Selected element facts remain compact before tasks
-- **WHEN** selected-element physical facts, teaching notes, family common properties, and property summaries would make the facts view long on a phone viewport
+- **WHEN** selected-element physical facts, teaching notes, family common properties, and property summaries would make the chapter context long on a phone viewport
 - **THEN** the selected-element card MUST use compact summaries, strips, chips, or progressive disclosure
 - **AND** it MUST keep family common properties and experiment-point learning entry discoverable without excessive scrolling
 
@@ -167,26 +152,6 @@ The student H5 element learning page SHALL distinguish family-wide common proper
 - **THEN** the page MUST provide a clear path from the property summary to the related experiment-point group
 - **AND** the experiment-point group MUST remain the primary actionable learning content.
 
-### Requirement: Experiment-point primary task area
-The student H5 element learning page SHALL keep catalog point navigation as the primary learning task after compact chemistry context.
-
-#### Scenario: Student reaches catalog points
-- **WHEN** a selected family or chapter has published catalog nodes
-- **THEN** the page MUST show top-level directory and point entries for that chapter
-- **AND** selecting a directory MUST open the next catalog level
-- **AND** selecting a point MUST open the point detail learning page.
-
-#### Scenario: Directory card appears in task area
-- **WHEN** a directory node is shown in the catalog task area
-- **THEN** it MUST render as a navigation category card using derived directory card presentation
-- **AND** it MUST NOT appear as a playable video point
-- **AND** it MUST NOT require manual directory description, card image, icon, accent, or layout fields.
-
-#### Scenario: Context area would push catalog too low
-- **WHEN** selected-element facts and family common properties contain more content than fits comfortably before the catalog entry area on a phone viewport
-- **THEN** the page MUST prioritize compact summaries, expandable detail, or equivalent progressive disclosure
-- **AND** it MUST keep the catalog task area discoverable without requiring excessive scrolling.
-
 ### Requirement: Optional licensed reference media
 The student H5 element learning page SHALL treat public images, videos, or external reference resources as optional licensed reference media, not as protected experiment-point resources.
 
@@ -200,24 +165,6 @@ The student H5 element learning page SHALL treat public images, videos, or exter
 - **WHEN** no reference media exists or a reference media source is unavailable
 - **THEN** the page MUST still render the selected-element facts, family common properties, experiment-point groups, AI entry, feedback entry, and assessment handoff.
 
-### Requirement: Two-tab chapter learning composition
-The student H5 chapter learning page SHALL support the prototype's selected-chapter flow and MUST NOT require a fixed facts-vs-experiments two-tab contract when the authored catalog is the primary navigation.
-
-#### Scenario: Student opens a selected chapter
-- **WHEN** a student opens a selected family or chapter page from the periodic-table entry
-- **THEN** the page MUST show the selected chapter context and a clear entry into its catalog tree
-- **AND** the catalog tree MUST be available without assuming a fixed experiment group tab.
-
-#### Scenario: Student navigates catalog depth
-- **WHEN** a student opens a catalog directory from the chapter page
-- **THEN** the app MUST render a catalog page for that node with breadcrumbs or equivalent source context
-- **AND** returning MUST restore the previous chapter or directory page.
-
-#### Scenario: Facts content remains available
-- **WHEN** the profile has facts, common properties, or element context
-- **THEN** the page MAY show them as compact chapter context
-- **AND** these facts MUST NOT replace the catalog as the path to point video/detail learning.
-
 ### Requirement: Property sections are facts content
 The student H5 learning page SHALL treat property sections as theory/common-property content rather than as the required primary grouping for experiment-point video learning.
 
@@ -230,44 +177,6 @@ The student H5 learning page SHALL treat property sections as theory/common-prop
 - **WHEN** the backend builds the experiment-point payload for a selected profile
 - **THEN** it MUST provide or derive groups based on the selected chapter's parent experiments and points
 - **AND** it MUST avoid using property section selection as the primary experiment navigation contract
-
-### Requirement: Periodic-table entry distinguishes selection from recommendation
-The student H5 periodic-table entry SHALL distinguish area selection, recommended guidance, selected-area route navigation, and chapter navigation entry semantics.
-
-#### Scenario: Recommended chapter is shown as guidance
-- **WHEN** the periodic-table entry has a recommended profile
-- **THEN** the matching area or element cue MUST show recommendation guidance
-- **AND** it MUST NOT render as a selected, active, current chapter, or inline chapter list before the student opens a detail route.
-
-#### Scenario: Student opens a selected area
-- **WHEN** the student taps an area control or an element cell from the periodic-table learning root
-- **THEN** the H5 app MUST navigate to a selected-area second-level route for that area
-- **AND** the learning root MUST NOT render the selected area's chapter list inline
-- **AND** the selected area MUST be visually distinguishable on the root as navigation feedback or recommendation guidance without turning the root into a list page.
-
-#### Scenario: Student views selected-area chapter list
-- **WHEN** the selected-area route is open
-- **THEN** the page MUST show the selected area identity and chapter list filtered to that area
-- **AND** the recommended area or chapter cue MUST remain recommendation guidance rather than forcing a different route after the student's tap
-- **AND** the bottom navigation MUST remain hidden because the selected-area route is a detail route.
-
-#### Scenario: Student opens a chapter entry
-- **WHEN** the student taps a chapter entry card from the selected-area route
-- **THEN** the H5 app MUST navigate into that family or chapter learning page
-- **AND** the entry card itself MUST be treated as a navigation row rather than a persistent selected item on the entry page.
-
-#### Scenario: Current area shows learnable elements
-- **WHEN** the periodic-table entry or selected-area page has learning profiles for the relevant area
-- **THEN** element cells in that area whose symbols appear in those profiles MUST show the element symbol where the table is rendered
-- **AND** element cells outside the relevant area MUST NOT show profile-driven element symbols
-- **AND** selected-area element cells without a matching profile symbol MAY remain unlabeled color cells.
-
-#### Scenario: Hydrogen and noble gases are a student learning area
-- **WHEN** the student uses the periodic-table entry
-- **THEN** hydrogen and group 18 noble gas cells MUST map to a dedicated `氢和稀有气体` learning area route
-- **AND** the selected-area page MUST filter the chapter list to matching learning profiles such as the hydrogen and noble gases chapter
-- **AND** the student entry MUST NOT expose a `通识资源` area
-- **AND** f-block layout coordinates MUST NOT cause lanthanide or actinide cells such as Lu or Lr to map to the `氢和稀有气体` learning area.
 
 ### Requirement: H5 feedback supports screenshot attachments
 The student H5 feedback capability SHALL support one optional image screenshot attachment from the authenticated mobile feedback entry while preserving feature-flag and identity controls.
@@ -326,46 +235,17 @@ The student H5 element detail page SHALL render the selected element's atom mode
 - **THEN** those errors MUST NOT be treated as the rendering cause unless they prevent the atom data or component from loading
 - **AND** layout geometry MUST remain the primary regression signal for this atom-stage failure mode
 
-### Requirement: Prototype-aligned multi-level catalog flow
-The student H5 app SHALL implement the prototype flow from periodic-table entry to selected area to chapter to catalog directories to point video/detail.
-
-#### Scenario: Student enters from periodic table
-- **WHEN** a student taps an area control or element cell from the periodic-table learning entry
-- **THEN** the app MUST navigate to that area's standalone selected-area page
-- **AND** the selected-area page MUST make the area identity clear before showing chapter entries.
-
-#### Scenario: Student enters chapter from selected area
-- **WHEN** a student taps a chapter/family entry from the selected-area page
-- **THEN** the app MUST navigate to that chapter's standalone page
-- **AND** the page MUST make the chapter identity clear before showing catalog entries.
-
-#### Scenario: Student opens nested directory
-- **WHEN** a student taps a directory catalog node
-- **THEN** the app MUST open a second-level route for that directory
-- **AND** the page MUST show child directory and point entries according to the authored order.
-
-#### Scenario: Student opens concrete point video
-- **WHEN** a student taps a point catalog node
-- **THEN** the app MUST open the point video/detail page
-- **AND** the page MUST show manually authored principle, phenomenon explanation, safety note, related links, and the fixed test handoff
-- **AND** teacher-only remarks MUST remain hidden from this page.
-
-#### Scenario: Directory search context leads to points
-- **WHEN** a student search result is matched through directory/category text
-- **THEN** the result list MUST show concrete descendant point entries
-- **AND** selecting a result MUST open point detail rather than a directory-only search result page.
-
 ### Requirement: RSC-backed selected-element physical facts
 The student H5 learning experience SHALL support curated physical fact fields for selected elements using RSC Periodic Table fact boxes as the primary reference.
 
 #### Scenario: Student sees RSC-style physical facts
 - **WHEN** the selected element has curated physical facts
-- **THEN** the facts view MUST be able to show relative atomic mass, group, period, block, 20°C state, density, and electron configuration in a compact mobile layout
+- **THEN** the element detail route MUST be able to show relative atomic mass, group, period, block, 20°C state, density, and electron configuration in a compact mobile layout
 - **AND** those fields MUST be maintained in profile or profile-adjacent seed data rather than fetched from RSC at runtime
 
 #### Scenario: Student sees teaching facts separately
 - **WHEN** the selected element also has common valence, redox tendency, or profile-specific teaching note
-- **THEN** the facts view MUST keep those teaching facts visible as learning cues
+- **THEN** the compact chapter context or element detail route MUST keep those teaching facts visible as learning cues
 - **AND** it MUST distinguish them from source-attributed physical facts where attribution is shown
 
 ### Requirement: Experiment-focused selected element card
@@ -386,13 +266,13 @@ The student H5 chapter learning page SHALL present the selected element as a com
 
 #### Scenario: Detailed facts remain outside compact card
 - **WHEN** the selected element has detailed facts such as electron configuration, atomic mass, density, full redox tendency, reference URL, or longer notes
-- **THEN** those details MUST remain available in the facts view, element detail route, or equivalent detail area
+- **THEN** those details MUST remain available in the element detail route or equivalent detail area
 - **AND** the compact selected-element card MUST only surface the short focus property, experiment relevance, and compact tags
 
 #### Scenario: Element switching updates compact card
 - **WHEN** the student taps another element chip in the same family or chapter
 - **THEN** the compact card MUST update its tile, focus property, experiment relevance, and tags for the newly selected element
-- **AND** the current family or chapter context, facts/experiments switcher state, and experiment-point groups MUST remain scoped to the same learning profile
+- **AND** the current family or chapter context, catalog browser state, and point entries MUST remain scoped to the same learning profile
 
 ### Requirement: Explicit element focus card seed copy
 The platform SHALL store selected-element card copy as explicit maintained student learning seed data instead of deriving the compact card's teaching copy from RAG chunks, family trend summaries, or front-end string composition.
@@ -405,7 +285,7 @@ The platform SHALL store selected-element card copy as explicit maintained stude
 #### Scenario: Backend exposes card copy
 - **WHEN** the student learning API builds the H5 learning payload for a selected family or chapter
 - **THEN** each element badge MUST expose the card-level focus property, experiment relevance, and card tags when seed data provides them
-- **AND** existing detailed element facts MUST remain available for the facts view and element detail experience
+- **AND** existing detailed element facts MUST remain available for the element detail experience
 
 #### Scenario: Card copy is temporarily missing
 - **WHEN** an element is missing redesigned card copy during migration
@@ -417,18 +297,18 @@ The student H5 learning experience SHALL organize authenticated student workflow
 
 #### Scenario: Student views bottom-tab destinations
 - **WHEN** a student is in the authenticated app shell with all features enabled
-- **THEN** the app MUST provide destinations for `学习`, `实验`, `问答`, `测评`, and `我的`
+- **THEN** the app MUST provide destinations for `首页`, `学习`, `AI`, `测评`, and `我的`
 - **AND** each destination MUST represent app-level navigation, not a chapter-local view switch.
 
 #### Scenario: Student opens learning tab
 - **WHEN** the student opens `学习`
-- **THEN** the app MUST provide the periodic-table chapter entry, current or recommended chapter access, selected chapter facts, selected chapter experiment videos, and point detail navigation
-- **AND** chapter-local controls such as `性质通识` and `实验视频` MUST remain inside the learning tab.
+- **THEN** the app MUST provide the periodic-table chapter entry, current or recommended chapter access, selected-area navigation, family/chapter catalog navigation, and point detail navigation
+- **AND** chapter-local catalog controls MUST remain inside learning detail pages rather than becoming app-level tabs.
 
-#### Scenario: Student opens experiments tab
-- **WHEN** the student opens `实验`
-- **THEN** the app MUST provide an experiment-resource or point-resource overview using existing student-visible experiment data
-- **AND** it MUST avoid showing generic placeholder marketing content.
+#### Scenario: Student opens home tab
+- **WHEN** the student opens `首页`
+- **THEN** the app MUST provide experiment-video discovery through the home video feed
+- **AND** it MUST route known experiments into point detail, video library, chapter, catalog, or AI contexts rather than creating a separate experiments root tab.
 
 #### Scenario: Student opens assessment tab
 - **WHEN** the student opens `测评`
@@ -441,10 +321,10 @@ The student H5 learning experience SHALL organize authenticated student workflow
 - **AND** global support actions such as feedback MUST live here instead of as floating page controls.
 
 ### Requirement: Student equation principles display inline annotations
-The student H5 experiment point detail SHALL display inline annotation text attached to its reaction equation when a published point uses annotated equation-mode principles.
+The student H5 point detail SHALL display inline annotation text attached to its reaction equation when a published point uses annotated equation-mode principles.
 
 #### Scenario: Student opens a point with annotated reaction principles
-- **WHEN** a student opens a published experiment point whose normalized reaction rows include annotation text
+- **WHEN** a student opens a published catalog point whose normalized reaction rows include annotation text
 - **THEN** the point detail MUST show the rendered equation and its annotation together
 - **AND** the annotation MUST be readable as explanatory text for that reaction rather than as another equation.
 
@@ -457,29 +337,6 @@ The student H5 experiment point detail SHALL display inline annotation text atta
 - **WHEN** the backend builds the student point detail payload for equation-mode principles
 - **THEN** it MUST include annotation text for each annotated reaction row
 - **AND** it MUST keep annotation formulae and condition tags separate from core reactants and products in any structured fields exposed to the frontend.
-
-### Requirement: Student catalog cards ignore removed card overrides
-The student H5 catalog SHALL render directory and point cards without relying on removed manual card-presentation fields.
-
-#### Scenario: Removed fields are absent from API payload
-- **WHEN** a student catalog response omits `student_description`, `card_image_asset_id`, `card_icon_key`, `card_accent`, `card_layout`, `card_presentation`, and `point_card_presentation`
-- **THEN** the student H5 catalog MUST still render directory and point cards successfully
-- **AND** no runtime error or blank card MUST occur because those fields are absent.
-
-#### Scenario: Point learning summary is available
-- **WHEN** a point has learning content such as principle, phenomenon explanation, or safety note
-- **THEN** the point card MAY show a concise derived summary from that content
-- **AND** the summary MUST be treated as a display projection rather than an editable card override.
-
-#### Scenario: Point learning summary is missing
-- **WHEN** a point has no available learning summary yet
-- **THEN** the point card MUST still show the point title and stable point/video affordance
-- **AND** it MUST not require teacher-authored short card description.
-
-#### Scenario: Bound video thumbnail is available
-- **WHEN** a point has a bound video thumbnail available to students
-- **THEN** the point card MAY use that thumbnail as the visual cue
-- **AND** it MUST fall back to a stable default if no thumbnail is available.
 
 ### Requirement: Student preview mode does not change normal student behavior
 The student H5 code used for teacher preview SHALL preserve normal authenticated student behavior outside preview routes.
@@ -537,4 +394,245 @@ Teacher preview SHALL render the same student-facing video behavior as normal H5
 - **WHEN** a teacher previews a point with no active ready video
 - **THEN** the preview MUST show the same no-video state as normal H5
 - **AND** it MUST not expose binding status internals or teacher-only diagnostics.
+
+### Requirement: Point detail uses edge-to-edge player header chrome
+The student H5 point video detail page SHALL render the playable video as the page header, SHALL make that player span the full available mobile width, and SHALL avoid using the standard detail page title bar for point video pages.
+
+#### Scenario: Student opens a point with a long title
+- **WHEN** a student opens a visible catalog point whose title is longer than one normal mobile header line
+- **THEN** the point detail page MUST keep the video player as the top page header
+- **AND** the player MUST touch the top of the detail viewport without route padding above it
+- **AND** the player MUST span the full width of the phone content area without side gutters, outer border, radius, shadow, or card background
+- **AND** the page MUST render the catalog path and full point title below the player
+- **AND** the title MUST be allowed to wrap without increasing or pushing down the player stage
+
+#### Scenario: Playable player defaults to quiet video-first chrome
+- **WHEN** a student opens a catalog point that has a playable video
+- **THEN** the video frame or poster MUST be the dominant visible content in the player header
+- **AND** the playable player MUST NOT render a persistent page-style back arrow while playback controls are inactive
+- **AND** the playable player MUST NOT render a persistent full toolbar while playback controls are inactive
+- **AND** the playable player MUST render only a subtle bottom mini progress indicator as persistent inactive chrome when progress data is available.
+
+#### Scenario: Player controls reveal return action
+- **WHEN** a student taps or otherwise activates the point video player controls
+- **THEN** the return action MUST appear as part of the active player control chrome
+- **AND** activating that return action MUST call the same source-aware route back behavior as the existing point detail back action
+- **AND** the point detail page MUST NOT render a separate always-visible standard `PageBar` title above the player
+- **AND** the return action MUST hide again when the playable player control chrome becomes inactive according to the player inactivity behavior.
+
+#### Scenario: Active player controls use mobile video composition
+- **WHEN** a playable point video's controls are active on a phone-width viewport
+- **THEN** the player header MUST reveal the primary playback affordance inside the video footprint
+- **AND** it MUST expose interactive progress inside the player footprint
+- **AND** it MUST expose time feedback where duration/current-time data is available
+- **AND** it MUST expose fullscreen or equivalent player affordances where the runtime supports them
+- **AND** those controls MUST remain part of the player header rather than moving into the catalog title/content sections below.
+
+#### Scenario: Page separates video header from learning content
+- **WHEN** the point detail page is rendered
+- **THEN** the page MUST NOT use the experiment grid-paper background behind the detail content
+- **AND** the player and title area MUST NOT be presented as stacked floating cards
+- **AND** the page MUST use flat sections and dividers below the video header for title, principle, explanation, safety, related links, AI handoff, and assessment handoff
+
+#### Scenario: Point has no playable video
+- **WHEN** a student opens a visible catalog point with no active ready video binding
+- **THEN** the point detail page MUST keep the same edge-to-edge top video-header footprint
+- **AND** it MUST show the existing graceful no-video state in that footprint
+- **AND** the no-video state MUST keep a visible shared return affordance because there is no playback toolbar to reveal it
+- **AND** the catalog path, title, learning content, related links, AI handoff, and assessment handoff MUST remain available
+
+#### Scenario: Teacher previews point detail
+- **WHEN** the teacher preview shell renders a student point detail page
+- **THEN** the preview MUST use the same player-first layout and title-below-player composition
+- **AND** playable-video return chrome MUST follow the same active/inactive player behavior as normal student H5
+- **AND** preview media URLs MUST continue to resolve through preview-scoped media access
+
+### Requirement: Point principle equations render as chemistry notation
+The student H5 point detail page SHALL render equation-mode experiment principles as chemical equations from the same normalized reaction-equation semantics used by the teacher catalog preview.
+
+#### Scenario: Student opens a point with normalized reaction equations
+- **WHEN** a point detail payload contains `reaction_equations` with `canonical_mhchem`
+- **THEN** the experiment principle section MUST render each equation through the shared reaction-equation rendering core
+- **AND** it MUST keep each row's supplemental `annotation_text` as a readable explanation below its rendered equation
+- **AND** it MUST NOT rely on a single plain-text paragraph that shows the backend raw equation string as the primary student-facing equation display
+
+#### Scenario: Student opens a point with long normalized reaction equations
+- **WHEN** a normalized reaction equation is wider than the phone content width at 360px, 390px, or 430px CSS-pixel widths
+- **THEN** the student H5 equation presentation MUST use body-copy scale rather than large display-math scale
+- **AND** it MUST allow the equation to wrap naturally across lines where the renderer permits
+- **AND** it MUST keep horizontal scrolling as an overflow fallback only, not as the expected reading path
+- **AND** it MUST NOT render KaTeX display blocks as the default student mobile equation treatment
+
+#### Scenario: Teacher preview and student display share equation semantics
+- **WHEN** the teacher catalog preview and the student H5 point detail render the same normalized reaction row
+- **THEN** both surfaces MUST use the same priority order for renderable source and fallback text
+- **AND** both surfaces MUST treat `canonical_mhchem` as the trusted renderable chemistry source
+- **AND** both surfaces MUST preserve the same supplemental `annotation_text`
+- **AND** any difference between the teacher and student output MUST be limited to the named presentation profile, not duplicated business parsing logic
+
+#### Scenario: Student opens a legacy equation-only point
+- **WHEN** a point detail payload has `principle_mode` set to `equation` but has no valid normalized `reaction_equations`
+- **THEN** the experiment principle section MUST show each non-empty line of `principle_equation` through the shared fallback path
+- **AND** it MUST NOT invent a chemistry parse for unconfirmed raw legacy text
+- **AND** invalid or unrenderable chemistry syntax MUST fall back gracefully to the original text without breaking the page
+
+### Requirement: Home is experiment-video discovery while learning remains catalog map
+The student H5 learning experience SHALL separate home discovery from catalog learning: home is the experiment video discovery stream, while the learning tab remains the textbook/catalog map.
+
+#### Scenario: Student opens home
+- **WHEN** an authenticated student opens the home root
+- **THEN** the page MUST prioritize experiment video discovery through the home video feed
+- **AND** it MUST NOT use the old generic recommended-learning hero and multi-action grid as the primary home experience
+
+#### Scenario: Student wants to locate a known experiment
+- **WHEN** the student wants to browse by chapter, element, family, or catalog directory
+- **THEN** the app MUST keep that behavior under the learning/catalog surfaces
+- **AND** the home feed MUST route into those learning contexts through point detail or explicit search/navigation actions rather than replacing the catalog map
+
+#### Scenario: Assessment recommends weak content later
+- **WHEN** assessment logic identifies weak chapters or point nodes
+- **THEN** recommendation MAY influence home feed ranking or reasons
+- **AND** the catalog tree itself MUST remain a neutral classification model rather than being rewritten as a fixed guided-learning path
+
+### Requirement: Point detail body uses watch-page learning hierarchy
+The student H5 point video detail page SHALL organize required learning text below the fixed point video player as a flat mobile watch-page body.
+
+#### Scenario: Student opens a point with complete learning content
+- **WHEN** a student opens a visible experiment point that has a title, catalog path, phenomenon explanation, principle content, safety note, and related experiments
+- **THEN** the scrollable body below the fixed player MUST show the catalog path and full point title first
+- **AND** it MUST show the phenomenon explanation before the experiment principle
+- **AND** it MUST show the safety note after the principle
+- **AND** it MUST show related experiment links after the required explanatory sections.
+
+#### Scenario: Student scans the body after watching the video
+- **WHEN** the point detail body is rendered on a phone viewport
+- **THEN** the content MUST use compact section headings, body-copy scale text, and flat dividers between major sections
+- **AND** it MUST NOT present title, phenomenon, principle, safety, or related links as nested cards inside another card
+- **AND** it MUST NOT use large decorative colored panels for long explanatory text.
+
+#### Scenario: Required content is missing
+- **WHEN** a point detail payload omits phenomenon explanation, principle content, safety note, or related experiments
+- **THEN** the corresponding section MUST render a controlled empty state or be omitted according to existing student rules
+- **AND** the remaining required sections MUST retain their relative learning order without collapsing into an undifferentiated paragraph.
+
+### Requirement: Point principle text is structured as readable learning notes
+The student H5 point video detail page SHALL treat principle content as structured learning notes rather than as a single heavy plain-text block.
+
+#### Scenario: Equation-mode principle contains reaction rows
+- **WHEN** a point detail payload has `principle_mode` set to `equation` and includes normalized `reaction_equations`
+- **THEN** the principle section MUST render each valid reaction as its own readable row
+- **AND** each row MUST visually associate the rendered equation with its annotation text when annotation text exists
+- **AND** the section MUST preserve the shared chemistry renderer and fallback behavior defined by existing point-equation requirements.
+
+#### Scenario: Reaction rows include annotations
+- **WHEN** one or more rendered reaction rows include supplemental annotation text
+- **THEN** each annotation MUST read as explanatory body text attached to its reaction
+- **AND** repeated labels such as `补充说明：` MUST NOT be the dominant visual text for every row
+- **AND** annotation text MUST wrap within the phone content width without overlapping the equation, neighboring rows, or fixed controls.
+
+#### Scenario: Text-mode principle is available
+- **WHEN** a point detail payload has text-mode principle content
+- **THEN** the principle section MUST render the text as readable body copy with preserved intentional line breaks
+- **AND** it MUST use the same watch-page section rhythm as phenomenon and safety sections.
+
+### Requirement: Phenomenon and safety sections remain concise and scannable
+The student H5 point video detail page SHALL make phenomenon and safety content easy to scan while preserving the authored text.
+
+#### Scenario: Phenomenon explanation is shown
+- **WHEN** a point detail payload includes a phenomenon explanation
+- **THEN** the phenomenon section MUST appear immediately after the title area
+- **AND** it MUST present the explanation as primary body copy that answers what the student observed in the video
+- **AND** it MUST NOT be visually subordinated to equation annotations or action buttons.
+
+#### Scenario: Safety note is shown
+- **WHEN** a point detail payload includes a safety note
+- **THEN** the safety section MUST include a clear caution heading or icon treatment
+- **AND** it MUST keep the note compact and readable
+- **AND** it MUST avoid a treatment that visually overpowers the phenomenon and principle sections unless future hazard severity metadata explicitly requires stronger warning levels.
+
+### Requirement: Related experiments render as video-style recommendations
+The student H5 point video detail page SHALL present related experiment links as a YouTube-like vertical list of related experiment video rows.
+
+#### Scenario: Related experiments are available
+- **WHEN** a point detail payload includes one or more related experiments
+- **THEN** each related item MUST render as a single tappable row with a 16:10 visual area, the resolved related experiment title, and a secondary relation label or generic related-experiment label
+- **AND** the visual area MUST use a stable placeholder when no student-visible thumbnail is available
+- **AND** selecting the row MUST preserve the existing related-point navigation behavior.
+
+#### Scenario: Related experiment title is long
+- **WHEN** a related experiment title is longer than the available row copy width
+- **THEN** the title MUST wrap or clamp cleanly without overlapping the visual area, relation label, neighboring rows, bottom controls, or viewport edge.
+
+#### Scenario: Teacher preview renders related experiments
+- **WHEN** the teacher preview shell renders the student point detail page
+- **THEN** related experiment rows MUST use the same student-facing title and row presentation
+- **AND** disabled preview actions MUST remain disabled without exposing teacher-only related-link labels or raw configuration.
+
+### Requirement: Point detail actions stay separate from required learning content
+The student H5 point video detail page SHALL keep AI, practice, completion, and assessment handoff controls visually separate from the required learning content hierarchy.
+
+#### Scenario: Action controls are available
+- **WHEN** AI, practice, completion, or assessment handoff controls are enabled for a point detail page
+- **THEN** those controls MUST appear as action affordances outside the title, phenomenon, principle, safety, and related experiment content hierarchy
+- **AND** they MUST NOT interrupt the required learning section order.
+
+#### Scenario: Fixed or floating action controls are present
+- **WHEN** a completion or practice action is fixed or floating near the bottom of the viewport
+- **THEN** the scrollable content MUST include enough bottom spacing for related experiment rows and final content to remain reachable
+- **AND** fixed or floating actions MUST NOT permanently cover required content.
+
+### Requirement: Point detail text layout remains mobile-safe
+The student H5 point video detail text layout SHALL remain usable on common phone preview widths.
+
+#### Scenario: Phone viewport renders long text
+- **WHEN** the point detail page is viewed at 360px, 390px, or 430px CSS-pixel widths
+- **THEN** long titles, catalog paths, equations, annotations, phenomenon text, safety text, and related titles MUST remain within the phone content area
+- **AND** the page MUST avoid horizontal body scrolling caused by the learning text layout.
+
+#### Scenario: Fixed player and scroll body coexist
+- **WHEN** the student scrolls the point detail body
+- **THEN** the fixed player MUST remain at the top of the viewport
+- **AND** the scroll body MUST start below the player footprint rather than sliding underneath it
+- **AND** section headings and body text MUST not be hidden behind the player.
+
+### Requirement: Point detail uses custom video shell
+The student H5 point detail experience SHALL render playable point videos through an ArtPlayer-backed media engine with a student-owned custom mobile shell, while keeping point title, catalog path, learning text, equations, safety, related experiments, AI handoff, and assessment handoff below the video header.
+
+#### Scenario: Playable point video uses ArtPlayer as engine
+- **WHEN** a student opens a visible catalog point with a playable published video
+- **THEN** the point detail page MUST create the video header through the ArtPlayer-backed point video player
+- **AND** ArtPlayer MUST remain responsible for media source loading, poster, autoplay policy, inline playback, playback state, current time, duration, seek, and cleanup
+- **AND** the visible student playback UI MUST come from the custom mobile shell rather than ArtPlayer's default chrome
+- **AND** the page MUST NOT render browser native video controls.
+
+#### Scenario: Point detail keeps learning content below player
+- **WHEN** the playable point detail page renders
+- **THEN** the video header MUST remain stable at the top of the detail viewport
+- **AND** the catalog path and full point title MUST render below the player rather than inside a generic page bar above the player
+- **AND** long titles MUST wrap below the player without changing the video header height
+- **AND** learning content below the player MUST continue to show available principle equation or text, phenomenon explanation, safety/caution notes, related experiment links, and learning/assessment actions according to the existing point-detail contract.
+
+#### Scenario: Autoplay recovery uses custom shell
+- **WHEN** playable video autoplay is attempted and the browser or WebView rejects playback
+- **THEN** the point detail page MUST keep the video header usable
+- **AND** the custom shell MUST expose a visible play affordance when active
+- **AND** the student MUST be able to start playback through the custom shell without needing ArtPlayer's default toolbar or browser native controls.
+
+#### Scenario: Custom shell events stay synchronized
+- **WHEN** the video emits playback lifecycle events such as loaded metadata, duration change, time update, play, pause, waiting, playing, seek, error, fullscreen, or destroy
+- **THEN** the custom shell MUST update its visible state from the ArtPlayer/media source of truth
+- **AND** time feedback MUST use the current media time and duration
+- **AND** the shell MUST not keep stale playing, seeking, or duration state after the source changes or the player unmounts.
+
+#### Scenario: No playable video keeps graceful empty header
+- **WHEN** a student opens a visible catalog point with no active ready video binding
+- **THEN** the point detail page MUST keep the same edge-to-edge video-header footprint
+- **AND** it MUST show the graceful no-video placeholder instead of initializing a fake playable shell
+- **AND** the no-video placeholder MUST keep an immediately visible shared route-return affordance
+- **AND** the page MUST still show the point's learning content below the placeholder when available.
+
+#### Scenario: Related point navigation preserves player model
+- **WHEN** the student opens a related experiment point from a point detail page
+- **THEN** the target point detail page MUST apply the same playable custom-shell or no-video placeholder rules according to that target point's video availability
+- **AND** returning MUST preserve normal source-aware route-stack behavior.
 

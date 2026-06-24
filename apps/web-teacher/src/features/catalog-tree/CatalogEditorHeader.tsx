@@ -319,7 +319,7 @@ export function CatalogEditorHeader({
   };
 
   const moreItems = [
-    ...(pointCapable ? [{ key: "preview", label: "预览学生端", disabled: previewLoading }] : []),
+    { key: "preview", label: "预览学生端", disabled: previewLoading },
     { key: "node-status", label: "节点状态" },
     ...(pointCapable ? [{ key: "ai-context", label: "点位检索诊断" }] : []),
     { key: "advanced", label: "高级调试" },

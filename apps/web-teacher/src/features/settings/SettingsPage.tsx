@@ -311,6 +311,10 @@ export function SettingsPage() {
     () => normalizeCustomAssessmentSettings(watchedCustomAssessment),
     [watchedCustomAssessment],
   );
+  const reasoningSummary = aiConfig.data?.reasoning_summary;
+  const reasoningSummaryEnabled = reasoningSummary?.enabled;
+  const reasoningSummaryLabel = reasoningSummaryEnabled ? "Reasoning Summary" : "Agent 执行轨迹";
+  const reasoningSummaryAlertType = reasoningSummaryEnabled ? "success" : reasoningSummary?.status === "failed" ? "error" : "info";
 
   return (
     <Space orientation="vertical" size={18} className="full">
@@ -546,6 +550,25 @@ export function SettingsPage() {
                 </Text>
               </div>
             </div>
+            {reasoningSummary ? (
+              <Alert
+                type={reasoningSummaryAlertType}
+                showIcon
+                className="section-alert"
+                message={
+                  <Space size={8} wrap>
+                    <span>学生端思考状态来源</span>
+                    <Tag color={reasoningSummaryEnabled ? "green" : "blue"}>{reasoningSummaryLabel}</Tag>
+                  </Space>
+                }
+                description={
+                  reasoningSummary.message ||
+                  (reasoningSummaryEnabled
+                    ? "保存检测已确认当前模型会返回 reasoning summary 事件。"
+                    : "当前模型未返回 reasoning summary 事件，学生端会显示真实 Agent 执行轨迹。")
+                }
+              />
+            ) : null}
             <div className="settings-grid">
               <Form.Item name="model" label="模型名称" rules={[{ required: true, message: "请填写模型名称" }]}>
                 <Input disabled={!canEditAiFeatures} placeholder="此处填写模型名称" />

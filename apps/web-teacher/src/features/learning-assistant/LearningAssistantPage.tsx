@@ -693,6 +693,12 @@ export function LearningAssistantPage() {
   const policyMode = String(response?.classification?.policy_decision_mode || response?.classification?.intent || "");
   const policyLabel = learningAssistantPolicyLabels[policyMode] || policyMode || "-";
   const modeLabel = response?.mode ? learningAssistantModeLabels[response.mode] || response.mode : "-";
+  const retrievalDecision = asRecord(response?.classification?.retrieval_decision);
+  const retrievalMode = String(retrievalDecision.mode || response?.classification?.retrieval_mode || "");
+  const retrievalSource = String(retrievalDecision.source || response?.classification?.retrieval_decision_source || "");
+  const retrievalReason = String(retrievalDecision.reason || "");
+  const retrievalOverride = String(retrievalDecision.override_reason || response?.classification?.retrieval_override_reason || "");
+  const retrievalConfidence = traceNumber(retrievalDecision.confidence);
   const connectionStatus = aiConfig.data?.status.connectivity_status || "not_configured";
   const ragRuntime = assistantRuntime.data?.rag_runtime || aiConfig.data?.rag_runtime;
   const bgeMetrics = assistantRuntime.data?.bge_metrics || null;
@@ -736,6 +742,26 @@ export function LearningAssistantPage() {
   const rerankPoolCount = traceNumber(traceCounts.rerank_pool);
   const finalEvidenceCount = traceNumber(traceCounts.final);
   const traceReranked = latestRagTrace.rerank_applied === true || latestRagTrace.mode === "hybrid_bge_rerank";
+  const hasLatestRagTrace = Object.keys(latestRagTrace).length > 0;
+  const retrievalRagEmptyState = (() => {
+    if (!response || !retrievalMode || hasLatestRagTrace) return "";
+    if (retrievalDecision.should_call_resource_lookup === true && retrievalDecision.should_call_rag !== true) {
+      return "Dynamic RAG skipped: platform resource lookup handled this turn.";
+    }
+    if (retrievalDecision.should_call_rag === true) {
+      return "Dynamic RAG was selected, but no RAG trace was returned for this turn.";
+    }
+    if (retrievalMode === "fixed_evidence") {
+      return "Dynamic RAG skipped: fixed point evidence was used.";
+    }
+    if (retrievalSource === "feature_disabled" || response.classification?.allow_rag_lookup === false) {
+      return "Dynamic RAG skipped: student RAG access is disabled for this turn.";
+    }
+    if (retrievalMode === "strict_evidence") {
+      return "Dynamic RAG skipped; strict evidence must come from fixed context or fail closed.";
+    }
+    return "Dynamic RAG skipped by retrieval decision.";
+  })();
   const chatDraftLength = chatDraft.length;
   const chatDraftAtLimit = chatDraftLength >= chatDraftMaxLength;
   const connectionLabels: Record<string, string> = {
@@ -1109,6 +1135,23 @@ export function LearningAssistantPage() {
                 <Tooltip title={response.mode}>
                   <Tag>{modeLabel}</Tag>
                 </Tooltip>
+                {retrievalMode ? (
+                  <Tooltip
+                    title={[
+                      `source: ${retrievalSource || "-"}`,
+                      retrievalConfidence !== undefined ? `confidence: ${retrievalConfidence.toFixed(2)}` : "",
+                      `strict: ${retrievalDecision.strict_evidence === true ? "yes" : "no"}`,
+                      `rag: ${retrievalDecision.should_call_rag === true ? "executed" : "skipped"}`,
+                      `resource: ${retrievalDecision.should_call_resource_lookup === true ? "executed" : "skipped"}`,
+                      retrievalReason ? `reason: ${retrievalReason}` : "",
+                      retrievalOverride ? `override: ${retrievalOverride}` : "",
+                    ].filter(Boolean).join(" · ")}
+                  >
+                    <Tag color={retrievalMode === "skip" ? "default" : retrievalMode === "strict_evidence" ? "orange" : "#005826"}>
+                      retrieval · {retrievalMode}
+                    </Tag>
+                  </Tooltip>
+                ) : null}
                 {response.review_required ? <Tag color="#b8892f">记录留痕</Tag> : null}
               </Space>
 
@@ -1200,6 +1243,14 @@ export function LearningAssistantPage() {
 
               <div>
                 <Text strong>补充 RAG 查询与重排</Text>
+                {retrievalRagEmptyState ? (
+                  <Alert
+                    showIcon
+                    type="info"
+                    style={{ marginTop: 8, marginBottom: 8 }}
+                    message={retrievalRagEmptyState}
+                  />
+                ) : null}
                 <Descriptions column={1} size="small" className="assistant-rag-desc">
                   <Descriptions.Item label="模式">{String(latestRagTrace.mode || "-")}</Descriptions.Item>
                   <Descriptions.Item label="最终排序">

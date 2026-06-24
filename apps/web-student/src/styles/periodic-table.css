@@ -58,6 +58,14 @@
   color: rgba(90, 111, 101, 0.74);
 }
 
+.periodic-search-message {
+  margin: -5px 0 8px;
+  color: #8b6218;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.3;
+}
+
 .area-legend {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

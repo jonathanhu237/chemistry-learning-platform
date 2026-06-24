@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Atom, ChevronRight, FlaskConical, LoaderCircle } from "lucide-react";
+import { BookOpenCheck, ChevronRight, FlaskConical, LoaderCircle } from "lucide-react";
 import type { StudentLearningElementBadge, StudentLearningPageResponse, StudentLearningProfile } from "../../api";
 import { errorMessage, getStudentLearningPage } from "../../api";
 import { MobileEmptyState } from "../../mobile/primitives";
@@ -91,7 +91,7 @@ export function LearningHomePanel({
       {loading ? <LearningState icon={<LoaderCircle className="spin" size={23} />} text="正在加载学习内容" /> : null}
       {error ? <LearningState icon={<FlaskConical size={23} />} text={error} /> : null}
       {!loading && !error && !profile ? (
-        <MobileEmptyState className="empty-learning-card" icon={<Atom size={20} />}>
+        <MobileEmptyState className="empty-learning-card" icon={<BookOpenCheck size={20} />}>
           <span>没有找到学习章节</span>
         </MobileEmptyState>
       ) : null}

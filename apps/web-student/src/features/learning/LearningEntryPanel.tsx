@@ -1,18 +1,46 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, FlaskConical, LoaderCircle, Sparkles } from "lucide-react";
+import { FlaskConical, LoaderCircle } from "lucide-react";
 import { StudentLearningPageResponse, errorMessage, getStudentLearningPage } from "../../api";
 import { LearningState } from "../../shared/mobile/LearningState";
 import { PeriodicTable } from "../periodic-table/PeriodicTable";
-import { periodicAreaByAreaId, profileAreaId, type AreaId } from "../periodic-table/periodicHelpers";
+import { periodicAreaIdForElement, periodicMetaForElement, profileAreaIds, type AreaId } from "../periodic-table/periodicHelpers";
+import type { PeriodicElementSearchMeta } from "../periodic-table/periodicSearch";
 import { LearningAreaPopover } from "./LearningAreaPopover";
-import { formatChapterEntryTitle, formatRecommendedAreaCueLabel } from "./learningFormat";
 
 type LearningProfileSummary = StudentLearningPageResponse["profiles"][number];
+type LearningProfileSelectOptions = { elementSymbol?: string };
+
+function profileContainsElement(profile: LearningProfileSummary, symbol: string): boolean {
+  return profile.element_symbols.some((item) => item.toLowerCase() === symbol.toLowerCase());
+}
+
+function profileSharesElementGroup(profile: LearningProfileSummary, element: PeriodicElementSearchMeta): boolean {
+  const elementArea = periodicAreaIdForElement(element);
+  return profile.element_symbols.some((symbol) => {
+    const profileElement = periodicMetaForElement(symbol);
+    return Boolean(profileElement && profileElement.group === element.group && periodicAreaIdForElement(profileElement) === elementArea);
+  });
+}
+
+function findProfileForElement(element: PeriodicElementSearchMeta, profiles: LearningProfileSummary[]): LearningProfileSummary | null {
+  const exactProfile = profiles.find((profile) => profileContainsElement(profile, element.symbol));
+  if (exactProfile) return exactProfile;
+
+  const groupProfile = profiles.find((profile) => profileSharesElementGroup(profile, element));
+  if (groupProfile) return groupProfile;
+
+  const areaId = periodicAreaIdForElement(element);
+  const canUseAreaFallback = areaId !== "p" && areaId !== "hydrogen";
+  if (!canUseAreaFallback) return null;
+
+  const areaProfiles = profiles.filter((profile) => profileAreaIds(profile).includes(areaId));
+  return areaProfiles.length === 1 ? areaProfiles[0] : null;
+}
 
 export function LearningEntryPanel({
   onSelectProfile,
 }: {
-  onSelectProfile: (profile: LearningProfileSummary) => void;
+  onSelectProfile: (profile: LearningProfileSummary, options?: LearningProfileSelectOptions) => void;
 }) {
   const [page, setPage] = useState<StudentLearningPageResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,18 +68,20 @@ export function LearningEntryPanel({
   }, []);
 
   const profiles = page?.profiles || [];
-  const recommendedProfileId = page?.recommended_profile_id || page?.active_profile?.profile_id || profiles[0]?.profile_id || "";
-  const recommendedProfile = profiles.find((profile) => profile.profile_id === recommendedProfileId) || profiles[0] || null;
-  const recommendedArea = recommendedProfile ? profileAreaId(recommendedProfile) : null;
-  const recommendedCueLabel = formatRecommendedAreaCueLabel(recommendedProfile);
-  const recommendedAreaLabel = recommendedArea ? periodicAreaByAreaId[recommendedArea] : null;
   const closeAreaPopover = () => {
     setSelectedArea(null);
     setAreaAnchorElement(null);
   };
+  const selectElementProfile = (element: PeriodicElementSearchMeta) => {
+    const profile = findProfileForElement(element, profiles);
+    if (!profile) return false;
+    closeAreaPopover();
+    onSelectProfile(profile, { elementSymbol: element.symbol });
+    return true;
+  };
 
   return (
-    <section className="learning-panel" aria-label="元素周期表章节入口">
+    <section className="learning-panel learning-entry-panel" aria-label="元素周期表章节入口">
       {loading ? <LearningState icon={<LoaderCircle className="spin" size={23} />} text="正在加载学习章节" /> : null}
       {error ? <LearningState icon={<FlaskConical size={23} />} text={error} /> : null}
       {!loading && !error ? (
@@ -65,6 +95,7 @@ export function LearningEntryPanel({
               setSelectedArea(areaId);
               setAreaAnchorElement(triggerElement);
             }}
+            onSelectElement={(element) => selectElementProfile(element)}
           />
           <LearningAreaPopover
             selectedArea={selectedArea}
@@ -77,29 +108,6 @@ export function LearningEntryPanel({
             onSelectProfile={onSelectProfile}
           />
         </>
-      ) : null}
-      {!loading && !error && recommendedProfile ? (
-        <button
-          type="button"
-          className="learning-recommendation-card"
-          aria-label={`进入推荐学习 ${formatChapterEntryTitle(recommendedProfile)}`}
-          onClick={() => onSelectProfile(recommendedProfile)}
-        >
-          <span className="learning-recommendation-kicker">
-            <Sparkles size={15} />
-            智能推荐
-          </span>
-          <strong>{formatChapterEntryTitle(recommendedProfile)}</strong>
-          <small>
-            {[recommendedAreaLabel || recommendedCueLabel, recommendedProfile.element_symbols.join(" ")]
-              .filter(Boolean)
-              .join(" · ")}
-          </small>
-          <span className="learning-recommendation-action">
-            进入学习
-            <ArrowRight size={16} />
-          </span>
-        </button>
       ) : null}
     </section>
   );

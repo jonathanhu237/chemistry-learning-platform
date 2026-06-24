@@ -1,5 +1,10 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const appDir = dirname(fileURLToPath(import.meta.url));
+const appsRoot = resolve(appDir, "..");
 
 const vendorChunks: Array<{ name: string; patterns: string[] }> = [
   {
@@ -83,6 +88,9 @@ function manualVendorChunk(id: string): string | undefined {
 export default defineConfig({
   plugins: [react()],
   server: {
+    fs: {
+      allow: [appsRoot],
+    },
     proxy: {
       "/api": "http://127.0.0.1:8000",
     },

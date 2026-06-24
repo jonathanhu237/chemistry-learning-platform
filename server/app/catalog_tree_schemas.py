@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from server.app.student_learning_schemas import StudentLearningPageResponse
+
 
 class CatalogNodeCreateRequest(BaseModel):
     chapter_id: str = Field(min_length=1)
@@ -265,3 +267,10 @@ class StudentPointDetailResponse(BaseModel):
     no_video_reason: str | None = None
     related_points: list[StudentRelatedPoint] = Field(default_factory=list)
     assessment_context: StudentPointAssessmentContext
+
+
+class CatalogPreviewNodeResponse(BaseModel):
+    node_kind: str = Field(pattern="^(directory|point)$")
+    directory: StudentCatalogNodeResponse | None = None
+    point: StudentPointDetailResponse | None = None
+    learning_page: StudentLearningPageResponse | None = None

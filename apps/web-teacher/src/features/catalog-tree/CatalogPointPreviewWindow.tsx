@@ -25,7 +25,7 @@ export function CatalogPointPreviewWindow() {
   const [searchParams] = useSearchParams();
   const [deviceKey, setDeviceKey] = useState<DevicePreset["key"]>("iphone17Pro");
   const previewUrl = searchParams.get("previewUrl") || "";
-  const title = searchParams.get("title") || "学习卡片预览";
+  const title = searchParams.get("title") || "学生端预览";
   const expiresAt = searchParams.get("expiresAt") || "";
   const iframeSrc = useMemo(() => resolveStudentPreviewUrl(previewUrl), [previewUrl]);
   const preset = devicePresets.find((item) => item.key === deviceKey) || devicePresets[0];
@@ -33,7 +33,7 @@ export function CatalogPointPreviewWindow() {
   if (!iframeSrc) {
     return (
       <div className="catalog-preview-window">
-        <Empty description="缺少预览链接，请从点位工作台重新打开预览。" />
+        <Empty description="缺少预览链接，请从目录工作台重新打开预览。" />
       </div>
     );
   }

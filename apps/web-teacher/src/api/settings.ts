@@ -112,6 +112,13 @@ export type AIConfiguration = {
       status: "success" | "error";
     } | null;
   };
+  reasoning_summary?: {
+    enabled: boolean;
+    status: "not_configured" | "untested" | "supported" | "unsupported" | "failed";
+    source: "reasoning_summary" | "agent_trace";
+    message: string;
+    last_checked_at?: string | null;
+  };
   student_ai_policy: {
     active: boolean;
     version: string;

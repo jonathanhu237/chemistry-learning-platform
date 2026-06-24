@@ -1,5 +1,7 @@
-import { BarChart3, BookOpenCheck, CheckCircle2, FlaskConical, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Atom, BarChart3, BookOpenCheck, CheckCircle2, FlaskConical, LoaderCircle, Sparkles } from "lucide-react";
 import type { StudentSmartAssessmentReport } from "../../api";
+import { errorMessage, explainPosttestMistakes, generatePosttestAiSummary } from "../../api";
 import { MobileButton, MobileEmptyState } from "../../mobile/primitives";
 import { AiMarkdownBlock } from "../../shared/markdown/AiMarkdownBlock";
 import { stripExperimentPrefix } from "./assessmentText";
@@ -9,6 +11,51 @@ export function PosttestSummaryPanel({ report, onContinue }: { report: StudentSm
   const masteryChanges = report.mastery_changes.slice(0, 5);
   const isCustom = report.assessment_mode === "custom";
   const targetCount = report.composition.requested_question_count || report.composition.target_question_count;
+  const [aiSummary, setAiSummary] = useState(report.next_recommendation);
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(true);
+  const [aiSummarySource, setAiSummarySource] = useState<"ai" | "fallback">("fallback");
+  const [mistakeAnswer, setMistakeAnswer] = useState("");
+  const [mistakeLoading, setMistakeLoading] = useState(false);
+  const [mistakeError, setMistakeError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setAiSummary(report.next_recommendation);
+    setAiSummarySource("fallback");
+    setAiSummaryLoading(true);
+    generatePosttestAiSummary(report.session_id)
+      .then((response) => {
+        if (cancelled) return;
+        setAiSummary(response.text);
+        setAiSummarySource(response.source);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAiSummary(report.next_recommendation);
+          setAiSummarySource("fallback");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setAiSummaryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [report.session_id, report.next_recommendation]);
+
+  const explainMistakes = async () => {
+    if (mistakeLoading || !report.wrong_answers.length) return;
+    setMistakeLoading(true);
+    setMistakeError("");
+    try {
+      const response = await explainPosttestMistakes(report.session_id);
+      setMistakeAnswer(response.text);
+    } catch (requestError) {
+      setMistakeError(errorMessage(requestError));
+    } finally {
+      setMistakeLoading(false);
+    }
+  };
 
   return (
     <section className="learning-panel" aria-label="学习总结">
@@ -19,10 +66,10 @@ export function PosttestSummaryPanel({ report, onContinue }: { report: StudentSm
         <div>
           <p>学习总结</p>
           <h2>{isCustom ? "自主测评报告" : "智能测评报告"}</h2>
-          <AiMarkdownBlock className="summary-ai-text" text={report.next_recommendation} />
+          <AiMarkdownBlock className="summary-ai-text" text={aiSummaryLoading ? "正在生成 Atom 学习总结..." : aiSummary} />
           <em>
-            <Sparkles size={13} />
-            规则总结
+            {aiSummarySource === "ai" ? <Atom size={13} /> : <Sparkles size={13} />}
+            {aiSummarySource === "ai" ? "Atom 总结" : "规则总结"}
           </em>
         </div>
       </section>
@@ -124,6 +171,30 @@ export function PosttestSummaryPanel({ report, onContinue }: { report: StudentSm
             <span>本轮没有错题</span>
           </MobileEmptyState>
         )}
+        {report.wrong_answers.length ? (
+          <>
+            <MobileButton
+              variant="secondary"
+              className="secondary-action full ai-mistake-action"
+              type="button"
+              loading={mistakeLoading}
+              onClick={() => void explainMistakes()}
+            >
+              {mistakeLoading ? <LoaderCircle className="spin" size={18} /> : <Atom size={18} />}
+              <span>{mistakeLoading ? "Atom 正在讲解" : "Atom 讲解错题"}</span>
+            </MobileButton>
+            {mistakeError ? <div className="form-error">{mistakeError}</div> : null}
+            {mistakeAnswer ? (
+              <div className="mistake-ai-answer">
+                <span>
+                  <Atom size={13} />
+                  Atom 解答
+                </span>
+                <AiMarkdownBlock text={mistakeAnswer} />
+              </div>
+            ) : null}
+          </>
+        ) : null}
       </section>
 
       <MobileButton className="primary-action full" type="button" onClick={onContinue}>

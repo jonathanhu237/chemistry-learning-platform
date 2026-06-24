@@ -9,13 +9,24 @@ import {
   type PreviewInputPoint,
 } from "./previewInputProtocol";
 
+export const previewTapMovementThreshold = 8;
+export const previewDragMovementThreshold = 8;
+export const previewTapDurationLimitMs = 300;
+export const previewLongPressDelayMs = 520;
+
+type PreviewInputPhase = "pressing" | "dragging" | "longPressReady";
+
 type ActivePreviewInputSequence = {
   sequenceId: string;
   initialTarget: Element | null;
   pressTarget: Element | null;
+  startPoint: PreviewInputPoint;
   lastPoint: PreviewInputPoint;
-  moved: boolean;
+  startedAt: number;
+  totalMovement: number;
+  phase: PreviewInputPhase;
   suppressTapActivation: boolean;
+  scrollLock: PreviewScrollLock | null;
 };
 
 type ScrollTarget =
@@ -23,6 +34,13 @@ type ScrollTarget =
   | { kind: "document"; element: Element };
 
 type ScrollAxis = "x" | "y";
+
+export type PreviewScrollLock = {
+  target: ScrollTarget;
+  axis: ScrollAxis;
+  startScroll?: number;
+  accumulatedDelta?: number;
+};
 
 const actionableSelector = [
   "button",
@@ -40,6 +58,10 @@ const actionableSelector = [
 
 function isHTMLElement(value: Element | null): value is HTMLElement {
   return value instanceof HTMLElement;
+}
+
+function pointDistance(a: PreviewInputPoint, b: PreviewInputPoint): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
 function isDisabledControl(element: Element): boolean {
@@ -94,6 +116,14 @@ function canScrollInDirection(element: Element, deltaScroll: number, axis: Scrol
   return false;
 }
 
+function dominantAxis(deltaScrollX: number, deltaScrollY: number): ScrollAxis {
+  return Math.abs(deltaScrollX) > Math.abs(deltaScrollY) ? "x" : "y";
+}
+
+function nonZeroDeltaForAxis(axis: ScrollAxis, deltaScrollX: number, deltaScrollY: number): number {
+  return axis === "x" ? deltaScrollX : deltaScrollY;
+}
+
 export function elementFromPreviewPoint(point: PreviewInputPoint): Element | null {
   if (typeof document.elementFromPoint !== "function") return null;
   return document.elementFromPoint(point.x, point.y);
@@ -123,35 +153,74 @@ export function applyPreviewScroll(target: ScrollTarget | null, deltaScroll: num
   }
 }
 
+function applyPreviewScrollPosition(target: ScrollTarget, nextScroll: number, axis: ScrollAxis): void {
+  const { max } = scrollRange(target.element, axis);
+  const clamped = Math.min(Math.max(nextScroll, 0), max);
+  if (axis === "x" && "scrollLeft" in target.element) {
+    target.element.scrollLeft = clamped;
+  } else if ("scrollTop" in target.element) {
+    target.element.scrollTop = clamped;
+  }
+}
+
+function choosePreviewScrollLock(
+  initialTarget: Element | null,
+  hitTarget: Element | null,
+  deltaScrollX: number,
+  deltaScrollY: number,
+): PreviewScrollLock | null {
+  const preferredAxis = dominantAxis(deltaScrollX, deltaScrollY);
+  const fallbackAxis = preferredAxis === "x" ? "y" : "x";
+  const preferredDelta = nonZeroDeltaForAxis(preferredAxis, deltaScrollX, deltaScrollY);
+  const fallbackDelta = nonZeroDeltaForAxis(fallbackAxis, deltaScrollX, deltaScrollY);
+  const preferredTarget =
+    findScrollablePreviewTarget(hitTarget, preferredDelta, preferredAxis) ||
+    findScrollablePreviewTarget(initialTarget, preferredDelta, preferredAxis);
+
+  if (preferredTarget) return { target: preferredTarget, axis: preferredAxis };
+
+  const fallbackTarget =
+    findScrollablePreviewTarget(hitTarget || initialTarget, fallbackDelta, fallbackAxis) ||
+    findScrollablePreviewTarget(initialTarget, fallbackDelta, fallbackAxis);
+  return fallbackTarget ? { target: fallbackTarget, axis: fallbackAxis } : null;
+}
+
+export function applyPreviewDragScrollWithLock(
+  initialTarget: Element | null,
+  hitTarget: Element | null,
+  previousPoint: PreviewInputPoint,
+  point: PreviewInputPoint,
+  existingLock: PreviewScrollLock | null = null,
+): { scrolled: boolean; lock: PreviewScrollLock | null } {
+  const deltaScrollX = previousPoint.x - point.x;
+  const deltaScrollY = previousPoint.y - point.y;
+  const existingDelta = existingLock ? nonZeroDeltaForAxis(existingLock.axis, deltaScrollX, deltaScrollY) : 0;
+
+  if (existingLock && canScrollInDirection(existingLock.target.element, existingDelta, existingLock.axis)) {
+    const startScroll = existingLock.startScroll ?? scrollRange(existingLock.target.element, existingLock.axis).current;
+    const accumulatedDelta = (existingLock.accumulatedDelta ?? 0) + existingDelta;
+    const nextLock = { ...existingLock, startScroll, accumulatedDelta };
+    applyPreviewScrollPosition(nextLock.target, startScroll + accumulatedDelta, nextLock.axis);
+    return { scrolled: existingDelta !== 0, lock: nextLock };
+  }
+
+  const nextLock = choosePreviewScrollLock(initialTarget, hitTarget, deltaScrollX, deltaScrollY);
+  if (!nextLock) return { scrolled: false, lock: existingLock };
+
+  const delta = nonZeroDeltaForAxis(nextLock.axis, deltaScrollX, deltaScrollY);
+  const startScroll = scrollRange(nextLock.target.element, nextLock.axis).current;
+  const lockedScroll = { ...nextLock, startScroll, accumulatedDelta: delta };
+  applyPreviewScrollPosition(lockedScroll.target, startScroll + delta, lockedScroll.axis);
+  return { scrolled: delta !== 0, lock: lockedScroll };
+}
+
 export function applyPreviewDragScroll(
   initialTarget: Element | null,
   hitTarget: Element | null,
   previousPoint: PreviewInputPoint,
   point: PreviewInputPoint,
 ): boolean {
-  const deltaScrollX = previousPoint.x - point.x;
-  const deltaScrollY = previousPoint.y - point.y;
-  const horizontalTarget =
-    findScrollablePreviewTarget(hitTarget, deltaScrollX, "x") ||
-    findScrollablePreviewTarget(initialTarget, deltaScrollX, "x");
-
-  if (Math.abs(deltaScrollX) > Math.abs(deltaScrollY) && horizontalTarget) {
-    applyPreviewScroll(horizontalTarget, deltaScrollX, "x");
-    return true;
-  }
-
-  const verticalTarget = findScrollablePreviewTarget(hitTarget || initialTarget, deltaScrollY, "y");
-  if (verticalTarget) {
-    applyPreviewScroll(verticalTarget, deltaScrollY, "y");
-    return true;
-  }
-
-  if (horizontalTarget) {
-    applyPreviewScroll(horizontalTarget, deltaScrollX, "x");
-    return true;
-  }
-
-  return false;
+  return applyPreviewDragScrollWithLock(initialTarget, hitTarget, previousPoint, point).scrolled;
 }
 
 export function resolvePreviewActionTarget(initialTarget: Element | null, fallbackPoint: PreviewInputPoint): Element | null {
@@ -166,7 +235,7 @@ export function resolvePreviewActionTarget(initialTarget: Element | null, fallba
 
 export function dispatchPreviewPointerEvent(
   target: Element | null,
-  type: "pointerdown" | "pointerup" | "pointercancel",
+  type: "pointerdown" | "pointermove" | "pointerup" | "pointercancel",
   point: PreviewInputPoint,
   pressed: boolean,
 ): boolean {
@@ -216,6 +285,7 @@ function allowedOrigins(teacherOrigin: string): Set<string> {
   }
   origins.add(window.location.origin);
   if (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost") {
+    origins.add(`${window.location.protocol}//${window.location.hostname}:15174`);
     origins.add(`${window.location.protocol}//${window.location.hostname}:5174`);
     origins.add(`${window.location.protocol}//${window.location.hostname}:4174`);
   }
@@ -227,9 +297,25 @@ function messageMatchesHandshake(message: PreviewInputMessage, origin: string, f
   return allowedOrigins(teacherOrigin).has(origin);
 }
 
+function releaseTargetForSequence(sequence: ActivePreviewInputSequence, point: PreviewInputPoint): Element | null {
+  return sequence.pressTarget?.isConnected ? sequence.pressTarget : elementFromPreviewPoint(point);
+}
+
+function shouldActivateTap(sequence: ActivePreviewInputSequence, point: PreviewInputPoint, timestamp: number): boolean {
+  const duration = timestamp - sequence.startedAt;
+  return (
+    sequence.phase === "pressing" &&
+    !sequence.suppressTapActivation &&
+    duration <= previewTapDurationLimitMs &&
+    sequence.totalMovement <= previewTapMovementThreshold &&
+    pointDistance(sequence.startPoint, point) <= previewTapMovementThreshold
+  );
+}
+
 export function PreviewInputRuntime() {
   const runtime = useStudentRuntime();
   const activeSequenceRef = useRef<ActivePreviewInputSequence | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
   const enabled = isTeacherStudentPreview(runtime);
 
   useEffect(() => {
@@ -240,38 +326,66 @@ export function PreviewInputRuntime() {
 
     const { frameId, teacherOrigin } = readPreviewInputHandshake();
 
+    const clearLongPressTimer = () => {
+      if (longPressTimerRef.current !== null) {
+        window.clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    };
+
     const clearSequence = () => {
+      clearLongPressTimer();
       activeSequenceRef.current = null;
+    };
+
+    const cancelActiveSequence = () => {
+      const activeSequence = activeSequenceRef.current;
+      if (activeSequence) {
+        const cancelTarget = releaseTargetForSequence(activeSequence, activeSequence.lastPoint);
+        dispatchPreviewPointerEvent(cancelTarget, "pointercancel", activeSequence.lastPoint, false);
+      }
+      clearSequence();
+    };
+
+    const armLongPressTimer = (sequenceId: string) => {
+      clearLongPressTimer();
+      longPressTimerRef.current = window.setTimeout(() => {
+        const activeSequence = activeSequenceRef.current;
+        if (!activeSequence || activeSequence.sequenceId !== sequenceId) return;
+        if (activeSequence.phase !== "pressing") return;
+        if (activeSequence.totalMovement > previewTapMovementThreshold) return;
+        activeSequence.phase = "longPressReady";
+      }, previewLongPressDelayMs);
     };
 
     const handleMessage = (event: MessageEvent) => {
       const message = parsePreviewInputMessage(event.data);
-      if (!message || !messageMatchesHandshake(message, event.origin, frameId, teacherOrigin)) {
-        if (message?.type === "touchCancel") clearSequence();
-        return;
-      }
+      if (!message || !messageMatchesHandshake(message, event.origin, frameId, teacherOrigin)) return;
 
       if (message.type === "hover") return;
 
       if (message.type === "touchCancel") {
-        const activeSequence = activeSequenceRef.current;
-        const cancelTarget = activeSequence?.pressTarget?.isConnected ? activeSequence.pressTarget : null;
-        if (activeSequence) dispatchPreviewPointerEvent(cancelTarget, "pointercancel", activeSequence.lastPoint, false);
-        clearSequence();
+        cancelActiveSequence();
         return;
       }
 
       if (message.type === "touchStart") {
+        cancelActiveSequence();
         const initialTarget = elementFromPreviewPoint(message.point);
         const pressAllowed = dispatchPreviewPointerEvent(initialTarget, "pointerdown", message.point, true);
         activeSequenceRef.current = {
           sequenceId: message.sequenceId,
           initialTarget,
           pressTarget: initialTarget,
+          startPoint: message.point,
           lastPoint: message.point,
-          moved: false,
+          startedAt: message.startedAt ?? message.timestamp,
+          totalMovement: 0,
+          phase: "pressing",
           suppressTapActivation: !pressAllowed,
+          scrollLock: null,
         };
+        armLongPressTimer(message.sequenceId);
         return;
       }
 
@@ -280,49 +394,56 @@ export function PreviewInputRuntime() {
         return;
       }
 
-      if (message.type === "longPress") {
-        return;
-      }
-
-      if (message.type === "tap") {
-        const releaseTarget = activeSequence.pressTarget?.isConnected
-          ? activeSequence.pressTarget
-          : elementFromPreviewPoint(message.point);
-        dispatchPreviewPointerEvent(releaseTarget, "pointerup", message.point, false);
-        if (!activeSequence.suppressTapActivation) {
-          const target = resolvePreviewActionTarget(activeSequence.initialTarget, message.point);
-          activatePreviewTarget(target);
-        }
-        clearSequence();
-        return;
-      }
-
       if (message.type === "touchMove") {
         const previousPoint = message.previousPoint || activeSequence.lastPoint;
-        const deltaScrollX = previousPoint.x - message.point.x;
-        const deltaScrollY = previousPoint.y - message.point.y;
+        const movementDelta = pointDistance(previousPoint, message.point);
+        activeSequence.totalMovement += movementDelta;
+        const distanceFromStart = pointDistance(activeSequence.startPoint, message.point);
         const hitTarget = elementFromPreviewPoint(message.point) || activeSequence.initialTarget;
-        applyPreviewDragScroll(activeSequence.initialTarget, hitTarget, previousPoint, message.point);
+        const moveTarget = activeSequence.pressTarget?.isConnected ? activeSequence.pressTarget : hitTarget;
+        dispatchPreviewPointerEvent(moveTarget, "pointermove", message.point, true);
+
+        if (
+          activeSequence.phase !== "dragging" &&
+          (activeSequence.totalMovement > previewDragMovementThreshold || distanceFromStart > previewDragMovementThreshold)
+        ) {
+          activeSequence.phase = "dragging";
+          clearLongPressTimer();
+        }
+
+        if (activeSequence.phase === "dragging") {
+          const result = applyPreviewDragScrollWithLock(
+            activeSequence.initialTarget,
+            hitTarget,
+            previousPoint,
+            message.point,
+            activeSequence.scrollLock,
+          );
+          activeSequence.scrollLock = result.lock;
+        }
+
         activeSequence.lastPoint = message.point;
-        if (Math.abs(deltaScrollX) > 0 || Math.abs(deltaScrollY) > 0) activeSequence.moved = true;
         return;
       }
 
       if (message.type === "touchEnd") {
-        const releaseTarget = activeSequence.pressTarget?.isConnected
-          ? activeSequence.pressTarget
-          : elementFromPreviewPoint(message.point);
+        clearLongPressTimer();
+        const releaseTarget = releaseTargetForSequence(activeSequence, message.point);
         dispatchPreviewPointerEvent(releaseTarget, "pointerup", message.point, false);
+        if (shouldActivateTap(activeSequence, message.point, message.timestamp)) {
+          const target = resolvePreviewActionTarget(activeSequence.initialTarget, message.point);
+          activatePreviewTarget(target);
+        }
         clearSequence();
       }
     };
 
     window.addEventListener("message", handleMessage);
-    window.addEventListener("beforeunload", clearSequence);
+    window.addEventListener("beforeunload", cancelActiveSequence);
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener("beforeunload", clearSequence);
-      clearSequence();
+      window.removeEventListener("beforeunload", cancelActiveSequence);
+      cancelActiveSequence();
     };
   }, [enabled]);
 

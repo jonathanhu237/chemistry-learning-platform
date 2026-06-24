@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import type { RefObject } from "react";
-import { useGesture } from "@use-gesture/react";
+import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 
 import { createPreviewInputMessage, type PreviewInputMessage, type PreviewInputPoint } from "./previewInputProtocol";
 
-const tapMovementThreshold = 8;
-const dragThreshold = 6;
-const longPressDelayMs = 520;
 const indicatorIdleMs = 900;
 
 type PreviewGestureSurfaceProps = {
@@ -18,11 +14,10 @@ type PreviewGestureSurfaceProps = {
 
 type ActiveSequence = {
   id: string;
+  pointerId: number;
   startedAt: number;
   startPoint: PreviewInputPoint;
   lastPoint: PreviewInputPoint;
-  moved: boolean;
-  longPressSent: boolean;
 };
 
 type SurfaceBoxQuad = {
@@ -39,8 +34,8 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-function pointDistance(a: PreviewInputPoint, b: PreviewInputPoint): number {
-  return Math.hypot(a.x - b.x, a.y - b.y);
+function pointsMatch(a: PreviewInputPoint, b: PreviewInputPoint): boolean {
+  return a.x === b.x && a.y === b.y;
 }
 
 function eventModifiers(event: UIEvent | Event): PreviewInputMessage["modifiers"] {
@@ -98,20 +93,12 @@ export function PreviewGestureSurface({ enabled, iframeRef, frameId, targetOrigi
   const activeSequenceRef = useRef<ActiveSequence | null>(null);
   const rafRef = useRef<number | null>(null);
   const hideTimerRef = useRef<number | null>(null);
-  const longPressTimerRef = useRef<number | null>(null);
   const latestIndicatorRef = useRef({ x: 0, y: 0, visible: false, active: false });
 
   const clearHideTimer = useCallback(() => {
     if (hideTimerRef.current !== null) {
       window.clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
-    }
-  }, []);
-
-  const clearLongPressTimer = useCallback(() => {
-    if (longPressTimerRef.current !== null) {
-      window.clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
     }
   }, []);
 
@@ -170,10 +157,19 @@ export function PreviewGestureSurface({ enabled, iframeRef, frameId, targetOrigi
     [enabled, iframeRef, targetOrigin],
   );
 
+  const releaseCapture = useCallback((pointerId: number) => {
+    const surface = surfaceRef.current;
+    if (!surface?.hasPointerCapture?.(pointerId)) return;
+    try {
+      surface.releasePointerCapture(pointerId);
+    } catch {
+      // The pointer may already be released by the browser.
+    }
+  }, []);
+
   const cancelSequence = useCallback(
     (event?: UIEvent | Event) => {
       const sequence = activeSequenceRef.current;
-      clearLongPressTimer();
       if (sequence) {
         postInput({
           frameId,
@@ -185,26 +181,31 @@ export function PreviewGestureSurface({ enabled, iframeRef, frameId, targetOrigi
           primaryButton: false,
           modifiers: event ? eventModifiers(event) : { alt: false, ctrl: false, meta: false, shift: false },
         });
+        releaseCapture(sequence.pointerId);
       }
       activeSequenceRef.current = null;
       hideIndicator(indicatorIdleMs);
     },
-    [clearLongPressTimer, frameId, hideIndicator, postInput],
+    [frameId, hideIndicator, postInput, releaseCapture],
   );
 
   const beginSequence = useCallback(
-    (event: UIEvent | Event, point: PreviewInputPoint) => {
+    (event: ReactPointerEvent<HTMLDivElement>, point: PreviewInputPoint) => {
       const existing = activeSequenceRef.current;
       if (existing) return existing;
       const sequence: ActiveSequence = {
         id: createSequenceId(),
+        pointerId: event.pointerId,
         startedAt: Date.now(),
         startPoint: point,
         lastPoint: point,
-        moved: false,
-        longPressSent: false,
       };
       activeSequenceRef.current = sequence;
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // Pointer capture can fail in some synthetic or stale event paths.
+      }
       scheduleIndicator(point, { visible: true, active: true });
       postInput({
         frameId,
@@ -213,130 +214,53 @@ export function PreviewGestureSurface({ enabled, iframeRef, frameId, targetOrigi
         point,
         startedAt: sequence.startedAt,
         primaryButton: true,
-        modifiers: eventModifiers(event),
+        modifiers: eventModifiers(event.nativeEvent),
       });
       return sequence;
     },
     [frameId, postInput, scheduleIndicator],
   );
 
-  const startLongPressTimer = useCallback(
-    (event: UIEvent | Event, sequence: ActiveSequence) => {
-      clearLongPressTimer();
-      longPressTimerRef.current = window.setTimeout(() => {
-        const current = activeSequenceRef.current;
-        if (!current || current.id !== sequence.id || current.moved || current.longPressSent) return;
-        current.longPressSent = true;
-        postInput({
-          frameId,
-          sequenceId: current.id,
-          type: "longPress",
-          point: current.lastPoint,
-          previousPoint: current.startPoint,
-          startedAt: current.startedAt,
-          primaryButton: true,
-          modifiers: eventModifiers(event),
-        });
-      }, longPressDelayMs);
-    },
-    [clearLongPressTimer, frameId, postInput],
-  );
-
-  const finishSequence = useCallback(
-    (event: UIEvent | Event, point: PreviewInputPoint) => {
+  const moveSequence = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>, point: PreviewInputPoint) => {
       const sequence = activeSequenceRef.current;
-      if (!sequence) return;
-      const moved = sequence.moved || pointDistance(sequence.startPoint, point) > tapMovementThreshold;
+      if (!sequence || sequence.pointerId !== event.pointerId) return;
+      scheduleIndicator(point, { visible: true, active: true });
+      if (pointsMatch(sequence.lastPoint, point)) return;
       postInput({
         frameId,
         sequenceId: sequence.id,
-        type: moved ? "touchEnd" : "tap",
+        type: "touchMove",
+        point,
+        previousPoint: sequence.lastPoint,
+        startedAt: sequence.startedAt,
+        primaryButton: true,
+        modifiers: eventModifiers(event.nativeEvent),
+      });
+      sequence.lastPoint = point;
+    },
+    [frameId, postInput, scheduleIndicator],
+  );
+
+  const finishSequence = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>, point: PreviewInputPoint) => {
+      const sequence = activeSequenceRef.current;
+      if (!sequence || sequence.pointerId !== event.pointerId) return;
+      postInput({
+        frameId,
+        sequenceId: sequence.id,
+        type: "touchEnd",
         point,
         previousPoint: sequence.lastPoint,
         startedAt: sequence.startedAt,
         primaryButton: false,
-        modifiers: eventModifiers(event),
+        modifiers: eventModifiers(event.nativeEvent),
       });
       activeSequenceRef.current = null;
-      clearLongPressTimer();
+      releaseCapture(sequence.pointerId);
       hideIndicator(indicatorIdleMs);
     },
-    [clearLongPressTimer, frameId, hideIndicator, postInput],
-  );
-
-  const bind = useGesture(
-    {
-      onMove: ({ xy: [x, y] }) => {
-        if (!enabled || activeSequenceRef.current) return;
-        const point = resolvePoint(x, y);
-        if (!point) return;
-        scheduleIndicator(point, { visible: true, active: false });
-      },
-      onHover: ({ hovering, xy: [x, y] }) => {
-        if (!enabled) return;
-        if (!hovering) {
-          if (!activeSequenceRef.current) hideIndicator(indicatorIdleMs);
-          return;
-        }
-        const point = resolvePoint(x, y);
-        if (!point) return;
-        scheduleIndicator(point, { visible: true, active: Boolean(activeSequenceRef.current) });
-      },
-      onDrag: (state) => {
-        if (!enabled) return;
-        state.event.preventDefault();
-        const point = resolvePoint(state.xy[0], state.xy[1]);
-        if (!point) return;
-
-        if (state.first) {
-          const sequence = beginSequence(state.event, point);
-          startLongPressTimer(state.event, sequence);
-          if (pointDistance(sequence.startPoint, point) <= tapMovementThreshold) return;
-        }
-
-        const sequence = activeSequenceRef.current;
-        if (!sequence) return;
-        const movement = pointDistance(sequence.startPoint, point);
-        const moved = movement > tapMovementThreshold || Math.abs(state.movement[1]) > dragThreshold || Math.abs(state.movement[0]) > dragThreshold;
-        if (moved) {
-          sequence.moved = true;
-          clearLongPressTimer();
-        }
-        scheduleIndicator(point, { visible: true, active: state.active });
-
-        if (state.last) {
-          finishSequence(state.event, point);
-          return;
-        }
-
-        postInput({
-          frameId,
-          sequenceId: sequence.id,
-          type: "touchMove",
-          point,
-          previousPoint: sequence.lastPoint,
-          startedAt: sequence.startedAt,
-          primaryButton: true,
-          modifiers: eventModifiers(state.event),
-        });
-        sequence.lastPoint = point;
-      },
-    },
-    {
-      enabled,
-      drag: {
-        filterTaps: false,
-        threshold: dragThreshold,
-        tapsThreshold: tapMovementThreshold,
-        preventDefault: true,
-        triggerAllEvents: true,
-        pointer: { buttons: 1, keys: false, capture: true },
-        eventOptions: { passive: false },
-      },
-      move: { mouseOnly: true },
-      hover: { mouseOnly: true },
-      eventOptions: { passive: false },
-    },
+    [frameId, hideIndicator, postInput, releaseCapture],
   );
 
   useEffect(() => {
@@ -348,13 +272,12 @@ export function PreviewGestureSurface({ enabled, iframeRef, frameId, targetOrigi
     return () => {
       cancelSequence();
       clearHideTimer();
-      clearLongPressTimer();
       if (rafRef.current !== null) {
         window.cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
     };
-  }, [cancelSequence, clearHideTimer, clearLongPressTimer]);
+  }, [cancelSequence, clearHideTimer]);
 
   const surfaceClassName = useMemo(
     () => ["student-preview-gesture-surface", enabled ? "is-enabled" : ""].filter(Boolean).join(" "),
@@ -363,27 +286,56 @@ export function PreviewGestureSurface({ enabled, iframeRef, frameId, targetOrigi
 
   return (
     <div
-      {...bind()}
       ref={surfaceRef}
       className={surfaceClassName}
       aria-hidden="true"
-      onPointerDownCapture={(event) => {
-        if (!enabled || event.button !== 0) return;
+      onPointerEnter={(event) => {
+        if (!enabled || activeSequenceRef.current) return;
+        const point = resolvePoint(event.clientX, event.clientY);
+        if (point) scheduleIndicator(point, { visible: true, active: false });
+      }}
+      onPointerMove={(event) => {
+        if (!enabled) return;
+        const point = resolvePoint(event.clientX, event.clientY);
+        if (!point) return;
+        const sequence = activeSequenceRef.current;
+        if (sequence) {
+          if (sequence.pointerId !== event.pointerId) return;
+          event.preventDefault();
+          moveSequence(event, point);
+          return;
+        }
+        scheduleIndicator(point, { visible: true, active: false });
+      }}
+      onPointerLeave={() => {
+        if (!activeSequenceRef.current) hideIndicator(indicatorIdleMs);
+      }}
+      onPointerDown={(event) => {
+        if (!enabled || event.button !== 0 || !event.isPrimary) return;
         event.preventDefault();
         const point = resolvePoint(event.clientX, event.clientY);
         if (!point) return;
-        const sequence = beginSequence(event.nativeEvent, point);
-        startLongPressTimer(event.nativeEvent, sequence);
+        beginSequence(event, point);
       }}
-      onPointerUpCapture={(event) => {
+      onPointerUp={(event) => {
         if (!enabled) return;
         const point = resolvePoint(event.clientX, event.clientY);
         if (!point) return;
         event.preventDefault();
-        finishSequence(event.nativeEvent, point);
+        finishSequence(event, point);
       }}
-      onPointerCancel={(event) => cancelSequence(event.nativeEvent)}
-      onLostPointerCapture={(event) => cancelSequence(event.nativeEvent)}
+      onPointerCancel={(event) => {
+        if (activeSequenceRef.current?.pointerId !== event.pointerId) return;
+        cancelSequence(event.nativeEvent);
+      }}
+      onLostPointerCapture={(event) => {
+        if (activeSequenceRef.current?.pointerId !== event.pointerId) return;
+        cancelSequence(event.nativeEvent);
+      }}
+      onDragStart={(event) => event.preventDefault()}
+      onContextMenu={(event) => {
+        if (activeSequenceRef.current) event.preventDefault();
+      }}
     >
       <span ref={indicatorRef} className="student-preview-touch-indicator" />
     </div>

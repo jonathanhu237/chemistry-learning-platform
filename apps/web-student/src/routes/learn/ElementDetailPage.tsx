@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearch } from "@tanstack/react-router";
-import { Atom, LoaderCircle } from "lucide-react";
+import { FlaskConical, LoaderCircle, Search } from "lucide-react";
 import type { StudentLearningPageResponse } from "../../api";
 import { errorMessage, getStudentLearningPage } from "../../api";
 import type { StudentRouteSearch } from "../../app/router/routeTypes";
@@ -57,10 +57,10 @@ export function ElementDetailPage() {
     <DetailPageFrame title={title} source={search.from || "chapter"}>
       <section className="element-detail-page" aria-label="元素详情">
         {loading ? <LearningState icon={<LoaderCircle className="spin" size={23} />} text="正在加载元素详情" /> : null}
-        {error ? <LearningState icon={<Atom size={23} />} text={error} /> : null}
+        {error ? <LearningState icon={<FlaskConical size={23} />} text={error} /> : null}
         {!loading && !error && profile && element ? <LearningAtomModelCard profile={profile} element={element} /> : null}
         {!loading && !error && profile && !element ? (
-          <MobileEmptyState className="empty-learning-card" icon={<Atom size={20} />}>
+          <MobileEmptyState className="empty-learning-card" icon={<Search size={20} />}>
             <span>没有找到这个元素</span>
           </MobileEmptyState>
         ) : null}

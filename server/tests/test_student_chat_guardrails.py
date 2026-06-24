@@ -214,10 +214,14 @@ def test_invalid_policy_gate_falls_back_to_local_policy(monkeypatch):
     )
     context.policy_decision = decision
     _apply_policy_decision_to_classification(context)
+    agent_module._apply_retrieval_decision(context)
 
     assert decision.valid is True
     assert decision.mode == "refuse_out_of_scope"
     assert context.classification["intent"] == "refuse_out_of_scope"
+    assert context.retrieval_decision.mode == "skip"
+    assert context.retrieval_decision.source == "hard_rule"
+    assert context.retrieval_decision.should_call_rag is False
     assert any(
         item["code"] == "policy_decision_invalid" and item["action"] == "continue_with_local_policy"
         for item in context.guardrail_decisions
@@ -309,10 +313,128 @@ def test_resource_availability_miss_returns_unavailable_without_scope_refusal():
     assert response.mode == "local"
     assert response.classification["resource_request"] is True
     assert response.classification["in_course_scope"] is True
+    retrieval = response.classification["retrieval_decision"]
+    assert retrieval["mode"] == "resource_lookup"
+    assert retrieval["source"] == "hard_rule"
+    assert retrieval["strict_evidence"] is True
+    assert retrieval["should_call_resource_lookup"] is True
+    assert retrieval["should_call_rag"] is False
     assert any(call["name"] == "published_resource_lookup" and call["result_count"] == 0 for call in response.tool_calls)
     assert any(item["code"] == "no_fabricated_resource" for item in response.guardrail_decisions)
     assert not any(item["code"] == "course_scope" for item in response.guardrail_decisions)
     assert response.answer
+
+
+def test_ordinary_explanation_skips_dynamic_rag_when_rag_is_enabled(monkeypatch):
+    def forbidden_rag_search(_context, _query):  # noqa: ANN001
+        raise AssertionError("ordinary explanations must not call dynamic RAG by default")
+
+    monkeypatch.setattr(agent_module, "rag_search_tool", forbidden_rag_search)
+
+    response = asyncio.run(
+        run_agent(
+            _request("\u9ad8\u9530\u9178\u94be\u4e3a\u4ec0\u4e48\u6709\u5f3a\u6c27\u5316\u6027\uff1f", allow_rag_lookup=True),
+            repositories=_fake_repositories(),
+            settings=Settings(agent_llm_provider="disabled"),
+        )
+    )
+
+    retrieval = response.classification["retrieval_decision"]
+    assert response.answer
+    assert retrieval["mode"] == "skip"
+    assert retrieval["source"] == "local_fallback"
+    assert retrieval["should_call_rag"] is False
+    assert retrieval["should_call_resource_lookup"] is False
+    assert not any(call["name"] == "rag_search" for call in response.tool_calls)
+
+
+def test_llm_over_retrieval_for_ordinary_explanation_is_forced_to_skip(monkeypatch):
+    async def over_eager_policy_gate(context, settings):  # noqa: ANN001
+        return StudentAIPolicyDecision(
+            mode="normal_answer",
+            reason="over-eager router wanted textbook evidence",
+            allowed_tools=("rag_search", "curriculum_lookup"),
+            retrieval_mode="dynamic_rag",
+            retrieval_reason="model guessed course evidence may help",
+            retrieval_confidence=0.91,
+        )
+
+    def forbidden_rag_search(_context, _query):  # noqa: ANN001
+        raise AssertionError("ordinary explanation must override over-eager dynamic RAG")
+
+    monkeypatch.setattr(agent_module, "_policy_gate_decision", over_eager_policy_gate)
+    monkeypatch.setattr(agent_module, "rag_search_tool", forbidden_rag_search)
+
+    response = asyncio.run(
+        run_agent(
+            _request("\u5982\u4f55\u7528\u5409\u5e03\u65af\u81ea\u7531\u80fd\u89e3\u91ca\u6c27\u5316\u6027\uff1f", allow_rag_lookup=True),
+            repositories=_fake_repositories(),
+            settings=Settings(agent_llm_provider="openai", agent_llm_api_key="test-key", agent_llm_model="test-model"),
+        )
+    )
+
+    retrieval = response.classification["retrieval_decision"]
+    assert response.answer
+    assert response.sources == []
+    assert retrieval["mode"] == "skip"
+    assert retrieval["source"] == "hard_rule"
+    assert retrieval["override_reason"] == "deterministic_ordinary_learning_skip"
+    assert retrieval["should_call_rag"] is False
+    assert not any(call["name"] == "rag_search" for call in response.tool_calls)
+
+
+def test_rag_disabled_ordinary_question_answers_without_dynamic_rag(monkeypatch):
+    def forbidden_rag_search(_context, _query):  # noqa: ANN001
+        raise AssertionError("RAG-disabled turns must not call dynamic RAG")
+
+    monkeypatch.setattr(agent_module, "rag_search_tool", forbidden_rag_search)
+
+    response = asyncio.run(
+        run_agent(
+            _request("\u8bf7\u89e3\u91ca\u6c27\u5316\u6001\u548c\u6c27\u5316\u6027\u7684\u5173\u7cfb\u3002", allow_rag_lookup=False),
+            repositories=_fake_repositories(),
+            settings=Settings(agent_llm_provider="disabled"),
+        )
+    )
+
+    retrieval = response.classification["retrieval_decision"]
+    assert response.answer
+    assert retrieval["mode"] == "skip"
+    assert retrieval["should_call_rag"] is False
+    assert not any(call["name"] == "rag_search" for call in response.tool_calls)
+
+
+def test_explicit_course_evidence_request_requires_evidence_and_fails_closed(monkeypatch):
+    rag_queries: list[str] = []
+
+    def empty_rag_search(context, query):  # noqa: ANN001
+        rag_queries.append(query)
+        result = {"evidence": [], "queries": [query]}
+        context.record_tool("rag_search", {"query": query}, result)
+        return result
+
+    monkeypatch.setattr(agent_module, "rag_search_tool", empty_rag_search)
+
+    response = asyncio.run(
+        run_agent(
+            _request(
+                "\u8bf7\u5f15\u7528\u8bfe\u672c\u8d44\u6599\u8bf4\u660e\u9ad8\u9530\u9178\u94be\u7684\u6c27\u5316\u6027\u3002",
+                allow_rag_lookup=True,
+            ),
+            repositories=_fake_repositories(),
+            settings=Settings(agent_llm_provider="disabled"),
+        )
+    )
+
+    retrieval = response.classification["retrieval_decision"]
+    assert rag_queries
+    assert retrieval["mode"] == "strict_evidence"
+    assert retrieval["source"] == "hard_rule"
+    assert retrieval["strict_evidence"] is True
+    assert retrieval["should_call_rag"] is True
+    assert response.sources == []
+    assert any(call["name"] == "rag_search" and call["result_count"] == 0 for call in response.tool_calls)
+    assert any(item["code"] in {"missing_evidence", "source_grounding"} for item in response.guardrail_decisions)
 
 
 def test_policy_resource_false_positive_does_not_override_point_explanation(monkeypatch):
@@ -341,7 +463,8 @@ def test_policy_resource_false_positive_does_not_override_point_explanation(monk
 
     assert response.classification["policy_decision_mode"] == "normal_answer"
     assert response.classification["resource_request"] is False
-    assert response.classification["requires_evidence"] is False
+    assert response.classification["requires_evidence"] is True
+    assert response.classification["retrieval_decision"]["mode"] == "strict_evidence"
     assert not any(call["name"] == "published_resource_lookup" for call in response.tool_calls)
     assert any(item["code"] == "policy_resource_veto" for item in response.guardrail_decisions)
     assert not any(item["code"] == "no_fabricated_resource" for item in response.guardrail_decisions)

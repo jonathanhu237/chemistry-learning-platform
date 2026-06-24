@@ -12,7 +12,7 @@ import {
   useInteractions,
   useRole,
 } from "@floating-ui/react";
-import { Atom } from "lucide-react";
+import { BookOpenCheck } from "lucide-react";
 import type { StudentLearningPageResponse } from "../../api";
 import { MobileEmptyState } from "../../mobile/primitives";
 import { periodicLegendLabelByAreaId, type AreaId } from "../periodic-table/periodicHelpers";
@@ -99,7 +99,7 @@ export function LearningAreaPopover({
               }}
             />
           ) : (
-            <MobileEmptyState className="empty-learning-card learning-area-popover-empty" icon={<Atom size={20} />}>
+            <MobileEmptyState className="empty-learning-card learning-area-popover-empty" icon={<BookOpenCheck size={20} />}>
               <span>暂无可学习章节</span>
             </MobileEmptyState>
           )}

@@ -99,7 +99,7 @@ export const devicePresets: DevicePreset[] = [
   },
 ];
 
-const defaultStudentPreviewAppBase = "http://222.200.189.249:5173";
+const defaultStudentPreviewAppBase = "http://222.200.189.249:15173";
 
 export function inferStudentAppBase(): string {
   const configured = String(import.meta.env.VITE_STUDENT_APP_BASE_URL || "").replace(/\/$/, "");

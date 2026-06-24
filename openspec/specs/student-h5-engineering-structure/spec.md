@@ -1,13 +1,13 @@
 # student-h5-engineering-structure Specification
 
 ## Purpose
-TBD - created by archiving change standardize-application-engineering-structure. Update Purpose after archive.
+Define student H5 frontend ownership boundaries for route modules, feature modules, shared mobile utilities, API helpers, styles, and validation gates.
 ## Requirements
 ### Requirement: Student H5 route semantics are centralized
 The student H5 frontend SHALL define root tabs and reusable second-level pages through a centralized route and navigation owner.
 
 #### Scenario: Root tabs open detail experiences
-- **WHEN** a user opens chapter study, element detail, experiment point detail, video library, AI chat, assessment session/report, or feedback from any root tab
+- **WHEN** a user opens chapter study, element detail, point video detail, video library, AI chat, assessment session/report, or feedback from any root tab
 - **THEN** the destination MUST be treated as a reusable second-level page by navigation semantics
 - **AND** the implementation MUST NOT treat apparent URL depth as the page hierarchy source of truth.
 
@@ -59,4 +59,3 @@ Student H5 structural changes SHALL keep mobile route-stack and viewport validat
 - **WHEN** a change touches route registration, navigation helpers, authenticated shell, bottom tabs, or reusable detail pages
 - **THEN** the student H5 mobile QA command MUST run
 - **AND** it MUST cover the supported mobile viewport set.
-

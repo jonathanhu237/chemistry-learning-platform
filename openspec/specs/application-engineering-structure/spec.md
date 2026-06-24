@@ -4,10 +4,10 @@
 TBD - created by archiving change standardize-application-engineering-structure. Update Purpose after archive.
 ## Requirements
 ### Requirement: Application surfaces have explicit owners
-The repository SHALL define student H5, teacher/admin web, backend, and production validation as separate engineering surfaces with explicit ownership boundaries.
+The repository SHALL define `web-student`, `web-teacher`, `web-admin`, backend, and production validation as separate engineering surfaces with explicit ownership boundaries.
 
 #### Scenario: A new product workflow touches multiple surfaces
-- **WHEN** a change modifies student H5 behavior, teacher/admin authoring, backend persistence, or derived search/read models together
+- **WHEN** a change modifies student H5 behavior, teacher-console authoring, platform operations, backend persistence, or derived search/read models together
 - **THEN** the OpenSpec change MUST name each touched surface
 - **AND** it MUST describe which surface owns user interaction, admin editing, canonical facts, derived projections, and validation.
 
@@ -20,7 +20,7 @@ The repository SHALL define student H5, teacher/admin web, backend, and producti
 The application SHALL communicate across surfaces through typed API contracts, derived read models, queues, or validation scripts rather than private helper imports across ownership boundaries.
 
 #### Scenario: Frontend needs new backend data
-- **WHEN** the student H5 or admin web frontend needs new backend data
+- **WHEN** the `web-student`, `web-teacher`, or `web-admin` frontend needs new backend data
 - **THEN** the backend API and frontend client/schema owner MUST expose a typed contract
 - **AND** frontend code MUST NOT duplicate backend projection rules that belong to a backend domain.
 
@@ -36,4 +36,3 @@ The application SHALL prefer explicit destructive refactors over compatibility w
 - **WHEN** a refactor deletes old internal module paths or endpoint aliases
 - **THEN** rollback MUST use git or deployment rollback
 - **AND** new compatibility wrappers MUST NOT be added unless the spec explicitly makes them canonical.
-

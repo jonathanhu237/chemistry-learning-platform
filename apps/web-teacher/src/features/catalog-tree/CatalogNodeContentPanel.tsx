@@ -5,6 +5,7 @@ import { Editor as MonacoEditor, loader, type BeforeMount } from "@monaco-editor
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js";
 import type { editor } from "monaco-editor/esm/vs/editor/editor.api.js";
 
+import { buildReactionEquationRenderRow, type ReactionEquationInput } from "../../../../shared/reactionEquations";
 import {
   assistCatalogReactionEquations,
   previewCatalogReactionEquations,
@@ -36,6 +37,22 @@ const CONTENT_AUTOSAVE_DELAY_MS = 900;
 let chemReactionEditorConfigured = false;
 
 type ContentAutoSaveStatus = "saved" | "dirty" | "saving" | "error";
+
+function CatalogReactionEquationRendered({
+  equation,
+  index = 0,
+}: {
+  equation: ReactionEquationInput;
+  index?: number;
+}) {
+  const row = buildReactionEquationRenderRow(equation, index, "teacherReview");
+  return (
+    <>
+      {row.latex ? <AssistantMarkdownContent text={`$${row.latex}$`} inline /> : row.fallback}
+      {row.annotation ? <div className="catalog-equation-inline-note">补充说明：{row.annotation}</div> : null}
+    </>
+  );
+}
 
 function contentAutoSaveLabel(status: ContentAutoSaveStatus): string {
   if (status === "saving") return "正在保存";
@@ -665,14 +682,7 @@ export function CatalogNodeContentPanel({
                               <div className="catalog-equation-natural-result">
                                 <div className="catalog-equation-natural-result-line">
                                   <div className="catalog-equation-natural-rendered">
-                                    {equation.canonical_mhchem ? (
-                                      <AssistantMarkdownContent text={`$${equation.canonical_mhchem}$`} inline />
-                                    ) : (
-                                      equation.canonical_display || equation.raw_text
-                                    )}
-                                    {equation.annotation_text ? (
-                                      <div className="catalog-equation-inline-note">补充说明：{equation.annotation_text}</div>
-                                    ) : null}
+                                    <CatalogReactionEquationRendered equation={equation} />
                                   </div>
                                 </div>
                                 {candidates.length ? (
@@ -683,14 +693,7 @@ export function CatalogNodeContentPanel({
                                         <div className="catalog-equation-natural-candidate-main">
                                           <Tag color={candidate.sources.includes("ai") ? "green" : "blue"}>{candidate.sourceLabel}</Tag>
                                           <div className="catalog-equation-natural-rendered">
-                                            {candidate.canonical_mhchem ? (
-                                              <AssistantMarkdownContent text={`$${candidate.canonical_mhchem}$`} inline />
-                                            ) : (
-                                              candidate.canonical_display
-                                            )}
-                                            {candidate.annotation_text ? (
-                                              <div className="catalog-equation-inline-note">补充说明：{candidate.annotation_text}</div>
-                                            ) : null}
+                                            <CatalogReactionEquationRendered equation={candidate} />
                                           </div>
                                           <Button className="catalog-equation-apply-button" size="small" onClick={() => applyCandidate(candidate)}>
                                             采用
@@ -718,10 +721,7 @@ export function CatalogNodeContentPanel({
                                 <div className="catalog-equation-natural-candidate-main">
                                   <Tag color="green">{candidate.sourceLabel}</Tag>
                                   <div className="catalog-equation-natural-rendered">
-                                    {candidate.canonical_mhchem ? <AssistantMarkdownContent text={`$${candidate.canonical_mhchem}$`} inline /> : candidate.canonical_display}
-                                    {candidate.annotation_text ? (
-                                      <div className="catalog-equation-inline-note">补充说明：{candidate.annotation_text}</div>
-                                    ) : null}
+                                    <CatalogReactionEquationRendered equation={candidate} />
                                   </div>
                                   <Button className="catalog-equation-apply-button" size="small" onClick={() => applyCandidate(candidate)}>
                                     采用

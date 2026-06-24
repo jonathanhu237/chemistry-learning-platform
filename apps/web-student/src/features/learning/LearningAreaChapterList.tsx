@@ -1,4 +1,4 @@
-import { Atom, ChevronRight } from "lucide-react";
+import { BookOpenCheck, ChevronRight } from "lucide-react";
 import type { StudentLearningPageResponse } from "../../api";
 import { MobileEmptyState } from "../../mobile/primitives";
 import { profileAreaIds, type AreaId } from "../periodic-table/periodicHelpers";
@@ -57,7 +57,7 @@ export function LearningAreaChapterList({
       {selectedAreaProfiles.length ? (
         <LearningChapterEntryRows profiles={selectedAreaProfiles} onSelectProfile={onSelectProfile} />
       ) : (
-        <MobileEmptyState className="empty-learning-card" icon={<Atom size={20} />}>
+        <MobileEmptyState className="empty-learning-card" icon={<BookOpenCheck size={20} />}>
           <span>暂无可学习章节</span>
         </MobileEmptyState>
       )}

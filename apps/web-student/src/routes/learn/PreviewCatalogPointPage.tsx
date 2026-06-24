@@ -4,6 +4,7 @@ import { useParams, useSearch } from "@tanstack/react-router";
 import { getPreviewCatalogPointDetail, previewMediaUrl, type StudentPointDetailResponse } from "../../api";
 import type { StudentRouteSearch } from "../../app/router/routeTypes";
 import { CatalogPointDetailPanel } from "../../features/catalog/CatalogPointDetailPanel";
+import { previewBackOrClose } from "./previewNavigation";
 
 type PreviewPointSearch = StudentRouteSearch & {
   preview_token?: string;
@@ -20,7 +21,6 @@ export function PreviewCatalogPointPage() {
     [previewToken],
   );
 
-  const noop = () => undefined;
   const ignoreFinish = async (_detail: StudentPointDetailResponse | null) => undefined;
 
   return (
@@ -28,13 +28,13 @@ export function PreviewCatalogPointPage() {
       <CatalogPointDetailPanel
         nodeId={nodeId}
         search={search}
-        onBack={noop}
+        onBack={previewBackOrClose}
         onFinishLearning={ignoreFinish}
         finishing={false}
         finishError=""
         assistantEnabled={false}
-        onOpenAssistant={noop}
-        onOpenRelatedPoint={noop}
+        onOpenAssistant={() => undefined}
+        onOpenRelatedPoint={() => undefined}
         previewMode
         loadPointDetail={loadPointDetail}
         resolveMediaUrl={previewMediaUrl}

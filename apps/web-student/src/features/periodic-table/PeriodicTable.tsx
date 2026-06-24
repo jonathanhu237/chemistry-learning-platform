@@ -1,26 +1,46 @@
-import { useMemo, useState, type CSSProperties } from "react";
-import { Atom } from "lucide-react";
+import { useMemo, useRef, useState, type CSSProperties } from "react";
+import { Search } from "lucide-react";
 import { periodicElements } from "../../periodic";
 import type { AreaId } from "./periodicHelpers";
 import { areaInk, areaSwatches, periodicAreaByAreaId, periodicAreaIdForElement, periodicAreaOrder, periodicGridColumnForElement, periodicGridRowForPeriod, periodicLegendLabelByAreaId, periodicPeriodLabels } from "./periodicHelpers";
+import { exactPeriodicElementMatches, normalizePeriodicElementQuery, searchPeriodicElements, type PeriodicElementSearchMeta } from "./periodicSearch";
 
 export function PeriodicTable({
   onSelectArea,
+  onSelectElement,
 }: {
   onSelectArea: (areaId: AreaId, triggerElement: HTMLElement) => void;
+  onSelectElement: (element: PeriodicElementSearchMeta, triggerElement: HTMLElement) => boolean;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchMessage, setSearchMessage] = useState("");
+  const isComposingRef = useRef(false);
   const groupNumbers = Array.from({ length: 18 }, (_, index) => index + 1);
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-  const matchedElements = useMemo(() => {
-    if (!normalizedSearchQuery) return [];
-    return periodicElements.filter((element) => {
-      const symbol = element.symbol.toLowerCase();
-      const name = element.name.toLowerCase();
-      return symbol.includes(normalizedSearchQuery) || name.includes(normalizedSearchQuery);
-    });
-  }, [normalizedSearchQuery]);
+  const normalizedSearchQuery = normalizePeriodicElementQuery(searchQuery);
+  const matchedElements = useMemo(() => searchPeriodicElements(searchQuery), [searchQuery]);
   const matchedSymbols = useMemo(() => new Set(matchedElements.map((element) => element.symbol)), [matchedElements]);
+  const chooseElement = (element: PeriodicElementSearchMeta, triggerElement: HTMLElement) => {
+    const handled = onSelectElement(element, triggerElement);
+    setSearchMessage(handled ? "" : `暂无 ${element.symbol} 的学习章节`);
+  };
+  const resolveSearch = (value: string, triggerElement: HTMLElement, options: { immediate: boolean }) => {
+    const normalizedValue = normalizePeriodicElementQuery(value);
+    if (!normalizedValue) {
+      setSearchMessage("");
+      return;
+    }
+    const exactMatches = exactPeriodicElementMatches(value);
+    const matches = searchPeriodicElements(value);
+    if (!matches.length) {
+      setSearchMessage("不存在该元素");
+      return;
+    }
+    if (exactMatches.length === 1 || (options.immediate && matches.length === 1 && normalizedValue.length >= 2)) {
+      chooseElement(exactMatches[0] || matches[0], triggerElement);
+      return;
+    }
+    setSearchMessage(matches.length === 1 ? "按回车进入该元素" : "找到多个元素，请点高亮元素选择");
+  };
 
   return (
     <section className="periodic-card" aria-label="元素周期表选择区">
@@ -30,19 +50,32 @@ export function PeriodicTable({
           <h3>选择元素分区</h3>
         </div>
         <label className="periodic-search" aria-label="搜索元素">
-          <Atom size={15} />
+          <Search size={15} />
           <input
             value={searchQuery}
             aria-label="搜索元素"
             placeholder="搜索元素"
-            onChange={(event) => setSearchQuery(event.target.value)}
+            onCompositionStart={() => {
+              isComposingRef.current = true;
+            }}
+            onCompositionEnd={(event) => {
+              isComposingRef.current = false;
+              resolveSearch(event.currentTarget.value, event.currentTarget, { immediate: true });
+            }}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              setSearchQuery(nextValue);
+              if (!isComposingRef.current) resolveSearch(nextValue, event.currentTarget, { immediate: true });
+            }}
             onKeyDown={(event) => {
-              if (event.key !== "Enter" || !matchedElements[0]) return;
-              onSelectArea(periodicAreaIdForElement(matchedElements[0]), event.currentTarget);
+              if (event.key !== "Enter") return;
+              event.preventDefault();
+              resolveSearch(event.currentTarget.value, event.currentTarget, { immediate: false });
             }}
           />
         </label>
       </div>
+      {searchMessage ? <div className="periodic-search-message">{searchMessage}</div> : null}
       <div className="area-legend" aria-label="元素区图例">
         {periodicAreaOrder.map((areaId) => {
           return (
@@ -93,7 +126,7 @@ export function PeriodicTable({
               } as CSSProperties}
               aria-label={`${element.symbol} ${element.name}，选择${periodicAreaByAreaId[areaId]}`}
               title={`${element.symbol} ${element.name}`}
-              onClick={(event) => onSelectArea(areaId, event.currentTarget)}
+              onClick={(event) => chooseElement(element, event.currentTarget)}
             >
               <span>{element.symbol}</span>
             </button>

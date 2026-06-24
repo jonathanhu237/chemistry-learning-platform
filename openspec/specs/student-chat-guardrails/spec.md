@@ -1,7 +1,7 @@
 # student-chat-guardrails Specification
 
 ## Purpose
-TBD - created by archiving change student-chat-guardrails. Update Purpose after archive.
+Define policy, retrieval, feature-switch, and student-facing presentation guardrails for the student learning assistant across H5 chat surfaces.
 ## Requirements
 ### Requirement: Student chat policy scope
 The student learning assistant SHALL apply guardrails only to student learning-page chat requests and SHALL NOT change teacher AI workflows.
@@ -41,17 +41,27 @@ The student learning assistant SHALL avoid giving direct answers to assessments 
 - **AND** it SHALL provide a hint, reasoning path, or relevant knowledge-point guidance.
 
 ### Requirement: RAG-assisted course answering
-The student learning assistant SHALL treat RAG and platform evidence as helpful support for ordinary chemistry questions, not as a hard requirement.
+The student learning assistant SHALL treat RAG and platform evidence as helpful support for ordinary chemistry questions, not as a hard requirement, and SHALL use the retrieval decision layer to determine whether dynamic RAG is needed for each turn.
 
 #### Scenario: Student asks a course-factual question
 - **WHEN** the student asks an ordinary inorganic chemistry factual question
 - **THEN** the assistant SHALL answer using available chemistry knowledge
-- **AND** it SHALL use RAG evidence as supporting context when evidence is enabled and found.
+- **AND** it SHALL use RAG evidence as supporting context only when the retrieval decision selects dynamic RAG and usable evidence is found.
+
+#### Scenario: Student asks an ordinary explanation question
+- **WHEN** the student asks for a concept explanation, mechanism explanation, equation derivation, safe reasoning path, or short follow-up without requesting platform evidence
+- **THEN** the assistant SHALL allow the retrieval decision to skip dynamic RAG
+- **AND** it SHALL still answer from reliable model chemistry knowledge when a model is configured.
 
 #### Scenario: RAG is disabled or has no match
 - **WHEN** RAG lookup is disabled or no suitable evidence is found for an ordinary course-factual question
 - **THEN** the assistant SHALL still answer from reliable model chemistry knowledge when a model is configured
 - **AND** it SHALL NOT claim that the answer came from platform evidence.
+
+#### Scenario: Explicit evidence request is received
+- **WHEN** the student asks for a citation, source, textbook wording, source figure, evidence image, course material reference, or answer according to platform material
+- **THEN** the assistant SHALL require evidence through fixed point evidence, dynamic RAG, or strict evidence handling
+- **AND** it SHALL NOT provide an unsupported platform-evidence claim when no usable evidence is found.
 
 ### Requirement: Platform resource grounding
 The student learning assistant SHALL require platform lookup only for claims about published platform resource availability, playback, download, or upload status.
@@ -90,17 +100,18 @@ The student learning assistant SHALL respect student AI feature switches.
 - **AND** the guardrail diagnostics SHALL record that RAG lookup was disabled when relevant.
 
 ### Requirement: Policy gate fail-closed fallback
-The student learning assistant SHALL fall back to deterministic local policy when the optional model policy gate is unavailable or invalid.
+The student learning assistant SHALL fall back to deterministic local policy and deterministic retrieval routing when the optional model policy gate is unavailable or invalid.
 
 #### Scenario: Policy gate is unavailable
 - **WHEN** the optional model policy gate raises an error or is not configured
 - **THEN** the assistant SHALL continue with the local student policy classification
-- **AND** risky requests SHALL still be refused or converted to hints according to local policy.
+- **AND** risky requests SHALL still be refused or converted to hints according to local policy
+- **AND** retrieval routing SHALL use deterministic local fallback rather than defaulting to dynamic RAG for every turn.
 
 #### Scenario: Policy gate returns invalid structured output
-- **WHEN** the optional model policy gate returns malformed JSON, an unknown mode, or another invalid policy decision
-- **THEN** the assistant SHALL record an invalid policy decision guardrail
-- **AND** it SHALL continue with the local student policy classification instead of treating the request as a normal answer.
+- **WHEN** the optional model policy gate returns malformed JSON, an unknown mode, an unknown retrieval mode, or another invalid policy decision
+- **THEN** the assistant SHALL record an invalid policy decision guardrail or diagnostic
+- **AND** it SHALL continue with the local student policy classification and deterministic retrieval routing instead of treating the request as a normal always-RAG answer.
 
 ### Requirement: H5 student assistant endpoint guardrails
 Student H5 assistant APIs SHALL use the existing student chat guardrail policy and feature-switch behavior.
@@ -142,7 +153,7 @@ The student learning assistant SHALL classify policy decisions using resolved mu
 - **AND** inherited context SHALL NOT override the risky-request policy.
 
 ### Requirement: Student H5 assistant presentation
-The student H5 assistant SHALL present starter guidance, model answers, point context, chat status, and source summaries in a student-readable form while preserving existing student guardrail enforcement.
+The student H5 assistant SHALL present a direct mobile chat shell, model answers, optional point context, chat status, history entry, and source summaries in a student-readable form while preserving existing student guardrail enforcement.
 
 #### Scenario: Student chat renders chemistry answer
 - **WHEN** the student assistant streams a markdown or chemistry-formatted answer
@@ -156,16 +167,21 @@ The student H5 assistant SHALL present starter guidance, model answers, point co
 - **AND** it MUST show a compact source or evidence summary suitable for students
 - **AND** it MUST NOT show raw retrieval traces, rerank scores, guardrail arrays, runtime health, or JSON diagnostics in the student chat surface.
 
-#### Scenario: Student chat starts from global context
+#### Scenario: Student chat starts from global AI root
 - **WHEN** a student opens the assistant from the bottom navigation without a current chapter, experiment, or point handoff
-- **THEN** the H5 app MUST submit assistant requests with a valid `learning_home` context
-- **AND** the page MUST provide starter guidance for ordinary course questions before the first turn.
+- **THEN** the `/ai` root page MUST render a direct composer-first chat shell using the default `learning_home` context
+- **AND** the student MUST be able to type and send a course question without first choosing a prompt, point, model, attachment, or voice option.
 
-#### Scenario: Student chat starts from point context
-- **WHEN** a student opens the assistant from a property section or experiment point
-- **THEN** the H5 app MUST include the selected chapter, experiment, point, and context summary in the request
-- **AND** quick prompts or starter intents MUST be relevant to the active property or point
-- **AND** the active context MUST be visible and dismissible rather than trapping the student in that point.
+#### Scenario: Student chat starts from point or page context
+- **WHEN** a student opens the assistant from a property section, experiment point, video result, chapter, or assessment report
+- **THEN** the `/ai/chat` detail page MUST include the selected context in the request where available
+- **AND** the active context MUST be visible and dismissible rather than trapping the student in that point
+- **AND** the page MUST use contextual detail-page chrome instead of the `/ai` root history chrome.
+
+#### Scenario: Unsupported generic AI controls are absent
+- **WHEN** the student views either the root AI chat shell or contextual AI chat detail page
+- **THEN** the UI MUST NOT show attachment upload, model selection, or voice-input controls
+- **AND** all visible controls MUST map to implemented student assistant behavior.
 
 #### Scenario: Student chat shows streaming progress
 - **WHEN** the student assistant request is running and no final answer has arrived
@@ -182,4 +198,50 @@ The student H5 assistant SHALL present starter guidance, model answers, point co
 - **WHEN** student AI entry or student AI capability is disabled by admin settings
 - **THEN** the H5 app MUST hide or disable the student assistant entry after app-config refresh
 - **AND** the backend MUST continue to reject stale student assistant requests.
+
+### Requirement: Follow-up prompt guardrails
+The student learning assistant SHALL apply student-facing safety, assessment, and course-scope guardrails to generated follow-up prompt suggestions.
+
+#### Scenario: Suggestions are generated from in-scope context
+- **WHEN** the backend generates follow-up prompt suggestions for a successful student assistant answer
+- **THEN** the suggestion-generation context MUST include the active student assistant context, the latest student question, the completed assistant answer, and recent conversation history
+- **AND** it MUST NOT include teacher/admin diagnostics, raw retrieval traces, policy internals, or hidden answer keys.
+
+#### Scenario: Suggestions stay within course scope
+- **WHEN** follow-up prompt suggestions are attached to the student assistant final response
+- **THEN** each suggestion MUST be a student-facing inorganic chemistry experiment learning follow-up or a safe learning-strategy follow-up for the active context
+- **AND** suggestions MUST NOT direct the student toward unrelated entertainment, finance, personal advice, or other out-of-course topics.
+
+#### Scenario: Suggestions avoid unsafe experiment operations
+- **WHEN** follow-up prompt suggestions relate to experiment practice or safety
+- **THEN** they MUST avoid soliciting hazardous unsupervised operation steps
+- **AND** they MAY ask about safety principles, observation cues, or teacher-supervised lab precautions.
+
+#### Scenario: Suggestions avoid direct assessment answers
+- **WHEN** the active context or recent conversation relates to a quiz, pretest, posttest, exam, or mistake review
+- **THEN** generated suggestions MUST NOT ask Atom to directly reveal an answer choice or final answer
+- **AND** they SHOULD ask for hints, reasoning steps, misconception analysis, or review priorities.
+
+#### Scenario: Invalid suggestions are removed
+- **WHEN** a generated suggestion violates student guardrails, exposes diagnostics, asks for direct answers, or is not student-readable
+- **THEN** the backend MUST remove that suggestion before returning `suggested_prompts`
+- **AND** the backend MUST NOT replace it with a static frontend fallback prompt.
+
+### Requirement: Retrieval routing remains separate from safety guardrails
+The student learning assistant SHALL keep safety, assessment, and course-scope guardrails separate from retrieval routing while allowing retrieval decisions to be recorded for diagnostics.
+
+#### Scenario: Safety refusal is selected
+- **WHEN** the student asks for unsafe experiment operation details
+- **THEN** the safety guardrail SHALL decide the refusal behavior
+- **AND** retrieval routing SHALL NOT run dynamic RAG to produce unsafe operation steps.
+
+#### Scenario: Assessment hint is selected
+- **WHEN** the student asks for a direct quiz, test, exam, or assignment answer
+- **THEN** the assessment guardrail SHALL convert the turn to learning guidance or hints
+- **AND** retrieval routing SHALL NOT override that policy into a direct grounded answer.
+
+#### Scenario: Retrieval decision is diagnostic
+- **WHEN** the backend records a retrieval decision for a student assistant turn
+- **THEN** diagnostics SHALL include that decision for teacher/operator inspection where assistant turn diagnostics are exposed
+- **AND** student-facing chat surfaces MUST NOT display raw retrieval mode names, policy codes, confidence values, or tool internals.
 

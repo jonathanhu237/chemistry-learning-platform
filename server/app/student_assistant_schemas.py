@@ -18,6 +18,9 @@ class StudentAssistantAskRequest(BaseModel):
     chapter_id: str | None = None
     experiment_id: str | None = None
     point_key: str | None = None
+    point_node_id: str | None = None
+    source_node_id: str | None = None
+    catalog_path: list[str] = Field(default_factory=list, max_length=20)
     knowledge_point_ids: list[str] = Field(default_factory=list, max_length=20)
     conversation_history: list[AgentChatMessage] = Field(default_factory=list, max_length=20)
 

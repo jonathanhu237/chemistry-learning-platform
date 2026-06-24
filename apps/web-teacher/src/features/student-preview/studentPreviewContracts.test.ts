@@ -13,7 +13,10 @@ describe("student device preview contracts", () => {
     expect(pageSource).toContain("preview_url");
     expect(pageSource).toContain("allowedPreviewUrl");
     expect(deviceFrameSource).toContain("VITE_STUDENT_APP_BASE_URL");
-    expect(deviceFrameSource).toContain("http://222.200.189.249:5173");
+    expect(deviceFrameSource).toContain("http://222.200.189.249:15173");
+    expect(pageSource).not.toContain("inferStudentAppBase");
+    expect(pageSource).not.toContain("Expected ${expectedOrigin}");
+    expect(pageSource).toContain('url.protocol !== "http:" && url.protocol !== "https:"');
     expect(pageSource).toContain("PreviewGestureSurface");
     expect(inputProtocolSource).toContain("previewTeacherOrigin");
   });
@@ -27,14 +30,23 @@ describe("student device preview contracts", () => {
     expect(pageSource).not.toContain("StudentRouterProvider");
   });
 
-  it("uses teacher-owned gesture recognition without treating it as student code", () => {
-    expect(gestureSurfaceSource).toContain('from "@use-gesture/react"');
-    expect(gestureSurfaceSource).toContain("useGesture");
+  it("uses teacher-owned pointer lifecycle transport without treating it as student code", () => {
+    expect(gestureSurfaceSource).not.toContain("@use-gesture/react");
+    expect(gestureSurfaceSource).not.toContain("useGesture");
     expect(gestureSurfaceSource).toContain("postMessage");
     expect(gestureSurfaceSource).toContain("requestAnimationFrame");
     expect(gestureSurfaceSource).toContain("translate3d");
     expect(gestureSurfaceSource).toContain("onPointerDown");
+    expect(gestureSurfaceSource).toContain("onPointerMove");
     expect(gestureSurfaceSource).toContain("onPointerUp");
+    expect(gestureSurfaceSource).toContain("onPointerCancel");
+    expect(gestureSurfaceSource).toContain("onLostPointerCapture");
+    expect(gestureSurfaceSource).toContain('type: "touchStart"');
+    expect(gestureSurfaceSource).toContain('type: "touchMove"');
+    expect(gestureSurfaceSource).toContain('type: "touchEnd"');
+    expect(gestureSurfaceSource).toContain('type: "touchCancel"');
+    expect(gestureSurfaceSource).not.toContain('type: "tap"');
+    expect(gestureSurfaceSource).not.toContain('type: "longPress"');
     expect(gestureSurfaceSource).not.toContain("apps/web-student");
     expect(gestureSurfaceSource).not.toContain("document.querySelector");
   });

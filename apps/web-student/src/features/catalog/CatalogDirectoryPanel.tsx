@@ -9,6 +9,8 @@ import { CatalogNodeCards, catalogPathLabel } from "./CatalogNodeCards";
 
 export function CatalogDirectoryPanel({
   nodeId,
+  initialDetail,
+  loadCatalogNode = getStudentCatalogNode,
   onLoaded,
   onOpenDirectory,
   onOpenPoint,
@@ -16,21 +18,33 @@ export function CatalogDirectoryPanel({
   variant = "panel",
 }: {
   nodeId: string;
+  initialDetail?: StudentCatalogNodeResponse | null;
+  loadCatalogNode?: (nodeId: string) => Promise<StudentCatalogNodeResponse>;
   onLoaded?: (node: StudentCatalogNodeResponse) => void;
   onOpenDirectory: (node: StudentCatalogNodeCard) => void;
   onOpenPoint: (node: StudentCatalogNodeCard) => void;
   searchQuery?: string;
   variant?: "panel" | "body";
 }) {
-  const [detail, setDetail] = useState<StudentCatalogNodeResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const seededDetail = initialDetail?.node.node_id === nodeId ? initialDetail : null;
+  const [detail, setDetail] = useState<StudentCatalogNodeResponse | null>(seededDetail);
+  const [loading, setLoading] = useState(!seededDetail);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
+    if (initialDetail?.node.node_id === nodeId) {
+      setDetail(initialDetail);
+      onLoaded?.(initialDetail);
+      setError("");
+      setLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
     setLoading(true);
     setError("");
-    getStudentCatalogNode(nodeId)
+    loadCatalogNode(nodeId)
       .then((payload) => {
         if (cancelled) return;
         setDetail(payload);
@@ -45,7 +59,7 @@ export function CatalogDirectoryPanel({
     return () => {
       cancelled = true;
     };
-  }, [nodeId, onLoaded]);
+  }, [initialDetail, loadCatalogNode, nodeId, onLoaded]);
 
   if (loading) return <LearningState icon={<LoaderCircle className="spin" size={23} />} text="正在加载目录" />;
   if (error) return <LearningState icon={<FolderOpen size={23} />} text={error} />;

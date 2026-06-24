@@ -6,8 +6,8 @@ export function LearnRootPage() {
   const navigate = useNavigate();
   return (
     <LearningEntryPanel
-      onSelectProfile={(profile) => {
-        navigateToChapter(navigate, profile.profile_id, { from: "learn" });
+      onSelectProfile={(profile, options) => {
+        navigateToChapter(navigate, profile.profile_id, { from: "learn", elementSymbol: options?.elementSymbol });
       }}
     />
   );

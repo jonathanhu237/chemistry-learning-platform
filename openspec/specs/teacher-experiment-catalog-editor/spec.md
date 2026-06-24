@@ -901,17 +901,28 @@ The selected-point header SHALL compute at most one primary action from resolved
 - **AND** unpublish MUST be available only from the secondary menu with confirmation.
 
 ### Requirement: Teacher preview is a secondary inspection action
-The selected-point editor SHALL treat student preview as a secondary inspection action that can render non-published states.
+The selected-node editor SHALL treat student preview as a secondary inspection action that can render non-published directory and point states.
 
 #### Scenario: Teacher previews a draft point
 - **WHEN** a teacher chooses `预览学生端` for a non-published but renderable point
 - **THEN** the system MUST open a preview scoped to that point
 - **AND** the preview MUST render the current draft content, missing-content placeholders, or missing-video state as applicable.
 
+#### Scenario: Teacher previews a draft directory
+- **WHEN** a teacher chooses `预览学生端` for a directory node
+- **THEN** the system MUST open a preview scoped to that directory
+- **AND** the preview MUST render the student-facing catalog directory page with that directory selected
+- **AND** it MUST include renderable child directories and child points in catalog order without requiring the teacher to open the full student sandbox.
+
 #### Scenario: Preview action is shown
-- **WHEN** a point node is selected
-- **THEN** `预览学生端` MUST be available from the secondary `更多` menu
+- **WHEN** a directory or point node is selected
+- **THEN** `预览学生端` MUST be available from the secondary `更多` menu or equivalent selected-node preview affordance
 - **AND** it MUST NOT occupy the header primary action position.
+
+#### Scenario: Directory preview does not imply point editing controls
+- **WHEN** a directory node is selected
+- **THEN** the editor MAY offer the selected-node preview action
+- **AND** it MUST NOT expose point-only video binding, point detail, related experiment, or learning-card editing controls as if the directory were a point.
 
 ### Requirement: Student availability requires placement and content publication
 Catalog point status summaries SHALL only mark a point as student-available when both the selected catalog placement and the shared point content are published.
@@ -1053,11 +1064,11 @@ The catalog editor SHALL expose enough selected-node context for diagnostics to 
 ### Requirement: Header preview and diagnostics actions
 The selected-node header SHALL provide the entry points for student preview and read-only diagnostics.
 
-#### Scenario: Teacher previews a point
-- **WHEN** a point node is selected
-- **THEN** the header MUST show a `预览学习卡片` action
-- **AND** the action MUST launch the teacher-authorized student preview flow for that point
-- **AND** the preview shell MUST allow selecting from a small set of standard phone presets while keeping the student point page read-only.
+#### Scenario: Teacher previews a selected node
+- **WHEN** a directory or point node is selected
+- **THEN** the header MUST show a student preview action such as `预览学生端` or `预览学习卡片`
+- **AND** the action MUST launch the teacher-authorized student preview flow for that selected node
+- **AND** the preview shell MUST allow selecting from a small set of standard phone presets while keeping the student page read-only.
 
 #### Scenario: Teacher opens diagnostics
 - **WHEN** a teacher opens the header `高级` or `更多` action

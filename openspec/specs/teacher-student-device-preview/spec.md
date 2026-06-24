@@ -1,7 +1,7 @@
 # teacher-student-device-preview Specification
 
 ## Purpose
-TBD - created by archiving change add-teacher-student-device-preview. Update Purpose after archive.
+Define the teacher-side student device preview shell, session handling, iframe/device controls, LAN student-container default, and teacher preview boundaries.
 ## Requirements
 ### Requirement: Teacher can open a full student device preview
 The teacher console SHALL provide a full student H5 preview page that displays the real student frontend inside a controlled phone-sized device shell.
@@ -164,7 +164,8 @@ The platform SHALL allow the teacher app to frame only the expected student prev
 
 #### Scenario: Teacher and student apps use different local ports
 - **WHEN** the teacher preview page runs on the teacher frontend origin and frames the student frontend origin
-- **THEN** configuration MUST allow the expected local and deployed student preview origins
+- **THEN** configuration MUST allow the expected local, LAN, and deployed student preview origins
+- **AND** the default local Compose preview origin MUST resolve to `http://222.200.189.249:5173`
 - **AND** it MUST NOT allow arbitrary external origins to be framed.
 
 #### Scenario: Iframe tries to load an unexpected URL

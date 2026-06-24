@@ -278,6 +278,13 @@ export type StudentPointDetailResponse = {
   };
 };
 
+export type CatalogPreviewNodeResponse = {
+  node_kind: StudentCatalogNodeKind;
+  directory?: StudentCatalogNodeResponse | null;
+  point?: StudentPointDetailResponse | null;
+  learning_page?: StudentLearningPageResponse | null;
+};
+
 export type StudentLearningProfileSummary = {
   profile_id: string;
   chapter_id: string;
@@ -379,6 +386,40 @@ export type StudentVideoLibrarySearchResponse = {
   total: number;
   groups: StudentVideoLibraryResultGroup[];
   browse: StudentVideoLibraryBrowseState;
+};
+
+export type StudentHomeVideoFeedStatus = "ok" | "empty";
+export type StudentHomeVideoFeedReason = "catalog" | "recommended" | "recent" | "weakness";
+
+export type StudentHomeVideoMedia = {
+  media_id: string;
+  title: string;
+  mime_type?: string | null;
+  stream_path: string;
+  thumbnail_path?: string | null;
+  duration_seconds?: number | null;
+};
+
+export type StudentHomeVideoFeedItem = {
+  id: string;
+  node_id: string;
+  placement_node_id: string;
+  canonical_point_id: string;
+  chapter_id: string;
+  title: string;
+  summary: string;
+  snippet: string;
+  catalog_path: string[];
+  badges: string[];
+  video: StudentHomeVideoMedia;
+  target: StudentVideoLibraryRouteTarget;
+  reason: StudentHomeVideoFeedReason;
+};
+
+export type StudentHomeVideoFeedResponse = {
+  status: StudentHomeVideoFeedStatus;
+  message: string;
+  items: StudentHomeVideoFeedItem[];
 };
 
 export type PosttestExperimentSummary = {
@@ -543,6 +584,7 @@ export type AgentChatMessage = {
 
 export type StudentAssistantFinalMetadata = {
   source_count?: number;
+  suggested_prompts?: string[];
   sources?: Array<{
     title?: string | null;
     section?: string | null;
@@ -596,6 +638,7 @@ export type StudentFeedbackSubmitResponse = {
 
 export type StudentAssistantStreamEvent =
   | { event: "status"; message?: string }
+  | { event: "thinking"; source?: "reasoning_summary" | "agent_trace"; message?: string; phase?: string; sequence?: number }
   | { event: "delta"; delta?: string }
   | { event: "replace"; answer?: string }
   | { event: "final"; response?: StudentAssistantFinalMetadata | unknown }
@@ -837,7 +880,7 @@ export async function streamStudentAssistantAsk(
     const errorPayload = contentType.includes("application/json") ? await response.json() : await response.text();
     throw new ApiError(response.status, typeof errorPayload === "object" && errorPayload ? errorPayload.detail : errorPayload);
   }
-  if (!response.body) throw new Error("AI 响应流不可用");
+  if (!response.body) throw new Error("Atom 响应流不可用");
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -898,6 +941,11 @@ export function getStudentLearningHome(): Promise<StudentLearningHomeResponse> {
   return api<StudentLearningHomeResponse>("/api/student/learning-home");
 }
 
+export function getStudentHomeVideoFeed(limit = 12): Promise<StudentHomeVideoFeedResponse> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  return api<StudentHomeVideoFeedResponse>(`/api/student/home-video-feed?${params.toString()}`);
+}
+
 export function getStudentLearningPage(profileId?: string | null): Promise<StudentLearningPageResponse> {
   const query = profileId ? `?profile_id=${encodeURIComponent(profileId)}` : "";
   return api<StudentLearningPageResponse>(`/api/student/learning-page${query}`);
@@ -918,6 +966,11 @@ export function getStudentCatalogPointDetail(nodeId: string): Promise<StudentPoi
 export function getPreviewCatalogPointDetail(nodeId: string, previewToken: string): Promise<StudentPointDetailResponse> {
   const params = new URLSearchParams({ preview_token: previewToken });
   return api<StudentPointDetailResponse>(`/api/preview/catalog/points/${encodeURIComponent(nodeId)}?${params.toString()}`);
+}
+
+export function getPreviewCatalogNode(nodeId: string, previewToken: string): Promise<CatalogPreviewNodeResponse> {
+  const params = new URLSearchParams({ preview_token: previewToken });
+  return api<CatalogPreviewNodeResponse>(`/api/preview/catalog/nodes/${encodeURIComponent(nodeId)}?${params.toString()}`);
 }
 
 export function searchStudentVideoLibrary(query = "", limit = 24): Promise<StudentVideoLibrarySearchResponse> {

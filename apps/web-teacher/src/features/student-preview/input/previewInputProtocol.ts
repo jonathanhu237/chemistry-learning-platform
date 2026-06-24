@@ -1,7 +1,7 @@
 export const studentPreviewInputNamespace = "chemistry.studentPreview.input";
-export const studentPreviewInputVersion = 1;
+export const studentPreviewInputVersion = 2;
 
-export type PreviewInputEventType = "hover" | "touchStart" | "touchMove" | "touchEnd" | "touchCancel" | "tap" | "longPress";
+export type PreviewInputEventType = "hover" | "touchStart" | "touchMove" | "touchEnd" | "touchCancel";
 
 export type PreviewInputPoint = {
   x: number;

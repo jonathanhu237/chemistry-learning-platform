@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import re
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator
 
@@ -59,6 +61,288 @@ def _effective_settings_ready() -> bool:
     )
 
 
+_FOLLOWUP_MIN_VISIBLE_CHARS = 8
+_FOLLOWUP_MAX_VISIBLE_CHARS = 24
+_FOLLOWUP_MAX_COUNT = 5
+_MODEL_SUCCESS_MODES = {
+    "openai_chat",
+    "openai_chat_stream",
+    "openai_chat_fallback",
+    "source_asset_evidence",
+}
+_MODEL_SKIP_MODES = {
+    "local",
+    "guardrail_refusal",
+    "guardrail_hint",
+    "assessment_hint",
+    "needs_platform_evidence",
+}
+_FOLLOWUP_SYSTEM_PROMPT = (
+    "You generate next-turn chips for Atom, a student inorganic chemistry learning assistant. "
+    "The chips are shown to the student and, when tapped, are sent verbatim as the student's next message to Atom. "
+    "Return JSON only: an array of 3 to 5 concise Chinese questions written in the student's voice. "
+    "Each item must be 8 to 24 visible characters. "
+    "Use direct askable wording, for example 'Ellingham图怎么判读？' or 'Frost图怎么分析？'. "
+    "Do not write Atom's offer/choice wording such as '想了解...？', '需要解析...？', '要不要...？', '是否需要...？', or '我来...'. "
+    "Base the questions only on the current student context, latest question, completed answer, and recent history. "
+    "Do not include markdown, numbering, explanations, diagnostics, RAG/chunk/internal terms, unsafe private experiment operations, "
+    "direct live-assessment answers, or off-course topics."
+)
+_DIAGNOSTIC_PROMPT_TERMS = (
+    "rag",
+    "chunk",
+    "trace",
+    "json",
+    "token",
+    "debug",
+    "log",
+    "guardrail",
+    "policy",
+    "\u8c03\u8bd5",
+    "\u8bca\u65ad",
+    "\u65e5\u5fd7",
+    "\u540e\u53f0",
+    "\u7ba1\u7406\u5458",
+    "\u6559\u5e08\u7aef",
+)
+_UNSAFE_PROMPT_TERMS = (
+    "home lab",
+    "at home",
+    "private experiment",
+    "dose",
+    "\u5728\u5bb6",
+    "\u79c1\u4e0b",
+    "\u79c1\u81ea",
+    "\u5177\u4f53\u6b65\u9aa4",
+    "\u64cd\u4f5c\u6b65\u9aa4",
+    "\u52a0\u70ed\u591a\u4e45",
+    "\u600e\u4e48\u5236\u5907\u6c2f\u6c14",
+    "\u7206\u70b8",
+)
+_ASSESSMENT_ANSWER_PROMPT_TERMS = (
+    "answer choice",
+    "correct answer",
+    "tell me the answer",
+    "\u6b63\u786e\u7b54\u6848",
+    "\u7b54\u6848\u9009",
+    "\u9009\u54ea\u4e2a",
+    "\u586b\u4ec0\u4e48",
+    "\u76f4\u63a5\u544a\u8bc9\u7b54\u6848",
+    "\u6d4b\u8bc4\u7b54\u6848",
+    "\u8003\u8bd5\u7b54\u6848",
+)
+_OFF_SCOPE_PROMPT_TERMS = (
+    "stock",
+    "movie",
+    "game",
+    "\u80a1\u7968",
+    "\u7406\u8d22",
+    "\u7535\u5f71",
+    "\u604b\u7231",
+    "\u661f\u5ea7",
+)
+_ASSISTANT_OFFER_PROMPT_PATTERNS = tuple(
+    re.compile(pattern)
+    for pattern in (
+        r"^(?:想了解|想知道|想看|还想了解|继续了解)",
+        r"^需要(?:解析|分析|讲解|说明|了解|复习|我|帮你)",
+        r"^(?:是否需要|要不要|要继续|还需要)",
+        r"^(?:我来|让我|可以继续|可以再)",
+    )
+)
+
+
+def _followup_model_ready(settings: Any) -> bool:
+    return bool(
+        settings.agent_llm_provider in {"openai", "openai_compatible"}
+        and (settings.agent_llm_api_key or os.getenv("OPENAI_API_KEY"))
+        and settings.agent_llm_model
+    )
+
+
+def _conversation_history_for_followups(payload: StudentAssistantAskRequest) -> list[dict[str, str]]:
+    history: list[dict[str, str]] = []
+    for item in payload.conversation_history[-6:]:
+        data = item.model_dump() if hasattr(item, "model_dump") else item.dict()
+        history.append(
+            {
+                "role": str(data.get("role") or ""),
+                "content": " ".join(str(data.get("content") or "").split())[:700],
+            }
+        )
+    return history
+
+
+def _followup_generation_payload(payload: StudentAssistantAskRequest, answer: str) -> dict[str, Any]:
+    return {
+        "context_type": payload.context_type,
+        "context_title": payload.context_title,
+        "context_summary": payload.context_summary,
+        "chapter_id": payload.chapter_id,
+        "experiment_id": payload.experiment_id,
+        "point_key": payload.point_key,
+        "point_node_id": payload.point_node_id,
+        "source_node_id": payload.source_node_id,
+        "catalog_path": payload.catalog_path,
+        "knowledge_point_ids": payload.knowledge_point_ids,
+        "latest_student_question": payload.question,
+        "completed_answer": answer[:2200],
+        "recent_conversation_history": _conversation_history_for_followups(payload),
+    }
+
+
+def _json_payload_from_model_text(text: str) -> Any:
+    content = text.strip()
+    if content.startswith("```"):
+        lines = [line for line in content.splitlines() if not line.strip().startswith("```")]
+        content = "\n".join(lines).strip()
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        match = re.search(r"\[[\s\S]*\]", content)
+        if not match:
+            return []
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            return []
+
+
+def _parse_suggested_prompt_payload(value: Any) -> list[Any]:
+    payload = value
+    if isinstance(value, str):
+        payload = _json_payload_from_model_text(value)
+    if isinstance(payload, list):
+        return payload
+    if isinstance(payload, dict):
+        for key in ("suggested_prompts", "suggestions", "followups", "follow_up_questions"):
+            items = payload.get(key)
+            if isinstance(items, list):
+                return items
+    return []
+
+
+def _visible_char_count(text: str) -> int:
+    return len(re.sub(r"\s+", "", text))
+
+
+def _prompt_has_guardrail_issue(text: str) -> bool:
+    normalized = re.sub(r"\s+", " ", text).casefold()
+    compact = re.sub(r"\s+", "", text).casefold()
+    for term in (
+        *_DIAGNOSTIC_PROMPT_TERMS,
+        *_UNSAFE_PROMPT_TERMS,
+        *_ASSESSMENT_ANSWER_PROMPT_TERMS,
+        *_OFF_SCOPE_PROMPT_TERMS,
+    ):
+        term_text = str(term).casefold()
+        if term_text and (term_text in normalized or term_text in compact):
+            return True
+    return False
+
+
+def _prompt_uses_assistant_offer_voice(text: str) -> bool:
+    compact = re.sub(r"\s+", "", text)
+    return any(pattern.search(compact) for pattern in _ASSISTANT_OFFER_PROMPT_PATTERNS)
+
+
+def _sanitize_followup_prompts(value: Any) -> list[str]:
+    raw_items = _parse_suggested_prompt_payload(value)
+    suggestions: list[str] = []
+    seen: set[str] = set()
+    for raw in raw_items:
+        if not isinstance(raw, str):
+            continue
+        text_value = re.sub(r"\s+", " ", raw).strip()
+        text_value = re.sub(r"^(?:[-*]|\d+[.)])\s*", "", text_value).strip()
+        if not text_value:
+            continue
+        visible_length = _visible_char_count(text_value)
+        if visible_length < _FOLLOWUP_MIN_VISIBLE_CHARS or visible_length > _FOLLOWUP_MAX_VISIBLE_CHARS:
+            continue
+        dedupe_key = re.sub(r"\s+", "", text_value).casefold()
+        if dedupe_key in seen:
+            continue
+        if _prompt_has_guardrail_issue(text_value):
+            continue
+        if _prompt_uses_assistant_offer_voice(text_value):
+            continue
+        seen.add(dedupe_key)
+        suggestions.append(text_value)
+        if len(suggestions) >= _FOLLOWUP_MAX_COUNT:
+            break
+    return suggestions
+
+
+def _should_generate_followups(response: dict[str, Any], answer: str) -> bool:
+    if not answer.strip():
+        return False
+    mode = str(response.get("mode") or "").strip()
+    if not mode:
+        return True
+    if mode in _MODEL_SKIP_MODES:
+        return False
+    return mode in _MODEL_SUCCESS_MODES or mode.startswith("openai")
+
+
+async def _generate_followup_prompts(
+    payload: StudentAssistantAskRequest,
+    answer: str,
+    settings: Any,
+) -> list[str]:
+    if not _followup_model_ready(settings):
+        return []
+
+    from openai import OpenAI
+
+    client = OpenAI(
+        api_key=settings.agent_llm_api_key or os.getenv("OPENAI_API_KEY"),
+        base_url=settings.agent_llm_base_url or None,
+        timeout=10.0,
+    )
+    response = client.chat.completions.create(
+        model=settings.agent_llm_model,
+        temperature=0.35,
+        max_tokens=220,
+        messages=[
+            {
+                "role": "system",
+                "content": _FOLLOWUP_SYSTEM_PROMPT,
+            },
+            {
+                "role": "user",
+                "content": json.dumps(_followup_generation_payload(payload, answer), ensure_ascii=False),
+            },
+        ],
+    )
+    content = response.choices[0].message.content if response.choices else ""
+    return _sanitize_followup_prompts(content or "")
+
+
+def _answer_from_final_response(response: dict[str, Any]) -> str:
+    value = response.get("answer")
+    if value is None:
+        value = response.get("text")
+    return str(value or "")
+
+
+async def _student_final_response_with_followups(
+    response: dict[str, Any],
+    payload: StudentAssistantAskRequest,
+    settings: Any,
+) -> dict[str, Any]:
+    next_response = dict(response)
+    answer = _answer_from_final_response(next_response)
+    suggestions: list[str] = []
+    if _should_generate_followups(next_response, answer):
+        try:
+            suggestions = await _generate_followup_prompts(payload, answer, settings)
+        except Exception:
+            suggestions = []
+    next_response["suggested_prompts"] = suggestions
+    return next_response
+
+
 def _contextual_question(payload: StudentAssistantAskRequest) -> str:
     context_lines = [
         f"当前页面：{payload.context_title or payload.context_type}",
@@ -78,18 +362,28 @@ def _agent_request_for_chat(user: Any, payload: StudentAssistantAskRequest, *, a
         chapter_id=payload.chapter_id or None,
         experiment_id=payload.experiment_id or None,
         point_key=payload.point_key or None,
+        point_node_id=payload.point_node_id or None,
+        source_node_id=payload.source_node_id or None,
+        catalog_path=payload.catalog_path,
         knowledge_point_ids=payload.knowledge_point_ids,
         allow_progress_lookup=True,
         allow_rag_lookup=allow_rag_lookup,
         conversation_history=payload.conversation_history,
-        max_answer_chars=1200,
+        max_answer_chars=0,
     )
 
 
 async def stream_student_assistant_answer(user: Any, payload: StudentAssistantAskRequest) -> AsyncIterator[dict[str, Any]]:
     _, rag_enabled = _ai_enabled()
+    settings = effective_ai_settings(get_settings())
     request = _agent_request_for_chat(user, payload, allow_rag_lookup=rag_enabled)
-    async for item in run_agent_stream(request, settings=effective_ai_settings(get_settings())):
+    async for item in run_agent_stream(request, settings=settings):
+        if item.get("event") == "final" and isinstance(item.get("response"), dict):
+            yield {
+                **item,
+                "response": await _student_final_response_with_followups(item["response"], payload, settings),
+            }
+            continue
         yield item
 
 

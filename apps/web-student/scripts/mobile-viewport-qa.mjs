@@ -19,6 +19,7 @@ const studentId = process.env.STUDENT_H5_QA_STUDENT_ID || "";
 const password = process.env.STUDENT_H5_QA_PASSWORD || "";
 const allowAuthSkip = process.env.STUDENT_H5_QA_ALLOW_AUTH_SKIP === "1";
 const useMockApi = process.env.STUDENT_H5_QA_MOCK === "1";
+const aiRootOnly = process.env.STUDENT_H5_QA_ONLY_AI_ROOT === "1";
 
 const mockUser = {
   id: "mobile-qa-student",
@@ -31,6 +32,39 @@ const mockUser = {
   student_id: "20249999",
   class_id: "mobile-qa-class",
   class_name: "移动端测试班",
+};
+
+const mockRootAiHistoryEntry = {
+  id: "mobile-qa-root-ai-history",
+  title: "Restored Atom conversation",
+  contextTitle: "Atom Study Assistant",
+  contextType: "global",
+  contextSummary: "General chemistry assistant context",
+  source: "root",
+  context: {
+    context_type: "global",
+    context_title: "Atom Study Assistant",
+    context_summary: "General chemistry assistant context",
+    prompts: ["Explain the observation", "Give the equation"],
+  },
+  messages: [
+    { role: "user", content: "Explain a halogen displacement experiment." },
+    {
+      role: "assistant",
+      content: Array.from(
+        { length: 80 },
+        (_, index) =>
+          `Restored answer paragraph ${index + 1}: chlorine can oxidize bromide ions, so the observed color change must be explained with evidence.`,
+      ).join("\n\n"),
+      metadata: {
+        source_count: 1,
+        sources: [{ title: "safe source" }],
+        suggested_prompts: ["Compare iodine", "List safety steps"],
+      },
+    },
+  ],
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
 };
 
 const mockCatalogDirectoryNode = {
@@ -258,6 +292,48 @@ const mockLearningHome = {
       published_video_count: 0,
       question_count: 10,
       recommended: true,
+    },
+  ],
+};
+
+const mockHomeVideoFeed = {
+  status: "ok",
+  message: "",
+  items: [
+    {
+      id: "feed:cat-point-halogen",
+      node_id: "cat-point-halogen",
+      placement_node_id: "cat-point-halogen",
+      canonical_point_id: "cat-canon-halogen",
+      chapter_id: "CH17",
+      title: "卤素置换观察",
+      summary: "氯水与溴离子的置换反应，观察有机层颜色变化。",
+      snippet: "氯水 + KBr + CCl4",
+      catalog_path: ["卤素置换目录", "卤素置换观察"],
+      badges: ["卤素", "实验视频"],
+      reason: "catalog",
+      video: {
+        media_id: "media-halogen",
+        title: "卤素置换视频",
+        mime_type: "video/mp4",
+        stream_path: "/api/student/media/assets/media-halogen/stream",
+        thumbnail_path: "/api/student/media/assets/media-halogen/thumbnail",
+        duration_seconds: 35,
+      },
+      target: {
+        kind: "point_detail",
+        route: "/point/cat-point-halogen",
+        node_id: "cat-point-halogen",
+        placement_node_id: "cat-point-halogen",
+        canonical_point_id: "cat-canon-halogen",
+        profile_id: "halogens-17",
+        chapter_id: "CH17",
+        catalog_path: ["卤素置换目录", "卤素置换观察"],
+        property_key: "oxidation",
+        property_title: "氧化性",
+        element_symbol: "Cl",
+        point_title: "卤素置换观察",
+      },
     },
   ],
 };
@@ -691,6 +767,12 @@ async function submitVisibleAssessment(page) {
 }
 
 async function clickRoot(page, root) {
+  const alreadyActive = await page.evaluate((rootId) => {
+    const active = document.querySelector(".student-bottom-nav button.active");
+    return window.location.pathname === "/" + rootId && active?.getAttribute("data-root") === rootId;
+  }, root);
+  if (alreadyActive) return;
+
   const tabButton = page.locator('.student-bottom-nav button[data-root="' + root + '"]').first();
   await tabButton.waitFor({ state: "visible", timeout: 10000 });
   await tabButton.click({ force: true });
@@ -770,6 +852,7 @@ async function installMockApi(page) {
       }),
     ),
   );
+  await page.route("**/api/student/home-video-feed**", (route) => route.fulfill(jsonResponse(mockHomeVideoFeed)));
   await page.route("**/api/student/learning-home", (route) => route.fulfill(jsonResponse(mockLearningHome)));
   await page.route("**/api/student/learning-page**", (route) => route.fulfill(jsonResponse(mockLearningPage)));
   await page.route("**/api/student/chapters/CH17/catalog", (route) => route.fulfill(jsonResponse(mockCatalogChapter)));
@@ -779,6 +862,19 @@ async function installMockApi(page) {
     route.fulfill(jsonResponse({ ...mockCatalogPointDetail, node_id: "cat-point-iodine", canonical_node_id: "cat-point-iodine", title: "碘的置换观察" })),
   );
   await page.route("**/api/student/video-library/search**", (route) => route.fulfill(jsonResponse(mockVideoLibrary)));
+  await page.route("**/api/student/media/assets/**/thumbnail**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "image/svg+xml; charset=utf-8",
+      body: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"><rect width="1280" height="720" fill="#10231b"/><rect x="72" y="68" width="1136" height="584" rx="32" fill="#f8f4e8"/><circle cx="478" cy="328" r="72" fill="#006930" opacity=".92"/><circle cx="626" cy="328" r="72" fill="#d88d1f" opacity=".8"/><circle cx="774" cy="328" r="72" fill="#006930" opacity=".72"/><text x="92" y="132" fill="#006930" font-family="Arial, sans-serif" font-size="44" font-weight="700">实验视频</text><text x="92" y="612" fill="#0c2c21" font-family="Arial, sans-serif" font-size="54" font-weight="800">卤素置换观察</text></svg>`,
+    }),
+  );
+  await page.route("**/api/student/media/assets/**/stream**", (route) =>
+    route.fulfill({
+      status: 204,
+      contentType: "video/mp4",
+    }),
+  );
   await page.route("**/api/student/posttest/start", (route) => route.fulfill(jsonResponse(mockPosttest)));
   await page.route("**/api/student/posttest/submit", (route) =>
     route.fulfill(jsonResponse({ status: "completed", report: mockReport })),
@@ -870,6 +966,344 @@ async function loginIfConfigured(page) {
   return true;
 }
 
+async function assertRootAiFlatReply(page, label) {
+  await clickRoot(page, 'ai');
+  await page.locator('.ai-chat-panel.root').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.ai-chat-panel.root .ai-root-welcome').first().waitFor({ state: 'visible', timeout: 10000 });
+  const emptyState = await page.locator('.ai-chat-panel.root').first().evaluate((panel) => ({
+    rootLayout: panel.getAttribute('data-root-layout'),
+    rootState: panel.getAttribute('data-root-state'),
+    className: panel.className,
+    streamClassName: panel.querySelector('.ai-chat-stream')?.className || '',
+    streamPaddingTop: window.getComputedStyle(panel.querySelector('.ai-chat-stream')).paddingTop,
+    streamScrollPaddingTop: window.getComputedStyle(panel.querySelector('.ai-chat-stream')).scrollPaddingTop,
+  }));
+  if (
+    emptyState.rootLayout !== 'empty' ||
+    emptyState.rootState !== 'empty' ||
+    !emptyState.className.includes('root-state-empty') ||
+    emptyState.streamPaddingTop !== '0px'
+  ) {
+    throw new Error(label + ': root AI empty state hook is missing ' + JSON.stringify(emptyState));
+  }
+  await assertNoHorizontalOverflow(page, label + ': empty root AI');
+
+  const textbox = page.locator('.ai-chat-panel.root textarea').first();
+  await textbox.fill('CCl4 层颜色为什么会变化？');
+  const draftState = await page.locator('.ai-chat-panel.root').first().evaluate((panel) => ({
+    rootLayout: panel.getAttribute('data-root-layout'),
+    rootState: panel.getAttribute('data-root-state'),
+    className: panel.className,
+    streamClassName: panel.querySelector('.ai-chat-stream')?.className || '',
+    streamPaddingTop: window.getComputedStyle(panel.querySelector('.ai-chat-stream')).paddingTop,
+    streamScrollPaddingTop: window.getComputedStyle(panel.querySelector('.ai-chat-stream')).scrollPaddingTop,
+    welcomeCount: panel.querySelectorAll('.ai-root-welcome').length,
+  }));
+  if (
+    draftState.rootLayout !== 'draft' ||
+    draftState.rootState !== 'draft' ||
+    !draftState.className.includes('root-state-draft') ||
+    !draftState.streamClassName.includes('root-draft') ||
+    draftState.streamPaddingTop !== '0px' ||
+    draftState.welcomeCount !== 0
+  ) {
+    throw new Error(label + ': root AI draft state hook is missing ' + JSON.stringify(draftState));
+  }
+  await assertNoHorizontalOverflow(page, label + ': draft root AI');
+  await page.locator('.ai-chat-panel.root .ai-send-action').first().click();
+  const answer = page.locator('.ai-chat-panel.root .ai-message.assistant.done', { hasText: '回答思路' }).first();
+  await answer.waitFor({ state: 'visible', timeout: 15000 });
+
+  const metrics = await page.evaluate(() => {
+    const panel = document.querySelector('.ai-chat-panel.root');
+    const answerNode = document.querySelector('.ai-chat-panel.root .ai-message.assistant.done');
+    const userNode = document.querySelector('.ai-chat-panel.root .ai-message.user');
+    const actionRow = answerNode?.querySelector('.ai-message-actions');
+    const citation = answerNode?.querySelector('.ai-message-citation');
+    const composer = document.querySelector('.ai-chat-panel.root .ai-chat-compose.root');
+    const quickPrompts = document.querySelector('.ai-chat-panel.root .ai-quick-prompts');
+    const style = answerNode ? window.getComputedStyle(answerNode) : null;
+    const stream = panel?.querySelector('.ai-chat-stream');
+    const streamStyle = stream ? window.getComputedStyle(stream) : null;
+    const answerRect = answerNode?.getBoundingClientRect();
+    const userRect = userNode?.getBoundingClientRect();
+    const actionRect = actionRow?.getBoundingClientRect();
+    const citationRect = citation?.getBoundingClientRect();
+    const composerRect = composer?.getBoundingClientRect();
+    const quickRect = quickPrompts?.getBoundingClientRect();
+    return {
+      viewportWidth: window.innerWidth,
+      rootLayout: panel?.getAttribute('data-root-layout') || '',
+      rootState: panel?.getAttribute('data-root-state') || '',
+      panelClassName: panel?.className || '',
+      streamClassName: panel?.querySelector('.ai-chat-stream')?.className || '',
+      streamPaddingTop: streamStyle?.paddingTop || '',
+      streamScrollPaddingTop: streamStyle?.scrollPaddingTop || '',
+      panelText: panel?.textContent || '',
+      answerBackground: style?.backgroundColor || '',
+      answerBorderTopWidth: style?.borderTopWidth || '',
+      answerBoxShadow: style?.boxShadow || '',
+      answerWidth: answerRect?.width || 0,
+      userWidth: userRect?.width || 0,
+      userRight: userRect?.right || 0,
+      metaCount: answerNode?.querySelectorAll('.ai-message-meta').length || 0,
+      sourceSummaryCount: answerNode?.querySelectorAll('.ai-source-summary').length || 0,
+      actionCount: answerNode?.querySelectorAll('.ai-message-action').length || 0,
+      citationText: citation?.textContent || '',
+      actionBottom: actionRect?.bottom || 0,
+      citationRight: citationRect?.right || 0,
+      quickTop: quickRect?.top || 0,
+      composerTop: composerRect?.top || 0,
+    };
+  });
+
+  if (metrics.answerBackground !== 'rgba(0, 0, 0, 0)') {
+    throw new Error(label + ': root assistant answer is not transparent ' + metrics.answerBackground);
+  }
+  if (
+    metrics.rootLayout !== 'conversation' ||
+    metrics.rootState !== 'conversation' ||
+    !metrics.panelClassName.includes('root-state-conversation') ||
+    !metrics.streamClassName.includes('root-conversation') ||
+    metrics.streamPaddingTop === '0px' ||
+    metrics.streamScrollPaddingTop === 'auto'
+  ) {
+    throw new Error(label + ': root AI conversation state hook is missing ' + JSON.stringify(metrics));
+  }
+  if (metrics.answerBorderTopWidth !== '0px' || metrics.answerBoxShadow !== 'none') {
+    throw new Error(label + ': root assistant answer still has card chrome ' + JSON.stringify(metrics));
+  }
+  if (metrics.metaCount || metrics.sourceSummaryCount) {
+    throw new Error(label + ': flat answer rendered old meta/source summary ' + JSON.stringify(metrics));
+  }
+  if (metrics.actionCount !== 3 || !metrics.citationText.includes('1')) {
+    throw new Error(label + ': action row or citation count is missing ' + JSON.stringify(metrics));
+  }
+  if (metrics.panelText.includes('halogen-displacement')) {
+    throw new Error(label + ': raw chunk id leaked into student AI root');
+  }
+  if (metrics.answerWidth > metrics.viewportWidth || metrics.userWidth > metrics.viewportWidth * 0.9 || metrics.citationRight > metrics.viewportWidth + 1) {
+    throw new Error(label + ': AI root content overflows phone width ' + JSON.stringify(metrics));
+  }
+  if (metrics.quickTop && metrics.actionBottom && metrics.quickTop < metrics.actionBottom - 1) {
+    throw new Error(label + ': quick prompts overlap the assistant action row ' + JSON.stringify(metrics));
+  }
+  if (metrics.quickTop && metrics.composerTop && metrics.composerTop < metrics.quickTop - 1) {
+    throw new Error(label + ': composer overlaps quick prompts ' + JSON.stringify(metrics));
+  }
+  await assertNoHorizontalOverflow(page, label + ': answered root AI');
+  await assertNoOverlap(page, label + ': root AI controls', [
+    '.ai-chat-panel.root .ai-message-actions',
+    '.ai-chat-panel.root .ai-quick-prompts',
+    '.ai-chat-panel.root .ai-chat-compose.root',
+  ]);
+  await textbox.focus();
+  await assertNoHorizontalOverflow(page, label + ': focused root AI composer');
+  await textbox.blur();
+  await page.waitForTimeout(120);
+
+  await page.evaluate((entry) => {
+    window.localStorage.setItem("student-ai-chat-history:v1", JSON.stringify([entry]));
+  }, mockRootAiHistoryEntry);
+  await page.locator('.ai-chat-panel.root .ai-new-chat-action').first().click();
+  await page.locator('.ai-chat-panel.root .ai-root-welcome').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.ai-chat-panel.root .ai-history-action').first().click();
+  await page.locator('.ai-history-main', { hasText: 'Restored Atom conversation' }).first().click();
+  await page.locator('.ai-chat-panel.root .ai-message.assistant.done').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.ai-chat-panel.root .ai-chat-stream').first().evaluate((stream) => {
+    stream.scrollTop = 0;
+  });
+  const restoredState = await page.locator('.ai-chat-panel.root').first().evaluate((panel) => {
+    const stream = panel.querySelector('.ai-chat-stream');
+    const streamStyle = stream ? window.getComputedStyle(stream) : null;
+    return {
+      rootLayout: panel.getAttribute('data-root-layout'),
+      rootState: panel.getAttribute('data-root-state'),
+      className: panel.className,
+      streamClassName: stream?.className || '',
+      streamPaddingTop: streamStyle?.paddingTop || '',
+      streamScrollPaddingTop: streamStyle?.scrollPaddingTop || '',
+      streamScrollHeight: stream?.scrollHeight || 0,
+      streamClientHeight: stream?.clientHeight || 0,
+      textLength: panel.textContent?.length || 0,
+      assistantTextLength: panel.querySelector('.ai-message.assistant.done')?.textContent?.length || 0,
+      assistantHeight: panel.querySelector('.ai-message.assistant.done')?.getBoundingClientRect().height || 0,
+      messageCount: panel.querySelectorAll('.ai-message').length,
+    };
+  });
+  if (
+    restoredState.rootLayout !== 'conversation' ||
+    restoredState.rootState !== 'conversation' ||
+    !restoredState.className.includes('root-state-conversation') ||
+    !restoredState.streamClassName.includes('root-conversation') ||
+    restoredState.streamPaddingTop === '0px' ||
+    restoredState.streamScrollPaddingTop === 'auto' ||
+    restoredState.streamScrollHeight <= restoredState.streamClientHeight + 12 ||
+    restoredState.messageCount < 2
+  ) {
+    throw new Error(label + ': root AI restored history state is missing ' + JSON.stringify(restoredState));
+  }
+  await assertNoHorizontalOverflow(page, label + ': restored root AI');
+}
+
+async function assertAtomContextPicker(page, label) {
+  await page.goto(baseUrl + '/ai', { waitUntil: 'networkidle' });
+  await ensureAuthenticatedShell(page);
+  await page.locator('.ai-chat-panel.root').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.ai-chat-panel.root .ai-new-chat-action').first().tap();
+  await page.locator('.ai-chat-panel.root .ai-root-welcome').first().waitFor({ state: 'visible', timeout: 10000 });
+  const contextButtonBox = await page.locator('.ai-chat-panel.root .ai-context-action').first().boundingBox();
+  if (!contextButtonBox) throw new Error(label + ': context action has no bounding box');
+  await page.touchscreen.tap(
+    Math.floor(contextButtonBox.x + contextButtonBox.width / 2),
+    Math.floor(contextButtonBox.y + contextButtonBox.height / 2),
+  );
+  const sheet = page.locator('.atom-context-picker-sheet').first();
+  try {
+    await sheet.waitFor({ state: 'visible', timeout: 10000 });
+  } catch (error) {
+    const debug = await page.evaluate(() => {
+      const button = document.querySelector('.ai-chat-panel.root .ai-context-action');
+      const buttonRect = button?.getBoundingClientRect();
+      const centerX = buttonRect ? buttonRect.left + buttonRect.width / 2 : 0;
+      const centerY = buttonRect ? buttonRect.top + buttonRect.height / 2 : 0;
+      const hit = buttonRect ? document.elementFromPoint(centerX, centerY) : null;
+      return {
+        url: window.location.href,
+        buttonAriaLabel: button?.getAttribute('aria-label') || '',
+        buttonPressed: button?.getAttribute('aria-pressed') || '',
+        buttonDisabled: button?.hasAttribute('disabled') || false,
+        buttonRect: buttonRect
+          ? {
+              left: buttonRect.left,
+              top: buttonRect.top,
+              right: buttonRect.right,
+              bottom: buttonRect.bottom,
+              width: buttonRect.width,
+              height: buttonRect.height,
+            }
+          : null,
+        hitClassName: hit instanceof HTMLElement ? hit.className : '',
+        hitTagName: hit?.tagName || '',
+        sheetCount: document.querySelectorAll('.atom-context-picker-sheet').length,
+        statusText: document.querySelector('.ai-composer-context-status')?.textContent || '',
+        rootClassName: document.querySelector('.ai-chat-panel.root')?.className || '',
+        messageCount: document.querySelectorAll('.ai-chat-panel.root .ai-message').length,
+      };
+    });
+    throw new Error(label + ': picker did not open after context action ' + JSON.stringify(debug), { cause: error });
+  }
+  await page.locator('.student-app-shell.context-picker-active').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.waitForFunction(() => {
+    const bottomNav = document.querySelector('.student-bottom-nav');
+    if (!bottomNav) return true;
+    const rect = bottomNav.getBoundingClientRect();
+    return window.getComputedStyle(bottomNav).pointerEvents === 'none' && rect.top >= window.innerHeight - 1;
+  });
+  await page.locator('.atom-context-picker-row').first().waitFor({ state: 'visible', timeout: 10000 });
+  await assertNoHorizontalOverflow(page, label + ': atom context picker catalog');
+
+  const catalogMetrics = await page.evaluate(() => {
+    const header = document.querySelector('.ai-chat-head.root')?.getBoundingClientRect();
+    const sheet = document.querySelector('.atom-context-picker-sheet')?.getBoundingClientRect();
+    const body = document.querySelector('.atom-context-picker-body')?.getBoundingClientRect();
+    const search = document.querySelector('.atom-context-picker-search')?.getBoundingClientRect();
+    const bottomNav = document.querySelector('.student-bottom-nav');
+    const bottomNavRect = bottomNav?.getBoundingClientRect();
+    const bottomNavStyle = bottomNav ? window.getComputedStyle(bottomNav) : null;
+    const rows = Array.from(document.querySelectorAll('.atom-context-picker-row')).map((row) => row.getBoundingClientRect());
+    return {
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      headerBottom: header?.bottom || 0,
+      sheetTop: sheet?.top || 0,
+      sheetBottom: sheet?.bottom || 0,
+      sheetHeight: sheet?.height || 0,
+      bodyHeight: body?.height || 0,
+      searchBottom: search?.bottom || 0,
+      bottomNavTop: bottomNavRect?.top || 0,
+      bottomNavPointerEvents: bottomNavStyle?.pointerEvents || '',
+      maxRowRight: rows.length ? Math.max(...rows.map((row) => row.right)) : 0,
+      minRowHeight: rows.length ? Math.min(...rows.map((row) => row.height)) : 0,
+    };
+  });
+  if (catalogMetrics.sheetTop < catalogMetrics.headerBottom - 1) {
+    throw new Error(label + ': picker covers Atom title/header ' + JSON.stringify(catalogMetrics));
+  }
+  if (catalogMetrics.sheetBottom > catalogMetrics.viewportHeight + 1 || catalogMetrics.searchBottom > catalogMetrics.viewportHeight + 1) {
+    throw new Error(label + ': picker search footer is outside viewport ' + JSON.stringify(catalogMetrics));
+  }
+  if (catalogMetrics.sheetHeight > Math.min(catalogMetrics.viewportHeight * 0.72, 640) + 2) {
+    throw new Error(label + ': picker exceeds half-height target ' + JSON.stringify(catalogMetrics));
+  }
+  if (catalogMetrics.bottomNavPointerEvents !== 'none' || catalogMetrics.bottomNavTop < catalogMetrics.viewportHeight - 1) {
+    throw new Error(label + ': bottom nav is visible while atom context picker is open ' + JSON.stringify(catalogMetrics));
+  }
+  if (catalogMetrics.bodyHeight < 80 || catalogMetrics.maxRowRight > catalogMetrics.viewportWidth + 1 || catalogMetrics.minRowHeight < 42) {
+    throw new Error(label + ': picker catalog rows are clipped or too small ' + JSON.stringify(catalogMetrics));
+  }
+
+  const searchInput = page.locator('.atom-context-picker-search input').first();
+  await searchInput.fill('orange');
+  await page.locator('.atom-context-picker-row.kind-point').first().waitFor({ state: 'visible', timeout: 10000 });
+  await searchInput.focus();
+  await assertNoHorizontalOverflow(page, label + ': atom context picker search');
+  const searchMetrics = await page.evaluate(() => {
+    const sheet = document.querySelector('.atom-context-picker-sheet')?.getBoundingClientRect();
+    const search = document.querySelector('.atom-context-picker-search')?.getBoundingClientRect();
+    const rows = Array.from(document.querySelectorAll('.atom-context-picker-row.kind-point')).map((row) => row.getBoundingClientRect());
+    return {
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      sheetBottom: sheet?.bottom || 0,
+      searchBottom: search?.bottom || 0,
+      maxRowRight: rows.length ? Math.max(...rows.map((row) => row.right)) : 0,
+      pointRows: rows.length,
+    };
+  });
+  if (
+    searchMetrics.sheetBottom > searchMetrics.viewportHeight + 1 ||
+    searchMetrics.searchBottom > searchMetrics.viewportHeight + 1 ||
+    searchMetrics.maxRowRight > searchMetrics.viewportWidth + 1 ||
+    searchMetrics.pointRows < 1
+  ) {
+    throw new Error(label + ': picker search mode geometry failed ' + JSON.stringify(searchMetrics));
+  }
+  await page.locator('.atom-context-picker-close').first().click();
+  await sheet.waitFor({ state: 'hidden', timeout: 10000 });
+  try {
+    await page.waitForFunction(() => {
+      const bottomNav = document.querySelector('.student-bottom-nav');
+      if (!bottomNav) return true;
+      const rect = bottomNav.getBoundingClientRect();
+      return window.getComputedStyle(bottomNav).pointerEvents !== 'none' && rect.top < window.innerHeight - 1;
+    });
+  } catch (error) {
+    const restoreMetrics = await page.evaluate(() => {
+      const bottomNav = document.querySelector('.student-bottom-nav');
+      const bottomNavRect = bottomNav?.getBoundingClientRect();
+      const bottomNavStyle = bottomNav ? window.getComputedStyle(bottomNav) : null;
+      const activeElement = document.activeElement;
+      return {
+        shellClassName: document.querySelector('.student-app-shell')?.className || '',
+        bottomNavRect: bottomNavRect
+          ? {
+              top: bottomNavRect.top,
+              bottom: bottomNavRect.bottom,
+              height: bottomNavRect.height,
+            }
+          : null,
+        bottomNavPointerEvents: bottomNavStyle?.pointerEvents || '',
+        activeTagName: activeElement?.tagName || '',
+        activeClassName: activeElement instanceof HTMLElement ? activeElement.className : '',
+        scrollY: window.scrollY,
+        viewportHeight: window.innerHeight,
+      };
+    });
+    throw new Error(label + ': bottom nav did not restore after atom context picker closed ' + JSON.stringify(restoreMetrics), { cause: error });
+  }
+}
+
 async function checkAuthenticatedFlows(page, viewportName) {
   await assertNoHorizontalOverflow(page, viewportName + ': initial route');
   await page.locator('.student-app-shell').first().waitFor({ state: 'visible', timeout: 10000 });
@@ -891,8 +1325,16 @@ async function checkAuthenticatedFlows(page, viewportName) {
     await expectRootNav(page, root, viewportName + ': root /' + root);
   }
 
+  if (useMockApi) {
+    await assertAtomContextPicker(page, viewportName);
+    await assertRootAiFlatReply(page, viewportName);
+    if (aiRootOnly) return;
+  }
+
   await clickRoot(page, 'home');
-  await page.locator('.video-library-entry').first().click();
+  await page.locator('.home-video-card').first().waitFor({ state: 'visible', timeout: 10000 });
+  await assertNoHorizontalOverflow(page, viewportName + ': home video feed');
+  await page.locator('.home-feed-topbar button').first().click();
   await page.waitForURL(/\/video-library/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': video library detail');
   await page.locator('.video-library-page').first().waitFor({ state: 'visible', timeout: 10000 });
@@ -910,6 +1352,12 @@ async function checkAuthenticatedFlows(page, viewportName) {
   await page.goBack({ waitUntil: 'networkidle' });
   await page.waitForURL(/\/home/, { timeout: 10000 });
   await expectRootNav(page, 'home', viewportName + ': back to home from video library');
+  await page.locator('.home-video-media-button').first().click();
+  await page.waitForURL(/\/point\/cat-point-halogen/, { timeout: 10000 });
+  await expectBottomNavHidden(page, viewportName + ': home feed point detail');
+  await assertStructuredPointDetail(page, viewportName + ': home feed point detail');
+  await page.goBack({ waitUntil: 'networkidle' });
+  await page.waitForURL(/\/home/, { timeout: 10000 });
 
   await clickRoot(page, 'learn');
   await page.locator('.periodic-grid').first().waitFor({ state: 'visible', timeout: 10000 });
@@ -918,15 +1366,16 @@ async function checkAuthenticatedFlows(page, viewportName) {
   if (rootChapterEntryCount > 0) {
     throw new Error(viewportName + ': learning root should not render selected-area chapter cards');
   }
-  await page.getByRole('button', { name: 'p区元素' }).click();
+  const pAreaButton = page.locator('.area-legend button').nth(1);
+  await pAreaButton.click();
   await page.waitForURL(/\/learn(?:[?#]|$)/, { timeout: 10000 });
   await expectRootNav(page, 'learn', viewportName + ': learning root after area popover opens');
-  const areaPopover = page.getByRole('dialog', { name: 'p区元素' });
+  const areaPopover = page.locator('.learning-area-popover').first();
   await areaPopover.waitFor({ state: 'visible', timeout: 10000 });
   await assertNoHorizontalOverflow(page, viewportName + ': learning area popover');
   await page.touchscreen.tap(Math.floor(page.viewportSize().width / 2), page.viewportSize().height - 110);
   await areaPopover.waitFor({ state: 'hidden', timeout: 10000 });
-  await page.getByRole('button', { name: 'p区元素' }).click();
+  await pAreaButton.click();
   await areaPopover.waitFor({ state: 'visible', timeout: 10000 });
   await areaPopover.locator('.chapter-entry-card').first().click();
   await page.waitForURL(/\/chapter\/halogens-17/, { timeout: 10000 });
@@ -965,10 +1414,10 @@ async function checkAuthenticatedFlows(page, viewportName) {
 
   await page.locator('.catalog-node-card-main').first().waitFor({ state: 'visible', timeout: 10000 });
   await page.locator('.catalog-node-card-main').first().click();
-  await page.waitForURL(/\/catalog\/cat-dir-halogen/, { timeout: 10000 });
-  await page.locator('.catalog-directory-panel .catalog-node-card-main').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.family-catalog-up-action:not([disabled])').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.catalog-node-card.kind-point .catalog-node-card-main').first().waitFor({ state: 'visible', timeout: 10000 });
   await assertCatalogCardsDistinctAndTouchable(page, viewportName + ': directory point cards', { directory: false, point: true });
-  await page.locator('.catalog-directory-panel .catalog-node-card-main').first().click();
+  await page.locator('.catalog-node-card.kind-point .catalog-node-card-main').first().click();
   await page.waitForURL(/\/point\/cat-point-halogen/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': point detail');
   await assertStructuredPointDetail(page, viewportName + ': point detail');
@@ -1027,7 +1476,7 @@ async function checkAuthenticatedFlows(page, viewportName) {
     { path: '/home', root: 'home', selector: '.home-root-page' },
     { path: '/learn', root: 'learn', selector: '.periodic-grid' },
     { path: '/learn/area/p', detail: true, selector: '.chapter-card-panel' },
-    { path: '/ai', root: 'ai', selector: '.assistant-intro-card' },
+    { path: '/ai', root: 'ai', selector: '.ai-root-page' },
     { path: '/assessment', root: 'assessment', selector: '.assessment-home-panel' },
     { path: '/profile', root: 'profile', selector: '.profile-card' },
     { path: '/chapter/halogens-17', detail: true, selector: '.chapter-element-summary' },

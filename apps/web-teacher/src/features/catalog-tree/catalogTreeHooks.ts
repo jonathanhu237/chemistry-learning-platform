@@ -6,7 +6,7 @@ import {
   changeCatalogNodeStatus,
   changeCatalogPointContentPublication,
   copyCatalogNode,
-  createCatalogPointPreviewToken,
+  createCatalogNodePreviewToken,
   createCatalogNode,
   getCatalogChapterTreeSummary,
   getCatalogNode,
@@ -205,7 +205,7 @@ export function useCatalogMutations(message: MessageApi) {
   });
 
   const createPreviewToken = useMutation({
-    mutationFn: ({ nodeId }: { nodeId: string }) => createCatalogPointPreviewToken(nodeId),
+    mutationFn: ({ nodeId }: { nodeId: string }) => createCatalogNodePreviewToken(nodeId),
     onError: (error) => message.error(errorMessage(error)),
   });
 

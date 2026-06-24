@@ -67,9 +67,9 @@ Import and validation scripts SHALL use stable production resource paths by defa
 
 Frontend and backend modularization SHALL preserve current behavior unless a separate feature spec changes it.
 
-#### Scenario: Frontend admin modules are split
+#### Scenario: Frontend console modules are split
 - **GIVEN** `App.tsx` and shared styles are split into routes, features, components, API clients, and scoped styles
-- **WHEN** the admin web app is built and tested
+- **WHEN** the `web-teacher` or `web-admin` frontend is built and tested
 - **THEN** existing routes, visible workflows, permissions, data loading behavior, and user-facing states remain equivalent
 - **AND** heavy optional modules are lazy-loaded where page boundaries allow
 
@@ -132,21 +132,21 @@ Production operations documentation SHALL explain the intentional retirement of 
 - **AND** it MUST NOT instruct maintainers to import the retired 2,310-question bank as a current baseline.
 
 ### Requirement: Release governance distinguishes API and frontend origins
-Production readiness governance SHALL distinguish backend API origin, student frontend origin, and admin frontend origin.
+Production readiness governance SHALL distinguish backend API origin, student frontend origin, teacher frontend origin, and platform operations frontend origin.
 
 #### Scenario: Environment variables are configured
 - **WHEN** local or production-like validation configures service origins
-- **THEN** backend API origin, student frontend origin, and admin frontend origin MUST be configurable independently
+- **THEN** backend API origin, student frontend origin, teacher frontend origin, and platform operations frontend origin MUST be configurable independently
 - **AND** validation output MUST make clear which origin was tested.
 
 #### Scenario: Full e2e validation runs
 - **WHEN** full e2e validation runs after this split
-- **THEN** admin e2e MUST use the admin frontend origin
+- **THEN** teacher-console and platform-console e2e MUST use their configured frontend origins
 - **AND** student mobile QA MUST use the student frontend origin
 - **AND** backend health/API readiness MUST use the backend origin.
 
 ### Requirement: Deployment docs describe split service ownership
-Production readiness governance SHALL document that backend, student web, and admin web are separate default services.
+Production readiness governance SHALL document that backend, `web-student`, `web-teacher`, and `web-admin` are separate default services.
 
 #### Scenario: Production operations docs are read
 - **WHEN** an operator reads the deployment instructions
