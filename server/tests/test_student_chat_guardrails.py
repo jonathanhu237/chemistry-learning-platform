@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 
-import server.app.domains.assistant.agent as agent_module
-from server.app.domains.assistant.agent import (
+import server.app.domains.assistant.orchestrator as agent_module
+import server.app.domains.assistant.tools as tools_module
+from server.app.domains.assistant.orchestrator import (
     AgentPolicy,
     AgentRunContext,
     StudentAIPolicyDecision,
@@ -329,7 +330,7 @@ def test_ordinary_explanation_skips_dynamic_rag_when_rag_is_enabled(monkeypatch)
     def forbidden_rag_search(_context, _query):  # noqa: ANN001
         raise AssertionError("ordinary explanations must not call dynamic RAG by default")
 
-    monkeypatch.setattr(agent_module, "rag_search_tool", forbidden_rag_search)
+    monkeypatch.setattr(tools_module, "rag_search_tool", forbidden_rag_search)
 
     response = asyncio.run(
         run_agent(
@@ -363,7 +364,7 @@ def test_llm_over_retrieval_for_ordinary_explanation_is_forced_to_skip(monkeypat
         raise AssertionError("ordinary explanation must override over-eager dynamic RAG")
 
     monkeypatch.setattr(agent_module, "_policy_gate_decision", over_eager_policy_gate)
-    monkeypatch.setattr(agent_module, "rag_search_tool", forbidden_rag_search)
+    monkeypatch.setattr(tools_module, "rag_search_tool", forbidden_rag_search)
 
     response = asyncio.run(
         run_agent(
@@ -387,7 +388,7 @@ def test_rag_disabled_ordinary_question_answers_without_dynamic_rag(monkeypatch)
     def forbidden_rag_search(_context, _query):  # noqa: ANN001
         raise AssertionError("RAG-disabled turns must not call dynamic RAG")
 
-    monkeypatch.setattr(agent_module, "rag_search_tool", forbidden_rag_search)
+    monkeypatch.setattr(tools_module, "rag_search_tool", forbidden_rag_search)
 
     response = asyncio.run(
         run_agent(
@@ -413,7 +414,7 @@ def test_explicit_course_evidence_request_requires_evidence_and_fails_closed(mon
         context.record_tool("rag_search", {"query": query}, result)
         return result
 
-    monkeypatch.setattr(agent_module, "rag_search_tool", empty_rag_search)
+    monkeypatch.setattr(tools_module, "rag_search_tool", empty_rag_search)
 
     response = asyncio.run(
         run_agent(

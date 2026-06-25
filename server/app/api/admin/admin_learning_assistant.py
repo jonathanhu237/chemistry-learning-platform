@@ -1,26 +1,23 @@
 from __future__ import annotations
 
 import json
-import time
-import urllib.error
-import urllib.request
 from datetime import datetime
 from pathlib import Path as FilePath
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from server.app.domains.assistant.agent import run_agent, run_agent_stream
 from server.app.auth import AuthUser, is_teacher_console_role, require_teacher_console_user
+from server.app.domains.assistant.adapters.admin_debug import run_admin_debug_agent, stream_admin_debug_agent
 from server.app.infrastructure.settings import get_settings
 from server.app.domains.platform.settings import (
     effective_ai_settings,
     get_ai_configuration_response,
     get_learning_behavior_settings,
 )
-from server.app.schemas import AgentAskRequest, AgentAskResponse, AgentChatMessage
+from server.app.schemas import AgentAskResponse, AgentChatMessage
 
 
 router = APIRouter(prefix="/api/admin", tags=["admin-learning-assistant"])
@@ -95,35 +92,15 @@ def _dump_full_model(model: Any) -> dict[str, Any]:
 async def admin_get_learning_assistant_runtime(
     user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
-    settings = get_settings()
     ai_config = get_ai_configuration_response(can_edit=is_teacher_console_role(user.role), auto_check=False)
     rag_runtime = ai_config.rag_runtime
     payload: dict[str, Any] = {
         "checked_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
         "rag_runtime": _dump_full_model(rag_runtime),
-        "bge_status": "not_required",
-        "bge_metrics": None,
-        "bge_error": None,
+        "textbook_rag_status": rag_runtime.textbook_rag_status,
+        "textbook_rag_error": None if rag_runtime.textbook_rag_status in {"disabled", "healthy"} else rag_runtime.textbook_rag_message,
+        "textbook_rag_diagnostics": rag_runtime.textbook_rag_diagnostics,
     }
-    if rag_runtime.bge_service_required and not settings.rag_bge_service_url:
-        payload["bge_status"] = "not_configured"
-        payload["bge_error"] = "BGE service URL is not configured"
-    elif settings.rag_bge_service_url and rag_runtime.bge_service_required:
-        payload["bge_status"] = "checking"
-        metrics_started_at = time.perf_counter()
-        try:
-            with urllib.request.urlopen(
-                f"{settings.rag_bge_service_url.rstrip('/')}/metrics",
-                timeout=2.0,
-            ) as response:
-                metrics = json.loads(response.read().decode("utf-8"))
-            if isinstance(metrics, dict):
-                metrics["request_ms"] = round((time.perf_counter() - metrics_started_at) * 1000, 2)
-                payload["bge_metrics"] = metrics
-                payload["bge_status"] = "healthy" if metrics.get("ok") else "degraded"
-        except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
-            payload["bge_status"] = "unreachable"
-            payload["bge_error"] = f"{exc.__class__.__name__}: {str(exc)[:160]}"
     return payload
 
 
@@ -147,26 +124,18 @@ async def admin_test_learning_assistant(
     if not ai_config.enabled_features.student_ai_assistant:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="蟄ｦ逕・AI 蟄ｦ荵蜉ｩ謇句粥閭ｽ蟾ｲ蜈ｳ髣ｭ")
 
-    request = AgentAskRequest(
-        student_id=payload.student_id or None,
-        user_id=user.id,
-        user_role="admin_debug",
-        question=payload.question,
-        chapter_id=payload.chapter_id or None,
-        experiment_id=payload.experiment_id or None,
-        point_key=payload.point_key or None,
-        knowledge_point_ids=payload.knowledge_point_ids,
-        allow_progress_lookup=payload.allow_progress_lookup,
-        allow_rag_lookup=payload.allow_rag_lookup and ai_config.enabled_features.rag_access_enabled,
-        conversation_history=payload.conversation_history,
-        max_answer_chars=payload.max_answer_chars,
+    return await run_admin_debug_agent(
+        payload,
+        user,
+        settings=effective_ai_settings(get_settings()),
+        rag_access_enabled=bool(ai_config.enabled_features.rag_access_enabled),
     )
-    return await run_agent(request, settings=effective_ai_settings(get_settings()))
 
 
 @router.post("/learning-assistant/ask/stream")
 async def admin_stream_learning_assistant(
     payload: LearningAssistantAskRequest,
+    http_request: Request,
     user: AuthUser = Depends(require_teacher_console_user),
 ) -> StreamingResponse:
     learning_settings = get_learning_behavior_settings()
@@ -176,25 +145,23 @@ async def admin_stream_learning_assistant(
     if not ai_config.enabled_features.student_ai_assistant:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="陝・ｽｦ騾輔・AI 陝・ｽｦ闕ｵ・ｰ陷会ｽｩ隰・唱邊･髢ｭ・ｽ陝ｾ・ｲ陷茨ｽｳ鬮｣・ｭ")
 
-    request = AgentAskRequest(
-        student_id=payload.student_id or None,
-        user_id=user.id,
-        user_role="admin_debug",
-        question=payload.question,
-        chapter_id=payload.chapter_id or None,
-        experiment_id=payload.experiment_id or None,
-        point_key=payload.point_key or None,
-        knowledge_point_ids=payload.knowledge_point_ids,
-        allow_progress_lookup=payload.allow_progress_lookup,
-        allow_rag_lookup=payload.allow_rag_lookup and ai_config.enabled_features.rag_access_enabled,
-        conversation_history=payload.conversation_history,
-        max_answer_chars=payload.max_answer_chars,
-    )
+    async def should_cancel() -> bool:
+        return await http_request.is_disconnected()
 
     async def event_stream():
-        async for item in run_agent_stream(request, settings=effective_ai_settings(get_settings())):
+        async for item in stream_admin_debug_agent(
+            payload,
+            user,
+            settings=effective_ai_settings(get_settings()),
+            rag_access_enabled=bool(ai_config.enabled_features.rag_access_enabled),
+            should_cancel=should_cancel,
+        ):
+            if await should_cancel():
+                return
             event = str(item.get("event") or "message")
             data = {key: value for key, value in item.items() if key != "event"}
+            if await should_cancel():
+                return
             yield _sse_event(event, data)
 
     return StreamingResponse(

@@ -3,13 +3,20 @@ from __future__ import annotations
 import json
 import os
 import re
+import inspect
 from datetime import datetime, timezone
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Awaitable, Callable
 
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
 from sqlalchemy import text
 
-from server.app.domains.assistant.agent import run_agent, run_agent_stream
+from server.app.domains.assistant.adapters.student import (
+    build_student_agent_request,
+    contextual_student_question,
+    student_id_for_runtime,
+)
+from server.app.domains.assistant.adapters.posttest import run_posttest_agent
+from server.app.domains.assistant.runtime_facade import run_agent_stream
 from server.app.infrastructure.settings import get_settings
 from server.app.infrastructure.database import db_session
 from server.app.domains.platform.settings import (
@@ -17,6 +24,17 @@ from server.app.domains.platform.settings import (
     get_ai_configuration_response,
     get_learning_behavior_settings,
 )
+
+StreamCancelCheck = Callable[[], bool | Awaitable[bool]]
+
+
+async def _stream_cancelled(should_cancel: StreamCancelCheck | None) -> bool:
+    if should_cancel is None:
+        return False
+    result = should_cancel()
+    if inspect.isawaitable(result):
+        return bool(await result)
+    return bool(result)
 from server.app.schemas import AgentAskRequest
 from server.app.student_assistant_schemas import (
     StudentAssistantAskRequest,
@@ -39,7 +57,7 @@ def _as_list(value: Any) -> list[Any]:
 
 
 def _student_id(user: Any) -> str:
-    return str(user.student_id or user.username).strip().upper()
+    return student_id_for_runtime(user)
 
 
 def _ai_enabled() -> tuple[bool, bool]:
@@ -66,6 +84,14 @@ _FOLLOWUP_MAX_VISIBLE_CHARS = 24
 _FOLLOWUP_MAX_COUNT = 5
 _TITLE_MIN_VISIBLE_CHARS = 4
 _TITLE_MAX_VISIBLE_CHARS = 18
+_STUDENT_FINAL_RESPONSE_KEYS = {
+    "answer",
+    "mode",
+    "review_required",
+    "sources",
+    "source_count",
+    "text",
+}
 _MODEL_SUCCESS_MODES = {
     "openai_chat",
     "openai_chat_stream",
@@ -402,15 +428,15 @@ async def _generate_followup_metadata(
     if not _followup_model_ready(settings):
         return {"suggested_prompts": []}
 
-    from openai import OpenAI
+    from openai import AsyncOpenAI
 
     include_title = _should_request_conversation_title(payload)
-    client = OpenAI(
+    client = AsyncOpenAI(
         api_key=settings.agent_llm_api_key or os.getenv("OPENAI_API_KEY"),
         base_url=settings.agent_llm_base_url or None,
         timeout=10.0,
     )
-    response = client.chat.completions.create(
+    response = await client.chat.completions.create(
         model=settings.agent_llm_model,
         temperature=0.35,
         max_tokens=320,
@@ -449,13 +475,17 @@ async def _student_final_response_with_followups(
     response: dict[str, Any],
     payload: StudentAssistantAskRequest,
     settings: Any,
+    *,
+    should_cancel: StreamCancelCheck | None = None,
 ) -> dict[str, Any]:
-    next_response = dict(response)
+    next_response = {key: response[key] for key in _STUDENT_FINAL_RESPONSE_KEYS if key in response}
     answer = _answer_from_final_response(next_response)
     metadata: dict[str, Any] = {"suggested_prompts": []}
-    if _should_generate_followups(next_response, answer):
+    if _should_generate_followups(next_response, answer) and not await _stream_cancelled(should_cancel):
         try:
             raw_metadata = await _generate_followup_metadata(payload, answer, settings)
+            if await _stream_cancelled(should_cancel):
+                return next_response
             metadata = raw_metadata if isinstance(raw_metadata, dict) else {"suggested_prompts": raw_metadata}
         except Exception:
             metadata = {"suggested_prompts": []}
@@ -467,44 +497,31 @@ async def _student_final_response_with_followups(
 
 
 def _contextual_question(payload: StudentAssistantAskRequest) -> str:
-    context_lines = [
-        f"当前页面：{payload.context_title or payload.context_type}",
-        f"页面类型：{payload.context_type}",
-    ]
-    if payload.context_summary:
-        context_lines.append(f"页面上下文：{payload.context_summary}")
-    return "\n".join([*context_lines, f"学生问题：{payload.question}"])
+    return contextual_student_question(payload)
 
 
 def _agent_request_for_chat(user: Any, payload: StudentAssistantAskRequest, *, allow_rag_lookup: bool) -> AgentAskRequest:
-    return AgentAskRequest(
-        student_id=_student_id(user),
-        user_id=user.id,
-        user_role="student",
-        question=_contextual_question(payload),
-        chapter_id=payload.chapter_id or None,
-        experiment_id=payload.experiment_id or None,
-        point_key=payload.point_key or None,
-        point_node_id=payload.point_node_id or None,
-        source_node_id=payload.source_node_id or None,
-        catalog_path=payload.catalog_path,
-        knowledge_point_ids=payload.knowledge_point_ids,
-        allow_progress_lookup=True,
-        allow_rag_lookup=allow_rag_lookup,
-        conversation_history=payload.conversation_history,
-        max_answer_chars=0,
-    )
+    return build_student_agent_request(user, payload, allow_rag_lookup=allow_rag_lookup)
 
 
-async def stream_student_assistant_answer(user: Any, payload: StudentAssistantAskRequest) -> AsyncIterator[dict[str, Any]]:
+async def stream_student_assistant_answer(
+    user: Any,
+    payload: StudentAssistantAskRequest,
+    *,
+    should_cancel: StreamCancelCheck | None = None,
+) -> AsyncIterator[dict[str, Any]]:
     _, rag_enabled = _ai_enabled()
     settings = effective_ai_settings(get_settings())
     request = _agent_request_for_chat(user, payload, allow_rag_lookup=rag_enabled)
-    async for item in run_agent_stream(request, settings=settings):
+    async for item in run_agent_stream(request, settings=settings, should_cancel=should_cancel):
+        if await _stream_cancelled(should_cancel):
+            return
         if item.get("event") == "final" and isinstance(item.get("response"), dict):
+            if await _stream_cancelled(should_cancel):
+                return
             yield {
                 **item,
-                "response": await _student_final_response_with_followups(item["response"], payload, settings),
+                "response": await _student_final_response_with_followups(item["response"], payload, settings, should_cancel=should_cancel),
             }
             continue
         yield item
@@ -719,7 +736,7 @@ async def _generate_with_agent(
         max_answer_chars=1600,
     )
     try:
-        response = await run_agent(request, settings=effective_ai_settings(get_settings()))
+        response = await run_posttest_agent(request, settings=effective_ai_settings(get_settings()))
     except Exception:
         return fallback_text, "fallback", "agent_error_fallback"
     if not response.answer or response.mode in {"guardrail_refusal", "guardrail_hint"}:

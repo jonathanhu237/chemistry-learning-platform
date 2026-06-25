@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from server.app.domains.assistant.agent import _normalize_assistant_formula_output
+from server.app.domains.assistant.output_normalization import normalize_assistant_formula_output as _normalize_assistant_formula_output
 
 
 def test_normalizes_bare_chemistry_commands():

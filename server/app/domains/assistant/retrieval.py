@@ -88,7 +88,7 @@ def _sdk_enabled_for_retrieval(settings: Settings) -> bool:
     )
 
 
-def generate_retrieval_queries(
+async def generate_retrieval_queries(
     context: Any,
     settings: Settings,
     question: str,
@@ -101,14 +101,14 @@ def generate_retrieval_queries(
         trace["reason"] = "llm_not_configured"
         return [question], trace
     try:
-        from openai import OpenAI
+        from openai import AsyncOpenAI
 
-        client = OpenAI(
+        client = AsyncOpenAI(
             api_key=settings.agent_llm_api_key or os.getenv("OPENAI_API_KEY"),
             base_url=settings.agent_llm_base_url or None,
             timeout=10.0,
         )
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model=settings.agent_llm_model,
             temperature=0,
             response_format={"type": "json_object"},

@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
 
-import server.app.domains.assistant.agent as agent_module
-from server.app.domains.assistant.agent import run_agent_stream
+import server.app.domains.assistant.orchestrator as agent_module
+from server.app.domains.assistant.orchestrator import run_agent_stream
 from server.app.domains.assistant.policy import AgentPolicy
 from server.app.domains.assistant.student_assistant import _agent_request_for_chat
 from server.app.infrastructure.settings import Settings
@@ -160,7 +160,10 @@ def test_zero_max_answer_chars_preserves_long_markdown_stream_without_replace(mo
 
     monkeypatch.setattr(agent_module, "_policy_gate_decision", normal_policy_gate)
     monkeypatch.setattr(agent_module, "_preflight_response", lambda _context: None)
-    monkeypatch.setattr(agent_module, "_run_local_agent", lambda _context: long_mermaid_answer)
+    async def fake_local_agent(_context):
+        return long_mermaid_answer
+
+    monkeypatch.setattr(agent_module, "_run_local_agent", fake_local_agent)
 
     events = asyncio.run(
         _collect_stream(

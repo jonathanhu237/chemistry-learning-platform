@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 
 from server.app.auth import AuthUser, require_roles
@@ -28,11 +28,18 @@ def _sse_event(event: str, data: dict[str, Any]) -> str:
 
 
 @router.post("/assistant/ask/stream")
-async def stream_assistant_answer(payload: StudentAssistantAskRequest, user: StudentUser) -> StreamingResponse:
+async def stream_assistant_answer(payload: StudentAssistantAskRequest, user: StudentUser, request: Request) -> StreamingResponse:
+    async def should_cancel() -> bool:
+        return await request.is_disconnected()
+
     async def event_stream():
-        async for item in stream_student_assistant_answer(user, payload):
+        async for item in stream_student_assistant_answer(user, payload, should_cancel=should_cancel):
+            if await should_cancel():
+                return
             event = str(item.get("event") or "message")
             data = {key: value for key, value in item.items() if key != "event"}
+            if await should_cancel():
+                return
             yield _sse_event(event, data)
 
     return StreamingResponse(

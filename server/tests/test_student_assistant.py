@@ -3,8 +3,9 @@ from __future__ import annotations
 import asyncio
 from types import SimpleNamespace
 
+from server.app.api.student import student_assistant as student_assistant_api
 from server.app.domains.assistant import student_assistant as student_assistant_module
-from server.app.domains.assistant.agent import classify_agent_request
+from server.app.domains.assistant.policy import classify_agent_request
 from server.app.domains.assistant.student_assistant import _agent_request_for_chat, _sanitize_conversation_title, _sanitize_followup_prompts
 from server.app.schemas import AgentAskRequest, AgentChatMessage
 from server.app.student_assistant_schemas import StudentAssistantAskRequest
@@ -47,6 +48,95 @@ async def _collect_student_stream(payload: StudentAssistantAskRequest) -> list[d
     return [item async for item in student_assistant_module.stream_student_assistant_answer(user, payload)]
 
 
+async def _collect_response_chunks(response) -> list[str]:
+    chunks: list[str] = []
+    async for chunk in response.body_iterator:
+        chunks.append(chunk.decode("utf-8") if isinstance(chunk, bytes) else str(chunk))
+    return chunks
+
+
+async def _collect_student_stream_with_cancel(
+    user: SimpleNamespace,
+    payload: StudentAssistantAskRequest,
+    should_cancel,
+) -> list[dict]:
+    return [
+        item
+        async for item in student_assistant_module.stream_student_assistant_answer(
+            user,
+            payload,
+            should_cancel=should_cancel,
+        )
+    ]
+
+
+def test_student_assistant_sse_stops_after_request_disconnect(monkeypatch) -> None:
+    payload = StudentAssistantAskRequest(
+        question="Why does the organic layer turn orange?",
+        context_type="learning_point",
+        context_title="Orange layer observation",
+        context_summary="Chlorine displaces bromide.",
+    )
+    user = SimpleNamespace(student_id="s-1", username="student-1", id="user-1")
+    captured_cancel = None
+
+    class FakeRequest:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def is_disconnected(self) -> bool:
+            self.calls += 1
+            return self.calls >= 3
+
+    async def fake_answer(_user, _payload, *, should_cancel=None):
+        nonlocal captured_cancel
+        captured_cancel = should_cancel
+        yield {"event": "delta", "delta": "first"}
+        yield {"event": "delta", "delta": "stale"}
+
+    fake_request = FakeRequest()
+    monkeypatch.setattr(student_assistant_api, "stream_student_assistant_answer", fake_answer)
+
+    response = asyncio.run(student_assistant_api.stream_assistant_answer(payload, user, fake_request))
+    chunks = asyncio.run(_collect_response_chunks(response))
+
+    assert captured_cancel is not None
+    assert len(chunks) == 1
+    assert "first" in chunks[0]
+    assert "stale" not in "".join(chunks)
+    assert fake_request.calls >= 3
+
+
+def test_student_assistant_stream_skips_final_metadata_after_cancellation(monkeypatch) -> None:
+    payload = StudentAssistantAskRequest(
+        question="Why does the organic layer turn orange?",
+        context_type="learning_point",
+        context_title="Orange layer observation",
+        context_summary="Chlorine displaces bromide.",
+    )
+    user = SimpleNamespace(student_id="s-1", username="student-1", id="user-1")
+    settings = SimpleNamespace(agent_llm_provider="openai", agent_llm_api_key="test-key", agent_llm_model="test-model", agent_llm_base_url=None)
+
+    async def fake_stream(_request, settings=None, **_kwargs):
+        yield {"event": "final", "response": {"answer": "Bromide is oxidized.", "mode": "openai_chat_stream"}}
+
+    async def cancelled() -> bool:
+        return True
+
+    async def unexpected_metadata(*_args, **_kwargs):
+        raise AssertionError("metadata generation must be skipped after cancellation")
+
+    monkeypatch.setattr(student_assistant_module, "_ai_enabled", lambda: (True, True))
+    monkeypatch.setattr(student_assistant_module, "get_settings", lambda: settings)
+    monkeypatch.setattr(student_assistant_module, "effective_ai_settings", lambda _settings: settings)
+    monkeypatch.setattr(student_assistant_module, "run_agent_stream", fake_stream)
+    monkeypatch.setattr(student_assistant_module, "_generate_followup_metadata", unexpected_metadata)
+
+    events = asyncio.run(_collect_student_stream_with_cancel(user, payload, cancelled))
+
+    assert events == []
+
+
 def test_student_assistant_stream_attaches_generated_title_for_first_turn(monkeypatch) -> None:
     payload = StudentAssistantAskRequest(
         question="Why does the organic layer turn orange?",
@@ -56,7 +146,7 @@ def test_student_assistant_stream_attaches_generated_title_for_first_turn(monkey
     )
     settings = SimpleNamespace(agent_llm_provider="openai", agent_llm_api_key="test-key", agent_llm_model="test-model", agent_llm_base_url=None)
 
-    async def fake_stream(_request, settings=None):
+    async def fake_stream(_request, settings=None, **_kwargs):
         yield {"event": "delta", "delta": "Bromide is oxidized."}
         yield {"event": "final", "response": {"answer": "Bromide is oxidized.", "mode": "openai_chat_stream"}}
 
@@ -109,7 +199,7 @@ def test_student_assistant_stream_attaches_suggested_prompts(monkeypatch) -> Non
     )
     settings = SimpleNamespace(agent_llm_provider="openai", agent_llm_api_key="test-key", agent_llm_model="test-model", agent_llm_base_url=None)
 
-    async def fake_stream(_request, settings=None):
+    async def fake_stream(_request, settings=None, **_kwargs):
         yield {"event": "delta", "delta": "Bromide is oxidized."}
         yield {"event": "final", "response": {"answer": "Bromide is oxidized.", "mode": "openai_chat_stream"}}
 
@@ -143,7 +233,7 @@ def test_student_assistant_stream_keeps_final_when_suggestion_generation_fails(m
     )
     settings = SimpleNamespace(agent_llm_provider="openai", agent_llm_api_key="test-key", agent_llm_model="test-model", agent_llm_base_url=None)
 
-    async def fake_stream(_request, settings=None):
+    async def fake_stream(_request, settings=None, **_kwargs):
         yield {"event": "final", "response": {"answer": "The color comes from bromine.", "mode": "openai_chat_stream"}}
 
     async def failing_suggestions(_payload, _answer, _settings):

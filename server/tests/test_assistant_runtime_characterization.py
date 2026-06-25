@@ -4,8 +4,9 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
-import server.app.domains.assistant.agent as agent_module
-from server.app.domains.assistant.agent import AgentPolicy, run_agent
+import server.app.domains.assistant.orchestrator as agent_module
+import server.app.domains.assistant.evidence as evidence_module
+from server.app.domains.assistant.orchestrator import AgentPolicy, run_agent
 from server.app.infrastructure.settings import Settings
 from server.app.repositories import EmptyMediaRepository, NoopAgentLogRepository, RepositoryProvider
 from server.app.schemas import AgentAskRequest
@@ -182,7 +183,7 @@ def test_run_agent_uses_catalog_node_static_evidence_before_supplemental_rag(mon
         ],
     )
     monkeypatch.setattr(
-        agent_module,
+        evidence_module,
         "catalog_point_static_evidence_package",
         lambda point_node_id: {
             "enabled": True,
@@ -221,7 +222,7 @@ def test_run_agent_uses_catalog_node_static_evidence_before_supplemental_rag(mon
 
 def test_run_agent_marks_missing_catalog_node_static_evidence_as_dynamic_rag_eligible(monkeypatch):
     monkeypatch.setattr(
-        agent_module,
+        evidence_module,
         "catalog_point_static_evidence_package",
         lambda point_node_id: {
             "enabled": True,
@@ -296,10 +297,12 @@ def test_retrieval_helpers_preserve_request_shape_and_disabled_query_fallback():
     rag_request = agent_to_rag_request(request)
     round_trip = rag_to_agent_request(rag_request)
     retrieved = retrieve_context(repositories, request.question, request, limit=1)
-    queries, trace = generate_retrieval_queries(
-        type("Context", (), {"request": request})(),
-        Settings(agent_llm_provider="disabled", rag_query_generation_enabled=False),
-        request.question,
+    queries, trace = asyncio.run(
+        generate_retrieval_queries(
+            type("Context", (), {"request": request})(),
+            Settings(agent_llm_provider="disabled", rag_query_generation_enabled=False),
+            request.question,
+        )
     )
 
     assert round_trip.question == request.question

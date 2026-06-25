@@ -1,7 +1,13 @@
 from __future__ import annotations
 
-import server.app.domains.assistant.agent as agent_module
-from server.app.domains.assistant.agent import AgentPolicy, AgentRunContext, StudentAIPolicyDecision, _apply_policy_decision_to_classification, classify_agent_request
+import server.app.domains.assistant.orchestrator as agent_module
+from server.app.domains.assistant.orchestrator import (
+    AgentPolicy,
+    AgentRunContext,
+    StudentAIPolicyDecision,
+    _apply_policy_decision_to_classification,
+    classify_agent_request,
+)
 from server.app.repositories import EmptyMediaRepository, NoopAgentLogRepository, RepositoryProvider
 from server.app.schemas import AgentAskRequest, RagSource, RagSourceAsset
 

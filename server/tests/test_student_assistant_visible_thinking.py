@@ -5,8 +5,9 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
 
-import server.app.domains.assistant.agent as agent_module
-from server.app.domains.assistant.agent import (
+import server.app.domains.assistant.orchestrator as agent_module
+import server.app.domains.assistant.evidence as evidence_module
+from server.app.domains.assistant.orchestrator import (
     _run_openai_responses_stream,
     _sanitize_visible_thinking_message,
     run_agent_stream,
@@ -138,17 +139,27 @@ async def _collect_stream(settings: Settings) -> list[dict[str, Any]]:
 
 def test_responses_stream_maps_reasoning_summary_to_thinking(monkeypatch) -> None:
     class _FakeStream:
-        def __enter__(self):
-            return iter(
+        async def __aenter__(self):
+            self._items = iter(
                 [
                     SimpleNamespace(type="response.reasoning_summary_text.delta", delta="正在分析实验现象", sequence_number=10),
                     SimpleNamespace(type="response.reasoning_text.delta", delta="raw hidden reasoning", sequence_number=11),
                     SimpleNamespace(type="response.output_text.delta", delta="这是回答。", sequence_number=12),
                 ]
             )
+            return self
 
-        def __exit__(self, *_args):
+        async def __aexit__(self, *_args):
             return False
+
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            try:
+                return next(self._items)
+            except StopIteration:
+                raise StopAsyncIteration
 
     class _FakeResponses:
         def stream(self, **_kwargs):
@@ -170,7 +181,7 @@ def test_responses_stream_maps_reasoning_summary_to_thinking(monkeypatch) -> Non
         classification={"allow_rag_lookup": False},
         settings=settings,
     )
-    monkeypatch.setattr(agent_module, "_openai_client", lambda *_args, **_kwargs: _FakeClient())
+    monkeypatch.setattr(agent_module, "_async_openai_client", lambda *_args, **_kwargs: _FakeClient())
 
     events = asyncio.run(_collect_async(_run_openai_responses_stream(context, settings)))
 
@@ -187,7 +198,7 @@ def test_run_agent_stream_emits_reasoning_summary_without_appending_to_answer(mo
     async def fake_policy_gate(_context, _settings):
         return agent_module._local_policy_decision_from_classification({"rag_preferred": True})
 
-    async def fake_responses_stream(_context, _settings):
+    async def fake_responses_stream(_context, _settings, **_kwargs):
         yield {"event": "thinking", "source": "reasoning_summary", "message": "正在分析实验现象", "phase": "reasoning", "sequence": 20}
         yield {"event": "delta", "delta": "溴生成后会使有机层显橙色。"}
 
@@ -216,7 +227,7 @@ def test_run_agent_stream_uses_agent_trace_when_summary_is_disabled(monkeypatch)
     async def fake_policy_gate(_context, _settings):
         return agent_module._local_policy_decision_from_classification({"rag_preferred": True})
 
-    async def fake_chat_stream(_context, _settings):
+    async def fake_chat_stream(_context, _settings, **_kwargs):
         yield "模型回答。"
 
     monkeypatch.setattr(agent_module, "_policy_gate_decision", fake_policy_gate)
@@ -256,7 +267,7 @@ def test_run_agent_stream_trace_shows_retrieval_when_selected(monkeypatch) -> No
             retrieval_confidence=0.87,
         )
 
-    async def fake_chat_stream(context, _settings):
+    async def fake_chat_stream(context, _settings, **_kwargs):
         context.record_tool(
             "rag_search",
             {"query": context.request.question},
@@ -299,13 +310,16 @@ def test_run_agent_stream_falls_back_when_reasoning_summary_stream_fails(monkeyp
     async def fake_policy_gate(_context, _settings):
         return agent_module._local_policy_decision_from_classification({"rag_preferred": True})
 
-    async def failing_responses_stream(_context, _settings):
+    async def failing_responses_stream(_context, _settings, **_kwargs):
         raise RuntimeError("provider exploded with raw diagnostics")
         yield {}
 
+    async def fake_local_agent(_context):
+        return "本地兜底回答。"
+
     monkeypatch.setattr(agent_module, "_policy_gate_decision", fake_policy_gate)
     monkeypatch.setattr(agent_module, "_run_openai_responses_stream", failing_responses_stream)
-    monkeypatch.setattr(agent_module, "_run_local_agent", lambda _context: "本地兜底回答。")
+    monkeypatch.setattr(agent_module, "_run_local_agent", fake_local_agent)
 
     events = asyncio.run(
         _collect_stream(
@@ -322,6 +336,128 @@ def test_run_agent_stream_falls_back_when_reasoning_summary_stream_fails(monkeyp
     assert all("provider exploded" not in str(event) for event in events)
     final = next(event for event in events if event.get("event") == "final")
     assert final["response"]["answer"] == "本地兜底回答。"
+
+
+def test_run_agent_stream_stops_neutrally_when_cancelled_before_work(monkeypatch) -> None:
+    def unexpected_error_log(*_args, **_kwargs):
+        raise AssertionError("cancelled streams must not be persisted as agent errors")
+
+    async def cancelled() -> bool:
+        return True
+
+    monkeypatch.setattr(agent_module, "_persist_agent_error_log", unexpected_error_log)
+
+    events = asyncio.run(
+        _collect_async(
+            run_agent_stream(
+                AgentAskRequest(question="请解释氧化还原实验现象", allow_rag_lookup=False),
+                repositories=_repositories(),
+                settings=_settings(agent_llm_provider="openai", agent_llm_api_key="test-key", agent_llm_model="gpt-test"),
+                policy=load_agent_policy(),
+                should_cancel=cancelled,
+            )
+        )
+    )
+
+    assert events == []
+
+
+def test_run_agent_stream_stops_during_provider_without_final_or_error(monkeypatch) -> None:
+    state = {"cancelled": False}
+
+    async def fake_policy_gate(_context, _settings):
+        return agent_module._local_policy_decision_from_classification({"rag_preferred": False})
+
+    async def fake_chat_stream(_context, _settings, **kwargs):
+        assert kwargs.get("should_cancel") is not None
+        yield "first chunk"
+        state["cancelled"] = True
+        await asyncio.sleep(0)
+        yield "stale chunk"
+
+    async def should_cancel() -> bool:
+        return state["cancelled"]
+
+    monkeypatch.setattr(agent_module, "_policy_gate_decision", fake_policy_gate)
+    monkeypatch.setattr(agent_module, "_run_openai_chat_completion_stream", fake_chat_stream)
+
+    events = asyncio.run(
+        _collect_async(
+            run_agent_stream(
+                AgentAskRequest(question="请解释氧化还原实验现象", allow_rag_lookup=False),
+                repositories=_repositories(),
+                settings=_settings(agent_llm_provider="openai", agent_llm_api_key="test-key", agent_llm_model="gpt-test"),
+                policy=load_agent_policy(),
+                should_cancel=should_cancel,
+            )
+        )
+    )
+
+    assert any(event.get("event") == "delta" and event.get("delta") == "first chunk" for event in events)
+    assert all(event.get("delta") != "stale chunk" for event in events)
+    assert all(event.get("event") not in {"final", "error"} for event in events)
+
+
+def test_run_agent_stream_keeps_real_connected_errors_visible(monkeypatch) -> None:
+    def failing_evidence(_context):
+        raise RuntimeError("evidence setup failed")
+
+    async def connected() -> bool:
+        return False
+
+    monkeypatch.setattr(evidence_module, "build_point_evidence_package", failing_evidence)
+
+    events = asyncio.run(
+        _collect_async(
+            run_agent_stream(
+                AgentAskRequest(question="请解释氧化还原实验现象", allow_rag_lookup=False),
+                repositories=_repositories(),
+                settings=_settings(agent_llm_provider="disabled"),
+                policy=load_agent_policy(),
+                should_cancel=connected,
+            )
+        )
+    )
+
+    assert events == [{"event": "error", "message": "evidence setup failed"}]
+
+
+def test_run_agent_stream_slow_provider_allows_unrelated_async_work(monkeypatch) -> None:
+    progress: list[str] = []
+
+    async def fake_policy_gate(_context, _settings):
+        return agent_module._local_policy_decision_from_classification({"rag_preferred": False})
+
+    async def slow_chat_stream(_context, _settings, **_kwargs):
+        progress.append("stream-start")
+        await asyncio.sleep(0.03)
+        yield "slow chunk"
+
+    async def consume_stream() -> None:
+        async for item in run_agent_stream(
+            AgentAskRequest(question="请解释氧化还原实验现象", allow_rag_lookup=False),
+            repositories=_repositories(),
+            settings=_settings(agent_llm_provider="openai", agent_llm_api_key="test-key", agent_llm_model="gpt-test"),
+            policy=load_agent_policy(),
+        ):
+            if item.get("event") == "delta":
+                progress.append("stream-delta")
+
+    async def unrelated_work() -> None:
+        progress.append("probe-start")
+        await asyncio.sleep(0.01)
+        progress.append("probe-end")
+
+    async def run_both() -> None:
+        await asyncio.gather(consume_stream(), unrelated_work())
+
+    monkeypatch.setattr(agent_module, "_policy_gate_decision", fake_policy_gate)
+    monkeypatch.setattr(agent_module, "_run_openai_chat_completion_stream", slow_chat_stream)
+
+    asyncio.run(run_both())
+
+    assert "stream-delta" in progress
+    assert progress.index("probe-end") < progress.index("stream-delta")
 
 
 def test_visible_thinking_sanitizer_rejects_raw_diagnostics() -> None:

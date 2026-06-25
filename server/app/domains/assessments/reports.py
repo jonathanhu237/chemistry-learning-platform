@@ -7,7 +7,7 @@ from typing import Any
 
 from sqlalchemy import text
 
-from server.app.domains.assistant.agent import run_agent
+from server.app.domains.assistant.adapters.assessment import run_assessment_agent
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
 from server.app.domains.platform.settings import (
     _load_setting_value,
@@ -418,7 +418,7 @@ async def _generate_with_agent(
         max_answer_chars=1800,
     )
     try:
-        response = await run_agent(request, settings=effective_ai_settings(get_settings()))
+        response = await run_assessment_agent(request, settings=effective_ai_settings(get_settings()))
     except Exception:
         return _generated_text(fallback_text, mode="agent_error_fallback")
     if not response.answer or response.mode in {"guardrail_refusal", "guardrail_hint"}:
