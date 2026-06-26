@@ -1,0 +1,42 @@
+{
+  "canonical-rag-chunks-qwen-v1": {
+    "settings": {
+      "index": {
+        "routing": {
+          "allocation": {
+            "include": {
+              "_tier_preference": "data_content"
+            }
+          }
+        },
+        "number_of_shards": "1",
+        "provided_name": "canonical-rag-chunks-qwen-v1",
+        "creation_date": "1782125642136",
+        "analysis": {
+          "normalizer": {
+            "chemistry_keyword": {
+              "filter": [
+                "lowercase"
+              ],
+              "type": "custom"
+            }
+          },
+          "analyzer": {
+            "chemistry_ik": {
+              "filter": [
+                "lowercase"
+              ],
+              "type": "custom",
+              "tokenizer": "ik_max_word"
+            }
+          }
+        },
+        "number_of_replicas": "1",
+        "uuid": "GEkfwAv9QPKdsv7V_S6QcA",
+        "version": {
+          "created": "8500003"
+        }
+      }
+    }
+  }
+}

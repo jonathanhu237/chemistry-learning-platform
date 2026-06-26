@@ -1,0 +1,102 @@
+{
+  "canonical-rag-chunks-qwen-v1": {
+    "mappings": {
+      "dynamic": "false",
+      "_meta": {
+        "schema": "canonical-rag-chunks-qwen-v1",
+        "embedding_model": "text-embedding-v4",
+        "embedding_dimension": 1024
+      },
+      "properties": {
+        "authority_level": {
+          "type": "keyword"
+        },
+        "book_title": {
+          "type": "keyword"
+        },
+        "chapter": {
+          "type": "keyword"
+        },
+        "chunk_id": {
+          "type": "keyword"
+        },
+        "compounds": {
+          "type": "keyword",
+          "normalizer": "chemistry_keyword"
+        },
+        "content_hash": {
+          "type": "keyword"
+        },
+        "content_type": {
+          "type": "keyword"
+        },
+        "doc_id": {
+          "type": "keyword"
+        },
+        "elements": {
+          "type": "keyword",
+          "normalizer": "chemistry_keyword"
+        },
+        "embedding": {
+          "type": "dense_vector",
+          "dims": 1024,
+          "index": true,
+          "similarity": "cosine"
+        },
+        "embedding_dimension": {
+          "type": "integer"
+        },
+        "embedding_model": {
+          "type": "keyword"
+        },
+        "formulas": {
+          "type": "keyword",
+          "normalizer": "chemistry_keyword"
+        },
+        "indexed_at": {
+          "type": "date"
+        },
+        "knowledge_unit": {
+          "type": "keyword"
+        },
+        "metadata": {
+          "type": "object"
+        },
+        "page_end": {
+          "type": "integer"
+        },
+        "page_start": {
+          "type": "integer"
+        },
+        "raw_markdown": {
+          "type": "text",
+          "analyzer": "chemistry_ik",
+          "search_analyzer": "ik_smart"
+        },
+        "reactions": {
+          "type": "keyword"
+        },
+        "section_path": {
+          "type": "keyword"
+        },
+        "source_collection": {
+          "type": "keyword"
+        },
+        "source_file": {
+          "type": "keyword"
+        },
+        "source_role": {
+          "type": "keyword"
+        },
+        "text": {
+          "type": "text",
+          "analyzer": "chemistry_ik",
+          "search_analyzer": "ik_smart"
+        },
+        "use_for_question_generation": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

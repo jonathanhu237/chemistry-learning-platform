@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import sys
+import zipfile
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,16 +21,17 @@ EXPECTED_DATABASE_COUNTS = {
     "experiment_catalog_nodes": 569,
     "experiment_catalog_directory_nodes": 176,
     "experiment_catalog_point_nodes": 393,
-    "experiment_catalog_point_content_records": 76,
-    "experiment_question_banks": 54,
-    "experiment_questions": 1965,
+    "experiment_catalog_point_content_records": 393,
+    "experiment_question_banks": 78,
+    "experiment_questions": 2311,
+    "question_semantic_fingerprints": 21,
     "source_documents": 2,
     "source_chunks": 3637,
-    "published_catalog_point_content_min": 76,
+    "published_catalog_point_content_min": 393,
     "catalog_point_related_links_min": 0,
     "point_evidence_bindings_with_node": 0,
-    "catalog_point_textbook_evidence_states": 1,
-    "catalog_point_textbook_evidence_bindings": 9,
+    "catalog_point_textbook_evidence_states": 2,
+    "catalog_point_textbook_evidence_bindings": 18,
 }
 
 
@@ -115,6 +117,30 @@ def _catalog_point_content_seed_count(path: Path) -> dict[str, int]:
     }
 
 
+def _full_catalog_point_content_seed_count(path: Path) -> dict[str, int]:
+    data = _json(path)
+    records = data.get("records") or []
+    if not isinstance(records, list):
+        raise ValueError(f"{path} records is not a JSON list")
+    return {
+        "records": len(records),
+        "published_records": sum(
+            1 for item in records if isinstance(item, dict) and item.get("content_status") == "published"
+        ),
+        "equation_mode_records": sum(
+            1 for item in records if isinstance(item, dict) and item.get("principle_mode") == "equation"
+        ),
+        "text_mode_records": sum(1 for item in records if isinstance(item, dict) and item.get("principle_mode") == "text"),
+        "reaction_equation_rows": sum(
+            len(item.get("reaction_equations") or []) for item in records if isinstance(item, dict)
+        ),
+        "records_with_phenomenon_explanation": sum(
+            1 for item in records if isinstance(item, dict) and item.get("phenomenon_explanation")
+        ),
+        "records_with_safety_note": sum(1 for item in records if isinstance(item, dict) and item.get("safety_note")),
+    }
+
+
 def _catalog_point_textbook_evidence_seed_count(path: Path) -> dict[str, int]:
     data = _json(path)
     states = data.get("states") or []
@@ -131,13 +157,19 @@ def _catalog_point_textbook_evidence_seed_count(path: Path) -> dict[str, int]:
 
 def _current_question_bank_seed_count(path: Path) -> dict[str, int]:
     data = _json(path)
+    supplemental_experiments = data.get("supplemental_formal_experiments") or []
+    generations = data.get("question_generations") or []
     banks = data.get("question_banks") or []
     questions = data.get("questions") or []
+    fingerprints = data.get("question_semantic_fingerprints") or []
     if not isinstance(banks, list) or not isinstance(questions, list):
         raise ValueError(f"{path} must contain question_banks and questions lists")
     return {
+        "supplemental_formal_experiments": len(supplemental_experiments),
+        "question_generations": len(generations),
         "question_banks": len(banks),
         "questions": len(questions),
+        "question_semantic_fingerprints": len(fingerprints),
         "published_banks": sum(1 for item in banks if isinstance(item, dict) and item.get("status") == "published"),
         "published_questions": sum(1 for item in questions if isinstance(item, dict) and item.get("status") == "published"),
         "generated_banks": sum(1 for item in banks if isinstance(item, dict) and item.get("bank_kind") == "generated"),
@@ -148,7 +180,37 @@ def _current_question_bank_seed_count(path: Path) -> dict[str, int]:
             1 for item in questions if isinstance(item, dict) and item.get("primary_canonical_point_ids")
         ),
         "questions_with_source_refs": sum(1 for item in questions if isinstance(item, dict) and item.get("source_refs")),
+        "questions_with_source_chunks": sum(
+            1 for item in questions if isinstance(item, dict) and item.get("source_chunk_ids")
+        ),
+        "questions_with_point_aware_metadata": sum(
+            1
+            for item in questions
+            if isinstance(item, dict)
+            and isinstance(item.get("metadata"), dict)
+            and item["metadata"].get("point_aware_question_bank") is True
+        ),
     }
+
+
+def _textbook_rag_precomputed_manifest_count(path: Path) -> dict[str, int | str]:
+    data = _json(path)
+    return {
+        "es_count": int(data.get("es_count") or 0),
+        "exported_docs": int(data.get("exported_docs") or 0),
+        "docs_with_embedding": int(data.get("docs_with_embedding") or 0),
+        "embedding_model": str(data.get("embedding_model") or ""),
+        "embedding_dimension": int(data.get("embedding_dimension") or 0),
+    }
+
+
+def _textbook_rag_precomputed_zip_count(path: Path) -> dict[str, int]:
+    with zipfile.ZipFile(path) as archive:
+        names = [name for name in archive.namelist() if name.endswith(".jsonl")]
+        if len(names) != 1:
+            raise ValueError(f"{path} must contain exactly one .jsonl file")
+        with archive.open(names[0], "r") as handle:
+            return {"documents": sum(1 for line in handle if line.strip())}
 
 
 def _catalog_validation_report_count(path: Path) -> dict[str, int | bool]:
@@ -354,7 +416,7 @@ def _student_learning_profile_count(path: Path) -> dict[str, int]:
     }
 
 
-CountFn = Callable[[Path], int | dict[str, int] | None]
+CountFn = Callable[[Path], int | dict[str, int | str] | None]
 
 ALLOWED_SEED_DOCS = {
     "data/seed/README.md",
@@ -447,12 +509,29 @@ RESOURCE_SPECS: list[dict[str, Any]] = [
         "source_path": None,
     },
     {
+        "id": "experiment_catalog_full_point_content_seed",
+        "role": "Full current catalog point-content seed for blank-server bootstrap",
+        "path": "data/seed/experiment_catalog/full_point_content_seed.json",
+        "kind": "json",
+        "count": _full_catalog_point_content_seed_count,
+        "expected_counts": {
+            "records": 393,
+            "published_records": 393,
+            "equation_mode_records": 182,
+            "text_mode_records": 211,
+            "reaction_equation_rows": 219,
+            "records_with_phenomenon_explanation": 393,
+            "records_with_safety_note": 393,
+        },
+        "source_path": "experiment_catalog_point_content + experiment_catalog_point_reaction_equations",
+    },
+    {
         "id": "experiment_catalog_point_textbook_evidence_seed",
         "role": "Precomputed catalog point textbook evidence bindings for question generation",
         "path": "data/seed/experiment_catalog/point_textbook_evidence_seed.json",
         "kind": "json",
         "count": _catalog_point_textbook_evidence_seed_count,
-        "expected_counts": {"states": 1, "bindings": 9, "unique_nodes": 1, "unique_chunks": 5},
+        "expected_counts": {"states": 2, "bindings": 18, "unique_nodes": 2, "unique_chunks": 9},
         "source_path": "experiment_catalog_point_evidence_state + experiment_catalog_point_evidence_bindings",
     },
     {
@@ -462,14 +541,19 @@ RESOURCE_SPECS: list[dict[str, Any]] = [
         "kind": "json",
         "count": _current_question_bank_seed_count,
         "expected_counts": {
-            "question_banks": 54,
-            "questions": 1965,
-            "published_banks": 54,
-            "published_questions": 1965,
-            "generated_banks": 54,
-            "questions_with_primary_point_nodes": 1965,
-            "questions_with_canonical_points": 1965,
-            "questions_with_source_refs": 1965,
+            "supplemental_formal_experiments": 1,
+            "question_generations": 1,
+            "question_banks": 78,
+            "questions": 2311,
+            "question_semantic_fingerprints": 21,
+            "published_banks": 78,
+            "published_questions": 2311,
+            "generated_banks": 78,
+            "questions_with_primary_point_nodes": 326,
+            "questions_with_canonical_points": 326,
+            "questions_with_source_refs": 2311,
+            "questions_with_source_chunks": 2311,
+            "questions_with_point_aware_metadata": 2311,
         },
         "source_path": "experiment_question_banks + experiment_questions",
     },
@@ -590,6 +674,44 @@ RESOURCE_SPECS: list[dict[str, Any]] = [
         "count": _jsonl_count,
         "expected_count": 349,
         "source_path": "E:/chemistry-rag/data/rag_ready/chunks/textbook_experiment_chunks_v1.jsonl",
+    },
+    {
+        "id": "textbook_rag_precomputed_manifest",
+        "role": "Precomputed Qwen textbook RAG Elasticsearch bundle manifest",
+        "path": "data/seed/textbook_rag_precomputed/manifest.json",
+        "kind": "json",
+        "count": _textbook_rag_precomputed_manifest_count,
+        "expected_counts": {
+            "es_count": 3637,
+            "exported_docs": 3637,
+            "docs_with_embedding": 3637,
+            "embedding_model": "text-embedding-v4",
+            "embedding_dimension": 1024,
+        },
+        "source_path": "canonical-rag-chunks-qwen-v1",
+    },
+    {
+        "id": "textbook_rag_precomputed_mapping",
+        "role": "Precomputed Qwen textbook RAG Elasticsearch mapping",
+        "path": "data/seed/textbook_rag_precomputed/canonical-rag-chunks-qwen-v1.mapping.json",
+        "kind": "json",
+        "source_path": "canonical-rag-chunks-qwen-v1",
+    },
+    {
+        "id": "textbook_rag_precomputed_settings",
+        "role": "Precomputed Qwen textbook RAG Elasticsearch settings",
+        "path": "data/seed/textbook_rag_precomputed/canonical-rag-chunks-qwen-v1.settings.json",
+        "kind": "json",
+        "source_path": "canonical-rag-chunks-qwen-v1",
+    },
+    {
+        "id": "textbook_rag_precomputed_documents_zip",
+        "role": "Precomputed Qwen textbook RAG Elasticsearch documents with embeddings",
+        "path": "data/seed/textbook_rag_precomputed/canonical-rag-chunks-qwen-v1.documents.jsonl.zip",
+        "kind": "zip",
+        "count": _textbook_rag_precomputed_zip_count,
+        "expected_counts": {"documents": 3637},
+        "source_path": "canonical-rag-chunks-qwen-v1",
     },
 ]
 

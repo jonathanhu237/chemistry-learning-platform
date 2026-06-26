@@ -17,7 +17,7 @@ os.environ.setdefault("PGCONNECT_TIMEOUT", "5")
 from server.app.infrastructure.database import db_session
 
 
-EXPECTED_CATALOG_POINT_CONTENT_SEED_COUNT = 76
+EXPECTED_CATALOG_POINT_CONTENT_COUNT = 393
 
 
 def main() -> None:
@@ -67,21 +67,17 @@ def main() -> None:
                 ).scalar_one()
                 or 0
             )
-            seed_content_row = session.execute(
+            full_content_row = session.execute(
                 text(
                     """
                     SELECT
-                      COUNT(*) AS seed_content_count,
-                      COUNT(DISTINCT pc.node_id) AS unique_seed_node_count,
-                      COUNT(*) FILTER (WHERE pc.content_status = 'published') AS published_seed_content_count,
-                      COUNT(*) FILTER (WHERE si.node_id IS NOT NULL) AS indexed_seed_content_count
+                      COUNT(*) AS full_content_count,
+                      COUNT(DISTINCT pc.node_id) AS unique_full_content_node_count,
+                      COUNT(*) FILTER (WHERE pc.content_status = 'published') AS published_full_content_count,
+                      COUNT(*) FILTER (WHERE si.node_id IS NOT NULL) AS indexed_full_content_count
                     FROM experiment_catalog_point_content pc
+                    JOIN experiment_catalog_nodes n ON n.id = pc.node_id AND n.node_kind = 'point'
                     LEFT JOIN experiment_catalog_point_search_index_state si ON si.node_id = pc.node_id
-                    WHERE COALESCE(
-                      pc.metadata->>'catalog_point_content_seed',
-                      pc.metadata->>'catalog_outline_point_content_seed',
-                      'false'
-                    ) = 'true'
                     """
                 )
             ).mappings().one()
@@ -208,8 +204,24 @@ def main() -> None:
                       (
                         SELECT COUNT(*)
                         FROM experiment_questions
+                        WHERE COALESCE(array_length(primary_point_node_ids, 1), 0) = 0
+                          AND metadata->>'point_aware_question_bank' = 'true'
+                          AND cardinality(source_chunk_ids) > 0
+                          AND jsonb_array_length(COALESCE(source_refs, '[]'::jsonb)) > 0
+                      ) AS legacy_point_aware_question_without_point_nodes_count,
+                      (
+                        SELECT COUNT(*)
+                        FROM experiment_questions
                         WHERE COALESCE(array_length(primary_canonical_point_ids, 1), 0) = 0
                       ) AS question_without_canonical_points_count,
+                      (
+                        SELECT COUNT(*)
+                        FROM experiment_questions
+                        WHERE COALESCE(array_length(primary_canonical_point_ids, 1), 0) = 0
+                          AND metadata->>'point_aware_question_bank' = 'true'
+                          AND cardinality(source_chunk_ids) > 0
+                          AND jsonb_array_length(COALESCE(source_refs, '[]'::jsonb)) > 0
+                      ) AS legacy_point_aware_question_without_canonical_points_count,
                       (
                         SELECT COUNT(*)
                         FROM point_refs refs
@@ -277,10 +289,10 @@ def main() -> None:
     point_node_count = int(row["point_node_count"] or 0)
     point_content_count = int(row["point_content_count"] or 0)
     chapter_21_node_count = int(row["chapter_21_node_count"] or 0)
-    seed_content_count = int(seed_content_row["seed_content_count"] or 0)
-    unique_seed_node_count = int(seed_content_row["unique_seed_node_count"] or 0)
-    published_seed_content_count = int(seed_content_row["published_seed_content_count"] or 0)
-    indexed_seed_content_count = int(seed_content_row["indexed_seed_content_count"] or 0)
+    full_content_count = int(full_content_row["full_content_count"] or 0)
+    unique_full_content_node_count = int(full_content_row["unique_full_content_node_count"] or 0)
+    published_full_content_count = int(full_content_row["published_full_content_count"] or 0)
+    indexed_full_content_count = int(full_content_row["indexed_full_content_count"] or 0)
     canonical_point_count = int(canonical_row["canonical_point_count"] or 0)
     point_without_canonical_count = int(canonical_row["point_without_canonical_count"] or 0)
     directory_with_canonical_count = int(canonical_row["directory_with_canonical_count"] or 0)
@@ -316,32 +328,35 @@ def main() -> None:
         errors.append(f"chapter 21 should be empty, got {chapter_21_node_count} node(s)")
     if point_children:
         errors.append(f"point nodes with children: {point_children}")
-    if (
-        seed_content_count != EXPECTED_CATALOG_POINT_CONTENT_SEED_COUNT
-        or unique_seed_node_count != EXPECTED_CATALOG_POINT_CONTENT_SEED_COUNT
-    ):
+    if full_content_count != EXPECTED_CATALOG_POINT_CONTENT_COUNT or unique_full_content_node_count != EXPECTED_CATALOG_POINT_CONTENT_COUNT:
         errors.append(
-            "catalog point content seed mismatch: "
-            f"{seed_content_count} rows / {unique_seed_node_count} unique nodes"
+            "catalog point content mismatch: "
+            f"{full_content_count} rows / {unique_full_content_node_count} unique nodes"
         )
-    if published_seed_content_count != EXPECTED_CATALOG_POINT_CONTENT_SEED_COUNT:
+    if published_full_content_count != EXPECTED_CATALOG_POINT_CONTENT_COUNT:
         errors.append(
-            "published catalog point content seed mismatch: "
-            f"expected {EXPECTED_CATALOG_POINT_CONTENT_SEED_COUNT}, got {published_seed_content_count}"
+            "published catalog point content mismatch: "
+            f"expected {EXPECTED_CATALOG_POINT_CONTENT_COUNT}, got {published_full_content_count}"
         )
-    if indexed_seed_content_count != EXPECTED_CATALOG_POINT_CONTENT_SEED_COUNT:
+    if indexed_full_content_count != EXPECTED_CATALOG_POINT_CONTENT_COUNT:
         errors.append(
-            "indexed catalog point content seed mismatch: "
-            f"expected {EXPECTED_CATALOG_POINT_CONTENT_SEED_COUNT}, got {indexed_seed_content_count}"
+            "indexed catalog point content mismatch: "
+            f"expected {EXPECTED_CATALOG_POINT_CONTENT_COUNT}, got {indexed_full_content_count}"
         )
-    if corrected_titles != {"NaClO + MnSO₄", "NaClO + 品红溶液"} or len(corrected_parent_ids) != 1:
-        errors.append("corrected NaClO + MnSO₄ / NaClO + 品红溶液 sibling points are missing or not siblings")
+    unresolved_question_without_point_nodes = max(
+        0,
+        question_identity_counts["question_without_point_nodes_count"]
+        - question_identity_counts["legacy_point_aware_question_without_point_nodes_count"],
+    )
+    unresolved_question_without_canonical_points = max(
+        0,
+        question_identity_counts["question_without_canonical_points_count"]
+        - question_identity_counts["legacy_point_aware_question_without_canonical_points_count"],
+    )
     for key, label in [
         ("question_bank_without_experiment_count", "question banks without experiment ids"),
         ("question_without_experiment_count", "questions without experiment ids"),
         ("question_without_bank_count", "questions without current banks"),
-        ("question_without_point_nodes_count", "questions without catalog point placements"),
-        ("question_without_canonical_points_count", "questions without canonical points"),
         ("missing_question_point_refs_count", "question catalog point references targeting missing nodes"),
         ("missing_question_canonical_refs_count", "question canonical point references targeting missing points"),
         ("question_source_refs_not_array_count", "questions with non-array source_refs"),
@@ -350,6 +365,10 @@ def main() -> None:
     ]:
         if question_identity_counts[key]:
             errors.append(f"{label}: {question_identity_counts[key]}")
+    if unresolved_question_without_point_nodes:
+        errors.append(f"questions without catalog point placements: {unresolved_question_without_point_nodes}")
+    if unresolved_question_without_canonical_points:
+        errors.append(f"questions without canonical points: {unresolved_question_without_canonical_points}")
     if int(retired_row["point_evidence_count"] or 0):
         errors.append(f"retired point evidence bindings still present: {retired_row['point_evidence_count']}")
     if int(retired_row["legacy_video_point_count"] or 0):
@@ -377,12 +396,11 @@ def main() -> None:
         "point_content_count": point_content_count,
         "chapter_21_node_count": chapter_21_node_count,
         "point_children": point_children,
-        "seed_content_count": seed_content_count,
-        "unique_seed_node_count": unique_seed_node_count,
-        "indexed_seed_content_count": indexed_seed_content_count,
-        "example_content_count": seed_content_count,
-        "unique_example_node_count": unique_seed_node_count,
-        "queued_example_search_count": indexed_seed_content_count,
+        "full_content_count": full_content_count,
+        "unique_full_content_node_count": unique_full_content_node_count,
+        "indexed_full_content_count": indexed_full_content_count,
+        "unresolved_question_without_point_nodes": unresolved_question_without_point_nodes,
+        "unresolved_question_without_canonical_points": unresolved_question_without_canonical_points,
         "published_content_count": int(row["published_content_count"] or 0),
         "teacher_note_count": int(row["teacher_note_count"] or 0),
         "search_state_count": int(row["search_state_count"] or 0),

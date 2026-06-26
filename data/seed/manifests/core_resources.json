@@ -1,6 +1,6 @@
 {
   "version": "production-core-resources-v1",
-  "generated_at": "2026-06-25T23:10:57.392338+00:00",
+  "generated_at": "2026-06-26T16:23:33.971209+00:00",
   "policy": "These files are the protected current system resources. Destructive cleanup must validate this manifest before deleting or moving historical artifacts.",
   "external_sources_mirrored": true,
   "expected_database_counts": {
@@ -11,16 +11,17 @@
     "experiment_catalog_nodes": 569,
     "experiment_catalog_directory_nodes": 176,
     "experiment_catalog_point_nodes": 393,
-    "experiment_catalog_point_content_records": 76,
-    "experiment_question_banks": 54,
-    "experiment_questions": 1965,
+    "experiment_catalog_point_content_records": 393,
+    "experiment_question_banks": 78,
+    "experiment_questions": 2311,
+    "question_semantic_fingerprints": 21,
     "source_documents": 2,
     "source_chunks": 3637,
-    "published_catalog_point_content_min": 76,
+    "published_catalog_point_content_min": 393,
     "catalog_point_related_links_min": 0,
     "point_evidence_bindings_with_node": 0,
-    "catalog_point_textbook_evidence_states": 1,
-    "catalog_point_textbook_evidence_bindings": 9
+    "catalog_point_textbook_evidence_states": 2,
+    "catalog_point_textbook_evidence_bindings": 18
   },
   "resources": [
     {
@@ -30,8 +31,8 @@
       "source_path": null,
       "required": true,
       "kind": "json",
-      "size_bytes": 131900,
-      "sha256": "a999897d84566c8dde06ca4f37ae49db3b6e429db9911d6db5499a71a7dc51db",
+      "size_bytes": 128350,
+      "sha256": "30f855424d23c2b8807a60c33b560fc99af709e3d6e71ab50983116f4b17525f",
       "count": 77,
       "expected_count": 77
     },
@@ -98,8 +99,8 @@
       "source_path": "docs/实验目录_整理版.md",
       "required": true,
       "kind": "json",
-      "size_bytes": 676838,
-      "sha256": "3454369237c3f71689c3d8742f631a6493ab373b71ee4c6e325c328b62061ebb",
+      "size_bytes": 658653,
+      "sha256": "4237e68c6d079096fa652f9d4a6db65315e0880dc0842a357504200c6f75471b",
       "count": {
         "total_nodes": 569,
         "directory_nodes": 176,
@@ -140,25 +141,53 @@
       }
     },
     {
+      "id": "experiment_catalog_full_point_content_seed",
+      "role": "Full current catalog point-content seed for blank-server bootstrap",
+      "path": "data/seed/experiment_catalog/full_point_content_seed.json",
+      "source_path": "experiment_catalog_point_content + experiment_catalog_point_reaction_equations",
+      "required": true,
+      "kind": "json",
+      "size_bytes": 1287113,
+      "sha256": "e9c7779201735560c9502080f8d42bd21e9a6cc7cb59372fac4cb7c669eba6b4",
+      "count": {
+        "records": 393,
+        "published_records": 393,
+        "equation_mode_records": 182,
+        "text_mode_records": 211,
+        "reaction_equation_rows": 219,
+        "records_with_phenomenon_explanation": 393,
+        "records_with_safety_note": 393
+      },
+      "expected_counts": {
+        "records": 393,
+        "published_records": 393,
+        "equation_mode_records": 182,
+        "text_mode_records": 211,
+        "reaction_equation_rows": 219,
+        "records_with_phenomenon_explanation": 393,
+        "records_with_safety_note": 393
+      }
+    },
+    {
       "id": "experiment_catalog_point_textbook_evidence_seed",
       "role": "Precomputed catalog point textbook evidence bindings for question generation",
       "path": "data/seed/experiment_catalog/point_textbook_evidence_seed.json",
       "source_path": "experiment_catalog_point_evidence_state + experiment_catalog_point_evidence_bindings",
       "required": true,
       "kind": "json",
-      "size_bytes": 503363,
-      "sha256": "43836a9816bdefd3ef9b957312758acfcbce0f6812f2c7ffe8cde97814094fc2",
+      "size_bytes": 1004947,
+      "sha256": "93a4c7a7d71516d9965250bd49ba187b40710b2bd65a3e88a8ce06a6208c7e4e",
       "count": {
-        "states": 1,
-        "bindings": 9,
-        "unique_nodes": 1,
-        "unique_chunks": 5
+        "states": 2,
+        "bindings": 18,
+        "unique_nodes": 2,
+        "unique_chunks": 9
       },
       "expected_counts": {
-        "states": 1,
-        "bindings": 9,
-        "unique_nodes": 1,
-        "unique_chunks": 5
+        "states": 2,
+        "bindings": 18,
+        "unique_nodes": 2,
+        "unique_chunks": 9
       }
     },
     {
@@ -168,27 +197,37 @@
       "source_path": "experiment_question_banks + experiment_questions",
       "required": true,
       "kind": "json",
-      "size_bytes": 19130744,
-      "sha256": "173505806b6f286f5fe1d5dad2cb7d8ff2f2ff4a5698c3c5d2b0caad7fdb0c7f",
+      "size_bytes": 14826032,
+      "sha256": "7d907c933f0855bf70e0ad9d99f1c069bd5d3c909908884acc52b7d80bcb5432",
       "count": {
-        "question_banks": 54,
-        "questions": 1965,
-        "published_banks": 54,
-        "published_questions": 1965,
-        "generated_banks": 54,
-        "questions_with_primary_point_nodes": 1965,
-        "questions_with_canonical_points": 1965,
-        "questions_with_source_refs": 1965
+        "supplemental_formal_experiments": 1,
+        "question_generations": 1,
+        "question_banks": 78,
+        "questions": 2311,
+        "question_semantic_fingerprints": 21,
+        "published_banks": 78,
+        "published_questions": 2311,
+        "generated_banks": 78,
+        "questions_with_primary_point_nodes": 326,
+        "questions_with_canonical_points": 326,
+        "questions_with_source_refs": 2311,
+        "questions_with_source_chunks": 2311,
+        "questions_with_point_aware_metadata": 2311
       },
       "expected_counts": {
-        "question_banks": 54,
-        "questions": 1965,
-        "published_banks": 54,
-        "published_questions": 1965,
-        "generated_banks": 54,
-        "questions_with_primary_point_nodes": 1965,
-        "questions_with_canonical_points": 1965,
-        "questions_with_source_refs": 1965
+        "supplemental_formal_experiments": 1,
+        "question_generations": 1,
+        "question_banks": 78,
+        "questions": 2311,
+        "question_semantic_fingerprints": 21,
+        "published_banks": 78,
+        "published_questions": 2311,
+        "generated_banks": 78,
+        "questions_with_primary_point_nodes": 326,
+        "questions_with_canonical_points": 326,
+        "questions_with_source_refs": 2311,
+        "questions_with_source_chunks": 2311,
+        "questions_with_point_aware_metadata": 2311
       }
     },
     {
@@ -364,6 +403,66 @@
       "sha256": "4431d9526db7781c95cb793c823c54a74fc6c24a566dd0c883e06e01a9f0c21b",
       "count": 349,
       "expected_count": 349
+    },
+    {
+      "id": "textbook_rag_precomputed_manifest",
+      "role": "Precomputed Qwen textbook RAG Elasticsearch bundle manifest",
+      "path": "data/seed/textbook_rag_precomputed/manifest.json",
+      "source_path": "canonical-rag-chunks-qwen-v1",
+      "required": true,
+      "kind": "json",
+      "size_bytes": 434,
+      "sha256": "be99d8a561a622dee5547e32a03b15b86dd32f15b7c9a0ceba1e2cae4f3aa36a",
+      "count": {
+        "es_count": 3637,
+        "exported_docs": 3637,
+        "docs_with_embedding": 3637,
+        "embedding_model": "text-embedding-v4",
+        "embedding_dimension": 1024
+      },
+      "expected_counts": {
+        "es_count": 3637,
+        "exported_docs": 3637,
+        "docs_with_embedding": 3637,
+        "embedding_model": "text-embedding-v4",
+        "embedding_dimension": 1024
+      }
+    },
+    {
+      "id": "textbook_rag_precomputed_mapping",
+      "role": "Precomputed Qwen textbook RAG Elasticsearch mapping",
+      "path": "data/seed/textbook_rag_precomputed/canonical-rag-chunks-qwen-v1.mapping.json",
+      "source_path": "canonical-rag-chunks-qwen-v1",
+      "required": true,
+      "kind": "json",
+      "size_bytes": 2323,
+      "sha256": "e862a9f5d27935a77ed4468e5d2af797ed5e406fec4fea3b6f3c5cd247cdc80c"
+    },
+    {
+      "id": "textbook_rag_precomputed_settings",
+      "role": "Precomputed Qwen textbook RAG Elasticsearch settings",
+      "path": "data/seed/textbook_rag_precomputed/canonical-rag-chunks-qwen-v1.settings.json",
+      "source_path": "canonical-rag-chunks-qwen-v1",
+      "required": true,
+      "kind": "json",
+      "size_bytes": 969,
+      "sha256": "25abad310e7a2a21df29549c359de57b0f984455ed6a8446f270980322b1ab5a"
+    },
+    {
+      "id": "textbook_rag_precomputed_documents_zip",
+      "role": "Precomputed Qwen textbook RAG Elasticsearch documents with embeddings",
+      "path": "data/seed/textbook_rag_precomputed/canonical-rag-chunks-qwen-v1.documents.jsonl.zip",
+      "source_path": "canonical-rag-chunks-qwen-v1",
+      "required": true,
+      "kind": "zip",
+      "size_bytes": 34416068,
+      "sha256": "e53e23f02c005b43e178babb1c9a920a544464f02234772fdbe1bc83ef412c13",
+      "count": {
+        "documents": 3637
+      },
+      "expected_counts": {
+        "documents": 3637
+      }
     }
   ]
 }
