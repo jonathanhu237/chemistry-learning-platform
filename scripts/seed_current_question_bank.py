@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import zipfile
 from collections import Counter
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -17,11 +18,11 @@ if str(ROOT) not in sys.path:
 from server.app.domains.questions.bank import _validate_question_payload
 from server.app.infrastructure.database import apply_migrations, db_session, get_session_factory
 
-DEFAULT_SEED_PATH = ROOT / "data" / "seed" / "question_banks" / "current_catalog_node_question_bank_seed_v1.json"
+DEFAULT_SEED_PATH = ROOT / "data" / "seed" / "question_banks" / "current_catalog_node_question_bank_seed_v1.json.zip"
 SEED_ARTIFACT_TYPE = "current_catalog_node_question_bank_seed"
 SEED_VERSION = "current-catalog-node-question-bank-seed-v1"
-EXPECTED_BANK_COUNT = 78
-EXPECTED_QUESTION_COUNT = 2311
+EXPECTED_BANK_COUNT = 52
+EXPECTED_QUESTION_COUNT = 1785
 EXPECTED_STATUS = "published"
 EXPECTED_BANK_KIND = "generated"
 OBJECTIVE_TYPES = {"single_choice", "true_false", "fill_blank"}
@@ -328,11 +329,25 @@ def export_seed(session: Any) -> dict[str, Any]:
 
 def write_seed(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=_json_default) + "\n", encoding="utf-8")
+    body = json.dumps(payload, ensure_ascii=False, indent=2, default=_json_default) + "\n"
+    if path.suffix == ".zip":
+        member_name = path.name.removesuffix(".zip")
+        with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+            archive.writestr(member_name, body)
+        return
+    path.write_text(body, encoding="utf-8")
 
 
 def load_seed(path: Path) -> dict[str, Any]:
-    payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    if path.suffix == ".zip":
+        with zipfile.ZipFile(path) as archive:
+            json_members = [name for name in archive.namelist() if name.endswith(".json")]
+            if len(json_members) != 1:
+                raise ValueError(f"{path} must contain exactly one JSON seed file")
+            with archive.open(json_members[0]) as handle:
+                payload = json.loads(handle.read().decode("utf-8-sig"))
+    else:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
     if not isinstance(payload, dict):
         raise ValueError(f"{path} must contain a JSON object")
     metadata = payload.get("metadata")

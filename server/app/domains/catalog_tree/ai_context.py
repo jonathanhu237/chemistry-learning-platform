@@ -198,7 +198,14 @@ def build_static_evidence_payload(
     state = evidence_state or _evidence_state(session, node_id=node_id)
     bindings = [_binding_payload(row) for row in _evidence_binding_rows(session, node_id=node_id)]
     state_status = str(state.get("evidence_status") or "missing")
-    stale = state_status == "stale" or any(item.get("freshness_status") == "stale" for item in bindings)
+    fresh_selected_bindings = [
+        item
+        for item in bindings
+        if item.get("selection_status") == "selected" and item.get("freshness_status") == "fresh"
+    ]
+    stale = not fresh_selected_bindings and (
+        state_status == "stale" or any(item.get("freshness_status") == "stale" for item in bindings)
+    )
     if not bindings:
         status_value = "missing_catalog_node_evidence"
         message = "教材证据尚未绑定；请先刷新该点位的教材证据。"

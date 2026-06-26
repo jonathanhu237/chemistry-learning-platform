@@ -20,6 +20,96 @@ from server.app.domains.questions.point_identity import point_canonical_id, poin
 
 OBJECTIVE_TYPES = {"single_choice", "true_false", "fill_blank"}
 
+
+def _normalize_option_rows(options: Any) -> list[Any]:
+    if not isinstance(options, list):
+        return []
+    normalized: list[Any] = []
+    for index, option in enumerate(options):
+        fallback_label = chr(ord("A") + index)
+        if isinstance(option, dict):
+            label = str(option.get("label") or option.get("key") or option.get("option") or fallback_label).strip()
+            text_value = option.get("text") or option.get("content") or option.get("value") or option.get("label") or ""
+            normalized.append({"label": label[:1].upper() or fallback_label, "text": str(text_value).strip()})
+            continue
+        raw = str(option or "").strip()
+        label = fallback_label
+        text_value = raw
+        if len(raw) >= 2 and raw[0].isalpha() and raw[1] in {".", "、", "．", ")", "）", ":"}:
+            label = raw[0].upper()
+            text_value = raw[2:].strip()
+        normalized.append({"label": label, "text": text_value})
+    return normalized
+
+
+def _choice_answer_value(raw_answer: Any, options: list[Any]) -> str:
+    if isinstance(raw_answer, dict):
+        raw_answer = (
+            raw_answer.get("value")
+            or raw_answer.get("label")
+            or raw_answer.get("option")
+            or raw_answer.get("answer")
+            or raw_answer.get("text")
+        )
+    raw = str(raw_answer or "").strip()
+    if not raw:
+        return ""
+    if len(raw) == 1 and raw.isalpha():
+        return raw.upper()
+    if len(raw) >= 2 and raw[0].isalpha() and raw[1] in {".", "、", "．", ")", "）", ":"}:
+        return raw[0].upper()
+    for option in options:
+        if not isinstance(option, dict):
+            continue
+        label = str(option.get("label") or "").strip()
+        text_value = str(option.get("text") or "").strip()
+        if raw == label or raw == text_value or raw in text_value:
+            return label or raw
+    return raw
+
+
+def _normalize_llm_question_row(row: Any) -> dict[str, Any]:
+    if not isinstance(row, dict):
+        return {}
+    question_type = str(row.get("question_type") or row.get("type") or "").strip()
+    options = _normalize_option_rows(row.get("options") or row.get("choices") or row.get("choice_options") or [])
+    raw_answer = (
+        row.get("answer")
+        if row.get("answer") is not None
+        else row.get("correct_answer")
+        if row.get("correct_answer") is not None
+        else row.get("correctAnswer")
+        if row.get("correctAnswer") is not None
+        else row.get("correct_option")
+        if row.get("correct_option") is not None
+        else row.get("correctOption")
+        if row.get("correctOption") is not None
+        else row.get("fill_blank_answer")
+    )
+    if question_type == "single_choice":
+        answer: Any = {"value": _choice_answer_value(raw_answer, options)}
+    elif question_type == "true_false":
+        if isinstance(raw_answer, dict):
+            raw_answer = raw_answer.get("value") if raw_answer.get("value") is not None else raw_answer.get("answer")
+        answer = {"value": raw_answer}
+    elif question_type == "fill_blank":
+        if isinstance(raw_answer, dict):
+            answer = raw_answer
+        elif isinstance(raw_answer, list):
+            answer = {"accepted_answers": raw_answer, "match": "normalized_exact"}
+        else:
+            answer = {"accepted_answers": [raw_answer] if raw_answer is not None else [], "match": "normalized_exact"}
+    else:
+        answer = raw_answer
+    return {
+        **row,
+        "question_type": question_type,
+        "stem": str(row.get("stem") or row.get("question_text") or row.get("question") or row.get("title") or "").strip(),
+        "options": options,
+        "answer": answer,
+        "explanation": row.get("explanation") or row.get("analysis") or row.get("rationale"),
+    }
+
 def _load_generation_sources(
     session: Any,
     *,
@@ -153,6 +243,14 @@ def _try_openai_generation(
                             "question_types": request.question_types,
                             "count": request.count,
                             "difficulty": request.difficulty,
+                            "required_schema": {
+                                "question_type": "single_choice | true_false | fill_blank",
+                                "stem": "question text",
+                                "options": [{"label": "A", "text": "option text"}],
+                                "answer": {"value": "A for single_choice, true/false for true_false"},
+                                "fill_blank_answer": {"accepted_answers": ["answer"], "match": "normalized_exact"},
+                                "explanation": "brief evidence-based explanation",
+                            },
                             "target_point_node_ids": request.target_point_node_ids,
                             "catalog_point_contexts": point_contexts or [],
                             "sources": source_refs,
@@ -165,7 +263,7 @@ def _try_openai_generation(
         content = response.choices[0].message.content or "{}"
         data = json.loads(content)
         rows = data.get("questions") or []
-        return rows if isinstance(rows, list) else None
+        return [_normalize_llm_question_row(row) for row in rows] if isinstance(rows, list) else None
     except Exception:
         return None
 

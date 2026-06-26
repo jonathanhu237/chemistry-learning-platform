@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import zipfile
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,7 +17,7 @@ if str(ROOT) not in sys.path:
 
 from server.app.infrastructure.database import apply_migrations, db_session
 
-DEFAULT_SEED_PATH = ROOT / "data" / "seed" / "experiment_catalog" / "point_textbook_evidence_seed.json"
+DEFAULT_SEED_PATH = ROOT / "data" / "seed" / "experiment_catalog" / "point_textbook_evidence_seed.json.zip"
 SEED_TYPE = "catalog_point_textbook_evidence_seed"
 SEED_VERSION = 1
 TEXTBOOK_EVIDENCE_ROLES = ("principle", "phenomenon", "safety")
@@ -145,11 +146,25 @@ def export_catalog_point_evidence_seed(session: Any) -> dict[str, Any]:
 
 def write_seed(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=_json_default) + "\n", encoding="utf-8")
+    body = json.dumps(payload, ensure_ascii=False, indent=2, default=_json_default) + "\n"
+    if path.suffix == ".zip":
+        member_name = path.name.removesuffix(".zip")
+        with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+            archive.writestr(member_name, body)
+        return
+    path.write_text(body, encoding="utf-8")
 
 
 def load_seed(path: Path) -> dict[str, Any]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    if path.suffix == ".zip":
+        with zipfile.ZipFile(path) as archive:
+            json_members = [name for name in archive.namelist() if name.endswith(".json")]
+            if len(json_members) != 1:
+                raise ValueError(f"{path} must contain exactly one JSON seed file")
+            with archive.open(json_members[0]) as handle:
+                payload = json.loads(handle.read().decode("utf-8"))
+    else:
+        payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError(f"{path} must contain a JSON object")
     if payload.get("seed_type") != SEED_TYPE:

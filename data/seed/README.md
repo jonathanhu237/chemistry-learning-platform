@@ -9,8 +9,8 @@ Protected current resources:
 - `experiment_catalog/catalog_tree.json`: current catalog tree seed with 569 nodes, 176 directories, 393 point placements, and 357 canonical experiment points.
 - `experiment_catalog/point_content_seed.json`: retained 76-record reviewed content sample for focused search/equation tests; it is not imported by the complete bootstrap.
 - `experiment_catalog/full_point_content_seed.json`: authoritative current catalog point-content seed with 393 published point descriptions and structured reaction equations.
-- `experiment_catalog/point_textbook_evidence_seed.json`: current catalog-node textbook evidence state and bindings, keyed by catalog node/canonical point identities.
-- `question_banks/current_catalog_node_question_bank_seed_v1.json`: current published generated question-bank baseline with 78 banks and 2,311 real published questions.
+- `experiment_catalog/point_textbook_evidence_seed.json.zip`: current catalog-node textbook evidence state and bindings for all 393 active point placements, keyed by catalog node/canonical point identities.
+- `question_banks/current_catalog_node_question_bank_seed_v1.json.zip`: current published generated question-bank baseline with 52 catalog-root banks and 1,785 real published point questions, five per canonical point.
 - `identity/demo_identity_seed_v1.json`: default demo teacher-console account, one active class, and 30 active student roster/accounts. Defaults are demo credentials only and can be overridden at bootstrap time.
 - `media/video_inventory_v1.json`: checksummed inventory for the reviewed experiment videos and generated placeholder video.
 - `media/experiment_video_seed_v1.json`: media asset and point-video binding seed. Four real videos cover five point placements; one generated placeholder video covers the remaining 388 point placements.

@@ -67,13 +67,25 @@ def _db_count_row() -> dict[str, int]:
                     WHERE selection_status = 'selected'
                       AND freshness_status = 'fresh'
                   ) AS catalog_point_textbook_evidence_bindings,
-                  (SELECT count(*) FROM experiment_question_banks) AS experiment_question_banks,
+                  (
+                    SELECT count(*)
+                    FROM experiment_question_banks
+                    WHERE status = 'published'
+                      AND bank_kind = 'generated'
+                  ) AS experiment_question_banks,
                   (
                     SELECT count(*)
                     FROM experiment_question_banks
                     WHERE status = 'published'
                   ) AS published_experiment_question_banks,
-                  (SELECT count(*) FROM experiment_questions) AS experiment_questions,
+                  (
+                    SELECT count(*)
+                    FROM experiment_questions q
+                    JOIN experiment_question_banks b ON b.id = q.bank_id
+                    WHERE q.status = 'published'
+                      AND b.status = 'published'
+                      AND b.bank_kind = 'generated'
+                  ) AS experiment_questions,
                   (
                     SELECT count(*)
                     FROM experiment_questions
@@ -81,8 +93,17 @@ def _db_count_row() -> dict[str, int]:
                   ) AS published_experiment_questions,
                   (
                     SELECT count(*)
-                    FROM question_semantic_fingerprints
-                    WHERE owner_kind = 'question'
+                    FROM question_semantic_fingerprints fingerprint
+                    WHERE fingerprint.owner_kind = 'question'
+                      AND EXISTS (
+                        SELECT 1
+                        FROM experiment_questions q
+                        JOIN experiment_question_banks b ON b.id = q.bank_id
+                        WHERE q.id::text = fingerprint.owner_id::text
+                          AND q.status = 'published'
+                          AND b.status = 'published'
+                          AND b.bank_kind = 'generated'
+                      )
                   ) AS question_semantic_fingerprints,
                   (
                     SELECT count(*)
@@ -92,7 +113,8 @@ def _db_count_row() -> dict[str, int]:
                   (
                     SELECT count(*)
                     FROM experiment_questions
-                    WHERE question_type NOT IN ('single_choice', 'true_false', 'fill_blank')
+                    WHERE status = 'published'
+                      AND question_type NOT IN ('single_choice', 'true_false', 'fill_blank')
                   ) AS unsupported_question_types,
                   (
                     SELECT count(*)
@@ -108,10 +130,13 @@ def _db_count_row() -> dict[str, int]:
                   (
                     SELECT count(*)
                     FROM experiment_questions
-                    WHERE lower(COALESCE(metadata::text, '') || ' ' || COALESCE(stem, '') || ' ' || COALESCE(explanation, '')) LIKE '%mock%'
+                    WHERE status = 'published'
+                      AND (
+                        lower(COALESCE(metadata::text, '') || ' ' || COALESCE(stem, '') || ' ' || COALESCE(explanation, '')) LIKE '%mock%'
                       OR lower(COALESCE(metadata::text, '') || ' ' || COALESCE(stem, '') || ' ' || COALESCE(explanation, '')) LIKE '%fake%'
                       OR COALESCE(metadata->>'mock', 'false') = 'true'
                       OR COALESCE(metadata->>'fake', 'false') = 'true'
+                      )
                   ) AS mock_or_fake_question_markers
                 """
             )

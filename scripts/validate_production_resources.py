@@ -22,16 +22,16 @@ EXPECTED_DATABASE_COUNTS = {
     "experiment_catalog_directory_nodes": 176,
     "experiment_catalog_point_nodes": 393,
     "experiment_catalog_point_content_records": 393,
-    "experiment_question_banks": 78,
-    "experiment_questions": 2311,
-    "question_semantic_fingerprints": 21,
+    "experiment_question_banks": 52,
+    "experiment_questions": 1785,
+    "question_semantic_fingerprints": 1410,
     "source_documents": 2,
     "source_chunks": 3637,
     "published_catalog_point_content_min": 393,
     "catalog_point_related_links_min": 0,
     "point_evidence_bindings_with_node": 0,
-    "catalog_point_textbook_evidence_states": 2,
-    "catalog_point_textbook_evidence_bindings": 18,
+    "catalog_point_textbook_evidence_states": 393,
+    "catalog_point_textbook_evidence_bindings": 3537,
     "seed_teacher_accounts": 1,
     "seed_classes": 1,
     "seed_students": 30,
@@ -51,6 +51,13 @@ def _sha256(path: Path) -> str:
 
 
 def _json(path: Path) -> Any:
+    if path.suffix == ".zip":
+        with zipfile.ZipFile(path) as archive:
+            json_members = [name for name in archive.namelist() if name.endswith(".json")]
+            if len(json_members) != 1:
+                raise ValueError(f"{path} must contain exactly one JSON file")
+            with archive.open(json_members[0]) as handle:
+                return json.loads(handle.read().decode("utf-8-sig"))
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
 
@@ -592,32 +599,32 @@ RESOURCE_SPECS: list[dict[str, Any]] = [
     {
         "id": "experiment_catalog_point_textbook_evidence_seed",
         "role": "Precomputed catalog point textbook evidence bindings for question generation",
-        "path": "data/seed/experiment_catalog/point_textbook_evidence_seed.json",
-        "kind": "json",
+        "path": "data/seed/experiment_catalog/point_textbook_evidence_seed.json.zip",
+        "kind": "zip",
         "count": _catalog_point_textbook_evidence_seed_count,
-        "expected_counts": {"states": 2, "bindings": 18, "unique_nodes": 2, "unique_chunks": 9},
+        "expected_counts": {"states": 393, "bindings": 3537, "unique_nodes": 393},
         "source_path": "experiment_catalog_point_evidence_state + experiment_catalog_point_evidence_bindings",
     },
     {
         "id": "current_catalog_node_question_bank_seed",
         "role": "Current published catalog-node question bank seed",
-        "path": "data/seed/question_banks/current_catalog_node_question_bank_seed_v1.json",
-        "kind": "json",
+        "path": "data/seed/question_banks/current_catalog_node_question_bank_seed_v1.json.zip",
+        "kind": "zip",
         "count": _current_question_bank_seed_count,
         "expected_counts": {
-            "supplemental_formal_experiments": 1,
-            "question_generations": 1,
-            "question_banks": 78,
-            "questions": 2311,
-            "question_semantic_fingerprints": 21,
-            "published_banks": 78,
-            "published_questions": 2311,
-            "generated_banks": 78,
-            "questions_with_primary_point_nodes": 326,
-            "questions_with_canonical_points": 326,
-            "questions_with_source_refs": 2311,
-            "questions_with_source_chunks": 2311,
-            "questions_with_point_aware_metadata": 2311,
+            "supplemental_formal_experiments": 52,
+            "question_generations": 392,
+            "question_banks": 52,
+            "questions": 1785,
+            "question_semantic_fingerprints": 1410,
+            "published_banks": 52,
+            "published_questions": 1785,
+            "generated_banks": 52,
+            "questions_with_primary_point_nodes": 1785,
+            "questions_with_canonical_points": 1785,
+            "questions_with_source_refs": 1785,
+            "questions_with_source_chunks": 1785,
+            "questions_with_point_aware_metadata": 0,
         },
         "source_path": "experiment_question_banks + experiment_questions",
     },
