@@ -108,13 +108,13 @@ function installTeacherFetchMock() {
     }
     if (path === "/api/admin/legacy/teacher-demo/question-resources") {
       return jsonResponse({
-        total: 2,
+        total: 3,
         totals: {
-          question_count: 8,
-          published_count: 7,
+          question_count: 11,
+          published_count: 10,
           draft_count: 1,
-          choice_count: 4,
-          true_false_count: 2,
+          choice_count: 6,
+          true_false_count: 3,
           fill_blank_count: 2,
           point_count: 2,
         },
@@ -133,6 +133,24 @@ function installTeacherFetchMock() {
             choice_count: 2,
             true_false_count: 1,
             fill_blank_count: 2,
+            media_count: 1,
+            published_media_count: 1,
+            point_count: 1,
+          },
+          {
+            node_id: "cat-md-ch13-9c350312b24b56946e",
+            chapter_id: "chapter-halogen",
+            node_kind: "point",
+            title: "氯水 + KBr + CCl₄",
+            status: "published",
+            breadcrumb_titles: ["第13章 卤族元素", "氯、溴、碘的置换次序", "氯水 + KBr + CCl₄"],
+            experiment_id: "exp-2",
+            question_count: 6,
+            published_count: 6,
+            draft_count: 0,
+            choice_count: 4,
+            true_false_count: 2,
+            fill_blank_count: 0,
             media_count: 1,
             published_media_count: 1,
             point_count: 1,
@@ -157,6 +175,59 @@ function installTeacherFetchMock() {
           },
         ],
       });
+    }
+    if (path === "/api/admin/classes") {
+      if (_init?.method === "POST") {
+        return jsonResponse({
+          id: "class-2",
+          class_name: "无机化学二班",
+          description: "新增演示班",
+          status: "active",
+          student_count: 0,
+        });
+      }
+      return jsonResponse([
+        {
+          id: "class-1",
+          class_name: "无机化学一班",
+          description: "2026 春季演示班",
+          status: "active",
+          student_count: 2,
+        },
+      ]);
+    }
+    if (path === "/api/admin/classes/class-1/students") {
+      if (_init?.method === "POST") {
+        return jsonResponse({
+          id: "student-3",
+          class_id: "class-1",
+          student_id: "2026003",
+          student_name: "王五",
+          status: "pending",
+          activation_mode: "default_password",
+          activated: false,
+        });
+      }
+      return jsonResponse([
+        {
+          id: "student-1",
+          class_id: "class-1",
+          student_id: "2026001",
+          student_name: "张三",
+          status: "active",
+          activation_mode: "default_password",
+          activated: true,
+        },
+        {
+          id: "student-2",
+          class_id: "class-1",
+          student_id: "2026002",
+          student_name: "李四",
+          status: "pending",
+          activation_mode: "default_password",
+          activated: false,
+        },
+      ]);
     }
     if (path === "/api/admin/legacy/teacher-demo/classes") {
       return jsonResponse({
@@ -241,13 +312,22 @@ function assertNoForbiddenVisibleTerms(container: HTMLElement) {
   }
 }
 
-function assertNoUnexpectedBusinessMutations(fetchMock: ReturnType<typeof installTeacherFetchMock>) {
+function assertNoUnexpectedBusinessMutations(fetchMock: ReturnType<typeof installTeacherFetchMock>, options: { allowClassManagement?: boolean } = {}) {
   const mutationCalls = fetchMock.mock.calls.filter((call) => {
     const path = new URL(String(call[0]), "http://teacher-old.test").pathname;
     const method = String(call[1]?.method || "GET").toUpperCase();
     const isAllowedLegacyRecommendationWrite =
       method === "PUT" && path.startsWith("/api/admin/legacy/video-points/") && path.endsWith("/recommendation");
-    return path.startsWith("/api/admin/") && ["POST", "PUT", "PATCH", "DELETE"].includes(method) && !isAllowedLegacyRecommendationWrite;
+    const isAllowedClassManagement =
+      options.allowClassManagement &&
+      method === "POST" &&
+      (path === "/api/admin/classes" || /^\/api\/admin\/classes\/[^/]+\/students$/.test(path));
+    return (
+      path.startsWith("/api/admin/") &&
+      ["POST", "PUT", "PATCH", "DELETE"].includes(method) &&
+      !isAllowedLegacyRecommendationWrite &&
+      !isAllowedClassManagement
+    );
   });
   expect(mutationCalls).toEqual([]);
 }
@@ -308,15 +388,30 @@ describe("LegacyTeacherApp", () => {
     assertNoForbiddenVisibleTerms(container);
   });
 
-  it("shows question resources and process evidence without generation actions", async () => {
+  it("shows question resources and generates review drafts through the old teacher workbench", async () => {
     const fetchMock = installTeacherFetchMock();
     vi.stubGlobal("fetch", fetchMock);
     const { container } = render(<LegacyTeacherApp />);
 
     fireEvent.click(await screen.findByRole("button", { name: "题库资源" }));
     expect(await screen.findByRole("heading", { name: "题库资源" })).toBeTruthy();
-    expect(screen.getByText("智能辅助命题")).toBeTruthy();
-    expect(screen.getByText("教师审核")).toBeTruthy();
+    expect(await screen.findByText("题库建设流程")).toBeTruthy();
+    expect(await screen.findByText("演示数据已载入")).toBeTruthy();
+    expect(await screen.findByText("教材依据就绪 · 题目 5")).toBeTruthy();
+    expect(screen.getAllByText("氯水漂白性实验").length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("待审题目")).length).toBeGreaterThan(0);
+    expect(await screen.findByText("暂无待审题目。输入提示词后会在这里显示教师审核卡片。")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "生成待审题" }));
+    expect(await screen.findByText("已生成 1 条待审题目，请教师复核后入库。")).toBeTruthy();
+    expect(await screen.findByText("围绕“氯水漂白性实验”进行实验现象观察时，下列哪项最适合作为课堂测评的判断依据？")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "通过入库" }));
+    expect(await screen.findByText("教师审核通过，题目已入库。")).toBeTruthy();
+    expect(
+      fetchMock.mock.calls.every((call) => {
+        const url = new URL(String(call[0]), "http://teacher-old.test");
+        return !url.pathname.startsWith("/api/admin/question-banks/");
+      }),
+    ).toBe(true);
     expect(await screen.findByText("点位题库覆盖")).toBeTruthy();
     expect(screen.getByText("选择 2")).toBeTruthy();
     assertNoUnexpectedBusinessMutations(fetchMock);
@@ -331,14 +426,26 @@ describe("LegacyTeacherApp", () => {
     fireEvent.click(await screen.findByRole("button", { name: "班级" }));
     expect(await screen.findByRole("heading", { name: "班级" })).toBeTruthy();
     expect(await screen.findByText("无机化学一班")).toBeTruthy();
-    expect(screen.getByText("学生 38")).toBeTruthy();
+    expect(await screen.findByText("张三")).toBeTruthy();
+    expect(screen.getByText("李四")).toBeTruthy();
+    expect(screen.getAllByText("待首次登录").length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByPlaceholderText("例如：2026001"), { target: { value: "2026003" } });
+    fireEvent.change(screen.getByPlaceholderText("学生姓名"), { target: { value: "王五" } });
+    fireEvent.click(screen.getByRole("button", { name: "创建学生" }));
+    expect(await screen.findByText("已创建学生：王五（2026003），初始密码以当前班级设置为准。")).toBeTruthy();
+    expect(
+      fetchMock.mock.calls.some((call) => {
+        const url = new URL(String(call[0]), "http://teacher-old.test");
+        return url.pathname === "/api/admin/classes/class-1/students" && call[1]?.method === "POST" && String(call[1]?.body || "").includes("\"student_name\":\"王五\"");
+      }),
+    ).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: "学情分析" }));
     expect(await screen.findByRole("heading", { name: "学情分析" })).toBeTruthy();
     expect(await screen.findByText("李同学")).toBeTruthy();
     expect((await screen.findAllByText("氯水漂白性实验")).length).toBeGreaterThan(0);
     expect(screen.getByText("薄弱点位排行")).toBeTruthy();
-    assertNoUnexpectedBusinessMutations(fetchMock);
+    assertNoUnexpectedBusinessMutations(fetchMock, { allowClassManagement: true });
     assertNoForbiddenVisibleTerms(container);
   });
 
@@ -356,6 +463,9 @@ describe("LegacyTeacherApp", () => {
     expect(await screen.findByText("评价对象")).toBeTruthy();
     expect(screen.getByText("优秀")).toBeTruthy();
     expect(screen.getByText("教学输出")).toBeTruthy();
+    expect(screen.getByText("测评报告 Prompt")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "保存报告 Prompt" }));
+    expect(await screen.findByText("报告 Prompt 已保存，本次演示将按新的总结和错题讲解口径生成报告。")).toBeTruthy();
     assertNoUnexpectedBusinessMutations(fetchMock);
     assertNoForbiddenVisibleTerms(container);
   });

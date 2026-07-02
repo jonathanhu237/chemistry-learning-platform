@@ -92,6 +92,31 @@ export type TeacherDemoClasses = {
   classes: TeacherDemoClassSummary[];
 };
 
+export type TeacherClassSummary = {
+  id: string;
+  class_name: string;
+  description?: string | null;
+  status: string;
+  student_count?: number;
+  active_students?: number;
+  completion_rate?: number;
+  average_score?: number;
+  missing_students?: number;
+};
+
+export type TeacherStudentSummary = {
+  id?: string;
+  class_id?: string;
+  student_id: string;
+  student_name: string;
+  username?: string;
+  display_name?: string;
+  status: string;
+  activation_mode?: string;
+  activated?: boolean;
+  class_name?: string;
+};
+
 export type TeacherDemoStudentAnalytics = {
   student_id: string;
   student_name: string;
@@ -235,6 +260,29 @@ export function setLegacyVideoPointRecommendation(nodeId: string, recommended: b
 
 export function getTeacherDemoQuestionResources(): Promise<TeacherDemoQuestionResources> {
   return api<TeacherDemoQuestionResources>("/api/admin/legacy/teacher-demo/question-resources");
+}
+
+export function listTeacherClasses(): Promise<TeacherClassSummary[]> {
+  return api<TeacherClassSummary[]>("/api/admin/classes");
+}
+
+export function createTeacherClass(payload: { class_name: string; description?: string }): Promise<TeacherClassSummary> {
+  return postJson<TeacherClassSummary>("/api/admin/classes", payload);
+}
+
+export function listTeacherClassStudents(classId: string): Promise<TeacherStudentSummary[]> {
+  return api<TeacherStudentSummary[]>(`/api/admin/classes/${encodeURIComponent(classId)}/students`);
+}
+
+export function createTeacherClassStudent(
+  classId: string,
+  payload: { student_id: string; student_name: string; status?: string; activation_mode?: string },
+): Promise<TeacherStudentSummary> {
+  return postJson<TeacherStudentSummary>(`/api/admin/classes/${encodeURIComponent(classId)}/students`, {
+    ...payload,
+    status: payload.status || "pending",
+    activation_mode: payload.activation_mode || "default_password",
+  });
 }
 
 export function getTeacherDemoClasses(): Promise<TeacherDemoClasses> {
