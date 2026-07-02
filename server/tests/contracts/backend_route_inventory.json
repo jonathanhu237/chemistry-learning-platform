@@ -766,6 +766,12 @@
     },
     {
       "method": "POST",
+      "path": "/api/admin/question-banks/legacy-point-generate",
+      "name": "admin_generate_legacy_point_questions",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
       "path": "/api/admin/question-banks/import",
       "name": "admin_import_question_bank",
       "owner": "admin-api"

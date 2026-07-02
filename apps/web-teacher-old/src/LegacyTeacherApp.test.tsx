@@ -1,25 +1,8 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LegacyTeacherApp } from "./LegacyTeacherApp";
 import { setAuthToken } from "./api";
-
-const forbiddenVisibleTerms = [
-  "Atom",
-  "RAG",
-  "Agent",
-  "chunk",
-  "embedding",
-  "rerank",
-  "Qwen",
-  "BGE",
-  "OpenAI",
-  "学习助手",
-  "智能监控",
-  "AI出题",
-  "导入名单",
-  "重置账号",
-];
 
 function jsonResponse(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
@@ -28,10 +11,399 @@ function jsonResponse(payload: unknown, status = 200): Response {
   });
 }
 
+function requestUrl(input: RequestInfo | URL): URL {
+  const raw = typeof Request !== "undefined" && input instanceof Request ? input.url : String(input);
+  return new URL(raw, "http://teacher-old.test");
+}
+
+function requestPaths(fetchMock: ReturnType<typeof installTeacherFetchMock>): string[] {
+  return fetchMock.mock.calls.map((call) => {
+    const url = requestUrl(call[0]);
+    return `${url.pathname}${url.search}`;
+  });
+}
+
+function expectNoForbiddenGenerationFlows(fetchMock: ReturnType<typeof installTeacherFetchMock>) {
+  const urls = fetchMock.mock.calls.map((call) => requestUrl(call[0]));
+
+  expect(urls.some((url) => url.pathname === "/api/admin/question-banks/generate")).toBe(false);
+  expect(urls.some((url) => `${url.pathname}${url.search}`.includes("workbench"))).toBe(false);
+  expect(urls.some((url) => `${url.pathname}${url.search}`.includes("evidence-refresh"))).toBe(false);
+}
+
+const baseCounts = {
+  question_count: 0,
+  published_count: 0,
+  draft_count: 0,
+  disabled_count: 0,
+  choice_count: 0,
+  true_false_count: 0,
+  fill_blank_count: 0,
+  draft_candidate_count: 0,
+  rejected_candidate_count: 0,
+  published_candidate_count: 0,
+  point_count: 0,
+  directory_count: 0,
+};
+
+const catalogNodes = [
+  {
+    node_id: "dir-ch13-oxidation",
+    parent_id: null,
+    chapter_id: "CH13",
+    node_kind: "directory",
+    title: "氯的氧化性",
+    summary: "氯水与还原性物质的反应。",
+    status: "published",
+    display_order: 1,
+    content_status: null,
+    media_count: 0,
+    published_media_count: 0,
+    breadcrumb_titles: ["CH13 卤族元素", "氯的氧化性"],
+    root_node_id: "dir-ch13-oxidation",
+    experiment_id: "exp-ch13",
+    descendant_point_count: 2,
+    counts: { ...baseCounts, question_count: 2, published_count: 1, draft_count: 1, point_count: 2, directory_count: 1 },
+  },
+  {
+    node_id: "point-ch13-bleach",
+    parent_id: "dir-ch13-oxidation",
+    chapter_id: "CH13",
+    node_kind: "point",
+    title: "氯水漂白性实验",
+    summary: "观察氯水使有色布条褪色。",
+    status: "published",
+    display_order: 2,
+    canonical_point_id: "canon-bleach",
+    canonical_point_title: "氯水漂白性实验",
+    content_status: "published",
+    principle_mode: "text",
+    principle_text: "新制氯水中的 HClO 具有强氧化性。",
+    phenomenon_explanation: "湿润有色布条逐渐褪色，干燥布条变化不明显。",
+    safety_note: "氯水有刺激性气味，应在通风条件下少量取用。",
+    media_count: 1,
+    published_media_count: 1,
+    breadcrumb_titles: ["CH13 卤族元素", "氯的氧化性", "氯水漂白性实验"],
+    root_node_id: "dir-ch13-oxidation",
+    experiment_id: "exp-ch13-bleach",
+    descendant_point_count: 0,
+    counts: { ...baseCounts, question_count: 1, published_count: 0, draft_count: 1, choice_count: 1, point_count: 1 },
+  },
+  {
+    node_id: "dir-ch13-displacement",
+    parent_id: null,
+    chapter_id: "CH13",
+    node_kind: "directory",
+    title: "溴碘置换",
+    summary: "比较氯、溴、碘单质的氧化性顺序。",
+    status: "published",
+    display_order: 3,
+    content_status: null,
+    media_count: 0,
+    published_media_count: 0,
+    breadcrumb_titles: ["CH13 卤族元素", "溴碘置换"],
+    root_node_id: "dir-ch13-displacement",
+    experiment_id: "exp-ch13",
+    descendant_point_count: 2,
+    counts: { ...baseCounts, question_count: 1, published_count: 1, point_count: 2, directory_count: 1 },
+  },
+  {
+    node_id: "point-ch13-kbr",
+    parent_id: "dir-ch13-displacement",
+    chapter_id: "CH13",
+    node_kind: "point",
+    title: "氯水 + KBr + CCl4",
+    summary: "观察溴被置换后在有机层中的颜色。",
+    status: "published",
+    display_order: 4,
+    canonical_point_id: "canon-kbr",
+    canonical_point_title: "氯水置换溴离子",
+    content_status: "published",
+    principle_mode: "text",
+    principle_text: "Cl2 可氧化 Br- 生成 Br2。",
+    phenomenon_explanation: "下层 CCl4 呈橙红色。",
+    safety_note: "CCl4 避免吸入，废液集中回收。",
+    media_count: 1,
+    published_media_count: 1,
+    breadcrumb_titles: ["CH13 卤族元素", "溴碘置换", "氯水 + KBr + CCl4"],
+    root_node_id: "dir-ch13-displacement",
+    experiment_id: "exp-ch13-kbr",
+    descendant_point_count: 0,
+    counts: { ...baseCounts, question_count: 1, published_count: 1, true_false_count: 1, point_count: 1 },
+  },
+  {
+    node_id: "point-ch13-iodide",
+    parent_id: "dir-ch13-displacement",
+    chapter_id: "CH13",
+    node_kind: "point",
+    title: "碘离子检验",
+    summary: "用淀粉观察碘单质生成。",
+    status: "draft",
+    display_order: 5,
+    canonical_point_id: "canon-iodide",
+    canonical_point_title: "碘离子检验",
+    content_status: "draft",
+    principle_mode: "text",
+    principle_text: "I- 被氧化后与淀粉形成蓝色络合物。",
+    phenomenon_explanation: "溶液遇淀粉后呈蓝色。",
+    safety_note: "碘液避免接触皮肤。",
+    media_count: 0,
+    published_media_count: 0,
+    breadcrumb_titles: ["CH13 卤族元素", "溴碘置换", "碘离子检验"],
+    root_node_id: "dir-ch13-displacement",
+    experiment_id: "exp-ch13-iodide",
+    descendant_point_count: 0,
+    counts: { ...baseCounts, point_count: 1 },
+  },
+] as const;
+
+function catalogResponse() {
+  return {
+    items: catalogNodes,
+    total: catalogNodes.length,
+    chapters: [
+      {
+        chapter_id: "CH13",
+        chapter_number: 13,
+        chapter_title: "CH13 卤族元素",
+        element_area: "非金属元素",
+        point_count: 3,
+      },
+    ],
+    chapter_id: "CH13",
+    totals: {
+      ...baseCounts,
+      question_count: 3,
+      published_count: 2,
+      draft_count: 1,
+      choice_count: 1,
+      true_false_count: 1,
+      fill_blank_count: 1,
+      point_count: 3,
+      directory_count: 2,
+    },
+  };
+}
+
+function catalogDetail(nodeId: string) {
+  const node = catalogNodes.find((item) => item.node_id === nodeId) || catalogNodes[1];
+  const isPoint = node.node_kind === "point";
+
+  return {
+    node: {
+      ...node,
+      teacher_note: isPoint ? "课堂讨论时强调现象与氧化性之间的证据链。" : "CH13 目录备注",
+      validation: { ok: true, errors: [], warnings: [] },
+    },
+    breadcrumbs: node.breadcrumb_titles.map((title, index) => ({
+      node_id: index === node.breadcrumb_titles.length - 1 ? node.node_id : `breadcrumb-${index}`,
+      title,
+      node_kind: index === node.breadcrumb_titles.length - 1 ? node.node_kind : "directory",
+      chapter_id: node.chapter_id,
+    })),
+    children: catalogNodes.filter((item) => item.parent_id === node.node_id),
+    point_content: isPoint
+      ? {
+          node_id: node.node_id,
+          canonical_point_id: node.canonical_point_id,
+          point_title: node.title,
+          teacher_note: "课堂讨论时强调现象与氧化性之间的证据链。",
+          principle_mode: node.principle_mode,
+          principle_text: node.principle_text,
+          phenomenon_explanation: node.phenomenon_explanation,
+          safety_note: node.safety_note,
+          content_status: node.content_status,
+        }
+      : null,
+    validation: { ok: true, errors: [], warnings: [] },
+  };
+}
+
+const draftQuestion = {
+  id: "draft-ch13-1",
+  generation_id: "gen-ch13-1",
+  experiment_id: "exp-ch13-bleach",
+  status: "draft",
+  prompt: "围绕氯水漂白性实验生成课堂测评题。",
+  mode: "legacy_point",
+  validation_errors: [],
+  payload: {
+    id: "draft-payload-1",
+    experiment_id: "exp-ch13-bleach",
+    question_type: "single_choice",
+    stem: "氯水使湿润有色布条褪色，最关键的微粒是什么？",
+    options: [
+      { label: "A", text: "HClO" },
+      { label: "B", text: "Cl-" },
+      { label: "C", text: "K+" },
+      { label: "D", text: "CCl4" },
+    ],
+    answer: { value: "A" },
+    explanation: "新制氯水中的 HClO 具有强氧化性，能使有色物质褪色。",
+    difficulty: "basic",
+    status: "draft",
+  },
+};
+
+const publishedQuestion = {
+  id: "question-ch13-1",
+  experiment_id: "exp-ch13-bleach",
+  question_type: "single_choice",
+  stem: "为什么干燥有色布条放入氯气中不明显褪色？",
+  options: [
+    { label: "A", text: "缺少水生成 HClO" },
+    { label: "B", text: "氯气不能溶于水" },
+  ],
+  answer: { value: "A" },
+  explanation: "氯气需要与水反应生成 HClO 后才表现出明显漂白性。",
+  difficulty: "basic",
+  status: "published",
+};
+
+const classes = [
+  {
+    id: "class-1",
+    class_name: "无机化学一班",
+    description: "2026 春季 CH13 教学班",
+    status: "active",
+    student_count: 2,
+    active_students: 2,
+    completion_rate: 75,
+    average_score: 82,
+    missing_students: 0,
+  },
+];
+
+const students = [
+  {
+    id: "class-student-1",
+    class_id: "class-1",
+    student_id: "2026001",
+    student_name: "张三",
+    username: "2026001",
+    display_name: "张三",
+    status: "active",
+    activation_mode: "default_password",
+    activated: true,
+    class_name: "无机化学一班",
+  },
+  {
+    id: "class-student-2",
+    class_id: "class-1",
+    student_id: "2026002",
+    student_name: "李四",
+    username: "2026002",
+    display_name: "李四",
+    status: "active",
+    activation_mode: "default_password",
+    activated: true,
+    class_name: "无机化学一班",
+  },
+];
+
+function analyticsDashboard() {
+  return {
+    class_id: "class-1",
+    metrics: {
+      class_size: 2,
+      active_students: 2,
+      published_experiments: 2,
+      published_experiment_groups: 1,
+      completion_rate: 75,
+      average_score: 82,
+      missing_students: 0,
+    },
+    experiments: [],
+    experiment_groups: [{ id: "group-halogen", code: "CH13", title: "CH13 卤素实验", experiment_count: 2 }],
+    matrix: [
+      {
+        student_id: "2026001",
+        student_name: "张三",
+        status: "active",
+        average_score: 88,
+        experiments: {},
+        experiment_groups: {
+          "group-halogen": { status: "completed", mastery_score: 0.86, score: 88, evidence_count: 4, attempt_count: 2 },
+        },
+      },
+      {
+        student_id: "2026002",
+        student_name: "李四",
+        status: "active",
+        average_score: 76,
+        experiments: {},
+        experiment_groups: {
+          "group-halogen": { status: "learning", mastery_score: 0.7, score: 76, evidence_count: 3, attempt_count: 2 },
+        },
+      },
+    ],
+    recent_activity: [],
+    missing_students: [],
+  };
+}
+
+function studentLearningReport(studentId: string) {
+  const studentName = studentId === "2026002" ? "李四" : "张三";
+
+  return {
+    student: { student_id: studentId, student_name: studentName },
+    progress: [],
+    latest_posttest_report: {
+      session_id: `session-${studentId}`,
+      score: studentId === "2026002" ? 76 : 88,
+      correct_count: studentId === "2026002" ? 3 : 4,
+      total_count: 5,
+      ai_summary: {
+        text: `${studentName}已经掌握 CH13 氯水漂白的核心证据。`,
+        source: "assessment_report",
+        mode: "prompt",
+      },
+      ai_mistake_explanation: {
+        text: `${studentName}需要继续区分卤素单质和卤离子。`,
+        source: "assessment_report",
+        mode: "prompt",
+      },
+    },
+    weak_video_points: [{ point_title: "碘离子检验", incorrect_rate: 40, attempt_count: 2 }],
+  };
+}
+
+const assessmentReportSummary = {
+  id: "report-ch13-1",
+  student_id: "2026001",
+  class_id: "class-1",
+  report_type: "posttest",
+  source_session_id: "session-2026001",
+  title: "CH13 后测评价报告",
+  score: 88,
+  correct_count: 4,
+  total_count: 5,
+  correct_rate: 0.8,
+  wrong_count: 1,
+  completed_at: "2026-07-02T10:00:00Z",
+};
+
+const assessmentReportDetail = {
+  ...assessmentReportSummary,
+  summary: {
+    text: "张三已经能解释氯水漂白现象，并能把 HClO 与氧化性联系起来。",
+    source: "assessment_report_prompts",
+    mode: "teacher_prompt",
+  },
+  mistake_explanation: {
+    text: "错题集中在溴碘置换顺序，需要回看 KBr 与 CCl4 的分层颜色。",
+    source: "assessment_report_prompts",
+    mode: "teacher_prompt",
+  },
+  prompt_snapshot: { summary_prompt: "请总结 {{student_name}} 的 CH13 学习表现。" },
+  payload: { chapter_id: "CH13" },
+};
+
 function installTeacherFetchMock() {
-  return vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
-    const url = new URL(String(input), "http://teacher-old.test");
+  return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = requestUrl(input);
     const path = url.pathname;
+    const method = String(init?.method || "GET").toUpperCase();
 
     if (path === "/api/auth/me") {
       return jsonResponse({
@@ -42,300 +414,119 @@ function installTeacherFetchMock() {
         status: "active",
       });
     }
-    if (path === "/api/admin/legacy/teacher-demo/overview") {
+
+    if (path === "/api/admin/question-banks/catalog") {
+      return jsonResponse(catalogResponse());
+    }
+
+    const catalogNodeMatch = path.match(/^\/api\/admin\/catalog\/nodes\/([^/]+)$/);
+    if (catalogNodeMatch) {
+      return jsonResponse(catalogDetail(decodeURIComponent(catalogNodeMatch[1])));
+    }
+
+    if (path === "/api/admin/question-banks/drafts") {
+      return jsonResponse({ items: [draftQuestion], total: 1 });
+    }
+
+    if (path === "/api/admin/question-banks/questions") {
+      return jsonResponse({ items: [publishedQuestion], total: 1 });
+    }
+
+    if (path === "/api/admin/question-banks/legacy-point-generate" && method === "POST") {
       return jsonResponse({
-        metrics: [
-          { key: "video_points", label: "实验视频点位", value: 51, unit: "个", description: "按实验知识单元汇总的学习视频入口" },
-          { key: "questions", label: "题库题目", value: 1965, unit: "题", description: "覆盖实验点位的测评题目" },
-          { key: "classes", label: "教学班级", value: 2, unit: "个", description: "纳入展示的教学班级" },
-          { key: "students", label: "学生人数", value: 78, unit: "人", description: "已导入或已注册的学生" },
-        ],
-        loop: [
-          { title: "实验视频学习", description: "学生先围绕实验点位观看现象、原理和安全提示。" },
-          { title: "测评作答", description: "系统从题库中按掌握度或自选范围抽题。" },
-          { title: "掌握度更新", description: "答题结果写入知识追踪模型，形成点位掌握度。" },
-          { title: "复习与组卷", description: "薄弱点位用于下一轮视频推荐和组卷权重调整。" },
-        ],
-        resource_summary: {
-          question_total: 1965,
-          video_point_total: 51,
-          class_total: 2,
-        },
+        generation_id: "gen-ch13-2",
+        mode: "legacy_point",
+        warning: null,
+        source_refs: [{ point_node_id: "point-ch13-bleach", chapter_id: "CH13" }],
+        evidence_package: { source: "catalog_point_content" },
+        drafts: [draftQuestion],
       });
     }
-    if (path === "/api/admin/legacy/teacher-demo/video-resources") {
-      return jsonResponse({
-        total: 2,
-        items: [
-          {
-            node_id: "point-1",
-            chapter_id: "chapter-halogen",
-            title: "氯水漂白性实验",
-            summary: "观察氯水漂白现象。",
-            catalog_path: ["第13章 卤族元素", "氯的氧化性", "氯水漂白性实验"],
-            media_count: 1,
-            published_media_count: 1,
-            question_count: 5,
-            published_question_count: 4,
-            has_video: true,
-            is_recommended: true,
-            resource_status: "已绑定视频",
-          },
-          {
-            node_id: "point-2",
-            chapter_id: "chapter-halogen",
-            title: "KI水溶液中碘离子检验",
-            summary: "观察碘离子被氧化后的颜色变化。",
-            catalog_path: ["第13章 卤族元素", "卤素离子的还原性"],
-            media_count: 0,
-            published_media_count: 0,
-            question_count: 3,
-            published_question_count: 3,
-            has_video: false,
-            is_recommended: false,
-            resource_status: "待补充视频",
-          },
-        ],
-      });
+
+    if (path === "/api/admin/question-banks/drafts/draft-ch13-1/publish" && method === "POST") {
+      return jsonResponse({ ...publishedQuestion, id: "question-from-draft-1" });
     }
-    if (path === "/api/admin/legacy/video-points/point-1/recommendation") {
-      return jsonResponse({
-        status: "ok",
-        query: "",
-        total: 1,
-        items: [],
-      });
+
+    if (path === "/api/admin/question-banks/drafts/draft-ch13-1/reject" && method === "POST") {
+      return jsonResponse({ ...draftQuestion, status: "rejected" });
     }
-    if (path === "/api/admin/legacy/teacher-demo/question-resources") {
-      return jsonResponse({
-        total: 3,
-        totals: {
-          question_count: 11,
-          published_count: 10,
-          draft_count: 1,
-          choice_count: 6,
-          true_false_count: 3,
-          fill_blank_count: 2,
-          point_count: 2,
-        },
-        items: [
-          {
-            node_id: "point-1",
-            chapter_id: "chapter-halogen",
-            node_kind: "point",
-            title: "氯水漂白性实验",
-            status: "published",
-            breadcrumb_titles: ["第13章 卤族元素", "氯的氧化性"],
-            experiment_id: "exp-1",
-            question_count: 5,
-            published_count: 4,
-            draft_count: 1,
-            choice_count: 2,
-            true_false_count: 1,
-            fill_blank_count: 2,
-            media_count: 1,
-            published_media_count: 1,
-            point_count: 1,
-          },
-          {
-            node_id: "cat-md-ch13-9c350312b24b56946e",
-            chapter_id: "chapter-halogen",
-            node_kind: "point",
-            title: "氯水 + KBr + CCl₄",
-            status: "published",
-            breadcrumb_titles: ["第13章 卤族元素", "氯、溴、碘的置换次序", "氯水 + KBr + CCl₄"],
-            experiment_id: "exp-2",
-            question_count: 6,
-            published_count: 6,
-            draft_count: 0,
-            choice_count: 4,
-            true_false_count: 2,
-            fill_blank_count: 0,
-            media_count: 1,
-            published_media_count: 1,
-            point_count: 1,
-          },
-          {
-            node_id: "dir-1",
-            chapter_id: "chapter-halogen",
-            node_kind: "directory",
-            title: "氯的氧化性",
-            status: "published",
-            breadcrumb_titles: ["第13章 卤族元素"],
-            experiment_id: "exp-dir",
-            question_count: 5,
-            published_count: 4,
-            draft_count: 1,
-            choice_count: 2,
-            true_false_count: 1,
-            fill_blank_count: 2,
-            media_count: 1,
-            published_media_count: 1,
-            point_count: 1,
-          },
-        ],
-      });
-    }
+
     if (path === "/api/admin/classes") {
-      if (_init?.method === "POST") {
-        return jsonResponse({
-          id: "class-2",
-          class_name: "无机化学二班",
-          description: "新增演示班",
-          status: "active",
-          student_count: 0,
-        });
-      }
-      return jsonResponse([
-        {
-          id: "class-1",
-          class_name: "无机化学一班",
-          description: "2026 春季演示班",
-          status: "active",
-          student_count: 2,
-        },
-      ]);
+      return jsonResponse(classes);
     }
+
     if (path === "/api/admin/classes/class-1/students") {
-      if (_init?.method === "POST") {
+      return jsonResponse(students);
+    }
+
+    if (path === "/api/admin/analytics/classes/class-1/dashboard") {
+      return jsonResponse(analyticsDashboard());
+    }
+
+    const studentReportMatch = path.match(/^\/api\/admin\/analytics\/classes\/class-1\/students\/([^/]+)$/);
+    if (studentReportMatch) {
+      return jsonResponse(studentLearningReport(decodeURIComponent(studentReportMatch[1])));
+    }
+
+    if (path === "/api/admin/assessment-report-prompts") {
+      if (method === "PUT") {
         return jsonResponse({
-          id: "student-3",
-          class_id: "class-1",
-          student_id: "2026003",
-          student_name: "王五",
-          status: "pending",
-          activation_mode: "default_password",
-          activated: false,
+          settings: JSON.parse(String(init?.body || "{}")),
+          inherited_settings: null,
+          source: "global",
+          has_override: true,
+          supported_variables: ["student_name", "score", "wrong_questions", "chapter_title"],
+          can_edit: true,
         });
       }
-      return jsonResponse([
-        {
-          id: "student-1",
-          class_id: "class-1",
-          student_id: "2026001",
-          student_name: "张三",
-          status: "active",
-          activation_mode: "default_password",
-          activated: true,
-        },
-        {
-          id: "student-2",
-          class_id: "class-1",
-          student_id: "2026002",
-          student_name: "李四",
-          status: "pending",
-          activation_mode: "default_password",
-          activated: false,
-        },
-      ]);
-    }
-    if (path === "/api/admin/legacy/teacher-demo/classes") {
-      return jsonResponse({
-        classes: [
-          {
-            id: "class-1",
-            class_name: "无机化学一班",
-            description: "2026 春季演示班",
-            status: "active",
-            student_count: 38,
-            active_students: 30,
-            completion_rate: 78.5,
-            average_score: 83.2,
-            missing_students: 8,
-          },
-        ],
-      });
-    }
-    if (path === "/api/admin/legacy/teacher-demo/classes/class-1/analytics") {
-      return jsonResponse({
-        class_id: "class-1",
-        metrics: {
-          class_size: 38,
-          active_students: 30,
-          completion_rate: 78.5,
-          average_score: 83.2,
-          missing_students: 8,
-        },
-        experiment_groups: [{ id: "group-1", title: "卤素实验", experiment_count: 9 }],
-        students: [
-          {
-            student_id: "2026001",
-            student_name: "李同学",
-            average_score: 82,
-            evidence_count: 3,
-            attempt_count: 2,
-            status: "已有记录",
-          },
-        ],
-      });
-    }
-    if (path === "/api/admin/legacy/teacher-demo/classes/class-1/weak-points") {
-      return jsonResponse({
-        total: 1,
-        point_total: 1,
-        items: [],
-        point_items: [
-          {
-            point_node_id: "point-1",
-            point_key: "point-1",
-            point_title: "氯水漂白性实验",
-            experiment_id: "exp-1",
-            experiment_title: "氯水漂白性实验",
-            attempt_count: 10,
-            incorrect_count: 6,
-            incorrect_rate: 60,
-            representative_questions: [{ question_id: "q1", stem: "如何判断氯水具有氧化性？" }],
-          },
-        ],
-      });
-    }
-    if (path === "/api/admin/legacy/teacher-demo/evaluation-system") {
-      return jsonResponse({
-        evaluated_objects: ["实验点位掌握度", "章节实验覆盖"],
-        evidence_sources: ["实验视频学习记录", "智能测评作答结果"],
-        update_mechanism: "以实验点位为最小知识单元，学生每次测评都会更新对应点位的掌握度。",
-        score_bands: [
-          { label: "优秀", min_score: 85, max_score: 100, description: "能够稳定解释实验现象。" },
-          { label: "需巩固", min_score: 0, max_score: 69.99, description: "建议优先复习错题对应的实验点位。" },
-        ],
-        outputs: ["学生学习报告", "班级学情概览", "薄弱点位排行"],
-      });
-    }
-    return jsonResponse({}, 404);
-  });
-}
 
-function assertNoForbiddenVisibleTerms(container: HTMLElement) {
-  const text = container.textContent || "";
-  for (const term of forbiddenVisibleTerms) {
-    expect(text).not.toContain(term);
-  }
-}
+      if (method === "DELETE") {
+        return jsonResponse({
+          settings: {
+            summary_prompt: "默认总结 {{student_name}} 的学习表现。",
+            mistake_prompt: "默认讲解 {{wrong_questions}}。",
+          },
+          inherited_settings: null,
+          source: "global",
+          has_override: false,
+          supported_variables: ["student_name", "score", "wrong_questions", "chapter_title"],
+          can_edit: true,
+        });
+      }
 
-function assertNoUnexpectedBusinessMutations(fetchMock: ReturnType<typeof installTeacherFetchMock>, options: { allowClassManagement?: boolean } = {}) {
-  const mutationCalls = fetchMock.mock.calls.filter((call) => {
-    const path = new URL(String(call[0]), "http://teacher-old.test").pathname;
-    const method = String(call[1]?.method || "GET").toUpperCase();
-    const isAllowedLegacyRecommendationWrite =
-      method === "PUT" && path.startsWith("/api/admin/legacy/video-points/") && path.endsWith("/recommendation");
-    const isAllowedClassManagement =
-      options.allowClassManagement &&
-      method === "POST" &&
-      (path === "/api/admin/classes" || /^\/api\/admin\/classes\/[^/]+\/students$/.test(path));
-    return (
-      path.startsWith("/api/admin/") &&
-      ["POST", "PUT", "PATCH", "DELETE"].includes(method) &&
-      !isAllowedLegacyRecommendationWrite &&
-      !isAllowedClassManagement
-    );
+      return jsonResponse({
+        settings: {
+          summary_prompt: "请面向教师总结 {{student_name}} 在 {{chapter_title}} 的学习表现。",
+          mistake_prompt: "请解释 {{student_name}} 的错题原因：{{wrong_questions}}。",
+        },
+        inherited_settings: null,
+        source: "global",
+        has_override: false,
+        supported_variables: ["student_name", "score", "wrong_questions", "chapter_title"],
+        can_edit: true,
+      });
+    }
+
+    if (path === "/api/admin/classes/class-1/students/2026001/assessment-reports") {
+      return jsonResponse({ reports: [assessmentReportSummary] });
+    }
+
+    if (path === "/api/admin/classes/class-1/students/2026001/assessment-reports/report-ch13-1") {
+      return jsonResponse(assessmentReportDetail);
+    }
+
+    if (path === "/api/admin/classes/class-1/students/2026002/assessment-reports") {
+      return jsonResponse({ reports: [] });
+    }
+
+    return jsonResponse({ detail: `Unhandled test request: ${method} ${path}` }, 404);
   });
-  expect(mutationCalls).toEqual([]);
 }
 
 describe("LegacyTeacherApp", () => {
   beforeEach(() => {
     window.history.pushState({}, "", "/");
-    window.localStorage.clear();
+    globalThis.localStorage?.clear();
     setAuthToken("teacher-token");
   });
 
@@ -345,128 +536,126 @@ describe("LegacyTeacherApp", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders only read-only demo navigation and BKT overview", async () => {
+  it("renders the focused teacher navigation and catalog-backed CH13 point editor", async () => {
     const fetchMock = installTeacherFetchMock();
     vi.stubGlobal("fetch", fetchMock);
-    const { container } = render(<LegacyTeacherApp />);
 
-    expect(await screen.findByRole("heading", { name: "教学工作台" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "视频资源" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "题库资源" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "班级" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "学情分析" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "评价体系" })).toBeTruthy();
-    expect(await screen.findByText("BKT 教学反馈闭环")).toBeTruthy();
-    expect(screen.getByText("实验视频学习")).toBeTruthy();
-    assertNoUnexpectedBusinessMutations(fetchMock);
-    assertNoForbiddenVisibleTerms(container);
+    render(<LegacyTeacherApp />);
+
+    expect(await screen.findByRole("heading", { name: "实验目录与点位资料" })).toBeTruthy();
+
+    const nav = screen.getByRole("navigation", { name: "教师导航" });
+    const navLabels = within(nav)
+      .getAllByRole("button")
+      .map((button) => String(button.textContent).trim());
+    expect(navLabels).toEqual(["实验与点位", "LLM 出题", "学情分析", "评价报告"]);
+    expect(within(nav).queryByRole("button", { name: "视频资源" })).toBeNull();
+    expect(within(nav).queryByRole("button", { name: "题库资源" })).toBeNull();
+    expect(within(nav).queryByRole("button", { name: "班级" })).toBeNull();
+    expect(within(nav).queryByRole("button", { name: "评价体系" })).toBeNull();
+
+    expect(await screen.findByText("CH13 卤族元素")).toBeTruthy();
+    expect((await screen.findAllByText("氯的氧化性")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("溴碘置换")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("氯水漂白性实验")).length).toBeGreaterThan(0);
+    expect(await screen.findByText("碘离子检验")).toBeTruthy();
+    expect(await screen.findByDisplayValue("新制氯水中的 HClO 具有强氧化性。")).toBeTruthy();
+
+    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/admin/question-banks/catalog?chapter_id=CH13"));
+    expectNoForbiddenGenerationFlows(fetchMock);
   });
 
-  it("shows video resources and lets teachers maintain legacy recommendation labels", async () => {
+  it("generates and reviews point-sourced drafts through legacy-point-generate only", async () => {
     const fetchMock = installTeacherFetchMock();
     vi.stubGlobal("fetch", fetchMock);
-    const { container } = render(<LegacyTeacherApp />);
+    window.history.pushState({}, "", "/questions");
 
-    fireEvent.click(await screen.findByRole("button", { name: "视频资源" }));
-    expect(await screen.findByRole("heading", { name: "视频资源" })).toBeTruthy();
-    expect(await screen.findByText("氯水漂白性实验")).toBeTruthy();
-    expect(screen.getAllByText("已绑定视频").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("推荐学习").length).toBeGreaterThan(0);
-    expect(screen.getByText("题目 4")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "取消推荐" }));
-    expect(await screen.findByText("已取消推荐学习：氯水漂白性实验")).toBeTruthy();
-    expect(
-      fetchMock.mock.calls.some((call) => {
-        const path = new URL(String(call[0]), "http://teacher-old.test").pathname;
-        return path === "/api/admin/legacy/video-points/point-1/recommendation" && call[1]?.method === "PUT";
-      }),
-    ).toBe(true);
-    fireEvent.change(screen.getByPlaceholderText("输入实验、试剂、现象或点位名称"), { target: { value: "氯水" } });
-    fireEvent.click(screen.getByRole("button", { name: "搜索" }));
-    await waitFor(() => expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("q=%E6%B0%AF%E6%B0%B4"))).toBe(true));
-    assertNoUnexpectedBusinessMutations(fetchMock);
-    assertNoForbiddenVisibleTerms(container);
-  });
+    render(<LegacyTeacherApp />);
 
-  it("shows question resources and generates review drafts through the old teacher workbench", async () => {
-    const fetchMock = installTeacherFetchMock();
-    vi.stubGlobal("fetch", fetchMock);
-    const { container } = render(<LegacyTeacherApp />);
+    expect(await screen.findByRole("heading", { name: "LLM 出题" })).toBeTruthy();
+    expect(await screen.findByText("新制氯水中的 HClO 具有强氧化性。")).toBeTruthy();
+    expect(await screen.findByText("氯水使湿润有色布条褪色，最关键的微粒是什么？")).toBeTruthy();
+    expect(await screen.findByText("为什么干燥有色布条放入氯气中不明显褪色？")).toBeTruthy();
 
-    fireEvent.click(await screen.findByRole("button", { name: "题库资源" }));
-    expect(await screen.findByRole("heading", { name: "题库资源" })).toBeTruthy();
-    expect(await screen.findByText("题库建设流程")).toBeTruthy();
-    expect(await screen.findByText("演示数据已载入")).toBeTruthy();
-    expect(await screen.findByText("教材依据就绪 · 题目 5")).toBeTruthy();
-    expect(screen.getAllByText("氯水漂白性实验").length).toBeGreaterThan(0);
-    expect((await screen.findAllByText("待审题目")).length).toBeGreaterThan(0);
-    expect(await screen.findByText("暂无待审题目。输入提示词后会在这里显示教师审核卡片。")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "生成待审题" }));
-    expect(await screen.findByText("已生成 1 条待审题目，请教师复核后入库。")).toBeTruthy();
-    expect(await screen.findByText("围绕“氯水漂白性实验”进行实验现象观察时，下列哪项最适合作为课堂测评的判断依据？")).toBeTruthy();
+
+    expect(await screen.findByText("已生成 1 条待审题，来源为点位三段式资料。")).toBeTruthy();
+
+    const generationCall = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/admin/question-banks/legacy-point-generate");
+    expect(generationCall).toBeTruthy();
+    expect(generationCall?.[1]?.method).toBe("POST");
+    expect(JSON.parse(String(generationCall?.[1]?.body))).toMatchObject({
+      experiment_id: "exp-ch13-bleach",
+      chapter_ids: ["CH13"],
+      target_point_node_ids: ["point-ch13-bleach"],
+      question_types: ["single_choice"],
+      count: 1,
+    });
+
     fireEvent.click(screen.getByRole("button", { name: "通过入库" }));
     expect(await screen.findByText("教师审核通过，题目已入库。")).toBeTruthy();
-    expect(
-      fetchMock.mock.calls.every((call) => {
-        const url = new URL(String(call[0]), "http://teacher-old.test");
-        return !url.pathname.startsWith("/api/admin/question-banks/");
-      }),
-    ).toBe(true);
-    expect(await screen.findByText("点位题库覆盖")).toBeTruthy();
-    expect(screen.getByText("选择 2")).toBeTruthy();
-    assertNoUnexpectedBusinessMutations(fetchMock);
-    assertNoForbiddenVisibleTerms(container);
+
+    const paths = requestPaths(fetchMock);
+    expect(paths).toContain("/api/admin/question-banks/drafts?point_node_id=point-ch13-bleach&canonical_point_id=canon-bleach");
+    expect(paths).toContain("/api/admin/question-banks/questions?limit=200&point_node_id=point-ch13-bleach&canonical_point_id=canon-bleach");
+    expect(paths).toContain("/api/admin/question-banks/drafts/draft-ch13-1/publish");
+    expectNoForbiddenGenerationFlows(fetchMock);
   });
 
-  it("shows class list and analytics weak point ranking", async () => {
+  it("loads learning analytics from the new dashboard and student report endpoints", async () => {
     const fetchMock = installTeacherFetchMock();
     vi.stubGlobal("fetch", fetchMock);
-    const { container } = render(<LegacyTeacherApp />);
+    window.history.pushState({}, "", "/analytics");
 
-    fireEvent.click(await screen.findByRole("button", { name: "班级" }));
-    expect(await screen.findByRole("heading", { name: "班级" })).toBeTruthy();
-    expect(await screen.findByText("无机化学一班")).toBeTruthy();
+    render(<LegacyTeacherApp />);
+
+    expect(await screen.findByRole("heading", { name: "学情分析" })).toBeTruthy();
     expect(await screen.findByText("张三")).toBeTruthy();
     expect(screen.getByText("李四")).toBeTruthy();
-    expect(screen.getAllByText("待首次登录").length).toBeGreaterThan(0);
-    fireEvent.change(screen.getByPlaceholderText("例如：2026001"), { target: { value: "2026003" } });
-    fireEvent.change(screen.getByPlaceholderText("学生姓名"), { target: { value: "王五" } });
-    fireEvent.click(screen.getByRole("button", { name: "创建学生" }));
-    expect(await screen.findByText("已创建学生：王五（2026003），初始密码以当前班级设置为准。")).toBeTruthy();
-    expect(
-      fetchMock.mock.calls.some((call) => {
-        const url = new URL(String(call[0]), "http://teacher-old.test");
-        return url.pathname === "/api/admin/classes/class-1/students" && call[1]?.method === "POST" && String(call[1]?.body || "").includes("\"student_name\":\"王五\"");
-      }),
-    ).toBe(true);
+    expect(screen.getByText("CH13 卤素实验")).toBeTruthy();
+    expect(await screen.findByText("张三已经掌握 CH13 氯水漂白的核心证据。")).toBeTruthy();
+    expect(screen.getByText("碘离子检验 · 错误率 40%")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "学情分析" }));
-    expect(await screen.findByRole("heading", { name: "学情分析" })).toBeTruthy();
-    expect(await screen.findByText("李同学")).toBeTruthy();
-    expect((await screen.findAllByText("氯水漂白性实验")).length).toBeGreaterThan(0);
-    expect(screen.getByText("薄弱点位排行")).toBeTruthy();
-    assertNoUnexpectedBusinessMutations(fetchMock, { allowClassManagement: true });
-    assertNoForbiddenVisibleTerms(container);
+    fireEvent.click(screen.getByRole("button", { name: /李四/ }));
+    expect(await screen.findByText("李四已经掌握 CH13 氯水漂白的核心证据。")).toBeTruthy();
+
+    const paths = requestPaths(fetchMock);
+    expect(paths).toContain("/api/admin/classes");
+    expect(paths).toContain("/api/admin/analytics/classes/class-1/dashboard");
+    expect(paths).toContain("/api/admin/analytics/classes/class-1/students/2026001");
+    expect(paths).toContain("/api/admin/analytics/classes/class-1/students/2026002");
+    expectNoForbiddenGenerationFlows(fetchMock);
   });
 
-  it("shows evaluation system score bands and redirects stale mutation routes", async () => {
+  it("loads report prompts and student assessment reports from the report APIs", async () => {
     const fetchMock = installTeacherFetchMock();
     vi.stubGlobal("fetch", fetchMock);
-    window.history.pushState({}, "", "/question-bank/workbench");
-    const { container } = render(<LegacyTeacherApp />);
+    window.history.pushState({}, "", "/reports");
 
-    expect(await screen.findByRole("heading", { name: "教学工作台" })).toBeTruthy();
-    await waitFor(() => expect(window.location.pathname).toBe("/"));
+    render(<LegacyTeacherApp />);
 
-    fireEvent.click(screen.getByRole("button", { name: "评价体系" }));
-    expect(await screen.findByRole("heading", { name: "评价体系" })).toBeTruthy();
-    expect(await screen.findByText("评价对象")).toBeTruthy();
-    expect(screen.getByText("优秀")).toBeTruthy();
-    expect(screen.getByText("教学输出")).toBeTruthy();
-    expect(screen.getByText("测评报告 Prompt")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "保存报告 Prompt" }));
-    expect(await screen.findByText("报告 Prompt 已保存，本次演示将按新的总结和错题讲解口径生成报告。")).toBeTruthy();
-    assertNoUnexpectedBusinessMutations(fetchMock);
-    assertNoForbiddenVisibleTerms(container);
+    expect(await screen.findByRole("heading", { name: "评价报告" })).toBeTruthy();
+    expect(await screen.findByText("报告生成 Prompt")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "student_name" })).toBeTruthy();
+    expect(await screen.findByText("张三")).toBeTruthy();
+    expect(screen.getByText("李四")).toBeTruthy();
+    expect(await screen.findByText("CH13 后测评价报告")).toBeTruthy();
+    expect(await screen.findByText("张三已经能解释氯水漂白现象，并能把 HClO 与氧化性联系起来。")).toBeTruthy();
+    expect(screen.getByText("错题集中在溴碘置换顺序，需要回看 KBr 与 CCl4 的分层颜色。")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "保存 Prompt" }));
+    expect(await screen.findByText("报告生成 Prompt 已保存。")).toBeTruthy();
+
+    const paths = requestPaths(fetchMock);
+    expect(paths).toContain("/api/admin/assessment-report-prompts");
+    expect(paths).toContain("/api/admin/classes/class-1/students");
+    expect(paths).toContain("/api/admin/classes/class-1/students/2026001/assessment-reports");
+    expect(paths).toContain("/api/admin/classes/class-1/students/2026001/assessment-reports/report-ch13-1");
+    expect(
+      fetchMock.mock.calls.some(
+        (call) => requestUrl(call[0]).pathname === "/api/admin/assessment-report-prompts" && String(call[1]?.method || "GET").toUpperCase() === "PUT",
+      ),
+    ).toBe(true);
+    expectNoForbiddenGenerationFlows(fetchMock);
   });
 });
