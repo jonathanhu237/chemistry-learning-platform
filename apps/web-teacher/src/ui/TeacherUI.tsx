@@ -15,6 +15,7 @@ import {
   Switch,
   theme,
   Tooltip,
+  Upload,
   type AlertProps,
   type ButtonProps,
   type CardProps,
@@ -22,6 +23,7 @@ import {
   type SelectProps,
   type SwitchProps,
   type TooltipProps,
+  type UploadProps,
 } from "antd";
 import type { FormProps, InputProps } from "antd";
 
@@ -91,7 +93,7 @@ export function TeacherShell({ children, testId }: { children: ReactNode; testId
 }
 
 export function TeacherSidebar({ children }: { children: ReactNode }) {
-  return <Layout.Sider className="legacy-sidebar teacher-ui-sidebar" width={252}>{children}</Layout.Sider>;
+  return <Layout.Sider className="legacy-sidebar teacher-ui-sidebar" width={232}>{children}</Layout.Sider>;
 }
 
 export function TeacherMain({ children }: { children: ReactNode }) {
@@ -188,3 +190,7 @@ export const TeacherSwitch = Switch;
 export type TeacherSwitchProps = SwitchProps;
 export const TeacherTooltip = Tooltip;
 export type TeacherTooltipProps = TooltipProps;
+export function TeacherUpload({ className, ...props }: UploadProps) {
+  return <Upload className={cx("teacher-ui-upload", className)} {...props} />;
+}
+export type TeacherUploadProps = UploadProps;

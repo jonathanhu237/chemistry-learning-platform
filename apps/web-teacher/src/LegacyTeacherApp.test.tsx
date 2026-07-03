@@ -188,6 +188,34 @@ function catalogResponse() {
 function catalogDetail(nodeId: string) {
   const node = catalogNodes.find((item) => item.node_id === nodeId) || catalogNodes[1];
   const isPoint = node.node_kind === "point";
+  const mediaBindings =
+    node.node_id === "point-ch13-bleach"
+      ? [
+          {
+            binding_id: "binding-ch13-bleach",
+            node_id: node.node_id,
+            media_id: "media-ch13-bleach",
+            title: "氯水漂白性实验视频",
+            binding_status: "published",
+            display_order: 1,
+            published_at: "2026-07-02T10:00:00Z",
+            metadata: {},
+            original_file_name: "bleach-demo.mp4",
+            mime_type: "video/mp4",
+            playback_mime_type: "video/mp4",
+            source_file_size_bytes: 2_048_000,
+            playback_file_size_bytes: 1_024_000,
+            playback_duration_seconds: 96,
+            upload_status: "ready",
+            processing_phase: "completed",
+            processing_progress: 100,
+            error_reason: null,
+            has_thumbnail: true,
+            created_at: "2026-07-02T09:50:00Z",
+            updated_at: "2026-07-02T10:00:00Z",
+          },
+        ]
+      : [];
 
   return {
     node: {
@@ -213,8 +241,9 @@ function catalogDetail(nodeId: string) {
           phenomenon_explanation: node.phenomenon_explanation,
           safety_note: node.safety_note,
           content_status: node.content_status,
-        }
+      }
       : null,
+    media_bindings: mediaBindings,
     validation: { ok: true, errors: [], warnings: [] },
   };
 }
@@ -314,7 +343,10 @@ function analyticsDashboard() {
       missing_students: 0,
     },
     experiments: [],
-    experiment_groups: [{ id: "group-halogen", code: "CH13", title: "CH13 卤素实验", experiment_count: 2 }],
+    experiment_groups: [
+      { id: "group-halogen", code: "CH13", title: "CH13 卤素实验", experiment_count: 2 },
+      { id: "group-oxygen", code: "CH14", title: "CH14 氧族元素", experiment_count: 1 },
+    ],
     matrix: [
       {
         student_id: "2026001",
@@ -323,7 +355,27 @@ function analyticsDashboard() {
         average_score: 88,
         experiments: {},
         experiment_groups: {
-          "group-halogen": { status: "completed", mastery_score: 0.86, score: 88, evidence_count: 4, attempt_count: 2 },
+          "group-halogen": {
+            status: "completed",
+            mastery_score: 88,
+            score: 88,
+            evidence_count: 4,
+            attempt_count: 2,
+            points: [
+              { point_node_id: "point-ch13-bleach", point_title: "氯水漂白性实验", experiment_id: "exp-ch13-bleach", experiment_title: "氯水氧化性", mastery_score: 92, score: 92, evidence_count: 2 },
+              { point_node_id: "point-ch13-kbr", point_title: "氯水 + KBr + CCl4", experiment_id: "exp-ch13-kbr", experiment_title: "溴碘置换", mastery_score: 84, score: 84, evidence_count: 2 },
+            ],
+          },
+          "group-oxygen": {
+            status: "completed",
+            mastery_score: 82,
+            score: 82,
+            evidence_count: 2,
+            attempt_count: 1,
+            points: [
+              { point_node_id: "point-ch14-h2o2", point_title: "过氧化氢分解", experiment_id: "exp-ch14-h2o2", experiment_title: "氧族元素", mastery_score: 82, score: 82, evidence_count: 2 },
+            ],
+          },
         },
       },
       {
@@ -333,7 +385,27 @@ function analyticsDashboard() {
         average_score: 76,
         experiments: {},
         experiment_groups: {
-          "group-halogen": { status: "learning", mastery_score: 0.7, score: 76, evidence_count: 3, attempt_count: 2 },
+          "group-halogen": {
+            status: "learning",
+            mastery_score: 70,
+            score: 70,
+            evidence_count: 3,
+            attempt_count: 2,
+            points: [
+              { point_node_id: "point-ch13-bleach", point_title: "氯水漂白性实验", experiment_id: "exp-ch13-bleach", experiment_title: "氯水氧化性", mastery_score: 78, score: 78, evidence_count: 2 },
+              { point_node_id: "point-ch13-iodide", point_title: "碘离子检验", experiment_id: "exp-ch13-iodide", experiment_title: "溴碘置换", mastery_score: 62, score: 62, evidence_count: 1 },
+            ],
+          },
+          "group-oxygen": {
+            status: "needs_attention",
+            mastery_score: 58,
+            score: 58,
+            evidence_count: 1,
+            attempt_count: 1,
+            points: [
+              { point_node_id: "point-ch14-h2o2", point_title: "过氧化氢分解", experiment_id: "exp-ch14-h2o2", experiment_title: "氧族元素", mastery_score: 58, score: 58, evidence_count: 1 },
+            ],
+          },
         },
       },
     ],
@@ -415,12 +487,116 @@ function installTeacherFetchMock() {
       });
     }
 
+    if (path === "/api/auth/password" && method === "POST") {
+      return jsonResponse({ ok: true });
+    }
+
+    if (path === "/api/teacher/ai-configuration") {
+      if (method === "PUT") {
+        const body = JSON.parse(String(init?.body || "{}"));
+        return jsonResponse({
+          ...body,
+          api_key_configured: Boolean(body.api_key),
+          api_key_fingerprint: body.api_key ? "sk-...test" : null,
+          can_edit: true,
+          status: {
+            ready: Boolean(body.model && body.api_key),
+            message: body.api_key ? `模型 ${body.model} 可访问。` : "请先保存模型名称和 API Key。",
+            effective_mode: body.api_key ? "ai" : "fallback",
+            connectivity_status: body.api_key ? "connected" : "not_configured",
+            recent_request_count: 0,
+            recent_error_count: 0,
+            last_checked_at: "2026-07-03T08:00:00Z",
+          },
+          chat_provider: {
+            role: "chat_completion",
+            provider: "openai",
+            base_url: body.base_url,
+            model: body.model,
+            api_key_configured: Boolean(body.api_key),
+            api_key_fingerprint: body.api_key ? "sk-...test" : null,
+          },
+        });
+      }
+
+      return jsonResponse({
+        provider: "openai",
+        base_url: "https://api.deepseek.com",
+        model: "deepseek-v4-flash",
+        connection_check_interval_minutes: 30,
+        api_key_configured: false,
+        api_key_fingerprint: null,
+        can_edit: true,
+        enabled_features: {
+          rag_access_enabled: true,
+          student_ai_assistant: true,
+          student_learning_analytics: true,
+          question_bank_assistant: true,
+          teacher_learning_analytics: true,
+        },
+        status: {
+          ready: false,
+          message: "请先保存模型名称和 API Key。",
+          effective_mode: "fallback",
+          connectivity_status: "not_configured",
+          recent_request_count: 0,
+          recent_error_count: 0,
+          last_checked_at: null,
+        },
+        chat_provider: {
+          role: "chat_completion",
+          provider: "openai",
+          base_url: "https://api.deepseek.com",
+          model: "deepseek-v4-flash",
+          api_key_configured: false,
+          api_key_fingerprint: null,
+        },
+      });
+    }
+
     if (path === "/api/teacher/question-banks/catalog") {
       return jsonResponse(catalogResponse());
     }
 
+    if (path === "/api/teacher/media/upload-policy") {
+      return jsonResponse({
+        max_media_upload_mb: 200,
+        max_media_upload_bytes: 209_715_200,
+        allowed_extensions: [".avi", ".m4v", ".mkv", ".mov", ".mp4", ".webm"],
+      });
+    }
+
+    if (path === "/api/teacher/media/assets" && method === "POST") {
+      return jsonResponse({
+        id: "media-uploaded-iodide",
+        title: "碘离子检验演示",
+        original_file_name: "iodide-demo.mp4",
+        mime_type: "video/mp4",
+        file_size_bytes: 12,
+        upload_status: "processing",
+        processing_phase: "queued",
+        processing_progress: 0,
+        error_reason: null,
+        created_at: "2026-07-02T11:00:00Z",
+        updated_at: "2026-07-02T11:00:00Z",
+      });
+    }
+
     if (path === "/api/teacher/catalog/nodes" && method === "POST") {
       return jsonResponse(catalogDetail("point-ch13-iodide"));
+    }
+
+    const catalogMediaBindingMatch = path.match(/^\/api\/teacher\/catalog\/nodes\/([^/]+)\/media-bindings$/);
+    if (catalogMediaBindingMatch && method === "POST") {
+      return jsonResponse({
+        binding_id: "binding-uploaded-iodide",
+        detail: catalogDetail(decodeURIComponent(catalogMediaBindingMatch[1])),
+      });
+    }
+
+    const catalogMediaBindingActionMatch = path.match(/^\/api\/teacher\/catalog\/media-bindings\/([^/]+)\/([^/]+)$/);
+    if (catalogMediaBindingActionMatch && method === "POST") {
+      return jsonResponse(catalogDetail("point-ch13-bleach"));
     }
 
     const catalogNodeStatusMatch = path.match(/^\/api\/teacher\/catalog\/nodes\/([^/]+)\/status$/);
@@ -460,8 +636,30 @@ function installTeacherFetchMock() {
       return jsonResponse({ ...draftQuestion, status: "rejected" });
     }
 
+    if (path === "/api/teacher/classes" && method === "POST") {
+      return jsonResponse({
+        id: "class-new",
+        class_name: "无机化学二班",
+        description: "新增测试班级",
+        status: "active",
+        student_count: 0,
+      });
+    }
+
     if (path === "/api/teacher/classes") {
       return jsonResponse(classes);
+    }
+
+    if (path === "/api/teacher/classes/class-1/students" && method === "POST") {
+      return jsonResponse({
+        id: "class-student-new",
+        class_id: "class-1",
+        student_id: "2026003",
+        student_name: "王五",
+        status: "pending",
+        activation_mode: "default_password",
+        activated: false,
+      });
     }
 
     if (path === "/api/teacher/classes/class-1/students") {
@@ -558,17 +756,17 @@ describe("LegacyTeacherApp", () => {
     const userMenuButton = screen.getByRole("button", { name: /王老师/ });
     fireEvent.click(userMenuButton);
     const userMenu = await screen.findByRole("menu");
-    expect(within(userMenu).getAllByRole("menuitem").map((item) => item.textContent?.trim())).toEqual(["登出"]);
+    expect(within(userMenu).getAllByRole("menuitem").map((item) => item.textContent?.trim())).toEqual(["个人设置", "AI 配置", "登出"]);
     expect(screen.queryByRole("button", { name: "退出登录" })).toBeNull();
 
     const nav = screen.getByRole("navigation", { name: "后台导航" });
     const navLabels = within(nav)
       .getAllByRole("button")
       .map((button) => String(button.textContent).trim());
-    expect(navLabels).toEqual(["实验管理", "LLM 出题", "学情分析", "评价报告"]);
+    expect(navLabels).toEqual(["实验管理", "班级管理", "AI 出题", "学情分析", "评价报告"]);
     expect(within(nav).queryByRole("button", { name: "视频资源" })).toBeNull();
     expect(within(nav).queryByRole("button", { name: "题库资源" })).toBeNull();
-    expect(within(nav).queryByRole("button", { name: "班级" })).toBeNull();
+    expect(within(nav).getByRole("button", { name: "班级管理" })).toBeTruthy();
     expect(within(nav).queryByRole("button", { name: "评价体系" })).toBeNull();
 
     expect(await screen.findByRole("heading", { name: "章节目录与点位" })).toBeTruthy();
@@ -590,6 +788,11 @@ describe("LegacyTeacherApp", () => {
     expect(screen.queryByRole("button", { name: "取消发布" })).toBeNull();
     expect(screen.queryByText("点位资料")).toBeNull();
     expect(screen.queryByText("目录信息")).toBeNull();
+    expect(await screen.findByRole("region", { name: "点位视频" })).toBeTruthy();
+    expect(screen.getByText("氯水漂白性实验视频")).toBeTruthy();
+    expect(screen.getByText("bleach-demo.mp4")).toBeTruthy();
+    expect(screen.getByText("1000 KB")).toBeTruthy();
+    expect(screen.getByText("1:36")).toBeTruthy();
     expect(screen.getByRole("button", { name: "学生端展示说明" })).toBeTruthy();
     expect(screen.getByText("关闭后，该节点及下级不会展示给学生。")).toBeTruthy();
     const visibilitySwitch = screen.getByRole("switch", { name: "学生端可见" });
@@ -605,16 +808,24 @@ describe("LegacyTeacherApp", () => {
       .find((item) => item.getAttribute("aria-expanded") === null && item.textContent?.includes("碘离子检验"));
     expect(pointItem).toBeTruthy();
     fireEvent.contextMenu(pointItem!);
-    expect(screen.queryByRole("menu")).toBeNull();
+    const pointMenu = await screen.findByRole("menu");
+    expect(within(pointMenu).getByRole("menuitem", { name: "删除点位" })).toBeTruthy();
+    expect(within(pointMenu).queryByRole("menuitem", { name: "新增目录" })).toBeNull();
+    fireEvent.click(within(pointMenu).getByRole("menuitem", { name: "删除点位" }));
+    const pointDeleteDialog = await screen.findByRole("dialog", { name: "删除点位" });
+    expect(within(pointDeleteDialog).getByText("碘离子检验")).toBeTruthy();
+    fireEvent.click(within(pointDeleteDialog).getByRole("button", { name: "取消" }));
 
     const displacementItem = within(tree)
       .getAllByRole("treeitem")
       .find((item) => item.getAttribute("aria-expanded") === "true" && item.textContent?.includes("溴碘置换"));
     expect(displacementItem).toBeTruthy();
     fireEvent.contextMenu(displacementItem!);
-    expect(await screen.findByRole("menu")).toBeTruthy();
-    expect(screen.getByRole("menuitem", { name: "新增目录" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("menuitem", { name: "新增点位" }));
+    const directoryMenu = await screen.findByRole("menu");
+    expect(within(directoryMenu).getByRole("menuitem", { name: "新增目录" })).toBeTruthy();
+    expect(within(directoryMenu).getByRole("menuitem", { name: "新增点位" })).toBeTruthy();
+    expect(within(directoryMenu).getByRole("menuitem", { name: "删除目录" })).toBeTruthy();
+    fireEvent.click(within(directoryMenu).getByRole("menuitem", { name: "新增点位" }));
     const dialog = await screen.findByRole("dialog", { name: "新增点位" });
     expect(within(dialog).getByText("位置：溴碘置换")).toBeTruthy();
     fireEvent.change(within(dialog).getByLabelText("名称"), { target: { value: "KI 淀粉验证" } });
@@ -635,6 +846,158 @@ describe("LegacyTeacherApp", () => {
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 
+  it("lets a teacher change their own password from personal settings", async () => {
+    const fetchMock = installTeacherFetchMock();
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<LegacyTeacherApp />);
+
+    await screen.findByRole("navigation", { name: "当前位置" });
+    fireEvent.click(screen.getByRole("button", { name: /王老师/ }));
+    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "个人设置" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "个人设置" });
+    expect(within(dialog).getByText("teacher")).toBeTruthy();
+    expect(within(dialog).getByText("教师")).toBeTruthy();
+
+    fireEvent.change(within(dialog).getByLabelText("当前密码"), { target: { value: "old-password" } });
+    fireEvent.change(within(dialog).getByLabelText("新密码"), { target: { value: "new-password-123" } });
+    fireEvent.change(within(dialog).getByLabelText("确认新密码"), { target: { value: "new-password-123" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "保存密码" }));
+
+    expect(await within(dialog).findByText("个人密码已更新。")).toBeTruthy();
+    const passwordRequest = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/auth/password");
+    expect(passwordRequest).toBeTruthy();
+    expect(passwordRequest?.[1]?.method).toBe("POST");
+    expect(JSON.parse(String(passwordRequest?.[1]?.body))).toEqual({
+      current_password: "old-password",
+      new_password: "new-password-123",
+    });
+  });
+
+  it("configures the DeepSeek model used by AI generation features", async () => {
+    const fetchMock = installTeacherFetchMock();
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<LegacyTeacherApp />);
+
+    await screen.findByRole("navigation", { name: "当前位置" });
+    fireEvent.click(screen.getByRole("button", { name: /王老师/ }));
+    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "AI 配置" }));
+
+    expect(await screen.findByRole("heading", { name: "AI 模型配置" })).toBeTruthy();
+    expect(await screen.findByDisplayValue("https://api.deepseek.com")).toBeTruthy();
+    expect(screen.getByDisplayValue("deepseek-v4-flash")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("API 密钥"), { target: { value: "sk-test-from-ui" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存配置" }));
+
+    expect(await screen.findByText("AI 模型配置已保存。")).toBeTruthy();
+    const updateCall = fetchMock.mock.calls.find(
+      (call) => requestUrl(call[0]).pathname === "/api/teacher/ai-configuration" && String(call[1]?.method || "GET").toUpperCase() === "PUT",
+    );
+    expect(updateCall).toBeTruthy();
+    expect(JSON.parse(String(updateCall?.[1]?.body))).toMatchObject({
+      provider: "openai",
+      base_url: "https://api.deepseek.com",
+      model: "deepseek-v4-flash",
+      api_key: "sk-test-from-ui",
+      chat_provider: {
+        provider: "openai",
+        base_url: "https://api.deepseek.com",
+        model: "deepseek-v4-flash",
+        api_key: "sk-test-from-ui",
+      },
+      enabled_features: {
+        question_bank_assistant: true,
+        student_learning_analytics: true,
+      },
+    });
+  });
+
+  it("uploads and binds a video from the catalog point editor", async () => {
+    const fetchMock = installTeacherFetchMock();
+    vi.stubGlobal("fetch", fetchMock);
+    window.history.pushState({}, "", "/experiments");
+
+    const { container } = render(<LegacyTeacherApp />);
+
+    const tree = await screen.findByRole("tree", { name: "章节目录与点位" });
+    const iodideItem = await within(tree).findByRole("treeitem", { name: "碘离子检验" });
+    fireEvent.click(iodideItem);
+
+    expect(await screen.findByDisplayValue("I- 被氧化后与淀粉形成蓝色络合物。")).toBeTruthy();
+    const videoRegion = await screen.findByRole("region", { name: "点位视频" });
+    expect(within(videoRegion).getByText("当前点位暂无视频。")).toBeTruthy();
+
+    const titleInput = within(videoRegion).getByDisplayValue("碘离子检验");
+    fireEvent.change(titleInput, { target: { value: "碘离子检验演示" } });
+
+    const fileInput = container.querySelector(".legacy-point-video-panel input[type='file']") as HTMLInputElement | null;
+    expect(fileInput).toBeTruthy();
+    const file = new File(["demo-content"], "iodide-demo.mp4", { type: "video/mp4" });
+    fireEvent.change(fileInput!, { target: { files: [file] } });
+
+    expect(await within(videoRegion).findByText("iodide-demo.mp4")).toBeTruthy();
+    fireEvent.click(within(videoRegion).getByRole("button", { name: "上传并绑定" }));
+
+    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/media/assets"));
+    const uploadCall = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/teacher/media/assets");
+    expect(uploadCall).toBeTruthy();
+    expect(uploadCall?.[1]?.method).toBe("POST");
+    expect(uploadCall?.[1]?.body).toBeInstanceOf(FormData);
+    const formData = uploadCall?.[1]?.body as FormData;
+    expect(formData.get("title")).toBe("碘离子检验演示");
+    expect((formData.get("file") as File).name).toBe("iodide-demo.mp4");
+
+    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/catalog/nodes/point-ch13-iodide/media-bindings"));
+    const bindingCall = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/teacher/catalog/nodes/point-ch13-iodide/media-bindings");
+    expect(bindingCall).toBeTruthy();
+    expect(JSON.parse(String(bindingCall?.[1]?.body))).toEqual({
+      media_asset_id: "media-uploaded-iodide",
+      title: "碘离子检验演示",
+      metadata: { source: "teacher_point_editor" },
+    });
+    expect(await screen.findByText("已上传并绑定点位视频，处理完成后学生端可播放。")).toBeTruthy();
+    expectNoForbiddenGenerationFlows(fetchMock);
+  });
+
+  it("archives points and directories from the catalog tree context menu", async () => {
+    const fetchMock = installTeacherFetchMock();
+    vi.stubGlobal("fetch", fetchMock);
+    window.history.pushState({}, "", "/experiments");
+
+    render(<LegacyTeacherApp />);
+
+    const tree = await screen.findByRole("tree", { name: "章节目录与点位" });
+    const iodideItem = await within(tree).findByRole("treeitem", { name: "碘离子检验" });
+    fireEvent.contextMenu(iodideItem);
+    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "删除点位" }));
+    const pointDialog = await screen.findByRole("dialog", { name: "删除点位" });
+    fireEvent.click(within(pointDialog).getByRole("button", { name: "确认删除" }));
+
+    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/catalog/nodes/point-ch13-iodide/status"));
+    const pointDeleteCall = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/teacher/catalog/nodes/point-ch13-iodide/status");
+    expect(pointDeleteCall).toBeTruthy();
+    expect(JSON.parse(String(pointDeleteCall?.[1]?.body))).toEqual({ action: "archive", include_subtree: true });
+    expect(await screen.findByText("已删除点位。")).toBeTruthy();
+
+    const refreshedTree = await screen.findByRole("tree", { name: "章节目录与点位" });
+    const displacementItem = await within(refreshedTree).findByRole("treeitem", { name: "溴碘置换" });
+    fireEvent.contextMenu(displacementItem);
+    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "删除目录" }));
+    const directoryDialog = await screen.findByRole("dialog", { name: "删除目录" });
+    expect(within(directoryDialog).getByText("删除目录会同时删除它下面的目录和点位。相关视频、题目和历史引用不会被物理清除。")).toBeTruthy();
+    fireEvent.click(within(directoryDialog).getByRole("button", { name: "确认删除" }));
+
+    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/catalog/nodes/dir-ch13-displacement/status"));
+    const directoryDeleteCall = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/teacher/catalog/nodes/dir-ch13-displacement/status");
+    expect(directoryDeleteCall).toBeTruthy();
+    expect(JSON.parse(String(directoryDeleteCall?.[1]?.body))).toEqual({ action: "archive", include_subtree: true });
+    expect(await screen.findByText("已删除目录及其下级内容。")).toBeTruthy();
+    expectNoForbiddenGenerationFlows(fetchMock);
+  });
+
   it("generates and reviews point-sourced drafts through legacy-point-generate only", async () => {
     const fetchMock = installTeacherFetchMock();
     vi.stubGlobal("fetch", fetchMock);
@@ -642,7 +1005,7 @@ describe("LegacyTeacherApp", () => {
 
     render(<LegacyTeacherApp />);
 
-    expect(await screen.findByRole("heading", { name: "LLM 出题" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "命题工作区" })).toBeTruthy();
     expect(await screen.findByText("新制氯水中的 HClO 具有强氧化性。")).toBeTruthy();
     expect(await screen.findByText("氯水使湿润有色布条褪色，最关键的微粒是什么？")).toBeTruthy();
     expect(await screen.findByText("为什么干燥有色布条放入氯气中不明显褪色？")).toBeTruthy();
@@ -672,6 +1035,50 @@ describe("LegacyTeacherApp", () => {
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 
+  it("manages classes and roster students from the restored class page", async () => {
+    const fetchMock = installTeacherFetchMock();
+    vi.stubGlobal("fetch", fetchMock);
+    window.history.pushState({}, "", "/classes");
+
+    render(<LegacyTeacherApp />);
+
+    expect(await screen.findByRole("heading", { name: "班级管理" })).toBeTruthy();
+    expect((await screen.findAllByText("无机化学一班")).length).toBeGreaterThan(0);
+    expect(await screen.findByText("张三")).toBeTruthy();
+    expect(screen.getByText("李四")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("学号"), { target: { value: "2026003" } });
+    fireEvent.change(screen.getByLabelText("姓名"), { target: { value: "王五" } });
+    fireEvent.click(screen.getByRole("button", { name: "添加学生" }));
+
+    expect(await screen.findByText("已添加学生。")).toBeTruthy();
+    const createStudentCall = fetchMock.mock.calls.find(
+      (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/students" && String(call[1]?.method || "GET").toUpperCase() === "POST",
+    );
+    expect(createStudentCall).toBeTruthy();
+    expect(JSON.parse(String(createStudentCall?.[1]?.body))).toEqual({
+      student_id: "2026003",
+      student_name: "王五",
+      status: "pending",
+      activation_mode: "default_password",
+    });
+
+    fireEvent.change(screen.getByLabelText("班级名称"), { target: { value: "无机化学二班" } });
+    fireEvent.change(screen.getByLabelText("备注"), { target: { value: "新增测试班级" } });
+    fireEvent.click(screen.getByRole("button", { name: "新增班级" }));
+
+    expect(await screen.findByText("已创建班级。")).toBeTruthy();
+    const createClassCall = fetchMock.mock.calls.find(
+      (call) => requestUrl(call[0]).pathname === "/api/teacher/classes" && String(call[1]?.method || "GET").toUpperCase() === "POST",
+    );
+    expect(createClassCall).toBeTruthy();
+    expect(JSON.parse(String(createClassCall?.[1]?.body))).toEqual({
+      class_name: "无机化学二班",
+      description: "新增测试班级",
+    });
+    expectNoForbiddenGenerationFlows(fetchMock);
+  });
+
   it("loads learning analytics from the new dashboard and student report endpoints", async () => {
     const fetchMock = installTeacherFetchMock();
     vi.stubGlobal("fetch", fetchMock);
@@ -679,14 +1086,22 @@ describe("LegacyTeacherApp", () => {
 
     render(<LegacyTeacherApp />);
 
-    expect(await screen.findByRole("heading", { name: "学情分析" })).toBeTruthy();
+    expect(await screen.findByTestId("teacher-page-analytics")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "学情分析" })).toBeNull();
+    expect(await screen.findByRole("heading", { name: "各族元素得分" })).toBeTruthy();
     expect(await screen.findByText("张三")).toBeTruthy();
     expect(screen.getByText("李四")).toBeTruthy();
     expect(screen.getByText("CH13 卤素实验")).toBeTruthy();
+    expect(screen.getByText("CH14 氧族元素")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "点位得分明细" })).toBeTruthy();
+    expect(screen.getByText("氯水漂白性实验")).toBeTruthy();
+    expect(screen.getByText("92 分")).toBeTruthy();
     expect(await screen.findByText("张三已经掌握 CH13 氯水漂白的核心证据。")).toBeTruthy();
     expect(screen.getByText("碘离子检验 · 错误率 40%")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: /李四/ }));
+    fireEvent.click(screen.getByRole("button", { name: "李四 CH13 卤素实验 70 分" }));
+    expect(await screen.findByText("62 分")).toBeTruthy();
+    expect(screen.getAllByText("碘离子检验").length).toBeGreaterThan(0);
     expect(await screen.findByText("李四已经掌握 CH13 氯水漂白的核心证据。")).toBeTruthy();
 
     const paths = requestPaths(fetchMock);

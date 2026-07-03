@@ -1,12 +1,19 @@
 import { FormEvent, type CSSProperties, type DependencyList, type MouseEvent as ReactMouseEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import {
+  bindCatalogPointMedia,
   changeCatalogNodeStatus,
+  changeCurrentPassword,
+  changeCatalogPointMediaBinding,
   createCatalogNode,
+  createTeacherClass,
+  createTeacherClassStudent,
   generateLegacyPointQuestions,
+  getAIConfiguration,
   getAnalyticsDashboard,
   getAuthToken,
   getCatalogNode,
+  getTeacherMediaUploadPolicy,
   getGlobalAssessmentReportPrompts,
   getStudentReport,
   getTeacherStudentAssessmentReport,
@@ -24,15 +31,23 @@ import {
   saveCatalogPointContent,
   setAuthToken,
   teacherLogin,
+  updateAIConfiguration,
   updateCatalogNode,
   updateGlobalAssessmentReportPrompts,
+  uploadTeacherMediaAsset,
+  type AIConfigurationResponse,
+  type AIEnabledFeatureScopes,
   type AnalyticsDashboard,
+  type AnalyticsPointScore,
+  type AnalyticsScoreCell,
   type CatalogNodeDetail,
   type CatalogNodeKind,
+  type CatalogPointMediaBinding,
   type CatalogQuestionBankNode,
   type CatalogQuestionBankResponse,
   type Question,
   type QuestionDraft,
+  type TeacherMediaUploadPolicy,
   type StudentAssessmentReportSummary,
   type StudentReport,
   type TeacherClassSummary,
@@ -57,16 +72,15 @@ import {
   TeacherSidebar,
   TeacherSwitch,
   TeacherTooltip,
+  TeacherUpload,
   TeacherUiProvider,
 } from "./ui/TeacherUI";
 
 const logoSrc = `${import.meta.env.BASE_URL}assets/sysu-lockup-red.svg`;
 const forbiddenPathSegments = [
   "/videos",
-  "/classes",
   "/evaluation",
   "/learning-assistant",
-  "/ai-config",
   "/monitoring",
   "/rag",
   "/agent",
@@ -78,12 +92,13 @@ const forbiddenPathSegments = [
   "/import",
 ];
 
-type RouteKey = "experiments" | "questions" | "analytics" | "reports";
+type RouteKey = "experiments" | "classes" | "questions" | "analytics" | "reports" | "aiConfig";
 type ObjectiveQuestionType = Question["question_type"];
 
 const navItems: Array<{ key: RouteKey; label: string; path: string }> = [
   { key: "experiments", label: "实验管理", path: "/experiments" },
-  { key: "questions", label: "LLM 出题", path: "/questions" },
+  { key: "classes", label: "班级管理", path: "/classes" },
+  { key: "questions", label: "AI 出题", path: "/questions" },
   { key: "analytics", label: "学情分析", path: "/analytics" },
   { key: "reports", label: "评价报告", path: "/reports" },
 ];
@@ -93,6 +108,25 @@ const objectiveQuestionTypeOptions: Array<{ value: ObjectiveQuestionType; label:
   { value: "true_false", label: "判断题" },
   { value: "fill_blank", label: "填空题" },
 ];
+const deepSeekDefaultBaseUrl = "https://api.deepseek.com";
+const deepSeekDefaultModel = "deepseek-v4-flash";
+const aiConfigFeatureOptions: Array<{ key: keyof AIEnabledFeatureScopes; label: string }> = [
+  { key: "question_bank_assistant", label: "AI 出题" },
+  { key: "student_learning_analytics", label: "AI 报告" },
+];
+
+function catalogContentStatusLabel(status?: string | null, fallback = "未填写资料"): string {
+  if (!status) return fallback;
+  const labels: Record<string, string> = {
+    archived: "已归档",
+    draft: "草稿",
+    pending: "待发布",
+    published: "已发布",
+    rejected: "已退回",
+    reviewing: "待审核",
+  };
+  return labels[status] || status;
+}
 
 function currentPath(): string {
   return window.location.pathname || "/";
@@ -118,6 +152,8 @@ function isForbiddenPath(path: string): boolean {
 }
 
 function routeFromPath(path: string): RouteKey {
+  if (path.startsWith("/ai-config")) return "aiConfig";
+  if (path.startsWith("/classes")) return "classes";
   if (path.startsWith("/questions")) return "questions";
   if (path.startsWith("/analytics")) return "analytics";
   if (path.startsWith("/reports")) return "reports";
@@ -137,6 +173,7 @@ function LegacyTeacherAppContent() {
   const [user, setUser] = useState<User | null>(null);
   const [checkingSession, setCheckingSession] = useState(Boolean(getAuthToken()));
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     if (!getAuthToken()) return;
@@ -179,7 +216,7 @@ function LegacyTeacherAppContent() {
   if (!user) return <LoginScreen onLogin={setUser} />;
 
   const activeRoute = routeFromPath(isForbiddenPath(path) ? "/experiments" : path);
-  const activeLabel = navItems.find((item) => item.key === activeRoute)?.label || "实验管理";
+  const activeLabel = activeRoute === "aiConfig" ? "AI 配置" : navItems.find((item) => item.key === activeRoute)?.label || "实验管理";
   const logout = () => {
     setAuthToken("");
     window.location.assign("/");
@@ -188,8 +225,10 @@ function LegacyTeacherAppContent() {
   return (
     <TeacherShell testId="teacher-shell">
       <TeacherSidebar>
-        <img src={logoSrc} alt="实验平台标识" className="legacy-sidebar-logo" />
-        <strong>无机化学实验教学后台</strong>
+        <div className="legacy-sidebar-brand">
+          <img src={logoSrc} alt="实验平台标识" className="legacy-sidebar-logo" />
+          <strong>无机化学实验教学后台</strong>
+        </div>
         <nav aria-label="后台导航">
           {navItems.map((item) => (
             <NavButton key={item.key} active={activeRoute === item.key} label={item.label} path={item.path} testId={`teacher-nav-${item.key}`} />
@@ -216,6 +255,26 @@ function LegacyTeacherAppContent() {
             </button>
             {userMenuOpen ? (
               <div className="legacy-user-menu-panel" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setSettingsOpen(true);
+                    setUserMenuOpen(false);
+                  }}
+                >
+                  个人设置
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    navigate("/ai-config");
+                    setUserMenuOpen(false);
+                  }}
+                >
+                  AI 配置
+                </button>
                 <button type="button" role="menuitem" onClick={logout}>
                   登出
                 </button>
@@ -223,9 +282,14 @@ function LegacyTeacherAppContent() {
             ) : null}
           </div>
         </TeacherHeader>
+        <PersonalSettingsDialog user={user} open={settingsOpen} onClose={() => setSettingsOpen(false)} />
         <TeacherContent>
           {activeRoute === "questions" ? (
             <QuestionsPage />
+          ) : activeRoute === "aiConfig" ? (
+            <AIConfigurationPage />
+          ) : activeRoute === "classes" ? (
+            <ClassesPage />
           ) : activeRoute === "analytics" ? (
             <AnalyticsPage />
           ) : activeRoute === "reports" ? (
@@ -270,12 +334,25 @@ function LoginScreen({ onLogin }: { onLogin: (user: User) => void }) {
 
   return (
     <div className="legacy-teacher-login">
-      <section className="legacy-teacher-login-card">
-        <img src={logoSrc} alt="实验平台标识" />
-        <span className="eyebrow">Teacher</span>
-        <h1>无机化学实验教学后台</h1>
-        <p>管理实验目录与点位资料，基于点位内容出题，并查看学生学习与报告生成结果。</p>
-        <TeacherForm data-testid="teacher-login-form" className="legacy-teacher-login-form" layout="vertical" initialValues={{ username: "teacher" }} onFinish={submit}>
+      <section className="legacy-teacher-login-panel">
+        <div className="legacy-teacher-login-identity">
+          <img src={logoSrc} alt="实验平台标识" />
+          <span>Teacher Backoffice</span>
+          <h1>无机化学实验教学后台</h1>
+          <p>管理实验目录与点位资料，基于点位内容出题，并查看学生学习与报告生成结果。</p>
+        </div>
+        <TeacherForm
+          data-testid="teacher-login-form"
+          className="legacy-teacher-login-card"
+          layout="vertical"
+          initialValues={{ username: "teacher" }}
+          requiredMark={false}
+          onFinish={submit}
+        >
+          <div className="legacy-teacher-login-card-head">
+            <span>账号登录</span>
+            <h2>教师入口</h2>
+          </div>
           <TeacherForm.Item label="账号" name="username" rules={[{ required: true, message: "请输入账号。" }]}>
             <TeacherInput name="username" autoComplete="username" />
           </TeacherForm.Item>
@@ -289,6 +366,117 @@ function LoginScreen({ onLogin }: { onLogin: (user: User) => void }) {
         </TeacherForm>
       </section>
     </div>
+  );
+}
+
+function userRoleLabel(role: User["role"]): string {
+  return role === "teacher" ? "教师" : "学生";
+}
+
+function PersonalSettingsDialog({ user, open, onClose }: { user: User; open: boolean; onClose: () => void }) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setNotice("");
+    setError("");
+    setSaving(false);
+  }, [open]);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setNotice("");
+    setError("");
+    if (!currentPassword) {
+      setError("请输入当前密码。");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError("新密码至少需要 8 位。");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("两次输入的新密码不一致。");
+      return;
+    }
+    setSaving(true);
+    try {
+      await changeCurrentPassword({ current_password: currentPassword, new_password: newPassword });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setNotice("个人密码已更新。");
+    } catch (caught) {
+      setError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <TeacherModal className="legacy-create-dialog legacy-profile-dialog" title="个人设置" open={open} footer={null} onCancel={onClose} maskClosable={!saving}>
+      <div className="legacy-profile-summary" aria-label="当前账号">
+        <div>
+          <span>账号</span>
+          <strong>{user.username}</strong>
+        </div>
+        <div>
+          <span>姓名</span>
+          <strong>{user.display_name || user.username}</strong>
+        </div>
+        <div>
+          <span>身份</span>
+          <strong>{userRoleLabel(user.role)}</strong>
+        </div>
+      </div>
+      <form className="legacy-profile-password-form" onSubmit={submit}>
+        <label>
+          当前密码
+          <TeacherInput.Password
+            aria-label="当前密码"
+            autoComplete="current-password"
+            value={currentPassword}
+            onChange={(event) => setCurrentPassword(event.target.value)}
+          />
+        </label>
+        <label>
+          新密码
+          <TeacherInput.Password
+            aria-label="新密码"
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={(event) => setNewPassword(event.target.value)}
+          />
+        </label>
+        <label>
+          确认新密码
+          <TeacherInput.Password
+            aria-label="确认新密码"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+          />
+        </label>
+        {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
+        {error ? <ErrorBlock compact>{error}</ErrorBlock> : null}
+        <div className="legacy-create-dialog-actions">
+          <TeacherButton type="default" className="legacy-secondary-button" onClick={onClose} disabled={saving}>
+            取消
+          </TeacherButton>
+          <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={saving}>
+            {saving ? "保存中..." : "保存密码"}
+          </TeacherButton>
+        </div>
+      </form>
+    </TeacherModal>
   );
 }
 
@@ -366,6 +554,45 @@ function ErrorBlock({ children, compact = false }: { children: ReactNode; compac
   return <TeacherAlert className={`legacy-error${compact ? " compact" : ""}`} type="error" message={children} />;
 }
 
+function aiConnectivityStatusLabel(status?: string | null): string {
+  const labels: Record<string, string> = {
+    connected: "已连接",
+    failed: "连接失败",
+    not_configured: "未配置",
+    stale: "待复检",
+    untested: "未检测",
+  };
+  return labels[status || ""] || "未检测";
+}
+
+function aiStatusMessageLabel(message?: string | null): string {
+  return (message || "未检测").replaceAll("API Key", "API 密钥");
+}
+
+function formatDateTime(value?: string | null): string {
+  if (!value) return "未记录";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "未记录";
+  return date.toLocaleString("zh-CN", { hour12: false });
+}
+
+function normalizedScore(value?: number | string | null): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  return Math.round((numeric > 0 && numeric <= 1 ? numeric * 100 : numeric) * 10) / 10;
+}
+
+function scoreLabel(value?: number | string | null, fallback = "-"): string {
+  const score = normalizedScore(value);
+  if (score === null) return fallback;
+  return `${Number.isInteger(score) ? score.toFixed(0) : score.toFixed(1)} 分`;
+}
+
+function analyticsScoreCell(row: AnalyticsDashboard["matrix"][number], columnId: string): AnalyticsScoreCell | null {
+  return row.experiment_groups?.[columnId] || row.experiments?.[columnId] || null;
+}
+
 function useCatalogBank(chapterId: string, reloadKey: number) {
   const state = useAsyncData<CatalogQuestionBankResponse>(() => listCatalogQuestionBank(chapterId || undefined), [chapterId, reloadKey]);
   const chapters = state.data?.chapters || [];
@@ -383,8 +610,9 @@ function nodePath(node?: Pick<CatalogQuestionBankNode, "breadcrumb_titles" | "ti
 }
 
 type CatalogFileTreeNode = CatalogQuestionBankNode & { children: CatalogFileTreeNode[] };
-type CatalogCreateMenuState = { x: number; y: number; parentId: string; parentTitle: string };
+type CatalogContextMenuState = { x: number; y: number; parentId: string; parentTitle: string; targetNode?: CatalogQuestionBankNode };
 type CatalogCreateRequest = { kind: CatalogNodeKind; parentId: string; parentTitle: string };
+type CatalogDeleteRequest = { node: CatalogQuestionBankNode };
 
 function sortCatalogNodes(items: CatalogQuestionBankNode[]): CatalogQuestionBankNode[] {
   return [...items].sort((left, right) => Number(left.display_order || 0) - Number(right.display_order || 0) || left.title.localeCompare(right.title, "zh-Hans-CN"));
@@ -421,8 +649,9 @@ function ExperimentsPage() {
   const rootDirectoryIds = useMemo(() => directoryNodes.filter((item) => !item.parent_id).map((item) => item.node_id), [directoryNodes]);
   const rootDirectoryKey = rootDirectoryIds.join("|");
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
-  const [createMenu, setCreateMenu] = useState<CatalogCreateMenuState | null>(null);
+  const [contextMenu, setContextMenu] = useState<CatalogContextMenuState | null>(null);
   const [createRequest, setCreateRequest] = useState<CatalogCreateRequest | null>(null);
+  const [deleteRequest, setDeleteRequest] = useState<CatalogDeleteRequest | null>(null);
   const currentChapterTitle = catalog.chapters.find((chapter) => chapter.chapter_id === chapterId)?.chapter_title || chapterId || "章节";
   const rootCreateTitle = `${currentChapterTitle} 根目录`;
 
@@ -436,10 +665,10 @@ function ExperimentsPage() {
   }, [chapterId, rootDirectoryKey]);
 
   useEffect(() => {
-    if (!createMenu) return;
-    const closeMenu = () => setCreateMenu(null);
+    if (!contextMenu) return;
+    const closeMenu = () => setContextMenu(null);
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setCreateMenu(null);
+      if (event.key === "Escape") setContextMenu(null);
     };
     window.addEventListener("click", closeMenu);
     window.addEventListener("keydown", closeOnEscape);
@@ -447,7 +676,7 @@ function ExperimentsPage() {
       window.removeEventListener("click", closeMenu);
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [createMenu]);
+  }, [contextMenu]);
 
   const detailState = useAsyncData<CatalogNodeDetail | null>(() => (selectedFallback?.node_id ? getCatalogNode(selectedFallback.node_id) : Promise.resolve(null)), [
     selectedFallback?.node_id,
@@ -481,19 +710,20 @@ function ExperimentsPage() {
       return next;
     });
   };
-  const createParentFromNode = (node?: CatalogQuestionBankNode): Pick<CatalogCreateMenuState, "parentId" | "parentTitle"> => {
+  const createParentFromNode = (node?: CatalogQuestionBankNode): Pick<CatalogContextMenuState, "parentId" | "parentTitle"> => {
     if (!node) return { parentId: "", parentTitle: rootCreateTitle };
     if (node.node_kind === "directory") return { parentId: node.node_id, parentTitle: node.title };
     const parent = nodes.find((item) => item.node_id === node.parent_id);
     return { parentId: node.parent_id || "", parentTitle: parent?.title || rootCreateTitle };
   };
-  const openCreateMenu = (event: ReactMouseEvent, node?: CatalogQuestionBankNode) => {
+  const openContextMenu = (event: ReactMouseEvent, node?: CatalogQuestionBankNode) => {
     event.preventDefault();
     event.stopPropagation();
     if (node) setSelectedNodeId(node.node_id);
     const parent = createParentFromNode(node);
-    setCreateMenu({
+    setContextMenu({
       ...parent,
+      targetNode: node,
       x: Math.max(12, Math.min(event.clientX, window.innerWidth - 220)),
       y: Math.max(12, Math.min(event.clientY, window.innerHeight - 128)),
     });
@@ -517,8 +747,9 @@ function ExperimentsPage() {
                 onChange={(event) => {
                   setChapterId(event.target.value);
                   setSelectedNodeId("");
-                  setCreateMenu(null);
+                  setContextMenu(null);
                   setCreateRequest(null);
+                  setDeleteRequest(null);
                 }}
               >
                 {catalog.chapters.map((chapter) => (
@@ -537,14 +768,19 @@ function ExperimentsPage() {
                 setSelectedNodeId(node.node_id);
                 if (node.node_kind === "directory" && !expandedNodeIds.has(node.node_id)) toggleExpandedNode(node.node_id);
               }}
-              onContextMenu={openCreateMenu}
+              onContextMenu={openContextMenu}
             />
-            <CatalogCreateContextMenu
-              menu={createMenu}
+            <CatalogContextMenu
+              menu={contextMenu}
               onChoose={(kind) => {
-                if (!createMenu) return;
-                setCreateRequest({ kind, parentId: createMenu.parentId, parentTitle: createMenu.parentTitle });
-                setCreateMenu(null);
+                if (!contextMenu) return;
+                setCreateRequest({ kind, parentId: contextMenu.parentId, parentTitle: contextMenu.parentTitle });
+                setContextMenu(null);
+              }}
+              onDelete={() => {
+                if (!contextMenu?.targetNode) return;
+                setDeleteRequest({ node: contextMenu.targetNode });
+                setContextMenu(null);
               }}
             />
             <CreateNodeDialog
@@ -560,6 +796,16 @@ function ExperimentsPage() {
               onNotice={setNotice}
               onError={setActionError}
             />
+            <DeleteNodeDialog
+              request={deleteRequest}
+              onClose={() => setDeleteRequest(null)}
+              onDeleted={() => {
+                setSelectedNodeId("");
+                refresh();
+              }}
+              onNotice={setNotice}
+              onError={setActionError}
+            />
           </TeacherCard>
           <TeacherCard className="legacy-table-card">
             <header>
@@ -570,8 +816,8 @@ function ExperimentsPage() {
               {detail ? (
                 <NodeEditor
                   detail={detail}
-                  onSaved={() => {
-                    setNotice("已保存节点资料。");
+                  onSaved={(message = "已保存节点资料。") => {
+                    setNotice(message);
                     refresh();
                   }}
                   onError={setActionError}
@@ -667,11 +913,7 @@ function CatalogFileTreeRow({
           aria-expanded={isDirectory && hasChildren ? isExpanded : undefined}
           onClick={() => onSelect(node)}
           onContextMenu={(event) => {
-            if (isDirectory) onContextMenu(event, node);
-            else {
-              event.preventDefault();
-              event.stopPropagation();
-            }
+            onContextMenu(event, node);
           }}
         >
           <span className="legacy-file-tree-icon" aria-hidden="true" />
@@ -700,23 +942,37 @@ function CatalogFileTreeRow({
   );
 }
 
-function CatalogCreateContextMenu({
+function CatalogContextMenu({
   menu,
   onChoose,
+  onDelete,
 }: {
-  menu: CatalogCreateMenuState | null;
+  menu: CatalogContextMenuState | null;
   onChoose: (kind: CatalogNodeKind) => void;
+  onDelete: () => void;
 }) {
   if (!menu) return null;
+  const target = menu.targetNode;
+  const canCreate = !target || target.node_kind === "directory";
+  const deleteLabel = target?.node_kind === "directory" ? "删除目录" : "删除点位";
   return (
     <div className="legacy-catalog-context-menu" role="menu" style={{ left: menu.x, top: menu.y }} onClick={(event) => event.stopPropagation()}>
-      <strong>{menu.parentTitle}</strong>
-      <button type="button" role="menuitem" onClick={() => onChoose("directory")}>
-        新增目录
-      </button>
-      <button type="button" role="menuitem" onClick={() => onChoose("point")}>
-        新增点位
-      </button>
+      <strong>{target?.title || menu.parentTitle}</strong>
+      {canCreate ? (
+        <>
+          <button type="button" role="menuitem" onClick={() => onChoose("directory")}>
+            新增目录
+          </button>
+          <button type="button" role="menuitem" onClick={() => onChoose("point")}>
+            新增点位
+          </button>
+        </>
+      ) : null}
+      {target ? (
+        <button type="button" role="menuitem" className="danger" onClick={onDelete}>
+          {deleteLabel}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -805,6 +1061,70 @@ function CreateNodeDialog({
   );
 }
 
+function DeleteNodeDialog({
+  request,
+  onClose,
+  onDeleted,
+  onNotice,
+  onError,
+}: {
+  request: CatalogDeleteRequest | null;
+  onClose: () => void;
+  onDeleted: () => void;
+  onNotice: (value: string) => void;
+  onError: (value: string) => void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!request) return;
+    setSubmitting(false);
+  }, [request]);
+
+  if (!request) return null;
+
+  const isDirectory = request.node.node_kind === "directory";
+  const submit = async () => {
+    setSubmitting(true);
+    onNotice("");
+    onError("");
+    try {
+      await changeCatalogNodeStatus(request.node.node_id, "archive", { includeSubtree: true });
+      onNotice(isDirectory ? "已删除目录及其下级内容。" : "已删除点位。");
+      onDeleted();
+      onClose();
+    } catch (caught) {
+      onError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <TeacherModal
+      open
+      className="legacy-create-dialog"
+      title={isDirectory ? "删除目录" : "删除点位"}
+      onCancel={onClose}
+      footer={null}
+      maskClosable={!submitting}
+    >
+      <div className="legacy-delete-dialog-body">
+        <strong>{request.node.title}</strong>
+        <p>{isDirectory ? "删除目录会同时删除它下面的目录和点位。相关视频、题目和历史引用不会被物理清除。" : "删除点位会将它从章节目录中移除。相关视频、题目和历史引用不会被物理清除。"}</p>
+      </div>
+      <div className="legacy-create-dialog-actions">
+        <TeacherButton type="default" className="legacy-secondary-button" onClick={onClose} disabled={submitting}>
+          取消
+        </TeacherButton>
+        <TeacherButton type="primary" danger className="primary-button" disabled={submitting} onClick={submit}>
+          {submitting ? "删除中..." : "确认删除"}
+        </TeacherButton>
+      </div>
+    </TeacherModal>
+  );
+}
+
 function NodeVisibilityControl({ node, disabled, onToggle }: { node: CatalogQuestionBankNode; disabled: boolean; onToggle: (node: CatalogQuestionBankNode) => void }) {
   const nodeEnabled = node.status === "published";
   const helpId = `legacy-visibility-help-${node.node_id}`;
@@ -816,8 +1136,8 @@ function NodeVisibilityControl({ node, disabled, onToggle }: { node: CatalogQues
         checked={nodeEnabled}
         aria-label="学生端可见"
         disabled={disabled}
-        checkedChildren="已启用"
-        unCheckedChildren="未启用"
+        checkedChildren="开"
+        unCheckedChildren="关"
         onChange={() => onToggle(node)}
       />
       <span className="legacy-help-tooltip">
@@ -834,7 +1154,7 @@ function NodeVisibilityControl({ node, disabled, onToggle }: { node: CatalogQues
   );
 }
 
-function NodeEditor({ detail, onSaved, onError }: { detail: CatalogNodeDetail; onSaved: () => void; onError: (value: string) => void }) {
+function NodeEditor({ detail, onSaved, onError }: { detail: CatalogNodeDetail; onSaved: (message?: string) => void; onError: (value: string) => void }) {
   const node = detail.node;
   const content = detail.point_content;
   const [title, setTitle] = useState(node.title || "");
@@ -894,6 +1214,7 @@ function NodeEditor({ detail, onSaved, onError }: { detail: CatalogNodeDetail; o
           <TeacherForm.Item label="安全">
             <TeacherInput.TextArea value={safety} onChange={(event) => setSafety(event.target.value)} rows={3} />
           </TeacherForm.Item>
+          <PointVideoManager detail={detail} fallbackTitle={title.trim() || node.title} onSaved={onSaved} onError={onError} />
         </div>
       ) : null}
       <div className="legacy-editor-actions">
@@ -902,6 +1223,427 @@ function NodeEditor({ detail, onSaved, onError }: { detail: CatalogNodeDetail; o
         </TeacherButton>
       </div>
     </TeacherForm>
+  );
+}
+
+function uploadTitleFromFilename(filename: string): string {
+  return filename.replace(/\.[^/.]+$/, "").trim() || "点位视频";
+}
+
+function formatMediaSize(value?: number | null): string | null {
+  if (!value || value <= 0) return null;
+  if (value < 1024 * 1024) return `${Math.ceil(value / 1024)} KB`;
+  return `${(value / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function formatMediaDuration(value?: number | null): string | null {
+  if (!value || value <= 0) return null;
+  const totalSeconds = Math.round(value);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes ? `${minutes}:${String(seconds).padStart(2, "0")}` : `${seconds}s`;
+}
+
+function pointVideoStatusLabel(binding: CatalogPointMediaBinding): string {
+  if (binding.upload_status === "ready") return binding.binding_status === "published" ? "已发布" : "未发布";
+  if (binding.upload_status === "processing") return "处理中";
+  if (binding.upload_status === "failed") return "处理失败";
+  if (binding.upload_status === "replaced") return "已替换";
+  return binding.upload_status || "未知状态";
+}
+
+function VideoGlyph() {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      <path d="M5 5.5h9.4a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z" />
+      <path d="m16.4 9.1 4.1-2.2c.7-.4 1.5.1 1.5.9v8.4c0 .8-.8 1.3-1.5.9l-4.1-2.2V9.1Z" />
+    </svg>
+  );
+}
+
+function UploadGlyph() {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      <path d="M12 3v11" />
+      <path d="m7.5 7.5 4.5-4.5 4.5 4.5" />
+      <path d="M5 14v3.5A2.5 2.5 0 0 0 7.5 20h9A2.5 2.5 0 0 0 19 17.5V14" />
+    </svg>
+  );
+}
+
+function FileGlyph() {
+  return (
+    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+      <path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7.5 3.5Z" />
+      <path d="M14 3.5V8h4" />
+      <path d="M9 13h6" />
+      <path d="M9 16h4" />
+    </svg>
+  );
+}
+
+function PointVideoManager({
+  detail,
+  fallbackTitle,
+  onSaved,
+  onError,
+}: {
+  detail: CatalogNodeDetail;
+  fallbackTitle: string;
+  onSaved: (message?: string) => void;
+  onError: (value: string) => void;
+}) {
+  const node = detail.node;
+  const binding = detail.media_bindings?.[0] || null;
+  const [policy, setPolicy] = useState<TeacherMediaUploadPolicy | null>(null);
+  const [videoTitle, setVideoTitle] = useState(binding?.title || fallbackTitle);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [removing, setRemoving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    getTeacherMediaUploadPolicy()
+      .then((value) => {
+        if (active) setPolicy(value);
+      })
+      .catch(() => {
+        if (active) setPolicy(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setVideoTitle(binding?.title || fallbackTitle);
+    setVideoFile(null);
+  }, [node.node_id, binding?.binding_id, binding?.title, fallbackTitle]);
+
+  const uploadPointVideo = async () => {
+    if (!videoFile) {
+      onError("请选择要添加的视频文件。");
+      return;
+    }
+    const nextTitle = videoTitle.trim() || fallbackTitle || uploadTitleFromFilename(videoFile.name);
+    setSubmitting(true);
+    onError("");
+    try {
+      const asset = await uploadTeacherMediaAsset({ title: nextTitle, file: videoFile });
+      await bindCatalogPointMedia(node.node_id, {
+        media_asset_id: asset.id,
+        title: nextTitle,
+        metadata: { source: "teacher_point_editor" },
+      });
+      setVideoFile(null);
+      onSaved(asset.upload_status === "ready" ? "已添加点位视频。" : "已上传并绑定点位视频，处理完成后学生端可播放。");
+    } catch (caught) {
+      onError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const removePointVideo = async () => {
+    if (!binding) return;
+    setRemoving(true);
+    onError("");
+    try {
+      await changeCatalogPointMediaBinding(binding.binding_id, "delete");
+      onSaved("已移除点位视频。");
+    } catch (caught) {
+      onError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  const currentMeta = [
+    binding?.original_file_name || null,
+    formatMediaSize(binding?.playback_file_size_bytes || binding?.source_file_size_bytes),
+    formatMediaDuration(binding?.playback_duration_seconds),
+  ].filter(Boolean);
+  const selectedFileMeta = [videoFile?.type || null, formatMediaSize(videoFile?.size)].filter(Boolean);
+  const policyText = policy ? `支持 ${policy.allowed_extensions.join(" / ")}，单文件不超过 ${policy.max_media_upload_mb} MB。` : "支持常见视频格式，文件限制以后端校验为准。";
+
+  return (
+    <section className="legacy-point-video-panel" aria-labelledby="legacy-point-video-title">
+      <header className="legacy-point-video-head">
+        <div>
+          <h3 id="legacy-point-video-title">点位视频</h3>
+          <p>当前点位只保留一个学生端视频，上传新文件会替换现有绑定。</p>
+        </div>
+        {binding ? <span className={`legacy-point-video-status status-${binding.upload_status}`}>{pointVideoStatusLabel(binding)}</span> : <span className="legacy-point-video-status status-empty">未添加</span>}
+      </header>
+      {binding ? (
+        <div className="legacy-point-video-current">
+          <div className="legacy-point-video-preview">
+            <VideoGlyph />
+          </div>
+          <div>
+            <strong>{binding.title}</strong>
+            {currentMeta.length ? (
+              <span className="legacy-point-video-meta">
+                {currentMeta.map((item) => (
+                  <small key={item}>{item}</small>
+                ))}
+              </span>
+            ) : null}
+            {binding.error_reason ? <small>{binding.error_reason}</small> : null}
+          </div>
+          <TeacherButton htmlType="button" danger className="legacy-secondary-button" disabled={removing || submitting} onClick={removePointVideo}>
+            {removing ? "移除中..." : "移除视频"}
+          </TeacherButton>
+        </div>
+      ) : (
+        <div className="legacy-point-video-empty">
+          <div className="legacy-point-video-preview is-empty">
+            <VideoGlyph />
+          </div>
+          <div>
+            <strong>当前点位暂无视频。</strong>
+            <span>添加后，学生端会在处理完成的可播放视频中读取这一条。</span>
+          </div>
+        </div>
+      )}
+      <div className="legacy-point-video-upload">
+        <TeacherForm.Item label="视频标题">
+          <TeacherInput value={videoTitle} onChange={(event) => setVideoTitle(event.target.value)} />
+        </TeacherForm.Item>
+        <div className="legacy-point-video-actions">
+          <TeacherUpload
+            accept={policy?.allowed_extensions?.join(",") || "video/*"}
+            beforeUpload={(file) => {
+              setVideoFile(file);
+              if (!videoTitle.trim()) setVideoTitle(uploadTitleFromFilename(file.name));
+              return false;
+            }}
+            maxCount={1}
+            showUploadList={false}
+          >
+            <button type="button" className={`legacy-point-video-picker${videoFile ? " has-file" : ""}`} disabled={submitting || removing}>
+              <span className="legacy-point-video-picker-icon">{videoFile ? <FileGlyph /> : <UploadGlyph />}</span>
+              <span>
+                <strong>{videoFile ? videoFile.name : "选择视频文件"}</strong>
+                <small>{videoFile ? selectedFileMeta.join(" / ") || "已选择，等待上传" : policyText}</small>
+              </span>
+            </button>
+          </TeacherUpload>
+          <div className="legacy-point-video-command-stack">
+            <TeacherButton type="primary" htmlType="button" className="primary-button" disabled={!videoFile || submitting || removing} onClick={uploadPointVideo}>
+              {submitting ? "上传中..." : binding ? "上传并替换" : "上传并绑定"}
+            </TeacherButton>
+            {videoFile ? (
+              <TeacherButton
+                htmlType="button"
+                className="legacy-secondary-button"
+                disabled={submitting || removing}
+                onClick={() => setVideoFile(null)}
+              >
+                清除选择
+              </TeacherButton>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AIConfigurationPage() {
+  const [reloadKey, setReloadKey] = useState(0);
+  const state = useAsyncData<AIConfigurationResponse>(getAIConfiguration, [reloadKey]);
+  const [baseUrl, setBaseUrl] = useState(deepSeekDefaultBaseUrl);
+  const [model, setModel] = useState(deepSeekDefaultModel);
+  const [apiKey, setApiKey] = useState("");
+  const [checkInterval, setCheckInterval] = useState(30);
+  const [enabledFeatures, setEnabledFeatures] = useState<AIEnabledFeatureScopes>({
+    rag_access_enabled: true,
+    student_ai_assistant: true,
+    student_learning_analytics: true,
+    question_bank_assistant: true,
+    teacher_learning_analytics: true,
+  });
+  const [notice, setNotice] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const config = state.data;
+    if (!config) return;
+    setBaseUrl(config.base_url || config.chat_provider?.base_url || deepSeekDefaultBaseUrl);
+    setModel(config.model || config.chat_provider?.model || deepSeekDefaultModel);
+    setCheckInterval(config.connection_check_interval_minutes || 30);
+    setEnabledFeatures((current) => ({
+      ...current,
+      ...(config.enabled_features || {}),
+      question_bank_assistant: config.enabled_features?.question_bank_assistant ?? true,
+      student_learning_analytics: config.enabled_features?.student_learning_analytics ?? true,
+    }));
+    setApiKey("");
+    setNotice("");
+    setActionError("");
+  }, [state.data]);
+
+  const toggleFeature = (key: keyof AIEnabledFeatureScopes, enabled: boolean) => {
+    setEnabledFeatures((current) => ({ ...current, [key]: enabled }));
+  };
+
+  const saveConfig = async (event: FormEvent) => {
+    event.preventDefault();
+    const nextBaseUrl = baseUrl.trim().replace(/\/+$/, "");
+    const nextModel = model.trim();
+    const nextApiKey = apiKey.trim();
+    if (!nextBaseUrl || !nextModel) {
+      setActionError("请填写接口地址和模型名称。");
+      return;
+    }
+    setSaving(true);
+    setNotice("");
+    setActionError("");
+    try {
+      await updateAIConfiguration({
+        provider: "openai",
+        base_url: nextBaseUrl,
+        model: nextModel,
+        ...(nextApiKey ? { api_key: nextApiKey } : {}),
+        connection_check_interval_minutes: checkInterval,
+        enabled_features: enabledFeatures,
+        chat_provider: {
+          provider: "openai",
+          base_url: nextBaseUrl,
+          model: nextModel,
+          ...(nextApiKey ? { api_key: nextApiKey } : {}),
+        },
+      });
+      setApiKey("");
+      setNotice("AI 模型配置已保存。");
+      setReloadKey((value) => value + 1);
+    } catch (caught) {
+      setActionError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const status = state.data?.status;
+  const configuredKey = state.data?.api_key_configured ? state.data.api_key_fingerprint || "已保存" : "未保存";
+
+  return (
+    <PageFrame
+      eyebrow="模型服务"
+      title="AI 模型配置"
+      description="配置 AI 出题和 AI 报告使用的大语言模型。"
+      showHeader={false}
+      testId="teacher-page-ai-config"
+    >
+      <div className="legacy-compact-page-title">
+        <span className="legacy-section-kicker">模型服务</span>
+        <h1>AI 模型配置</h1>
+        <p>配置 AI 出题和 AI 报告使用的大语言模型。</p>
+      </div>
+      {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
+      {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
+      <StateBlock loading={state.loading && !state.data} error={state.error}>
+        <div className="legacy-ai-config-grid">
+          <TeacherCard className="legacy-table-card legacy-ai-config-card">
+            <header>
+              <h2>DeepSeek 接入</h2>
+              <span>OpenAI 兼容</span>
+            </header>
+            <form className="legacy-ai-config-form" onSubmit={saveConfig}>
+              <label>
+                接口地址
+                <TeacherInput value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} />
+              </label>
+              <label>
+                模型名称
+                <TeacherInput list="legacy-deepseek-models" value={model} onChange={(event) => setModel(event.target.value)} />
+                <datalist id="legacy-deepseek-models">
+                  <option value="deepseek-v4-flash" />
+                  <option value="deepseek-v4-pro" />
+                </datalist>
+              </label>
+              <label>
+                API 密钥
+                <TeacherInput.Password
+                  aria-label="API 密钥"
+                  autoComplete="off"
+                  value={apiKey}
+                  placeholder={state.data?.api_key_configured ? "留空则保留已保存密钥" : ""}
+                  onChange={(event) => setApiKey(event.target.value)}
+                />
+              </label>
+              <label>
+                连接检测间隔
+                <select value={checkInterval} onChange={(event) => setCheckInterval(Number(event.target.value) || 30)}>
+                  <option value={5}>5 分钟</option>
+                  <option value={15}>15 分钟</option>
+                  <option value={30}>30 分钟</option>
+                  <option value={60}>60 分钟</option>
+                  <option value={180}>180 分钟</option>
+                </select>
+              </label>
+              <fieldset className="legacy-ai-feature-fieldset">
+                <legend>启用范围</legend>
+                {aiConfigFeatureOptions.map((item) => (
+                  <label key={item.key}>
+                    <TeacherSwitch checked={Boolean(enabledFeatures[item.key])} onChange={(checked) => toggleFeature(item.key, checked)} />
+                    <span>{item.label}</span>
+                  </label>
+                ))}
+              </fieldset>
+              <div className="legacy-editor-actions">
+                <TeacherButton
+                  type="default"
+                  className="legacy-secondary-button"
+                  disabled={saving}
+                  onClick={() => {
+                    setBaseUrl(deepSeekDefaultBaseUrl);
+                    setModel(deepSeekDefaultModel);
+                  }}
+                >
+                  使用 DeepSeek 默认值
+                </TeacherButton>
+                <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={saving}>
+                  {saving ? "保存中..." : "保存配置"}
+                </TeacherButton>
+              </div>
+            </form>
+          </TeacherCard>
+          <TeacherCard className="legacy-table-card legacy-ai-status-card">
+            <header>
+              <h2>当前状态</h2>
+              <span>{aiConnectivityStatusLabel(status?.connectivity_status)}</span>
+            </header>
+            <dl className="legacy-ai-status-list">
+              <div>
+                <dt>模型</dt>
+                <dd>{state.data?.model || deepSeekDefaultModel}</dd>
+              </div>
+              <div>
+                <dt>密钥</dt>
+                <dd>{configuredKey}</dd>
+              </div>
+              <div>
+                <dt>状态</dt>
+                <dd>{aiStatusMessageLabel(status?.message)}</dd>
+              </div>
+              <div>
+                <dt>上次检测</dt>
+                <dd>{formatDateTime(status?.last_checked_at)}</dd>
+              </div>
+              <div>
+                <dt>近期调用</dt>
+                <dd>
+                  请求 {status?.recent_request_count ?? 0} 次，错误 {status?.recent_error_count ?? 0} 次
+                </dd>
+              </div>
+            </dl>
+          </TeacherCard>
+        </div>
+      </StateBlock>
+    </PageFrame>
   );
 }
 
@@ -999,32 +1741,49 @@ function QuestionsPage() {
       setActionError(legacyTeacherErrorMessage(caught));
     }
   };
+  const workbenchMetrics = [
+    { label: "题目总数", value: Number(catalog.data?.totals.question_count || 0), unit: "题" },
+    { label: "已发布", value: Number(catalog.data?.totals.published_count || 0), unit: "题" },
+    { label: "待审题", value: Number(draftsState.data?.items.filter((item) => item.status === "draft").length || 0), unit: "题" },
+    { label: "点位", value: points.length, unit: "项" },
+  ];
 
   return (
     <PageFrame
-      eyebrow="点位资料直接命题"
-      title="LLM 出题"
-      description="选择一个实验点位，把原理、现象、安全三段式资料连同教师要求交给 LLM 生成待审题；不调用检索增强流程。"
+      title="AI 出题"
+      showHeader={false}
       testId="teacher-page-questions"
     >
       <StateBlock loading={catalog.loading && !catalog.data} error={catalog.error}>
-        <MetricGrid
-          metrics={[
-            { label: "题目总数", value: Number(catalog.data?.totals.question_count || 0), unit: "题" },
-            { label: "已发布", value: Number(catalog.data?.totals.published_count || 0), unit: "题" },
-            { label: "待审题", value: Number(draftsState.data?.items.filter((item) => item.status === "draft").length || 0), unit: "题" },
-            { label: "点位", value: points.length, unit: "项" },
-          ]}
-        />
         {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
         {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
-        <TeacherCard className="legacy-table-card legacy-question-demo">
-          <header>
-            <h2>命题工作区</h2>
-            <span>点位资料来源</span>
+        <TeacherCard className="legacy-table-card legacy-question-workbench">
+          <header className="legacy-question-workbench-head">
+            <div>
+              <span className="legacy-section-kicker">点位资料直接命题</span>
+              <h2>命题工作区</h2>
+            </div>
+            <div className="legacy-question-summary-strip" aria-label="AI 出题概览">
+              {workbenchMetrics.map((metric) => (
+                <article key={metric.label}>
+                  <span>{metric.label}</span>
+                  <strong>
+                    {metric.value}
+                    <small>{metric.unit}</small>
+                  </strong>
+                </article>
+              ))}
+            </div>
           </header>
           <div className="legacy-question-demo-grid">
-            <aside className="legacy-question-point-panel">
+            <aside className="legacy-question-point-panel" aria-label="点位来源">
+              <div className="legacy-question-panel-head">
+                <div>
+                  <span className="legacy-section-kicker">01</span>
+                  <h3>点位来源</h3>
+                </div>
+                <span>{points.length} 项</span>
+              </div>
               <label className="legacy-select-label">
                 章节范围
                 <select value={chapterId} onChange={(event) => setChapterId(event.target.value)}>
@@ -1044,22 +1803,35 @@ function QuestionsPage() {
                     onClick={() => setSelectedPointId(point.node_id)}
                   >
                     <strong>{point.title}</strong>
-                    <span>{point.content_status || "未填写资料"} · 题目 {point.counts?.question_count || 0}</span>
+                    <span>{catalogContentStatusLabel(point.content_status)} · 题目 {point.counts?.question_count || 0}</span>
                   </button>
                 ))}
               </div>
             </aside>
             <form className="legacy-question-prompt-panel" onSubmit={generate}>
+              <div className="legacy-question-panel-head">
+                <div>
+                  <span className="legacy-section-kicker">02</span>
+                  <h3>生成配置</h3>
+                </div>
+                <div className="legacy-question-panel-actions">
+                  <span>{questionTypes.length} 类题型</span>
+                  <TeacherButton type="primary" htmlType="submit" className="primary-button legacy-question-generate-button" disabled={generating || !selectedPoint}>
+                    {generating ? "生成中..." : "生成待审题"}
+                  </TeacherButton>
+                </div>
+              </div>
               <PointContentSummary detail={detailState.data} loading={detailState.loading} />
-              <div className="legacy-question-type-row">
+              <fieldset className="legacy-question-type-row">
+                <legend>题型与数量</legend>
                 {objectiveQuestionTypeOptions.map((item) => (
-                  <label key={item.value}>
+                  <label key={item.value} className={questionTypes.includes(item.value) ? "selected" : ""}>
                     <input type="checkbox" checked={questionTypes.includes(item.value)} onChange={(event) => toggleQuestionType(item.value, event.target.checked)} />
-                    {item.label}
+                    <span>{item.label}</span>
                   </label>
                 ))}
-                <label>
-                  数量
+                <label className="legacy-question-count-control">
+                  <span>数量</span>
                   <select value={count} onChange={(event) => setCount(Number(event.target.value) || 1)}>
                     {[1, 2, 3].map((value) => (
                       <option key={value} value={value}>
@@ -1068,18 +1840,18 @@ function QuestionsPage() {
                     ))}
                   </select>
                 </label>
-              </div>
+              </fieldset>
               <label className="legacy-textarea-label">
                 教师要求
                 <TeacherInput.TextArea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={5} />
               </label>
-              <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={generating || !selectedPoint}>
-                {generating ? "生成中..." : "生成待审题"}
-              </TeacherButton>
             </form>
-            <section className="legacy-question-review-panel">
+            <section className="legacy-question-review-panel" aria-label="待审队列">
               <div className="legacy-question-review-head">
-                <strong>待审题</strong>
+                <div>
+                  <span className="legacy-section-kicker">03</span>
+                  <strong>待审题</strong>
+                </div>
                 <span>{draftsState.loading ? "读取中" : `${draftsState.data?.items.length || 0} 条`}</span>
               </div>
               <StateBlock loading={draftsState.loading && !draftsState.data} error={draftsState.error}>
@@ -1119,8 +1891,10 @@ function PointContentSummary({ detail, loading }: { detail: CatalogNodeDetail | 
   const content = detail?.point_content;
   return (
     <div className="legacy-question-selected">
-      <span className="legacy-row-label">{content?.content_status || "点位资料"}</span>
-      <strong>{content?.point_title || detail?.node.title || "请选择实验点位"}</strong>
+      <div className="legacy-question-selected-head">
+        <span className="legacy-row-label">{catalogContentStatusLabel(content?.content_status, "点位资料")}</span>
+        <strong>{content?.point_title || detail?.node.title || "请选择实验点位"}</strong>
+      </div>
       <p>{detail?.breadcrumbs.map((item) => item.title).join(" / ") || "选择点位后展示三段式资料。"}</p>
       <dl className="legacy-point-content-summary">
         <div>
@@ -1185,7 +1959,7 @@ function QuestionRow({ question }: { question: Question }) {
         <p>{question.explanation || "暂无解析。"}</p>
       </div>
       <div className="legacy-row-stats">
-        <span>{question.status}</span>
+        <span>{catalogContentStatusLabel(question.status, "未知")}</span>
         <span>{answerSummary(question.answer)}</span>
       </div>
     </article>
@@ -1226,6 +2000,230 @@ function answerSummary(answer: unknown): string {
   return String(answer || "-");
 }
 
+function classStatusLabel(status?: string | null): string {
+  if (status === "active") return "启用中";
+  if (status === "archived") return "已归档";
+  if (status === "disabled") return "已停用";
+  return status || "未知";
+}
+
+function studentStatusLabel(status?: string | null): string {
+  if (status === "pending") return "待激活";
+  if (status === "active") return "已激活";
+  if (status === "disabled") return "已停用";
+  return status || "未知";
+}
+
+function activationModeLabel(value?: string | null): string {
+  if (value === "default_password") return "默认密码";
+  if (value === "self_registration") return "自助注册";
+  return value || "默认密码";
+}
+
+function ClassesPage() {
+  const [reloadKey, setReloadKey] = useState(0);
+  const [studentReloadKey, setStudentReloadKey] = useState(0);
+  const classState = useAsyncData<TeacherClassSummary[]>(listTeacherClasses, [reloadKey]);
+  const classes = classState.data || [];
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const selectedClass = classes.find((item) => item.id === selectedClassId) || classes[0] || null;
+  const [className, setClassName] = useState("");
+  const [classDescription, setClassDescription] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [studentName, setStudentName] = useState("");
+  const [notice, setNotice] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [creatingClass, setCreatingClass] = useState(false);
+  const [creatingStudent, setCreatingStudent] = useState(false);
+
+  useEffect(() => {
+    if (!selectedClassId && selectedClass?.id) setSelectedClassId(selectedClass.id);
+    if (selectedClassId && classes.length && !classes.some((item) => item.id === selectedClassId)) setSelectedClassId(classes[0]?.id || "");
+  }, [classes, selectedClass, selectedClassId]);
+
+  const studentsState = useAsyncData<TeacherStudentSummary[]>(
+    () => (selectedClass?.id ? listTeacherClassStudents(selectedClass.id) : Promise.resolve([])),
+    [selectedClass?.id, studentReloadKey],
+  );
+  const students = studentsState.data || [];
+  const classStudentTotal = classes.reduce((total, item) => total + Number(item.student_count || 0), 0);
+  const activeStudentTotal = students.filter((item) => item.activated || item.status === "active").length;
+
+  const createClass = async (event: FormEvent) => {
+    event.preventDefault();
+    const nextName = className.trim();
+    if (!nextName) {
+      setActionError("请填写班级名称。");
+      return;
+    }
+    setCreatingClass(true);
+    setNotice("");
+    setActionError("");
+    try {
+      const response = await createTeacherClass({ class_name: nextName, description: classDescription.trim() || undefined });
+      setClassName("");
+      setClassDescription("");
+      setSelectedClassId(response.id);
+      setReloadKey((value) => value + 1);
+      setNotice("已创建班级。");
+    } catch (caught) {
+      setActionError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setCreatingClass(false);
+    }
+  };
+
+  const createStudent = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!selectedClass?.id) {
+      setActionError("请先选择班级。");
+      return;
+    }
+    const nextStudentId = studentId.trim();
+    const nextStudentName = studentName.trim();
+    if (!nextStudentId || !nextStudentName) {
+      setActionError("请填写学号和姓名。");
+      return;
+    }
+    setCreatingStudent(true);
+    setNotice("");
+    setActionError("");
+    try {
+      await createTeacherClassStudent(selectedClass.id, {
+        student_id: nextStudentId,
+        student_name: nextStudentName,
+        status: "pending",
+        activation_mode: "default_password",
+      });
+      setStudentId("");
+      setStudentName("");
+      setStudentReloadKey((value) => value + 1);
+      setReloadKey((value) => value + 1);
+      setNotice("已添加学生。");
+    } catch (caught) {
+      setActionError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setCreatingStudent(false);
+    }
+  };
+
+  return (
+    <PageFrame
+      eyebrow="班级与学生"
+      title="班级管理"
+      description="维护教师后台可管理的班级与学生名单；学生使用账号密码登录后，会关联到对应班级。"
+      showHeader={false}
+      testId="teacher-page-classes"
+    >
+      <div className="legacy-compact-page-title">
+        <span className="legacy-section-kicker">班级与学生</span>
+        <h1>班级管理</h1>
+        <p>维护教师后台可管理的班级与学生名单，学生使用账号密码登录后关联到对应班级。</p>
+      </div>
+      {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
+      {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
+      <StateBlock loading={classState.loading && !classState.data} error={classState.error}>
+        <MetricGrid
+          metrics={[
+            { label: "班级总数", value: classes.length, unit: "个" },
+            { label: "学生总数", value: classStudentTotal, unit: "人" },
+            { label: "当前班级", value: selectedClass?.student_count || students.length || 0, unit: "人" },
+            { label: "已激活", value: activeStudentTotal, unit: "人" },
+          ]}
+        />
+        <div className="legacy-class-management-grid">
+          <TeacherCard className="legacy-table-card">
+            <header>
+              <h2>班级列表</h2>
+              <span>{classes.length} 个班级</span>
+            </header>
+            <form className="legacy-inline-form" onSubmit={createClass}>
+              <label>
+                班级名称
+                <TeacherInput value={className} onChange={(event) => setClassName(event.target.value)} placeholder="例如：2026 级无机化学 1 班" />
+              </label>
+              <label>
+                备注
+                <TeacherInput.TextArea value={classDescription} onChange={(event) => setClassDescription(event.target.value)} rows={3} placeholder="选填，用于区分教学班或实验分组。" />
+              </label>
+              <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={creatingClass}>
+                {creatingClass ? "创建中..." : "新增班级"}
+              </TeacherButton>
+            </form>
+            <div className="legacy-class-grid management" aria-label="班级列表">
+              {classes.length ? (
+                classes.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`legacy-module-card legacy-class-card-button${item.id === selectedClass?.id ? " selected" : ""}`}
+                    onClick={() => setSelectedClassId(item.id)}
+                  >
+                    <span className="legacy-row-label">{classStatusLabel(item.status)}</span>
+                    <strong>{item.class_name}</strong>
+                    <span>{item.description || "暂无班级备注。"}</span>
+                    <div className="legacy-card-stats">
+                      <span>学生 {item.student_count || 0}</span>
+                      {typeof item.active_students === "number" ? <span>已激活 {item.active_students}</span> : null}
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <TeacherEmptyState message="暂无班级，请先新增班级。" compact />
+              )}
+            </div>
+          </TeacherCard>
+          <TeacherCard className="legacy-table-card">
+            <header>
+              <h2>学生名单</h2>
+              <span>{selectedClass?.class_name || "未选择班级"}</span>
+            </header>
+            <form className="legacy-inline-form two-column" onSubmit={createStudent}>
+              <label>
+                学号
+                <TeacherInput value={studentId} onChange={(event) => setStudentId(event.target.value)} placeholder="例如：20260001" disabled={!selectedClass} />
+              </label>
+              <label>
+                姓名
+                <TeacherInput value={studentName} onChange={(event) => setStudentName(event.target.value)} placeholder="学生姓名" disabled={!selectedClass} />
+              </label>
+              <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={!selectedClass || creatingStudent}>
+                {creatingStudent ? "添加中..." : "添加学生"}
+              </TeacherButton>
+            </form>
+            <StateBlock loading={studentsState.loading && !studentsState.data} error={studentsState.error}>
+              {selectedClass ? (
+                students.length ? (
+                  <div className="legacy-student-table legacy-student-table-management" aria-label="学生名单">
+                    <article className="legacy-student-table-head">
+                      <strong>学生</strong>
+                      <span>学号</span>
+                      <span>状态</span>
+                      <span>登录方式</span>
+                    </article>
+                    {students.map((student) => (
+                      <article key={`${student.student_id}-${student.id || student.class_id || selectedClass.id}`}>
+                        <strong>{student.student_name || student.display_name || student.username || student.student_id}</strong>
+                        <span>{student.student_id}</span>
+                        <span>{student.activated ? "已激活" : studentStatusLabel(student.status)}</span>
+                        <span>{activationModeLabel(student.activation_mode)}</span>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <TeacherEmptyState message="当前班级暂无学生。" compact />
+                )
+              ) : (
+                <TeacherEmptyState message="请选择或新增班级。" compact />
+              )}
+            </StateBlock>
+          </TeacherCard>
+        </div>
+      </StateBlock>
+    </PageFrame>
+  );
+}
+
 function AnalyticsPage() {
   const classState = useAsyncData<TeacherClassSummary[]>(listTeacherClasses, []);
   const classes = classState.data || [];
@@ -1238,22 +2236,36 @@ function AnalyticsPage() {
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const dashboard = dashboardState.data;
   const rows = dashboard?.matrix || [];
-  const columns = (dashboard?.experiment_groups?.length ? dashboard.experiment_groups : dashboard?.experiments || []).slice(0, 6);
+  const columns = (dashboard?.experiment_groups?.length ? dashboard.experiment_groups : dashboard?.experiments || []).slice(0, 8);
+  const [selectedFamilyId, setSelectedFamilyId] = useState("");
 
   useEffect(() => {
     if (!selectedStudentId && rows[0]?.student_id) setSelectedStudentId(rows[0].student_id);
   }, [rows, selectedStudentId]);
+  useEffect(() => {
+    if (!selectedFamilyId && columns[0]?.id) setSelectedFamilyId(columns[0].id);
+    if (selectedFamilyId && columns.length && !columns.some((item) => item.id === selectedFamilyId)) setSelectedFamilyId(columns[0]?.id || "");
+  }, [columns, selectedFamilyId]);
 
   const reportState = useAsyncData<StudentReport | null>(
     () => (selectedClassId && selectedStudentId ? getStudentReport(selectedClassId, selectedStudentId) : Promise.resolve(null)),
     [selectedClassId, selectedStudentId],
   );
+  const selectedStudent = rows.find((row) => row.student_id === selectedStudentId) || rows[0] || null;
+  const selectedFamily = columns.find((item) => item.id === selectedFamilyId) || columns[0] || null;
+  const selectedFamilyCell = selectedStudent && selectedFamily ? analyticsScoreCell(selectedStudent, selectedFamily.id) : null;
+  const selectedPointScores = selectedFamilyCell?.points || [];
+  const familyGridStyle = useMemo<CSSProperties>(() => {
+    const familyTracks = columns.length ? ` repeat(${columns.length}, minmax(118px, 1fr))` : "";
+    return { gridTemplateColumns: `minmax(176px, 1.25fr) 92px${familyTracks}` };
+  }, [columns.length]);
 
   return (
     <PageFrame
       eyebrow="学生学习情况"
       title="学情分析"
       description="按班级展示每个学生的参与、得分、掌握度证据和薄弱点位，数据来自新版学情接口。"
+      showHeader={false}
       testId="teacher-page-analytics"
     >
       <StateBlock loading={classState.loading && !classState.data} error={classState.error}>
@@ -1282,33 +2294,61 @@ function AnalyticsPage() {
               />
               <TeacherCard className="legacy-table-card">
                 <header>
-                  <h2>学生掌握矩阵</h2>
+                  <h2>各族元素得分</h2>
                   <span>{rows.length} 名学生</span>
                 </header>
-                <div className="legacy-learning-matrix">
-                  <div className="legacy-learning-matrix-head">
-                    <span>学生</span>
-                    <span>平均</span>
+                <div className="legacy-family-score-table" role="table" aria-label="各族元素得分">
+                  <div className="legacy-family-score-head" role="row" style={familyGridStyle}>
+                    <span role="columnheader">学生</span>
+                    <span role="columnheader">平均分</span>
                     {columns.map((item) => (
-                      <span key={item.id}>{item.title}</span>
+                      <span role="columnheader" key={item.id}>
+                        {item.title}
+                      </span>
                     ))}
                   </div>
                   {rows.map((student) => (
-                    <button
-                      type="button"
-                      className={`legacy-learning-matrix-row${student.student_id === selectedStudentId ? " selected" : ""}`}
-                      key={student.student_id}
-                      onClick={() => setSelectedStudentId(student.student_id)}
-                    >
-                      <strong>{student.student_name}</strong>
-                      <span>{student.average_score ?? "-"}</span>
+                    <div className={`legacy-family-score-row${student.student_id === selectedStudentId ? " selected" : ""}`} key={student.student_id} role="row" style={familyGridStyle}>
+                      <button type="button" className="legacy-family-student-cell" onClick={() => setSelectedStudentId(student.student_id)}>
+                        <strong>{student.student_name}</strong>
+                        <small>{student.student_id}</small>
+                      </button>
+                      <span className="legacy-family-average-cell">{scoreLabel(student.average_score)}</span>
                       {columns.map((item) => {
-                        const state = student.experiment_groups?.[item.id] || student.experiments?.[item.id];
-                        return <span key={item.id}>{state ? `${Math.round(Number(state.mastery_score || state.score || 0))}%` : "-"}</span>;
+                        const state = analyticsScoreCell(student, item.id);
+                        const selected = student.student_id === selectedStudentId && item.id === selectedFamilyId;
+                        return (
+                          <button
+                            type="button"
+                            className={`legacy-family-score-cell${selected ? " selected" : ""}`}
+                            key={item.id}
+                            aria-label={`${student.student_name} ${item.title} ${scoreLabel(state?.score ?? state?.mastery_score)}`}
+                            onClick={() => {
+                              setSelectedStudentId(student.student_id);
+                              setSelectedFamilyId(item.id);
+                            }}
+                          >
+                            <strong>{scoreLabel(state?.score ?? state?.mastery_score)}</strong>
+                            <small>{state ? `${state.evidence_count || 0} 证据` : "无记录"}</small>
+                          </button>
+                        );
                       })}
-                    </button>
+                    </div>
                   ))}
                 </div>
+              </TeacherCard>
+              <TeacherCard className="legacy-table-card">
+                <header>
+                  <h2>点位得分明细</h2>
+                  <span>
+                    {selectedStudent?.student_name || "未选择学生"} · {selectedFamily?.title || "未选择族元素"}
+                  </span>
+                </header>
+                {selectedPointScores.length ? (
+                  <PointScoreList points={selectedPointScores} />
+                ) : (
+                  <TeacherEmptyState message="当前学生在该族元素下暂无点位得分。" compact />
+                )}
               </TeacherCard>
               <TeacherCard className="legacy-table-card">
                 <header>
@@ -1324,6 +2364,29 @@ function AnalyticsPage() {
         </StateBlock>
       </StateBlock>
     </PageFrame>
+  );
+}
+
+function PointScoreList({ points }: { points: AnalyticsPointScore[] }) {
+  return (
+    <div className="legacy-point-score-list">
+      {points.map((point, index) => {
+        const score = normalizedScore(point.score ?? point.mastery_score) ?? 0;
+        return (
+          <article className="legacy-point-score-item" key={point.point_node_id || `${point.experiment_id || "point"}-${index}`}>
+            <div>
+              <strong>{point.point_title || "未命名点位"}</strong>
+              <span>{point.experiment_title || "未关联实验"}</span>
+            </div>
+            <div className="legacy-point-score-bar" aria-label={`${point.point_title} ${scoreLabel(score)}`}>
+              <span style={{ width: `${Math.max(0, Math.min(100, score))}%` }} />
+            </div>
+            <em>{scoreLabel(score)}</em>
+            <small>{point.evidence_count || 0} 条证据</small>
+          </article>
+        );
+      })}
+    </div>
   );
 }
 
@@ -1438,8 +2501,14 @@ function ReportsPage() {
       eyebrow="评价报告生成"
       title="评价报告"
       description="维护测评报告生成 Prompt，并查看学生提交测评后生成的学习总结与错题讲解。"
+      showHeader={false}
       testId="teacher-page-reports"
     >
+      <div className="legacy-compact-page-title">
+        <span className="legacy-section-kicker">评价报告生成</span>
+        <h1>评价报告</h1>
+        <p>维护测评报告生成 Prompt，并查看学生提交测评后生成的学习总结与错题讲解。</p>
+      </div>
       {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
       {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
       <StateBlock loading={(promptState.loading && !promptState.data) || (classState.loading && !classState.data)} error={promptState.error || classState.error}>

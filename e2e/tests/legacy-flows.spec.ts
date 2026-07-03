@@ -44,6 +44,14 @@ async function loginToken(request: APIRequestContext, path: string, data: Record
   return String(payload.access_token);
 }
 
+async function expandVisibleCatalogDirectories(page: Page): Promise<void> {
+  for (let index = 0; index < 20; index += 1) {
+    const toggle = page.locator("button.legacy-file-tree-toggle[aria-label^='展开']").first();
+    if ((await toggle.count()) === 0) return;
+    await toggle.click();
+  }
+}
+
 test.describe("legacy teacher/student browser flows", () => {
   test("student can log in and traverse learning, assessment, report, and point-detail flows", async ({ page }) => {
     await loginStudent(page);
@@ -84,14 +92,20 @@ test.describe("legacy teacher/student browser flows", () => {
     await expect(page.getByRole("heading", { name: "章节目录与点位" })).toBeVisible();
     await expectNoVisibleLegacyError(page);
 
+    await page.getByTestId("teacher-nav-classes").click();
+    await expect(page.getByTestId("teacher-page-classes")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "班级管理" })).toBeVisible();
+    await expectNoVisibleLegacyError(page);
+
     await page.getByTestId("teacher-nav-questions").click();
     await expect(page.getByTestId("teacher-page-questions")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "LLM 出题" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "命题工作区" })).toBeVisible();
     await expectNoVisibleLegacyError(page);
 
     await page.getByTestId("teacher-nav-analytics").click();
     await expect(page.getByTestId("teacher-page-analytics")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "学情分析" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "学情分析" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "各族元素得分" })).toBeVisible();
     await expectNoVisibleLegacyError(page);
 
     await page.getByTestId("teacher-nav-reports").click();
@@ -102,6 +116,101 @@ test.describe("legacy teacher/student browser flows", () => {
     await page.goto(`${teacherUrl}/videos`);
     await expect(page.getByTestId("teacher-page-experiments")).toBeVisible();
     await expect(page).toHaveURL(/\/experiments$/);
+
+    await page.locator(".legacy-user-menu-button").click();
+    await page.getByRole("menuitem", { name: "AI 配置" }).click();
+    await expect(page.getByTestId("teacher-page-ai-config")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "AI 模型配置" })).toBeVisible();
+    await expect(page.getByLabel("模型名称", { exact: true })).toBeVisible();
+    await expectNoVisibleLegacyError(page);
+  });
+
+  test("teacher can open personal settings and validate password changes", async ({ page }) => {
+    await loginTeacher(page);
+
+    await page.locator(".legacy-user-menu-button").click();
+    await page.getByRole("menuitem", { name: "个人设置" }).click();
+    const dialog = page.getByRole("dialog", { name: "个人设置" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText(teacherUsername)).toBeVisible();
+
+    await dialog.getByLabel("当前密码", { exact: true }).fill(teacherPassword);
+    await dialog.getByLabel("新密码", { exact: true }).fill("new-password-123");
+    await dialog.getByLabel("确认新密码", { exact: true }).fill("new-password-456");
+    await dialog.getByRole("button", { name: "保存密码" }).click();
+    await expect(dialog.getByText("两次输入的新密码不一致。")).toBeVisible();
+
+    await dialog.getByRole("button", { name: "取消" }).click();
+    await expect(dialog).toBeHidden();
+  });
+
+  test("teacher can upload and bind a video from the catalog point editor", async ({ page, request }) => {
+    const teacherToken = await loginToken(request, "/api/auth/login", {
+      username: teacherUsername,
+      password: teacherPassword,
+    });
+    const headers = { Authorization: `Bearer ${teacherToken}` };
+    const pointTitle = `E2E 视频点位 ${Date.now()}`;
+    let pointNodeId = "";
+
+    try {
+      const catalogResponse = await request.get(`${backendUrl}/api/teacher/question-banks/catalog`, { headers });
+      expect(catalogResponse.ok(), "catalog should load for teacher setup").toBeTruthy();
+      const catalog = (await catalogResponse.json()) as {
+        items: Array<{ node_id: string; node_kind: string; chapter_id: string }>;
+        chapters: Array<{ chapter_id: string }>;
+      };
+      const parent = catalog.items.find((item) => item.node_kind === "directory") || null;
+      const chapterId = parent?.chapter_id || catalog.chapters[0]?.chapter_id;
+      expect(chapterId, "seed catalog should expose at least one chapter").toBeTruthy();
+
+      const createResponse = await request.post(`${backendUrl}/api/teacher/catalog/nodes`, {
+        headers,
+        data: {
+          chapter_id: chapterId,
+          parent_id: parent?.node_id || null,
+          node_kind: "point",
+          title: pointTitle,
+        },
+      });
+      expect(createResponse.ok(), "temporary point should be created").toBeTruthy();
+      const created = (await createResponse.json()) as { node?: { node_id?: string } };
+      pointNodeId = String(created.node?.node_id || "");
+      expect(pointNodeId, "temporary point id should be returned").toBeTruthy();
+
+      await loginTeacher(page);
+      await expect(page.getByTestId("teacher-page-experiments")).toBeVisible();
+      await expandVisibleCatalogDirectories(page);
+      await page.getByRole("treeitem", { name: pointTitle }).click();
+
+      const videoRegion = page.getByRole("region", { name: "点位视频" });
+      await expect(videoRegion).toBeVisible();
+      await expect(videoRegion.getByText("当前点位暂无视频。")).toBeVisible();
+
+      const videoTitle = `${pointTitle} 演示`;
+      await videoRegion.getByRole("textbox").fill(videoTitle);
+      await videoRegion.locator("input[type='file']").setInputFiles({
+        name: "e2e-point-video.mp4",
+        mimeType: "video/mp4",
+        buffer: Buffer.from("e2e video content"),
+      });
+      await expect(videoRegion.getByText("e2e-point-video.mp4")).toBeVisible();
+
+      const uploadResponse = page.waitForResponse((response) => response.url().includes("/api/teacher/media/assets") && response.request().method() === "POST");
+      const bindingResponse = page.waitForResponse((response) => response.url().includes(`/api/teacher/catalog/nodes/${pointNodeId}/media-bindings`));
+      await videoRegion.getByRole("button", { name: "上传并绑定" }).click();
+      expect((await uploadResponse).ok(), "media upload should succeed").toBeTruthy();
+      expect((await bindingResponse).ok(), "point media binding should succeed").toBeTruthy();
+      await expect(page.getByText(/已上传并绑定点位视频|已添加点位视频/)).toBeVisible();
+      await expectNoVisibleLegacyError(page);
+    } finally {
+      if (pointNodeId) {
+        await request.post(`${backendUrl}/api/teacher/catalog/nodes/${pointNodeId}/status`, {
+          headers,
+          data: { action: "archive", include_subtree: true },
+        });
+      }
+    }
   });
 
   test("role and retired-route boundaries reject the wrong products", async ({ request }) => {

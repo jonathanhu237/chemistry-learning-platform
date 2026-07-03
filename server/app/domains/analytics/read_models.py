@@ -452,7 +452,11 @@ def get_class_dashboard(
         ]
     progress_by_key = {(row["student_id"], row["experiment_id"]): row for row in progress_rows}
     attempts_by_key = {(row["student_id"], row["experiment_id"]): row for row in attempt_rows}
-    mastery_by_key = {(row["student_id"], row["experiment_id"]): row for row in mastery_rows}
+    mastery_by_experiment_key: dict[tuple[Any, Any], list[dict[str, Any]]] = {}
+    for row in mastery_rows:
+        mastery_by_experiment_key.setdefault((row["student_id"], row["experiment_id"]), []).append(row)
+    point_titles = _catalog_point_titles([str(row.get("point_node_id") or "") for row in mastery_rows])
+    experiments_by_id = {str(experiment["id"]): experiment for experiment in experiments}
     groups_by_id = {group["id"]: group for group in experiment_groups}
     matrix: list[dict[str, Any]] = []
     completed_cells = 0
@@ -466,16 +470,37 @@ def get_class_dashboard(
             key = (student["student_id"], experiment["id"])
             progress = progress_by_key.get(key)
             attempt = attempts_by_key.get(key)
-            mastery = mastery_by_key.get(key)
-            if progress or attempt or mastery:
+            mastery_items = mastery_by_experiment_key.get(key, [])
+            point_scores = []
+            for index, mastery in enumerate(mastery_items):
+                point_node_id = str(mastery.get("point_node_id") or "").strip()
+                point_score = (
+                    float(mastery["mastery_score"])
+                    if mastery and mastery.get("mastery_score") is not None
+                    else DEFAULT_EXPERIMENT_MASTERY_SCORE
+                )
+                point_scores.append(
+                    {
+                        "point_node_id": point_node_id or None,
+                        "point_title": point_titles.get(point_node_id) or point_node_id or f"{experiment['title']}点位 {index + 1}",
+                        "experiment_id": experiment["id"],
+                        "experiment_code": experiment.get("code"),
+                        "experiment_title": experiment.get("title"),
+                        "mastery_score": point_score,
+                        "score": point_score,
+                        "evidence_count": int(mastery["evidence_count"]) if mastery and mastery.get("evidence_count") is not None else 0,
+                        "updated_at": mastery.get("updated_at"),
+                    }
+                )
+            if progress or attempt or mastery_items:
                 active_students.add(student["student_id"])
             status_value = progress.get("status") if progress else "not_started"
             if status_value == "completed":
                 completed_cells += 1
             best_score = float(progress["best_score"]) if progress and progress.get("best_score") is not None else None
             mastery_score = (
-                float(mastery["mastery_score"])
-                if mastery and mastery.get("mastery_score") is not None
+                round(sum(float(point["mastery_score"]) for point in point_scores) / len(point_scores), 2)
+                if point_scores
                 else DEFAULT_EXPERIMENT_MASTERY_SCORE
             )
             scored_cells.append(mastery_score)
@@ -486,9 +511,10 @@ def get_class_dashboard(
                 "best_score": best_score,
                 "mastery_score": mastery_score,
                 "score": mastery_score,
-                "has_mastery": bool(mastery),
-                "evidence_count": int(mastery["evidence_count"]) if mastery else 0,
+                "has_mastery": bool(mastery_items),
+                "evidence_count": sum(int(point["evidence_count"]) for point in point_scores),
                 "attempt_count": int(attempt["attempt_count"]) if attempt else 0,
+                "points": point_scores,
             }
         for group_id, group in groups_by_id.items():
             experiment_ids = [str(item) for item in group["experiment_ids"]]
@@ -498,6 +524,17 @@ def get_class_dashboard(
             evidence_experiment_count = sum(1 for state in states if state["has_mastery"])
             evidence_count = sum(int(state["evidence_count"]) for state in states)
             attempt_count = sum(int(state["attempt_count"]) for state in states)
+            points = [
+                {
+                    **point,
+                    "family_id": group_id,
+                    "family_title": group["title"],
+                    "experiment_title": point.get("experiment_title")
+                    or experiments_by_id.get(str(point.get("experiment_id") or ""), {}).get("title"),
+                }
+                for experiment_id in experiment_ids
+                for point in experiment_states.get(experiment_id, {}).get("points", [])
+            ]
             lowest_experiment_id = None
             lowest_experiment_score = None
             if states:
@@ -523,6 +560,7 @@ def get_class_dashboard(
                 "attempt_count": attempt_count,
                 "lowest_experiment_id": lowest_experiment_id,
                 "lowest_experiment_score": lowest_experiment_score,
+                "points": points,
             }
         matrix.append(
             {

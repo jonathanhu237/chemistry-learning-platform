@@ -204,7 +204,10 @@ export class ApiError extends Error {
 
 export function legacyTeacherErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.status === 401) return "登录状态已失效，请重新登录。";
+    if (error.status === 401) {
+      if (error.detail === "Current password is invalid") return "当前密码不正确。";
+      return "登录状态已失效，请重新登录。";
+    }
     if (error.status >= 500) return "教学服务暂不可用，请稍后再试。";
     return "当前数据暂不可用，请稍后重试。";
   }
@@ -220,9 +223,9 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   const response = await fetch(`${apiBase}${path}`, { ...options, headers });
   const contentType = response.headers.get("content-type") || "";
   const payload = contentType.includes("application/json") ? await response.json() : await response.text();
-  if (response.status === 401) setAuthToken("");
   if (!response.ok) {
     const detail = typeof payload === "object" && payload ? (payload as { detail?: unknown }).detail : payload;
+    if (response.status === 401 && detail !== "Current password is invalid") setAuthToken("");
     throw new ApiError(response.status, detail);
   }
   return payload as T;
@@ -246,6 +249,10 @@ export function teacherLogin(username: string, password: string): Promise<LoginR
 
 export function loadCurrentUser(): Promise<User> {
   return api<User>("/api/auth/me");
+}
+
+export function changeCurrentPassword(payload: { current_password: string; new_password: string }): Promise<{ ok: boolean }> {
+  return postJson<{ ok: boolean }>("/api/auth/password", payload);
 }
 
 export function getTeacherDemoOverview(): Promise<TeacherDemoOverview> {
@@ -371,6 +378,37 @@ export type CatalogQuestionBankResponse = {
   totals: CatalogQuestionBankCounts;
 };
 
+export type CatalogPointMediaBinding = {
+  binding_id: string;
+  node_id: string;
+  media_id: string;
+  title: string;
+  binding_status: string;
+  display_order: number;
+  published_at?: string | null;
+  metadata?: Record<string, unknown> | null;
+  original_file_name?: string | null;
+  mime_type?: string | null;
+  playback_mime_type?: string | null;
+  source_file_size_bytes?: number | null;
+  playback_file_size_bytes?: number | null;
+  playback_width?: number | null;
+  playback_height?: number | null;
+  playback_duration_seconds?: number | null;
+  playback_fps?: number | null;
+  playback_bitrate?: number | null;
+  playback_video_codec?: string | null;
+  playback_audio_codec?: string | null;
+  playback_rendition_kind?: string | null;
+  upload_status: string;
+  processing_phase?: string | null;
+  processing_progress?: number | null;
+  error_reason?: string | null;
+  has_thumbnail?: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type CatalogNodeDetail = {
   node: CatalogQuestionBankNode & {
     teacher_note?: string | null;
@@ -390,6 +428,7 @@ export type CatalogNodeDetail = {
     safety_note?: string | null;
     content_status: string;
   } | null;
+  media_bindings?: CatalogPointMediaBinding[];
   validation?: { ok: boolean; errors: string[]; warnings: string[] };
 };
 
@@ -416,6 +455,34 @@ export type CatalogPointContentPayload = {
   principle_text?: string | null;
   phenomenon_explanation?: string | null;
   safety_note?: string | null;
+};
+
+export type TeacherMediaUploadPolicy = {
+  max_media_upload_mb: number;
+  max_media_upload_bytes: number;
+  allowed_extensions: string[];
+};
+
+export type TeacherMediaAsset = {
+  id: string;
+  title: string;
+  original_file_name?: string | null;
+  mime_type?: string | null;
+  file_size_bytes?: number | null;
+  upload_status: string;
+  processing_phase?: string | null;
+  processing_progress?: number | null;
+  error_reason?: string | null;
+  reused_existing?: boolean;
+  duplicate_type?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type CatalogPointMediaBindPayload = {
+  media_asset_id: string;
+  title?: string | null;
+  metadata?: Record<string, unknown>;
 };
 
 export type Question = {
@@ -458,6 +525,29 @@ export type ApiList<T> = {
   total: number;
 };
 
+export type AnalyticsPointScore = {
+  point_node_id?: string | null;
+  point_title: string;
+  experiment_id?: string | null;
+  experiment_code?: string | null;
+  experiment_title?: string | null;
+  family_id?: string | null;
+  family_title?: string | null;
+  mastery_score: number;
+  score: number;
+  evidence_count: number;
+  updated_at?: string | null;
+};
+
+export type AnalyticsScoreCell = {
+  status: string;
+  mastery_score: number;
+  score: number;
+  evidence_count: number;
+  attempt_count: number;
+  points?: AnalyticsPointScore[];
+};
+
 export type AnalyticsDashboard = {
   class_id: string;
   metrics: {
@@ -476,8 +566,8 @@ export type AnalyticsDashboard = {
     student_name: string;
     status?: string;
     average_score?: number;
-    experiments: Record<string, { status: string; mastery_score: number; score: number; evidence_count: number; attempt_count: number }>;
-    experiment_groups?: Record<string, { status: string; mastery_score: number; score: number; evidence_count: number; attempt_count: number }>;
+    experiments: Record<string, AnalyticsScoreCell>;
+    experiment_groups?: Record<string, AnalyticsScoreCell>;
   }>;
   recent_activity: Array<Record<string, unknown>>;
   missing_students: Array<Record<string, unknown>>;
@@ -533,6 +623,62 @@ export type StudentAssessmentReport = StudentAssessmentReportSummary & {
   payload: Record<string, unknown>;
 };
 
+export type AIEnabledFeatureScopes = {
+  rag_access_enabled?: boolean;
+  student_ai_assistant?: boolean;
+  student_learning_analytics?: boolean;
+  question_bank_assistant?: boolean;
+  teacher_learning_analytics?: boolean;
+};
+
+export type AIProviderRoleResponse = {
+  role: string;
+  provider: string;
+  base_url: string;
+  model: string;
+  api_key_configured: boolean;
+  api_key_fingerprint?: string | null;
+};
+
+export type AIConfigurationResponse = {
+  provider: string;
+  base_url: string;
+  model: string;
+  connection_check_interval_minutes: number;
+  api_key_configured: boolean;
+  api_key_fingerprint?: string | null;
+  enabled_features: AIEnabledFeatureScopes;
+  status: {
+    ready: boolean;
+    message: string;
+    effective_mode: string;
+    connectivity_status: "not_configured" | "untested" | "connected" | "failed" | "stale" | string;
+    last_checked_at?: string | null;
+    last_check_message?: string | null;
+    recent_request_count?: number;
+    recent_error_count?: number;
+    last_request_at?: string | null;
+    last_error_at?: string | null;
+  };
+  chat_provider?: AIProviderRoleResponse | null;
+  can_edit: boolean;
+};
+
+export type AIConfigurationUpdate = {
+  provider: "openai";
+  base_url: string;
+  model: string;
+  api_key?: string;
+  connection_check_interval_minutes: number;
+  enabled_features: AIEnabledFeatureScopes;
+  chat_provider: {
+    provider: "openai";
+    base_url: string;
+    model: string;
+    api_key?: string;
+  };
+};
+
 export function listCatalogQuestionBank(chapterId?: string): Promise<CatalogQuestionBankResponse> {
   const params = new URLSearchParams();
   if (chapterId) params.set("chapter_id", chapterId);
@@ -566,6 +712,25 @@ export function saveCatalogPointContent(nodeId: string, payload: CatalogPointCon
 
 export function changeCatalogPointContentPublication(nodeId: string, action: "publish" | "unpublish" | "archive"): Promise<CatalogNodeDetail> {
   return postJson<CatalogNodeDetail>(`/api/teacher/catalog/nodes/${encodeURIComponent(nodeId)}/point-content/publication`, { action });
+}
+
+export function getTeacherMediaUploadPolicy(): Promise<TeacherMediaUploadPolicy> {
+  return api<TeacherMediaUploadPolicy>("/api/teacher/media/upload-policy");
+}
+
+export function uploadTeacherMediaAsset(payload: { title: string; file: File }): Promise<TeacherMediaAsset> {
+  const formData = new FormData();
+  formData.append("title", payload.title);
+  formData.append("file", payload.file);
+  return api<TeacherMediaAsset>("/api/teacher/media/assets", { method: "POST", body: formData });
+}
+
+export function bindCatalogPointMedia(nodeId: string, payload: CatalogPointMediaBindPayload): Promise<{ binding_id: string; detail: CatalogNodeDetail }> {
+  return postJson<{ binding_id: string; detail: CatalogNodeDetail }>(`/api/teacher/catalog/nodes/${encodeURIComponent(nodeId)}/media-bindings`, payload);
+}
+
+export function changeCatalogPointMediaBinding(bindingId: string, action: "publish" | "unpublish" | "delete"): Promise<CatalogNodeDetail> {
+  return postJson<CatalogNodeDetail>(`/api/teacher/catalog/media-bindings/${encodeURIComponent(bindingId)}/${action}`, {});
 }
 
 export function listQuestionBankQuestions(params: URLSearchParams): Promise<ApiList<Question>> {
@@ -620,6 +785,14 @@ export function updateGlobalAssessmentReportPrompts(
 
 export function resetGlobalAssessmentReportPrompts(): Promise<AssessmentReportPromptSettingsResponse> {
   return api<AssessmentReportPromptSettingsResponse>("/api/teacher/assessment-report-prompts", { method: "DELETE" });
+}
+
+export function getAIConfiguration(): Promise<AIConfigurationResponse> {
+  return api<AIConfigurationResponse>("/api/teacher/ai-configuration");
+}
+
+export function updateAIConfiguration(payload: AIConfigurationUpdate): Promise<AIConfigurationResponse> {
+  return putJson<AIConfigurationResponse>("/api/teacher/ai-configuration", payload);
 }
 
 export function listTeacherStudentAssessmentReports(classId: string, studentId: string): Promise<{ reports: StudentAssessmentReportSummary[] }> {
