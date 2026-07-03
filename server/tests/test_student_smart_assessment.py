@@ -239,6 +239,8 @@ def test_student_assessment_status_reports_open_session_and_dismissed_prompt(mon
     class FakeSession:
         def execute(self, statement: object, params: dict[str, object] | None = None) -> _ScalarResult:
             sql = str(statement)
+            if "FROM experiment_question_attempts" in sql:
+                return _ScalarResult(1)
             if "FROM student_smart_assessment_sessions" in sql and "status = 'completed'" in sql:
                 return _ScalarResult(1)
             if "FROM student_events" in sql:
@@ -262,6 +264,8 @@ def test_student_assessment_status_reports_open_session_and_dismissed_prompt(mon
     status = smart_assessment_module.get_student_assessment_status(SimpleNamespace(id="u1", role="student"))
 
     assert status.has_completed_smart_baseline is True
+    assert status.has_answered_questions is True
+    assert status.needs_smart_baseline is False
     assert status.has_open_assessment is True
     assert status.open_session_id == "00000000-0000-0000-0000-000000000123"
     assert status.open_assessment_mode == "point"
@@ -274,6 +278,8 @@ def test_dismiss_student_smart_baseline_prompt_records_student_event(monkeypatch
     class FakeSession:
         def execute(self, statement: object, params: dict[str, object] | None = None) -> _ScalarResult:
             sql = str(statement)
+            if "FROM experiment_question_attempts" in sql:
+                return _ScalarResult(None)
             if "SELECT 1" in sql and "FROM student_events" in sql:
                 return _ScalarResult(None)
             if "INSERT INTO student_events" in sql:
@@ -296,6 +302,8 @@ def test_dismiss_student_smart_baseline_prompt_records_student_event(monkeypatch
     status = smart_assessment_module.dismiss_student_smart_baseline_prompt(SimpleNamespace(id="u1", role="student"))
 
     assert status.smart_baseline_prompt_dismissed is True
+    assert status.has_answered_questions is False
+    assert status.needs_smart_baseline is True
     assert inserted_events[0]["student_id"] == "20249999"
     assert inserted_events[0]["event_type"] == smart_assessment_module.SMART_BASELINE_PROMPT_DISMISSED_EVENT
 

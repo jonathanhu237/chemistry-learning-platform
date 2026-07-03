@@ -4,6 +4,7 @@ import { BookOpenCheck, ChevronRight, ClipboardList, FileText, Folder, Home, Pla
 import {
   getAuthToken,
   legacyStudentErrorMessage,
+  loadAssessmentStatus,
   loadCustomAssessmentOptions,
   loadCatalogNode,
   loadChapterCatalog,
@@ -31,6 +32,7 @@ import {
   type SmartAssessmentAnswer,
   type SmartAssessmentReport,
   type SmartAssessmentResponse,
+  type StudentAssessmentStatus,
   type StudentCatalogNodeCard,
   type StudentCatalogNodeResponse,
   type StudentLearningElementBadge,
@@ -265,6 +267,7 @@ export function LegacyStudentApp() {
   const params = queryFor(location);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [checkingSession, setCheckingSession] = useState(Boolean(getAuthToken()));
+  const [baselineBootstrapState, setBaselineBootstrapState] = useState<"idle" | "checking" | "starting">("idle");
 
   useEffect(() => {
     if (!getAuthToken()) return;
@@ -290,9 +293,39 @@ export function LegacyStudentApp() {
   }, [activePath]);
 
   const safePath = isForbiddenPath(activePath) ? "/" : activePath;
+  const skipBaselineBootstrap = safePath.startsWith("/assessment/session/");
+
+  useEffect(() => {
+    if (!user || skipBaselineBootstrap) return;
+    let active = true;
+    setBaselineBootstrapState("checking");
+    loadAssessmentStatus()
+      .then(async (status: StudentAssessmentStatus) => {
+        if (!active || !status.needs_smart_baseline) return;
+        setBaselineBootstrapState("starting");
+        const assessment = await startSmartAssessment();
+        if (!active) return;
+        storeLegacyAssessmentSession(assessment);
+        setBaselineBootstrapState("idle");
+        navigate(assessmentSessionRoute(assessment.session_id, "baseline"));
+      })
+      .catch(() => {
+        // Failing the bootstrap check should not block the normal student app.
+      })
+      .finally(() => {
+        if (active) setBaselineBootstrapState("idle");
+      });
+    return () => {
+      active = false;
+    };
+  }, [user, skipBaselineBootstrap]);
 
   if (checkingSession) {
     return <ShellFrame>正在载入实验学习平台...</ShellFrame>;
+  }
+
+  if (baselineBootstrapState === "starting") {
+    return <ShellFrame>正在生成首次摸底测评...</ShellFrame>;
   }
 
   if (!user) {
@@ -1439,6 +1472,8 @@ function AssessmentPage() {
 }
 
 function AssessmentSessionPage({ sessionId }: { sessionId: string }) {
+  const location = useLocation();
+  const isBaselineSession = queryFor(location).get("from") === "baseline";
   const [assessment] = useState<SmartAssessmentResponse | null>(() => readLegacyAssessmentSession(sessionId));
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [submitting, setSubmitting] = useState(false);
@@ -1462,7 +1497,7 @@ function AssessmentSessionPage({ sessionId }: { sessionId: string }) {
   const questions = assessment.questions || [];
   const allAnswered = questions.length > 0 && questions.every((question) => isAnswered(answers[question.id]));
   const answeredCount = questions.filter((question) => isAnswered(answers[question.id])).length;
-  const modeLabel = assessmentModeLabel(assessment.assessment_mode);
+  const modeLabel = isBaselineSession ? "首次摸底测评" : assessmentModeLabel(assessment.assessment_mode);
   const targetCount = assessment.composition?.requested_question_count || assessment.composition?.target_question_count || assessment.composition?.total_questions || questions.length;
   const actualCount = questions.length || assessment.composition?.total_questions || 0;
   const underfilled = Boolean(assessment.composition?.warnings?.underfilled) || (targetCount > 0 && actualCount > 0 && actualCount < targetCount);
@@ -1500,8 +1535,8 @@ function AssessmentSessionPage({ sessionId }: { sessionId: string }) {
       <article className="legacy-exam-paper" aria-label="旧版实验测评试卷">
         <header className="legacy-exam-head">
           <div>
-            <h1>{assessmentSessionTitle(assessment)}</h1>
-            <p>{assessmentExperimentNames(assessment) || "按本轮测评策略生成实验题目。"}</p>
+            <h1>{isBaselineSession ? "首次摸底测评" : assessmentSessionTitle(assessment)}</h1>
+            <p>{assessmentExperimentNames(assessment) || (isBaselineSession ? "系统根据当前题库自动生成摸底题目。" : "按本轮测评策略生成实验题目。")}</p>
           </div>
         </header>
 

@@ -147,6 +147,8 @@ class StudentSmartAssessmentSubmitResponse(BaseModel):
 
 class StudentAssessmentStatusResponse(BaseModel):
     has_completed_smart_baseline: bool = False
+    has_answered_questions: bool = False
+    needs_smart_baseline: bool = False
     has_open_assessment: bool = False
     open_session_id: str | None = None
     open_assessment_mode: AssessmentMode | None = None

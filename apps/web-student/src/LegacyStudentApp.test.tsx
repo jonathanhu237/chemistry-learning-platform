@@ -141,6 +141,17 @@ function installStudentFetchMock() {
         class_name: "数智一班",
       });
     }
+    if (url.includes("/api/student/assessment/status")) {
+      return jsonResponse({
+        has_completed_smart_baseline: true,
+        has_answered_questions: true,
+        needs_smart_baseline: false,
+        has_open_assessment: false,
+        open_session_id: null,
+        open_assessment_mode: null,
+        smart_baseline_prompt_dismissed: false,
+      });
+    }
     if (url.includes("/api/student/legacy/video-points")) {
       const parsed = new URL(url, "http://test.local");
       const query = parsed.searchParams.get("q") || "";
@@ -749,6 +760,36 @@ describe("LegacyStudentApp", () => {
     expect(screen.queryByText("视频库定位")).toBeNull();
     expect(container.querySelector(".legacy-video-body .legacy-meta-row")?.textContent).not.toContain("全部视频");
     assertNoForbiddenVisibleTerms(container);
+  });
+
+  it("auto-starts the first smart baseline assessment for a student with no answers", async () => {
+    const baseFetch = installStudentFetchMock();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/student/assessment/status")) {
+          return jsonResponse({
+            has_completed_smart_baseline: false,
+            has_answered_questions: false,
+            needs_smart_baseline: true,
+            has_open_assessment: false,
+            open_session_id: null,
+            open_assessment_mode: null,
+            smart_baseline_prompt_dismissed: false,
+          });
+        }
+        return baseFetch(input);
+      }),
+    );
+
+    render(<LegacyStudentApp />);
+
+    await waitFor(() => expect(window.location.pathname).toBe("/assessment/session/session-1"));
+    expect(window.location.search).toBe("?from=baseline");
+    expect(await screen.findByRole("heading", { name: "首次摸底测评" })).toBeTruthy();
+    expect(screen.getByText("共 3 题")).toBeTruthy();
+    expect(vi.mocked(fetch).mock.calls.some((call) => String(call[0]).includes("/api/student/smart-assessment/start"))).toBe(true);
   });
 
   it("returns from a home-opened point to the home video library", async () => {

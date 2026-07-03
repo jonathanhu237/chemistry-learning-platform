@@ -1630,48 +1630,77 @@ def _custom_strategy_snapshot(settings: CustomAssessmentSettings, question_count
     )
 
 
+def _student_has_answered_questions(session: Any, student_id: str) -> bool:
+    return bool(
+        session.execute(
+            text(
+                """
+                SELECT 1
+                FROM experiment_question_attempts
+                WHERE student_id = :student_id
+                LIMIT 1
+                """
+            ),
+            {"student_id": student_id},
+        ).scalar_one_or_none()
+    )
+
+
+def _student_has_completed_smart_baseline(session: Any, student_id: str) -> bool:
+    return bool(
+        session.execute(
+            text(
+                """
+                SELECT 1
+                FROM student_smart_assessment_sessions
+                WHERE student_id = :student_id
+                  AND status = 'completed'
+                  AND assessment_mode = 'smart'
+                LIMIT 1
+                """
+            ),
+            {"student_id": student_id},
+        ).scalar_one_or_none()
+    )
+
+
+def _student_baseline_prompt_dismissed(session: Any, student_id: str) -> bool:
+    return bool(
+        session.execute(
+            text(
+                """
+                SELECT 1
+                FROM student_events
+                WHERE student_id = :student_id
+                  AND event_type = :event_type
+                LIMIT 1
+                """
+            ),
+            {"student_id": student_id, "event_type": SMART_BASELINE_PROMPT_DISMISSED_EVENT},
+        ).scalar_one_or_none()
+    )
+
+
+def _assessment_status_response(session: Any, *, student_id: str, open_session: dict[str, Any] | None) -> StudentAssessmentStatusResponse:
+    has_answered_questions = _student_has_answered_questions(session, student_id)
+    return StudentAssessmentStatusResponse(
+        has_completed_smart_baseline=_student_has_completed_smart_baseline(session, student_id),
+        has_answered_questions=has_answered_questions,
+        needs_smart_baseline=not has_answered_questions,
+        has_open_assessment=bool(open_session),
+        open_session_id=str(open_session["id"]) if open_session else None,
+        open_assessment_mode=_assessment_mode_from_value(open_session.get("assessment_mode")) if open_session else None,  # type: ignore[arg-type]
+        smart_baseline_prompt_dismissed=_student_baseline_prompt_dismissed(session, student_id),
+    )
+
+
 def get_student_assessment_status(user: Any) -> StudentAssessmentStatusResponse:
     with db_session() as session:
         _ensure_tables(session)
         context = _load_student_context(session, user)
         _ensure_student_row(session, context)
         open_session = _load_open_session(session, context.student_id)
-        completed_smart_baseline = bool(
-            session.execute(
-                text(
-                    """
-                    SELECT 1
-                    FROM student_smart_assessment_sessions
-                    WHERE student_id = :student_id
-                      AND status = 'completed'
-                      AND assessment_mode = 'smart'
-                    LIMIT 1
-                    """
-                ),
-                {"student_id": context.student_id},
-            ).scalar_one_or_none()
-        )
-        baseline_prompt_dismissed = bool(
-            session.execute(
-                text(
-                    """
-                    SELECT 1
-                    FROM student_events
-                    WHERE student_id = :student_id
-                      AND event_type = :event_type
-                    LIMIT 1
-                    """
-                ),
-                {"student_id": context.student_id, "event_type": SMART_BASELINE_PROMPT_DISMISSED_EVENT},
-            ).scalar_one_or_none()
-        )
-        return StudentAssessmentStatusResponse(
-            has_completed_smart_baseline=completed_smart_baseline,
-            has_open_assessment=bool(open_session),
-            open_session_id=str(open_session["id"]) if open_session else None,
-            open_assessment_mode=_assessment_mode_from_value(open_session.get("assessment_mode")) if open_session else None,  # type: ignore[arg-type]
-            smart_baseline_prompt_dismissed=baseline_prompt_dismissed,
-        )
+        return _assessment_status_response(session, student_id=context.student_id, open_session=open_session)
 
 
 def dismiss_student_smart_baseline_prompt(user: Any) -> StudentAssessmentStatusResponse:
@@ -1708,28 +1737,9 @@ def dismiss_student_smart_baseline_prompt(user: Any) -> StudentAssessmentStatusR
                 },
             )
         open_session = _load_open_session(session, context.student_id)
-        completed_smart_baseline = bool(
-            session.execute(
-                text(
-                    """
-                    SELECT 1
-                    FROM student_smart_assessment_sessions
-                    WHERE student_id = :student_id
-                      AND status = 'completed'
-                      AND assessment_mode = 'smart'
-                    LIMIT 1
-                    """
-                ),
-                {"student_id": context.student_id},
-            ).scalar_one_or_none()
-        )
-        return StudentAssessmentStatusResponse(
-            has_completed_smart_baseline=completed_smart_baseline,
-            has_open_assessment=bool(open_session),
-            open_session_id=str(open_session["id"]) if open_session else None,
-            open_assessment_mode=_assessment_mode_from_value(open_session.get("assessment_mode")) if open_session else None,  # type: ignore[arg-type]
-            smart_baseline_prompt_dismissed=True,
-        )
+        response = _assessment_status_response(session, student_id=context.student_id, open_session=open_session)
+        response.smart_baseline_prompt_dismissed = True
+        return response
 
 
 def start_student_smart_assessment(user: Any) -> StudentSmartAssessmentResponse:

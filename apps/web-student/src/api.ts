@@ -461,6 +461,16 @@ export type SmartAssessmentSubmitResponse = {
   assessment_report?: AssessmentReportSummary | null;
 };
 
+export type StudentAssessmentStatus = {
+  has_completed_smart_baseline: boolean;
+  has_answered_questions?: boolean;
+  needs_smart_baseline?: boolean;
+  has_open_assessment: boolean;
+  open_session_id?: string | null;
+  open_assessment_mode?: AssessmentMode | null;
+  smart_baseline_prompt_dismissed?: boolean;
+};
+
 export const apiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const tokenKey = "chem_student_old_token";
 let authToken = readStoredToken();
@@ -588,6 +598,10 @@ export function loadCatalogNode(nodeId: string): Promise<StudentCatalogNodeRespo
 
 export function loadPointDetail(nodeId: string): Promise<PointDetail> {
   return api<PointDetail>(`/api/student/catalog/points/${encodeURIComponent(nodeId)}`);
+}
+
+export function loadAssessmentStatus(): Promise<StudentAssessmentStatus> {
+  return api<StudentAssessmentStatus>("/api/student/assessment/status");
 }
 
 export function startSmartAssessment(): Promise<SmartAssessmentResponse> {
