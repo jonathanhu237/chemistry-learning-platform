@@ -995,7 +995,7 @@ def _recommended_learning_points(
     *,
     user: Any,
     active: dict[str, Any],
-    limit: int = 4,
+    limit: int = 8,
 ) -> list[StudentLearningRecommendedPoint]:
     chapter_id = str(active.get("chapter_id") or "").strip()
     if not chapter_id:
@@ -1023,6 +1023,19 @@ def _recommended_learning_points(
                 SELECT jsonb_agg(title ORDER BY depth DESC)
                 FROM path
               ), '[]'::jsonb) AS catalog_path,
+              COALESCE((
+                WITH RECURSIVE path AS (
+                  SELECT id, parent_id, 0 AS depth
+                  FROM experiment_catalog_nodes
+                  WHERE id = n.id
+                  UNION ALL
+                  SELECT parent.id, parent.parent_id, path.depth + 1
+                  FROM experiment_catalog_nodes parent
+                  JOIN path ON path.parent_id = parent.id
+                )
+                SELECT jsonb_agg(id ORDER BY depth DESC)
+                FROM path
+              ), '[]'::jsonb) AS catalog_node_ids,
               mastery.mastery_score,
               CASE WHEN lr.node_id IS NULL THEN false ELSE true END AS is_teacher_recommended,
               COALESCE(media_counts.media_count, 0) AS media_count
@@ -1112,6 +1125,7 @@ def _recommended_learning_points(
                 title=str(item.get("point_title") or item["node_id"]),
                 summary=str(item.get("point_summary") or ""),
                 catalog_path=[str(value) for value in item.get("catalog_path") or [] if str(value).strip()],
+                catalog_node_ids=[str(value) for value in item.get("catalog_node_ids") or [] if str(value).strip()],
                 reason=_recommended_point_reason(item),
                 mastery_score=float(item["mastery_score"]) if item.get("mastery_score") is not None else None,
                 has_video=int(item.get("media_count") or 0) > 0,

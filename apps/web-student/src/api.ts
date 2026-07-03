@@ -134,6 +134,7 @@ export type StudentLearningRecommendedPoint = {
   title: string;
   summary?: string;
   catalog_path?: string[];
+  catalog_node_ids?: string[];
   reason?: string;
   mastery_score?: number | null;
   has_video?: boolean;

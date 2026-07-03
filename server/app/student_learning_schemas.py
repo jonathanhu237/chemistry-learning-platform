@@ -123,6 +123,7 @@ class StudentLearningRecommendedPoint(BaseModel):
     title: str
     summary: str = ""
     catalog_path: list[str] = Field(default_factory=list)
+    catalog_node_ids: list[str] = Field(default_factory=list)
     reason: str = "建议学习"
     mastery_score: float | None = None
     has_video: bool = False

@@ -276,6 +276,7 @@ function installStudentFetchMock() {
             title: "氯水漂白性实验",
             summary: "优先复盘氯水氧化性与漂白性。",
             catalog_path: ["第13章 卤族元素", "氯的氧化性", "氯水漂白性实验"],
+            catalog_node_ids: ["dir-oxidation", "point-1"],
             reason: "薄弱点位",
             mastery_score: 42,
             has_video: true,
@@ -295,6 +296,7 @@ function installStudentFetchMock() {
             title: "氯水漂白性实验",
             summary: "优先复盘氯水氧化性与漂白性。",
             catalog_path: ["第13章 卤族元素", "氯的氧化性", "氯水漂白性实验"],
+            catalog_node_ids: ["dir-oxidation", "point-1"],
             reason: "薄弱点位",
             mastery_score: 42,
             has_video: true,
@@ -851,13 +853,15 @@ describe("LegacyStudentApp", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "学习" }));
     expect(await screen.findByRole("heading", { name: "元素周期表" })).toBeTruthy();
-    expect(await screen.findByRole("heading", { name: "优先复盘这些实验点位" })).toBeTruthy();
-    expect(screen.getByText("薄弱点位")).toBeTruthy();
-    expect(screen.getByText("已配视频")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "先从周期表的这一层进入" })).toBeNull();
+    expect(screen.getAllByText("p区元素").length).toBeGreaterThan(0);
+    expect(container.querySelector(".legacy-area-legend button.recommended")?.textContent).toContain("p区元素");
+    expect(container.querySelector(".legacy-profile-grid button.recommended")?.textContent).toContain("卤素");
 
     fireEvent.click(screen.getByRole("button", { name: "Cl 氯" }));
     expect(await screen.findByText("当前章节：卤素")).toBeTruthy();
-    expect(await screen.findByRole("heading", { name: "优先复盘这些实验点位" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "先看这些目录内容" })).toBeTruthy();
+    expect(screen.getByText("薄弱点位")).toBeTruthy();
     expect(screen.getByRole("button", { name: "元素周期表" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "返回上一级目录" })).toBeTruthy();
     expect(await screen.findByText("当前元素")).toBeTruthy();
@@ -872,10 +876,11 @@ describe("LegacyStudentApp", () => {
     expect(screen.getByText("He").closest("button")?.style.background).toBe("rgb(238, 243, 255)");
 
     fireEvent.click((await screen.findAllByText("氯的氧化性"))[0].closest("button")!);
-    expect(await screen.findByText("氯水漂白性实验")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "先看这些目录内容" })).toBeTruthy();
+    expect((await screen.findAllByText("氯水漂白性实验")).length).toBeGreaterThan(0);
     expect(screen.queryByRole("heading", { name: "氯的氧化性" })).toBeNull();
 
-    fireEvent.click((await screen.findByText("氯水漂白性实验")).closest("button")!);
+    fireEvent.click((await screen.findAllByText("氯水漂白性实验"))[0].closest("button")!);
     await screen.findByRole("heading", { name: "氯水漂白性实验" });
     expect(screen.getByRole("button", { name: "返回学习目录" })).toBeTruthy();
     expect(screen.getByText("Cl2 + 2I- → 2Cl- + I2")).toBeTruthy();

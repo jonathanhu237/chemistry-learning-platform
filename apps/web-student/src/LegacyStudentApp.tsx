@@ -38,6 +38,7 @@ import {
   type StudentLearningElementBadge,
   type StudentLearningPageResponse,
   type StudentLearningProfile,
+  type StudentLearningProfileSummary,
   type StudentLearningRecommendedPoint,
 } from "./api";
 import {
@@ -216,6 +217,99 @@ function sortLegacyVideoPoints(items: LegacyVideoPointItem[]): LegacyVideoPointI
       return left.index - right.index;
     })
     .map(({ item }) => item);
+}
+
+type LearningProfileLike = StudentLearningProfile | StudentLearningProfileSummary;
+
+type CatalogNodeRecommendation = {
+  node: StudentCatalogNodeCard;
+  reason: string;
+  pointCount: number;
+  hasVideo: boolean;
+  masteryScore: number | null;
+};
+
+function recommendedProfileForPage(page: StudentLearningPageResponse): LearningProfileLike | null {
+  if (page.active_profile) return page.active_profile;
+  const recommendedId = page.recommended_profile_id || "";
+  return page.profiles.find((profile) => profile.profile_id === recommendedId) || page.profiles[0] || null;
+}
+
+function profilePrimaryAreaId(profile: LearningProfileLike): LegacyAreaId | null {
+  const areas = new Set<LegacyAreaId>();
+  profile.element_symbols.forEach((symbol) => {
+    const element = periodicMetaForSymbol(symbol);
+    if (element) areas.add(periodicAreaIdForElement(element));
+  });
+  return legacyAreaOrder.find((areaId) => areas.has(areaId)) || null;
+}
+
+function recommendationReasonRank(reason?: string): number {
+  if (reason === "薄弱点位") return 0;
+  if (reason === "巩固点位") return 1;
+  if (reason === "教师推荐") return 2;
+  if (reason === "视频学习") return 3;
+  return 4;
+}
+
+function betterRecommendationReason(current: string, next?: string): string {
+  const candidate = next || "建议学习";
+  return recommendationReasonRank(candidate) < recommendationReasonRank(current) ? candidate : current;
+}
+
+function findRecommendedChildNode(nodes: StudentCatalogNodeCard[], point: StudentLearningRecommendedPoint, currentNodeId?: string): StudentCatalogNodeCard | null {
+  const nodeById = new Map(nodes.map((node) => [node.node_id, node]));
+  const nodeIds = point.catalog_node_ids || [];
+  if (currentNodeId && nodeIds.length && !nodeIds.includes(currentNodeId)) return null;
+
+  const startIndex = currentNodeId ? nodeIds.indexOf(currentNodeId) + 1 : 0;
+  const idMatch = nodeIds.slice(Math.max(startIndex, 0)).find((nodeId) => nodeById.has(nodeId));
+  if (idMatch) return nodeById.get(idMatch) || null;
+
+  const titles = point.catalog_path || [];
+  const titleMatch = nodes.find((node) => titles.includes(node.title) || (node.node_kind === "point" && node.title === point.title));
+  return titleMatch || null;
+}
+
+function catalogRecommendations(
+  nodes: StudentCatalogNodeCard[],
+  points: StudentLearningRecommendedPoint[],
+  currentNodeId?: string,
+): CatalogNodeRecommendation[] {
+  const byNode = new Map<string, CatalogNodeRecommendation>();
+  points.forEach((point) => {
+    const node = findRecommendedChildNode(nodes, point, currentNodeId);
+    if (!node) return;
+    const existing = byNode.get(node.node_id);
+    if (!existing) {
+      byNode.set(node.node_id, {
+        node,
+        reason: point.reason || "建议学习",
+        pointCount: 1,
+        hasVideo: Boolean(point.has_video),
+        masteryScore: point.mastery_score ?? null,
+      });
+      return;
+    }
+    existing.reason = betterRecommendationReason(existing.reason, point.reason);
+    existing.pointCount += 1;
+    existing.hasVideo = existing.hasVideo || Boolean(point.has_video);
+    if (point.mastery_score !== null && point.mastery_score !== undefined) {
+      existing.masteryScore = existing.masteryScore === null ? point.mastery_score : Math.min(existing.masteryScore, point.mastery_score);
+    }
+  });
+  return [...byNode.values()]
+    .sort((left, right) => {
+      const reasonDiff = recommendationReasonRank(left.reason) - recommendationReasonRank(right.reason);
+      if (reasonDiff) return reasonDiff;
+      const leftScore = left.masteryScore ?? 999;
+      const rightScore = right.masteryScore ?? 999;
+      if (leftScore !== rightScore) return leftScore - rightScore;
+      if (left.pointCount !== right.pointCount) return right.pointCount - left.pointCount;
+      if (left.hasVideo !== right.hasVideo) return left.hasVideo ? -1 : 1;
+      return left.node.display_order - right.node.display_order;
+    })
+    .slice(0, 3);
 }
 
 function oldStorage(): Storage | null {
@@ -658,6 +752,9 @@ function LearningRootPage() {
   }, []);
 
   const profiles = page?.profiles || [];
+  const recommendedProfile = page ? recommendedProfileForPage(page) : null;
+  const recommendedProfileId = recommendedProfile?.profile_id || page?.recommended_profile_id || null;
+  const recommendedAreaId = recommendedProfile ? profilePrimaryAreaId(recommendedProfile) : null;
   const filteredProfiles = useMemo(() => (selectedArea ? profiles.filter((profile) => profileHasArea(profile, selectedArea)) : profiles), [profiles, selectedArea]);
   const selectElement = (element: LegacyPeriodicElement) => {
     const profile = findProfileForElement(element, profiles);
@@ -679,12 +776,9 @@ function LearningRootPage() {
       {error ? <div className="legacy-error">{error}</div> : null}
       {!loading && !error ? (
         <>
-          <LearningRecommendationPanel
-            points={page?.recommended_points || []}
-            from={page?.active_profile ? chapterRoute(page.active_profile.profile_id, page.active_profile.default_element_symbol || page.active_profile.element_symbols?.[0]) : "/learn"}
-          />
           <PeriodicTableSelector
             selectedArea={selectedArea}
+            recommendedAreaId={recommendedAreaId}
             onSelectArea={(areaId) => {
               setSelectedArea((current) => (current === areaId ? null : areaId));
               setSelectionMessage("");
@@ -692,33 +786,57 @@ function LearningRootPage() {
             onSelectElement={selectElement}
           />
           {selectionMessage ? <div className="legacy-state compact">{selectionMessage}</div> : null}
-          <LearningProfileIndex profiles={filteredProfiles} selectedArea={selectedArea} />
+          <LearningProfileIndex profiles={filteredProfiles} selectedArea={selectedArea} recommendedProfileId={recommendedProfileId} />
         </>
       ) : null}
     </section>
   );
 }
 
-function LearningRecommendationPanel({ points, from }: { points: StudentLearningRecommendedPoint[]; from: string }) {
-  const visiblePoints = points.slice(0, 4);
-  if (!visiblePoints.length) return null;
+function CatalogRecommendationPanel({
+  recommendations,
+  profileId,
+  chapterId,
+  elementSymbol,
+  from,
+}: {
+  recommendations: CatalogNodeRecommendation[];
+  profileId: string;
+  chapterId: string;
+  elementSymbol: string;
+  from: string;
+}) {
+  if (!recommendations.length) return null;
   return (
-    <section className="legacy-learning-recommendations" aria-label="推荐学习">
+    <section className="legacy-catalog-recommendations" aria-label="目录推荐学习">
       <div className="legacy-learning-recommendations-head">
         <div>
           <span className="eyebrow">推荐学习</span>
-          <h2>优先复盘这些实验点位</h2>
+          <h2>先看这些目录内容</h2>
         </div>
       </div>
-      <div className="legacy-learning-recommendation-list">
-        {visiblePoints.map((point) => (
-          <button key={point.node_id} type="button" onClick={() => navigate(pointRoute(point.node_id, from))}>
-            <span className="legacy-learning-recommendation-reason">{point.reason || "建议学习"}</span>
-            <strong>{point.title}</strong>
-            <small>{point.catalog_path?.slice(0, -1).slice(-2).join(" / ") || "实验点位"}</small>
-            <span className="legacy-learning-recommendation-meta">{point.has_video ? "已配视频" : "知识点位"}</span>
-          </button>
-        ))}
+      <div className="legacy-catalog-recommendation-list">
+        {recommendations.map((item) => {
+          const node = item.node;
+          const EntryIcon = node.node_kind === "point" ? Video : Folder;
+          const destination =
+            node.node_kind === "point" ? pointRoute(node.node_id, from) : catalogRoute(node.node_id, profileId, node.chapter_id || chapterId, elementSymbol);
+          return (
+            <button key={node.node_id} type="button" onClick={() => navigate(destination)}>
+              <span className="legacy-catalog-icon" aria-hidden="true">
+                <EntryIcon />
+              </span>
+              <span className="legacy-catalog-copy">
+                <strong>{node.title}</strong>
+                <small>{node.summary || (node.node_kind === "point" ? "实验点位" : "目录")}</small>
+              </span>
+              <span className="legacy-catalog-recommendation-meta">
+                {item.reason}
+                {item.pointCount > 1 ? ` · ${item.pointCount} 项` : ""}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </section>
   );
@@ -726,10 +844,12 @@ function LearningRecommendationPanel({ points, from }: { points: StudentLearning
 
 function PeriodicTableSelector({
   selectedArea,
+  recommendedAreaId,
   onSelectArea,
   onSelectElement,
 }: {
   selectedArea: LegacyAreaId | null;
+  recommendedAreaId?: LegacyAreaId | null;
   onSelectArea: (areaId: LegacyAreaId) => void;
   onSelectElement: (element: LegacyPeriodicElement) => void;
 }) {
@@ -741,19 +861,23 @@ function PeriodicTableSelector({
           <h2>元素周期表</h2>
         </div>
         <div className="legacy-area-legend" aria-label="元素分区">
-          {legacyAreaOrder.map((areaId) => (
-            <button
-              key={areaId}
-              className={selectedArea === areaId ? "active" : ""}
-              type="button"
-              style={{ borderColor: legacyAreaColors[areaId], color: legacyAreaInk[areaId] }}
-              aria-pressed={selectedArea === areaId}
-              onClick={() => onSelectArea(areaId)}
-            >
-              <i style={{ background: legacyAreaColors[areaId] }} />
-              {legacyAreaLabels[areaId]}
-            </button>
-          ))}
+          {legacyAreaOrder.map((areaId) => {
+            const recommended = recommendedAreaId === areaId;
+            return (
+              <button
+                key={areaId}
+                className={[selectedArea === areaId ? "active" : "", recommended ? "recommended" : ""].filter(Boolean).join(" ")}
+                type="button"
+                style={{ borderColor: legacyAreaColors[areaId], color: legacyAreaInk[areaId] }}
+                aria-pressed={selectedArea === areaId}
+                onClick={() => onSelectArea(areaId)}
+              >
+                <i style={{ background: legacyAreaColors[areaId] }} />
+                {legacyAreaLabels[areaId]}
+                {recommended ? <span className="legacy-inline-recommend-tag" aria-hidden="true">推荐</span> : null}
+              </button>
+            );
+          })}
         </div>
       </div>
       <div className="legacy-periodic-scroll" aria-label="完整元素周期表，可横向滑动">
@@ -791,17 +915,35 @@ function PeriodicTableSelector({
   );
 }
 
-function LearningProfileIndex({ profiles, selectedArea }: { profiles: StudentLearningPageResponse["profiles"]; selectedArea: LegacyAreaId | null }) {
+function LearningProfileIndex({
+  profiles,
+  selectedArea,
+  recommendedProfileId,
+}: {
+  profiles: StudentLearningPageResponse["profiles"];
+  selectedArea: LegacyAreaId | null;
+  recommendedProfileId?: string | null;
+}) {
   if (!profiles.length) return <div className="legacy-state">{selectedArea ? `暂无${legacyAreaLabels[selectedArea]}学习章节。` : "暂无已发布的元素学习章节。"}</div>;
   return (
     <section className="legacy-profile-index" aria-label="可学习章节">
       <h2>可学习章节</h2>
       <div className="legacy-profile-grid">
-        {profiles.map((profile) => (
-          <button key={profile.profile_id} type="button" title={formatProfileTitle(profile)} onClick={() => navigate(chapterRoute(profile.profile_id, profile.element_symbols[0]))}>
-            <strong>{formatProfileShortTitle(profile)}</strong>
-          </button>
-        ))}
+        {profiles.map((profile) => {
+          const recommended = profile.profile_id === recommendedProfileId;
+          return (
+            <button
+              key={profile.profile_id}
+              className={recommended ? "recommended" : ""}
+              type="button"
+              title={formatProfileTitle(profile)}
+              onClick={() => navigate(chapterRoute(profile.profile_id, profile.element_symbols[0]))}
+            >
+              <strong>{formatProfileShortTitle(profile)}</strong>
+              {recommended ? <span className="legacy-inline-recommend-tag" aria-hidden="true">推荐</span> : null}
+            </button>
+          );
+        })}
       </div>
     </section>
   );
@@ -860,6 +1002,8 @@ function LearningChapterPage({ profileId, initialElementSymbol }: { profileId: s
     };
   }, [profile?.chapter_id]);
 
+  const chapterRecommendations = useMemo(() => catalogRecommendations(catalog, page?.recommended_points || []), [catalog, page?.recommended_points]);
+
   if (loading) return <section className="legacy-page"><div className="legacy-state">正在载入学习章节...</div></section>;
   if (error) return <section className="legacy-page"><div className="legacy-error">{error}</div></section>;
   if (!profile) return <section className="legacy-page"><div className="legacy-state">没有找到学习章节。</div></section>;
@@ -874,7 +1018,15 @@ function LearningChapterPage({ profileId, initialElementSymbol }: { profileId: s
         <ElementRail profile={profile} selectedSymbol={selectedElement?.symbol || ""} onSelect={setSelectedElementSymbol} />
         {selectedElement ? <SelectedElementSummary element={selectedElement} /> : null}
       </section>
-      <LearningRecommendationPanel points={page?.recommended_points || []} from={currentRoute} />
+      {!catalogLoading ? (
+        <CatalogRecommendationPanel
+          recommendations={chapterRecommendations}
+          profileId={profile.profile_id}
+          chapterId={profile.chapter_id}
+          elementSymbol={selectedElement?.symbol || selectedElementSymbol}
+          from={currentRoute}
+        />
+      ) : null}
       <section className="legacy-catalog-panel">
         {catalogLoading ? <div className="legacy-state">正在载入目录...</div> : null}
         {!catalogLoading ? (
@@ -895,6 +1047,7 @@ function LearningDirectoryPage({ nodeId, profileId, chapterId, elementSymbol }: 
   const [detail, setDetail] = useState<StudentCatalogNodeResponse | null>(null);
   const [profileTitle, setProfileTitle] = useState("学习章节");
   const [activeProfile, setActiveProfile] = useState<StudentLearningProfile | null>(null);
+  const [recommendedPoints, setRecommendedPoints] = useState<StudentLearningRecommendedPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -906,6 +1059,7 @@ function LearningDirectoryPage({ nodeId, profileId, chapterId, elementSymbol }: 
       .then(([nodeResponse, learningPage]) => {
         if (!active) return;
         setDetail(nodeResponse);
+        setRecommendedPoints(learningPage?.recommended_points || []);
         if (learningPage?.active_profile) {
           setActiveProfile(learningPage.active_profile);
           setProfileTitle(formatProfileTitle(learningPage.active_profile));
@@ -921,6 +1075,11 @@ function LearningDirectoryPage({ nodeId, profileId, chapterId, elementSymbol }: 
       active = false;
     };
   }, [nodeId, profileId]);
+
+  const directoryRecommendations = useMemo(
+    () => catalogRecommendations(detail?.children || [], recommendedPoints, nodeId),
+    [detail?.children, nodeId, recommendedPoints],
+  );
 
   if (loading) return <section className="legacy-page"><div className="legacy-state">正在载入目录...</div></section>;
   if (error) return <section className="legacy-page"><div className="legacy-error">{error}</div></section>;
@@ -939,6 +1098,13 @@ function LearningDirectoryPage({ nodeId, profileId, chapterId, elementSymbol }: 
           {selectedElement ? <SelectedElementSummary element={selectedElement} /> : null}
         </section>
       ) : null}
+      <CatalogRecommendationPanel
+        recommendations={directoryRecommendations}
+        profileId={profileId}
+        chapterId={detail.node.chapter_id || chapterId}
+        elementSymbol={elementSymbol}
+        from={currentRoute}
+      />
       <section className="legacy-catalog-panel">
         <CatalogNodeList
           nodes={detail.children}

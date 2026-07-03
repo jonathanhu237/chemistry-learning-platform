@@ -1118,7 +1118,7 @@ p {
 
 .legacy-periodic-card,
 .legacy-learning-chapter,
-.legacy-learning-recommendations,
+.legacy-catalog-recommendations,
 .legacy-catalog-panel,
 .legacy-profile-index {
   border: 1px solid var(--legacy-line);
@@ -1160,6 +1160,11 @@ p {
 
 .legacy-area-legend button.active {
   box-shadow: inset 0 0 0 2px currentColor;
+}
+
+.legacy-area-legend button.recommended {
+  background: var(--legacy-red-050);
+  box-shadow: inset 0 -3px 0 currentColor;
 }
 
 .legacy-area-legend i {
@@ -1246,7 +1251,9 @@ p {
 
 .legacy-profile-grid button {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 6px;
+  align-items: center;
   min-height: 54px;
   border: 1px solid var(--legacy-line);
   background: #fff;
@@ -1258,13 +1265,26 @@ p {
   border-color: var(--legacy-sysu-red);
 }
 
+.legacy-profile-grid button.recommended {
+  border-color: var(--legacy-sysu-red);
+  background: var(--legacy-red-050);
+  box-shadow: inset 4px 0 0 var(--legacy-sysu-red);
+}
+
 .legacy-profile-grid strong {
   color: var(--legacy-sysu-red);
 }
 
-.legacy-learning-recommendations {
-  margin: 12px 0 0;
-  padding: 14px;
+.legacy-inline-recommend-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid currentColor;
+  background: #fff;
+  padding: 2px 5px;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .legacy-learning-recommendations-head {
@@ -1283,32 +1303,38 @@ p {
   line-height: 1.2;
 }
 
-.legacy-learning-recommendation-list {
+.legacy-catalog-recommendations {
+  margin-top: 14px;
+  padding: 14px;
+}
+
+.legacy-catalog-recommendation-list {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-.legacy-learning-recommendation-list button {
+.legacy-catalog-recommendation-list button {
   display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
   min-width: 0;
-  min-height: 128px;
-  align-content: start;
-  gap: 7px;
+  min-height: 86px;
   border: 1px solid var(--legacy-line);
   background: #fff;
   padding: 10px;
   text-align: left;
 }
 
-.legacy-learning-recommendation-list button:hover,
-.legacy-learning-recommendation-list button:focus-visible {
+.legacy-catalog-recommendation-list button:hover,
+.legacy-catalog-recommendation-list button:focus-visible {
   border-color: var(--legacy-sysu-red);
   background: var(--legacy-red-050);
 }
 
-.legacy-learning-recommendation-reason,
-.legacy-learning-recommendation-meta {
+.legacy-catalog-recommendation-meta {
+  grid-column: 2;
   width: fit-content;
   border: 1px solid #ead3b2;
   background: #fff8e8;
@@ -1317,34 +1343,6 @@ p {
   font-size: 12px;
   font-weight: 900;
   line-height: 1;
-}
-
-.legacy-learning-recommendation-list strong {
-  display: -webkit-box;
-  overflow: hidden;
-  color: var(--legacy-ink);
-  font-size: 15px;
-  line-height: 1.35;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.legacy-learning-recommendation-list small {
-  display: -webkit-box;
-  overflow: hidden;
-  color: var(--legacy-muted);
-  font-size: 12px;
-  line-height: 1.35;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.legacy-learning-recommendation-meta {
-  align-self: end;
-  margin-top: auto;
-  border-color: var(--legacy-line);
-  background: var(--legacy-red-050);
-  color: var(--legacy-sysu-red);
 }
 
 .legacy-learning-chapter {
@@ -1848,14 +1846,14 @@ p {
 
   .legacy-periodic-card,
   .legacy-learning-chapter,
-  .legacy-learning-recommendations,
+  .legacy-catalog-recommendations,
   .legacy-catalog-panel,
   .legacy-profile-index {
     padding: 12px;
   }
 
-  .legacy-learning-recommendation-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .legacy-catalog-recommendation-list {
+    grid-template-columns: 1fr;
   }
 
   .legacy-drilldown-page {
