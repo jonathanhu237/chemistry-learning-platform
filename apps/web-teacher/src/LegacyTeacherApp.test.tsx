@@ -1112,6 +1112,7 @@ describe("LegacyTeacherApp", () => {
     expect(within(workbench).getByText("当前班级预估")).toBeTruthy();
     expect(within(workbench).getByText("氯水漂白性实验")).toBeTruthy();
     expect(within(workbench).getByText("未测目标 2 题")).toBeTruthy();
+    expect(within(workbench).getByText("第 1 / 1 页 · 共 2 个实验")).toBeTruthy();
     expect(await within(workbench).findByText("当前班级继承默认策略")).toBeTruthy();
 
     fireEvent.change(within(workbench).getByLabelText("每次题量数值"), { target: { value: "15" } });

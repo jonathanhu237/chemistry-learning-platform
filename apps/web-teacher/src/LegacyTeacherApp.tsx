@@ -656,6 +656,7 @@ const smartAssessmentDefaults: SmartAssessmentSettings = {
   weak_curve: 2,
   weak_max_bonus: 9,
 };
+const PAPER_PREVIEW_PAGE_SIZE = 5;
 
 const smartAssessmentWarningLabels: Record<string, string> = {
   no_candidate_points: "题库暂无可用于测评的点位题",
@@ -683,6 +684,7 @@ function PaperManagementPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<SmartAssessmentSettings>(smartAssessmentDefaults);
+  const [previewPage, setPreviewPage] = useState(1);
   const selectedClass = classes.find((item) => item.id === selectedClassId) || classes[0] || null;
   const effectiveClassId = selectedClass?.id || "";
   const strategyState = useAsyncData<SmartAssessmentStrategyResponse | null>(
@@ -699,10 +701,21 @@ function PaperManagementPage() {
     .filter(([, active]) => Boolean(active))
     .map(([key]) => smartAssessmentWarningLabels[key] || key);
   const previewExperiments = preview?.experiments || [];
+  const previewPageCount = Math.max(1, Math.ceil(previewExperiments.length / PAPER_PREVIEW_PAGE_SIZE));
+  const clampedPreviewPage = Math.min(previewPage, previewPageCount);
+  const pagedPreviewExperiments = previewExperiments.slice((clampedPreviewPage - 1) * PAPER_PREVIEW_PAGE_SIZE, clampedPreviewPage * PAPER_PREVIEW_PAGE_SIZE);
 
   useEffect(() => {
     if (!selectedClassId && classes[0]?.id) setSelectedClassId(classes[0].id);
   }, [classes, selectedClassId]);
+
+  useEffect(() => {
+    setPreviewPage(1);
+  }, [effectiveClassId, previewExperiments.length]);
+
+  useEffect(() => {
+    if (previewPage > previewPageCount) setPreviewPage(previewPageCount);
+  }, [previewPage, previewPageCount]);
 
   useEffect(() => {
     if (strategy?.strategy) setSettings(normalizeSmartAssessmentSettings(strategy.strategy));
@@ -901,21 +914,36 @@ function PaperManagementPage() {
                             <PaperWeakCurve settings={settings} />
                             <div className="legacy-paper-preview-table-wrap">
                               {previewExperiments.length ? (
-                                <table className="legacy-paper-preview-table">
-                                  <thead>
-                                    <tr>
-                                      <th scope="col">实验</th>
-                                      <th scope="col">预估</th>
-                                      <th scope="col">点位</th>
-                                      <th scope="col">掌握</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {previewExperiments.map((item) => (
-                                      <PaperPreviewRow key={item.id} item={item} />
-                                    ))}
-                                  </tbody>
-                                </table>
+                                <>
+                                  <table className="legacy-paper-preview-table">
+                                    <thead>
+                                      <tr>
+                                        <th scope="col">实验</th>
+                                        <th scope="col">预估</th>
+                                        <th scope="col">点位</th>
+                                        <th scope="col">掌握</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {pagedPreviewExperiments.map((item) => (
+                                        <PaperPreviewRow key={item.id} item={item} />
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                  <div className="legacy-class-pagination legacy-paper-preview-pagination" aria-label="预估分页">
+                                    <span>
+                                      第 {clampedPreviewPage} / {previewPageCount} 页 · 共 {previewExperiments.length} 个实验
+                                    </span>
+                                    <div>
+                                      <button type="button" disabled={clampedPreviewPage <= 1} onClick={() => setPreviewPage((value) => Math.max(1, value - 1))}>
+                                        上一页
+                                      </button>
+                                      <button type="button" disabled={clampedPreviewPage >= previewPageCount} onClick={() => setPreviewPage((value) => Math.min(previewPageCount, value + 1))}>
+                                        下一页
+                                      </button>
+                                    </div>
+                                  </div>
+                                </>
                               ) : (
                                 <TeacherEmptyState message="当前班级暂无可预估的组卷点位。" compact />
                               )}

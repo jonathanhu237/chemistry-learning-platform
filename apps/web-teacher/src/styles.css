@@ -3880,8 +3880,9 @@ p {
 }
 
 .legacy-paper-preview-table-wrap {
-  max-height: 230px;
-  overflow: hidden;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
 }
 
 .legacy-paper-preview-table {
@@ -3920,6 +3921,11 @@ p {
 .legacy-paper-preview-table td {
   color: var(--legacy-muted);
   white-space: normal;
+}
+
+.legacy-paper-preview-pagination {
+  margin-top: 0;
+  padding-top: 8px;
 }
 
 .legacy-paper-warnings {
