@@ -1972,7 +1972,6 @@ function QuestionsPage() {
   const bankQuestions = questionsState.data?.items || [];
   const selectedDraft = draftItems.find((item) => item.id === selectedDraftId) || draftItems[0] || null;
   const selectedBankQuestion = bankQuestions.find((item) => item.id === selectedBankQuestionId) || bankQuestions[0] || null;
-  const selectedDraftPublishable = Boolean(selectedDraft && selectedDraft.status === "draft" && !selectedDraft.validation_errors?.length);
 
   useEffect(() => {
     if (selectedPoint) {
@@ -2189,6 +2188,8 @@ function QuestionsPage() {
                           selected={selectedDraft?.id === draft.id}
                           onSelect={() => setSelectedDraftId(draft.id)}
                           onSave={saveDraft}
+                          publishing={publishingDraftId === draft.id}
+                          onPublish={() => publishDraft(draft.id)}
                         />
                       ))}
                     </div>
@@ -2197,26 +2198,6 @@ function QuestionsPage() {
                   )}
                 </StateBlock>
               </section>
-              <div className="legacy-question-transfer-controls" aria-label="题库流转操作">
-                <button
-                  type="button"
-                  aria-label="入库选中待审题"
-                  title="入库选中待审题"
-                  disabled={!selectedDraftPublishable || Boolean(publishingDraftId)}
-                  onClick={() => selectedDraftPublishable && selectedDraft && publishDraft(selectedDraft.id)}
-                >
-                  {publishingDraftId ? "…" : "→"}
-                </button>
-                <button
-                  type="button"
-                  aria-label="撤销选中正式题"
-                  title="撤销选中正式题"
-                  disabled={!selectedBankQuestion || Boolean(revokingQuestionId)}
-                  onClick={() => selectedBankQuestion && revokeQuestion(selectedBankQuestion.id)}
-                >
-                  {revokingQuestionId ? "…" : "←"}
-                </button>
-              </div>
               <section className="legacy-question-review-panel legacy-question-bank-panel" aria-label="正式题库">
                 <div className="legacy-question-review-head">
                   <div>
@@ -2229,7 +2210,14 @@ function QuestionsPage() {
                   {bankQuestions.length ? (
                     <div className="legacy-question-bank-list">
                       {bankQuestions.slice(0, 10).map((question) => (
-                        <QuestionRow key={question.id} question={question} selected={selectedBankQuestion?.id === question.id} onSelect={() => setSelectedBankQuestionId(question.id)} />
+                        <QuestionRow
+                          key={question.id}
+                          question={question}
+                          selected={selectedBankQuestion?.id === question.id}
+                          revoking={revokingQuestionId === question.id}
+                          onSelect={() => setSelectedBankQuestionId(question.id)}
+                          onRevoke={() => revokeQuestion(question.id)}
+                        />
                       ))}
                     </div>
                   ) : (
@@ -2319,14 +2307,19 @@ function DraftReviewCard({
   selected = false,
   onSelect,
   onSave,
+  publishing = false,
+  onPublish,
 }: {
   draft: QuestionDraft;
   selected?: boolean;
   onSelect?: () => void;
   onSave: (draftId: string, payload: QuestionDraft["payload"]) => Promise<void>;
+  publishing?: boolean;
+  onPublish?: () => void;
 }) {
   const payload = draft.payload || {};
   const validationErrors = draft.validation_errors || [];
+  const publishable = draft.status === "draft" && !validationErrors.length;
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editState, setEditState] = useState<DraftEditState>(() => draftEditStateFromPayload(payload));
@@ -2411,6 +2404,7 @@ function DraftReviewCard({
       tabIndex={0}
       onClick={onSelect}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           onSelect?.();
@@ -2418,8 +2412,23 @@ function DraftReviewCard({
       }}
     >
       <div className="legacy-question-candidate-title">
-        <span className="legacy-row-label">{questionTypeLabel(String(payload.question_type || ""))}</span>
-        <span className={`legacy-row-label${validationErrors.length ? "" : " gold"}`}>{draft.status === "published" ? "已入库" : validationErrors.length ? "需复核" : "可入库"}</span>
+        <div className="legacy-question-card-labels">
+          <span className="legacy-row-label">{questionTypeLabel(String(payload.question_type || ""))}</span>
+          <span className={`legacy-row-label${validationErrors.length ? "" : " gold"}`}>{draft.status === "published" ? "已入库" : validationErrors.length ? "需复核" : "可入库"}</span>
+        </div>
+        <button
+          type="button"
+          className="legacy-question-card-flow-button"
+          aria-label="入库"
+          title="入库"
+          disabled={!publishable || publishing}
+          onClick={(event) => {
+            event.stopPropagation();
+            onPublish?.();
+          }}
+        >
+          {publishing ? "…" : "→"}
+        </button>
       </div>
       <strong>{String(payload.stem || "待审题目")}</strong>
       <QuestionOptions options={payload.options} />
@@ -2435,7 +2444,14 @@ function DraftReviewCard({
       </dl>
       {validationErrors.length ? <div className="legacy-error compact">{validationErrors.join("；")}</div> : null}
       <div className="legacy-question-card-actions">
-        <TeacherButton className="legacy-secondary-button" disabled={draft.status !== "draft"} onClick={() => setEditing(true)}>
+        <TeacherButton
+          className="legacy-secondary-button"
+          disabled={draft.status !== "draft"}
+          onClick={(event) => {
+            event.stopPropagation();
+            setEditing(true);
+          }}
+        >
           修改
         </TeacherButton>
       </div>
@@ -2446,16 +2462,47 @@ function DraftReviewCard({
 function QuestionRow({
   question,
   selected = false,
+  revoking = false,
   onSelect,
+  onRevoke,
 }: {
   question: Question;
   selected?: boolean;
+  revoking?: boolean;
   onSelect?: () => void;
+  onRevoke?: () => void;
 }) {
   return (
-    <button type="button" className={`legacy-resource-row legacy-question-bank-row${selected ? " selected" : ""}`} onClick={onSelect}>
-      <div>
-        <span className="legacy-row-label">{questionTypeLabel(question.question_type)}</span>
+    <article
+      className={`legacy-resource-row legacy-question-bank-row${selected ? " selected" : ""}`}
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect?.();
+        }
+      }}
+    >
+      <div className="legacy-question-candidate-title">
+        <div className="legacy-question-card-labels">
+          <span className="legacy-row-label">{questionTypeLabel(question.question_type)}</span>
+        </div>
+        <button
+          type="button"
+          className="legacy-question-card-flow-button"
+          aria-label="撤销到待审"
+          title="撤销到待审"
+          disabled={revoking}
+          onClick={(event) => {
+            event.stopPropagation();
+            onRevoke?.();
+          }}
+        >
+          {revoking ? "…" : "←"}
+        </button>
       </div>
       <div className="legacy-row-main">
         <strong>{question.stem}</strong>
@@ -2465,7 +2512,7 @@ function QuestionRow({
         <span>{catalogContentStatusLabel(question.status, "未知")}</span>
         <span>{answerSummary(question.answer)}</span>
       </div>
-    </button>
+    </article>
   );
 }
 

@@ -777,55 +777,10 @@ p {
 
 .legacy-question-library-transfer {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 44px minmax(220px, 1fr);
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
   min-width: 0;
   min-height: 0;
   background: #fff;
-}
-
-.legacy-question-transfer-controls {
-  display: grid;
-  align-content: start;
-  gap: 8px;
-  min-width: 0;
-  border-right: 1px solid var(--legacy-line);
-  background: #fffdfb;
-  padding: 72px 5px 10px;
-}
-
-.legacy-question-transfer-controls button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--legacy-sysu-red);
-  border-radius: 0;
-  background: var(--legacy-sysu-red);
-  color: #fff;
-  cursor: pointer;
-  font-size: 20px;
-  font-weight: 900;
-  line-height: 1;
-  transition:
-    background-color 180ms ease,
-    border-color 180ms ease,
-    opacity 180ms ease;
-}
-
-.legacy-question-transfer-controls button:hover,
-.legacy-question-transfer-controls button:focus-visible {
-  border-color: #84000a;
-  background: #84000a;
-  outline: 0;
-}
-
-.legacy-question-transfer-controls button:disabled {
-  border-color: #e3d6d2;
-  background: #f5efed;
-  color: #9b8d89;
-  cursor: not-allowed;
-  opacity: 0.72;
 }
 
 .legacy-question-point-panel {
@@ -1152,6 +1107,50 @@ p {
 
 .legacy-question-candidate-title {
   justify-content: space-between;
+}
+
+.legacy-question-card-labels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.legacy-question-card-flow-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 30px;
+  border: 1px solid var(--legacy-sysu-red);
+  border-radius: 0;
+  background: var(--legacy-sysu-red);
+  color: #fff;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    opacity 180ms ease;
+}
+
+.legacy-question-card-flow-button:hover,
+.legacy-question-card-flow-button:focus-visible {
+  border-color: #84000a;
+  background: #84000a;
+  outline: 0;
+}
+
+.legacy-question-card-flow-button:disabled {
+  border-color: #e3d6d2;
+  background: #f5efed;
+  color: #9b8d89;
+  cursor: not-allowed;
+  opacity: 0.82;
 }
 
 .legacy-question-options {

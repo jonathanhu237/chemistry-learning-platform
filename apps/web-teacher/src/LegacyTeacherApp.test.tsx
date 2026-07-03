@@ -1375,9 +1375,12 @@ describe("LegacyTeacherApp", () => {
     expect(screen.getByText("正式题库")).toBeTruthy();
     expect(await screen.findByText("为什么干燥有色布条放入氯气中不明显褪色？")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "退回修改" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "撤销到待审" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "撤销选中正式题" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "入库选中待审题" })).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "撤销选中正式题" }));
+    const bankPanel = screen.getByRole("region", { name: "正式题库" });
+    const initialQuestionCard = within(bankPanel).getByRole("button", { name: /为什么干燥有色布条放入氯气中不明显褪色/ });
+    fireEvent.click(within(initialQuestionCard).getByRole("button", { name: "撤销到待审" }));
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/questions/question-ch13-1/revoke-to-draft"));
 
     const reviewPanel = screen.getByRole("region", { name: "待审队列" });
@@ -1416,7 +1419,8 @@ describe("LegacyTeacherApp", () => {
       count: 1,
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "入库选中待审题" }));
+    const updatedDraftCard = await within(reviewPanel).findByRole("button", { name: /修改后的氯水漂白性题干/ });
+    fireEvent.click(within(updatedDraftCard).getByRole("button", { name: "入库" }));
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/drafts/draft-from-question-ch13-1/publish"));
     expect(screen.queryByText("教师审核通过，题目已入库。")).toBeNull();
     expect(await screen.findByText("修改后的氯水漂白性题干？")).toBeTruthy();
