@@ -1378,12 +1378,17 @@ describe("LegacyTeacherApp", () => {
     expect(screen.queryByRole("button", { name: "撤销选中正式题" })).toBeNull();
     expect(screen.queryByRole("button", { name: "入库选中待审题" })).toBeNull();
 
+    const reviewPanel = screen.getByRole("region", { name: "待审队列" });
+    const initialDraftCard = within(reviewPanel).getByRole("button", { name: /氯水使湿润有色布条褪色/ });
+    fireEvent.click(within(initialDraftCard).getByRole("button", { name: "删除" }));
+    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/drafts/draft-ch13-1/reject"));
+    await waitFor(() => expect(within(reviewPanel).queryByRole("button", { name: /氯水使湿润有色布条褪色/ })).toBeNull());
+
     const bankPanel = screen.getByRole("region", { name: "正式题库" });
     const initialQuestionCard = within(bankPanel).getByRole("button", { name: /为什么干燥有色布条放入氯气中不明显褪色/ });
     fireEvent.click(within(initialQuestionCard).getByRole("button", { name: "撤销到待审" }));
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/questions/question-ch13-1/revoke-to-draft"));
 
-    const reviewPanel = screen.getByRole("region", { name: "待审队列" });
     const revokedDraftCard = await within(reviewPanel).findByRole("button", { name: /为什么干燥有色布条放入氯气中不明显褪色/ });
     fireEvent.click(within(revokedDraftCard).getByRole("button", { name: "修改" }));
     fireEvent.change(screen.getByLabelText("题干"), { target: { value: "修改后的氯水漂白性题干？" } });
@@ -1429,7 +1434,7 @@ describe("LegacyTeacherApp", () => {
     expect(paths).toContain("/api/teacher/question-banks/drafts?point_node_id=point-ch13-bleach&canonical_point_id=canon-bleach");
     expect(paths.some((path) => path.startsWith("/api/teacher/question-banks/questions?") && path.includes("status_filter=published"))).toBe(true);
     expect(paths).toContain("/api/teacher/question-banks/questions/question-ch13-1/revoke-to-draft");
-    expect(paths.some((path) => path.startsWith("/api/teacher/question-banks/drafts/draft-ch13-1/reject"))).toBe(false);
+    expect(paths).toContain("/api/teacher/question-banks/drafts/draft-ch13-1/reject");
     expect(paths).toContain("/api/teacher/question-banks/drafts/draft-from-question-ch13-1/publish");
     expect(paths).not.toContain("/api/teacher/question-banks/drafts/draft-ch13-1/publish");
     expectNoForbiddenGenerationFlows(fetchMock);

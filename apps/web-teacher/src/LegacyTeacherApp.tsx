@@ -32,6 +32,7 @@ import {
   listTeacherStudentAssessmentReports,
   loadCurrentUser,
   publishQuestionDraft,
+  rejectQuestionDraft,
   resetGlobalAssessmentReportPrompts,
   resetTeacherClassStudentPassword,
   revokeQuestionToDraft,
@@ -1965,6 +1966,7 @@ function QuestionsPage() {
   const [actionError, setActionError] = useState("");
   const [generating, setGenerating] = useState(false);
   const [publishingDraftId, setPublishingDraftId] = useState("");
+  const [deletingDraftId, setDeletingDraftId] = useState("");
   const [revokingQuestionId, setRevokingQuestionId] = useState("");
   const [selectedDraftId, setSelectedDraftId] = useState("");
   const [selectedBankQuestionId, setSelectedBankQuestionId] = useState("");
@@ -2048,6 +2050,20 @@ function QuestionsPage() {
     } catch (caught) {
       setActionError(legacyTeacherErrorMessage(caught));
       throw caught;
+    }
+  };
+
+  const deleteDraft = async (draftId: string) => {
+    setActionError("");
+    setDeletingDraftId(draftId);
+    try {
+      await rejectQuestionDraft(draftId);
+      if (selectedDraftId === draftId) setSelectedDraftId("");
+      setReloadKey((value) => value + 1);
+    } catch (caught) {
+      setActionError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setDeletingDraftId("");
     }
   };
 
@@ -2189,7 +2205,9 @@ function QuestionsPage() {
                           onSelect={() => setSelectedDraftId(draft.id)}
                           onSave={saveDraft}
                           publishing={publishingDraftId === draft.id}
+                          deleting={deletingDraftId === draft.id}
                           onPublish={() => publishDraft(draft.id)}
+                          onDelete={() => deleteDraft(draft.id)}
                         />
                       ))}
                     </div>
@@ -2308,14 +2326,18 @@ function DraftReviewCard({
   onSelect,
   onSave,
   publishing = false,
+  deleting = false,
   onPublish,
+  onDelete,
 }: {
   draft: QuestionDraft;
   selected?: boolean;
   onSelect?: () => void;
   onSave: (draftId: string, payload: QuestionDraft["payload"]) => Promise<void>;
   publishing?: boolean;
+  deleting?: boolean;
   onPublish?: () => void;
+  onDelete?: () => void;
 }) {
   const payload = draft.payload || {};
   const validationErrors = draft.validation_errors || [];
@@ -2453,6 +2475,17 @@ function DraftReviewCard({
           }}
         >
           修改
+        </TeacherButton>
+        <TeacherButton
+          danger
+          className="legacy-secondary-button"
+          disabled={draft.status !== "draft" || deleting}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete?.();
+          }}
+        >
+          {deleting ? "删除中..." : "删除"}
         </TeacherButton>
       </div>
     </article>
