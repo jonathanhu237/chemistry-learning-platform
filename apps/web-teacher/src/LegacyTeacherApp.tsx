@@ -2358,7 +2358,7 @@ function DraftReviewCard({
       <article className={`legacy-question-candidate-card legacy-question-candidate-card-editing${selected ? " selected" : ""}`}>
         <div className="legacy-question-candidate-title">
           <span className="legacy-row-label">{questionTypeLabel(String(payload.question_type || ""))}</span>
-          <span className={`legacy-row-label${validationErrors.length ? "" : " gold"}`}>{validationErrors.length ? "需复核" : "可入库"}</span>
+          {validationErrors.length ? <span className="legacy-row-label">需复核</span> : null}
         </div>
         <div className="legacy-draft-edit-form">
           <label>
@@ -2414,7 +2414,7 @@ function DraftReviewCard({
       <div className="legacy-question-candidate-title">
         <div className="legacy-question-card-labels">
           <span className="legacy-row-label">{questionTypeLabel(String(payload.question_type || ""))}</span>
-          <span className={`legacy-row-label${validationErrors.length ? "" : " gold"}`}>{draft.status === "published" ? "已入库" : validationErrors.length ? "需复核" : "可入库"}</span>
+          {validationErrors.length ? <span className="legacy-row-label">需复核</span> : null}
         </div>
         <button
           type="button"
