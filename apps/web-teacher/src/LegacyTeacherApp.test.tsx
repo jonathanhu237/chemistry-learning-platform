@@ -670,6 +670,37 @@ function installTeacherFetchMock() {
       return jsonResponse(classes);
     }
 
+    if (/^\/api\/teacher\/classes\/[^/]+\/registration-settings$/.test(path)) {
+      if (method === "PUT") {
+        const body = JSON.parse(String(init?.body || "{}"));
+        return jsonResponse({
+          mode: body.mode || "roster_only",
+          default_password_policy: body.default_password_policy || "student_id_name_activation",
+          default_password_mode: body.default_password_mode || "student_id",
+          has_default_password: Boolean(body.default_password),
+          source: "class",
+        });
+      }
+      return jsonResponse({
+        mode: "roster_only",
+        default_password_policy: "student_id_name_activation",
+        default_password_mode: "student_id",
+        has_default_password: false,
+        source: "system_default",
+      });
+    }
+
+    if (path === "/api/teacher/classes/class-1/roster/import" && method === "POST") {
+      return jsonResponse({
+        import_id: "import-1",
+        mode: "upsert",
+        total_rows: 2,
+        valid_rows: 2,
+        invalid_rows: 0,
+        disabled_missing: 0,
+      });
+    }
+
     if (path === "/api/teacher/classes/class-1/students" && method === "POST") {
       return jsonResponse({
         id: "class-student-new",
@@ -1111,10 +1142,45 @@ describe("LegacyTeacherApp", () => {
     expect((await screen.findAllByText("无机化学一班")).length).toBeGreaterThan(0);
     expect(await screen.findByText("张三")).toBeTruthy();
     expect(screen.getByText("李四")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "班级" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "学生名单" })).toBeTruthy();
+    expect(screen.getByText("无机化学一班 · 初始密码：使用学号")).toBeTruthy();
+    expect(screen.queryByText("登录方式")).toBeNull();
 
-    fireEvent.change(screen.getByLabelText("学号"), { target: { value: "2026003" } });
-    fireEvent.change(screen.getByLabelText("姓名"), { target: { value: "王五" } });
+    fireEvent.click(screen.getByRole("button", { name: "导入名单" }));
+    const importDialog = await screen.findByRole("dialog", { name: "导入学生名单" });
+    const rosterFileInput = importDialog.querySelector('input[type="file"]');
+    expect(rosterFileInput).toBeTruthy();
+    fireEvent.change(rosterFileInput as HTMLInputElement, {
+      target: { files: [new File(["student_id,student_name\n26320004,赵六"], "students.csv", { type: "text/csv" })] },
+    });
+    expect(within(importDialog).getByText("students.csv")).toBeTruthy();
+    fireEvent.click(within(importDialog).getByRole("button", { name: "导入名单" }));
+
+    expect(await screen.findByText("导入完成：2 条有效。")).toBeTruthy();
+    const settingsCall = fetchMock.mock.calls.find(
+      (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/registration-settings" && String(call[1]?.method || "GET").toUpperCase() === "PUT",
+    );
+    expect(settingsCall).toBeTruthy();
+    expect(JSON.parse(String(settingsCall?.[1]?.body))).toMatchObject({
+      mode: "roster_only",
+      default_password_mode: "student_id",
+      default_password_policy: "student_id_name_activation",
+    });
+    const importCall = fetchMock.mock.calls.find(
+      (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/roster/import" && String(call[1]?.method || "GET").toUpperCase() === "POST",
+    );
+    expect(importCall).toBeTruthy();
+    const importBody = importCall?.[1]?.body as FormData;
+    expect(importBody.get("mode")).toBe("upsert");
+    expect((importBody.get("file") as File).name).toBe("students.csv");
+
     fireEvent.click(screen.getByRole("button", { name: "添加学生" }));
+    fireEvent.change(await screen.findByLabelText("学号"), { target: { value: "2026003" } });
+    fireEvent.change(screen.getByLabelText("姓名"), { target: { value: "王五" } });
+    const studentSubmitButton = screen.getAllByRole("button", { name: "添加学生" }).at(-1);
+    expect(studentSubmitButton).toBeTruthy();
+    fireEvent.click(studentSubmitButton as HTMLElement);
 
     expect(await screen.findByText("已添加学生。")).toBeTruthy();
     const createStudentCall = fetchMock.mock.calls.find(
@@ -1128,9 +1194,10 @@ describe("LegacyTeacherApp", () => {
       activation_mode: "default_password",
     });
 
-    fireEvent.change(screen.getByLabelText("班级名称"), { target: { value: "无机化学二班" } });
-    fireEvent.change(screen.getByLabelText("备注"), { target: { value: "新增测试班级" } });
     fireEvent.click(screen.getByRole("button", { name: "新增班级" }));
+    fireEvent.change(await screen.findByLabelText("班级名称"), { target: { value: "无机化学二班" } });
+    fireEvent.change(screen.getByLabelText("备注"), { target: { value: "新增测试班级" } });
+    fireEvent.click(screen.getByRole("button", { name: "创建班级" }));
 
     expect(await screen.findByText("已创建班级。")).toBeTruthy();
     const createClassCall = fetchMock.mock.calls.find(

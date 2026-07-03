@@ -14,10 +14,12 @@ import {
   getAnalyticsDashboard,
   getAuthToken,
   getCatalogNode,
+  getTeacherClassRegistrationSettings,
   getTeacherMediaUploadPolicy,
   getGlobalAssessmentReportPrompts,
   getStudentReport,
   getTeacherStudentAssessmentReport,
+  importTeacherClassRoster,
   legacyTeacherErrorMessage,
   listCatalogQuestionBank,
   listQuestionBankQuestions,
@@ -51,9 +53,11 @@ import {
   type TeacherMediaUploadPolicy,
   type StudentAssessmentReportSummary,
   type StudentReport,
+  type TeacherClassRegistrationSettings,
   type TeacherClassSummary,
   type TeacherStudentSummary,
   type User,
+  updateTeacherClassRegistrationSettings,
 } from "./api";
 import {
   TeacherAlert,
@@ -2046,7 +2050,7 @@ function answerSummary(answer: unknown): string {
 }
 
 function classStatusLabel(status?: string | null): string {
-  if (status === "active") return "启用中";
+  if (status === "active") return "启用";
   if (status === "archived") return "已归档";
   if (status === "disabled") return "已停用";
   return status || "未知";
@@ -2068,18 +2072,32 @@ function activationModeLabel(value?: string | null): string {
 function ClassesPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [studentReloadKey, setStudentReloadKey] = useState(0);
+  const [registrationReloadKey, setRegistrationReloadKey] = useState(0);
   const classState = useAsyncData<TeacherClassSummary[]>(listTeacherClasses, [reloadKey]);
   const classes = classState.data || [];
   const [selectedClassId, setSelectedClassId] = useState("");
   const selectedClass = classes.find((item) => item.id === selectedClassId) || classes[0] || null;
+  const registrationState = useAsyncData<TeacherClassRegistrationSettings | null>(
+    () => (selectedClass?.id ? getTeacherClassRegistrationSettings(selectedClass.id) : Promise.resolve(null)),
+    [selectedClass?.id, registrationReloadKey],
+  );
   const [className, setClassName] = useState("");
   const [classDescription, setClassDescription] = useState("");
   const [studentId, setStudentId] = useState("");
   const [studentName, setStudentName] = useState("");
+  const [classDialogOpen, setClassDialogOpen] = useState(false);
+  const [studentDialogOpen, setStudentDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importMode, setImportMode] = useState<"upsert" | "overwrite">("upsert");
+  const [passwordMode, setPasswordMode] = useState<"student_id" | "shared">("student_id");
+  const [sharedPassword, setSharedPassword] = useState("");
+  const [rosterFile, setRosterFile] = useState<File | null>(null);
+  const [studentPage, setStudentPage] = useState(1);
   const [notice, setNotice] = useState("");
   const [actionError, setActionError] = useState("");
   const [creatingClass, setCreatingClass] = useState(false);
   const [creatingStudent, setCreatingStudent] = useState(false);
+  const [importingRoster, setImportingRoster] = useState(false);
 
   useEffect(() => {
     if (!selectedClassId && selectedClass?.id) setSelectedClassId(selectedClass.id);
@@ -2091,8 +2109,23 @@ function ClassesPage() {
     [selectedClass?.id, studentReloadKey],
   );
   const students = studentsState.data || [];
+  const studentPageSize = 10;
+  const studentPageCount = Math.max(1, Math.ceil(students.length / studentPageSize));
+  const pagedStudents = students.slice((studentPage - 1) * studentPageSize, studentPage * studentPageSize);
   const classStudentTotal = classes.reduce((total, item) => total + Number(item.student_count || 0), 0);
   const activeStudentTotal = students.filter((item) => item.activated || item.status === "active").length;
+  const defaultPasswordMode = registrationState.data?.default_password_mode === "shared" ? "shared" : "student_id";
+  const initialPasswordLabel = defaultPasswordMode === "shared" ? "统一初始密码" : "使用学号";
+
+  useEffect(() => {
+    setStudentPage(1);
+  }, [selectedClass?.id, students.length]);
+
+  useEffect(() => {
+    if (!importDialogOpen) return;
+    setPasswordMode(defaultPasswordMode);
+    setSharedPassword("");
+  }, [defaultPasswordMode, importDialogOpen]);
 
   const createClass = async (event: FormEvent) => {
     event.preventDefault();
@@ -2108,6 +2141,7 @@ function ClassesPage() {
       const response = await createTeacherClass({ class_name: nextName, description: classDescription.trim() || undefined });
       setClassName("");
       setClassDescription("");
+      setClassDialogOpen(false);
       setSelectedClassId(response.id);
       setReloadKey((value) => value + 1);
       setNotice("已创建班级。");
@@ -2142,6 +2176,7 @@ function ClassesPage() {
       });
       setStudentId("");
       setStudentName("");
+      setStudentDialogOpen(false);
       setStudentReloadKey((value) => value + 1);
       setReloadKey((value) => value + 1);
       setNotice("已添加学生。");
@@ -2152,60 +2187,92 @@ function ClassesPage() {
     }
   };
 
+  const importRoster = async () => {
+    if (!selectedClass?.id) {
+      setActionError("请先选择班级。");
+      return;
+    }
+    if (!rosterFile) {
+      setActionError("请选择要导入的名单文件。");
+      return;
+    }
+    if (passwordMode === "shared" && !sharedPassword.trim() && !registrationState.data?.has_default_password) {
+      setActionError("请填写统一初始密码，或改为使用学号。");
+      return;
+    }
+    setImportingRoster(true);
+    setNotice("");
+    setActionError("");
+    try {
+      await updateTeacherClassRegistrationSettings(selectedClass.id, {
+        default_password_mode: passwordMode,
+        default_password: passwordMode === "shared" ? sharedPassword.trim() || undefined : undefined,
+      });
+      const result = await importTeacherClassRoster(selectedClass.id, { file: rosterFile, mode: importMode });
+      setRosterFile(null);
+      setSharedPassword("");
+      setImportDialogOpen(false);
+      setStudentReloadKey((value) => value + 1);
+      setRegistrationReloadKey((value) => value + 1);
+      setReloadKey((value) => value + 1);
+      setNotice(importMode === "overwrite" ? `覆盖导入完成：${result.valid_rows} 条有效，禁用 ${result.disabled_missing} 条缺失名单。` : `导入完成：${result.valid_rows} 条有效。`);
+    } catch (caught) {
+      setActionError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setImportingRoster(false);
+    }
+  };
+
   return (
-    <PageFrame
-      eyebrow="班级与学生"
-      title="班级管理"
-      description="维护教师后台可管理的班级与学生名单；学生使用账号密码登录后，会关联到对应班级。"
-      showHeader={false}
-      testId="teacher-page-classes"
-    >
+    <PageFrame title="班级管理" showHeader={false} testId="teacher-page-classes">
       {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
       {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
       <StateBlock loading={classState.loading && !classState.data} error={classState.error}>
-        <MetricGrid
-          metrics={[
-            { label: "班级总数", value: classes.length, unit: "个" },
-            { label: "学生总数", value: classStudentTotal, unit: "人" },
-            { label: "当前班级", value: selectedClass?.student_count || students.length || 0, unit: "人" },
-            { label: "已激活", value: activeStudentTotal, unit: "人" },
-          ]}
-        />
-        <div className="legacy-class-management-grid">
-          <TeacherCard className="legacy-table-card">
-            <header>
-              <h2>班级列表</h2>
-              <span>{classes.length} 个班级</span>
-            </header>
-            <form className="legacy-inline-form" onSubmit={createClass}>
-              <label>
-                班级名称
-                <TeacherInput value={className} onChange={(event) => setClassName(event.target.value)} placeholder="例如：2026 级无机化学 1 班" />
-              </label>
-              <label>
-                备注
-                <TeacherInput.TextArea value={classDescription} onChange={(event) => setClassDescription(event.target.value)} rows={3} placeholder="选填，用于区分教学班或实验分组。" />
-              </label>
-              <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={creatingClass}>
-                {creatingClass ? "创建中..." : "新增班级"}
+        <section className="legacy-class-summary-strip" aria-label="班级概览">
+          <article>
+            <span>当前班级</span>
+            <strong>{selectedClass?.class_name || "未选择班级"}</strong>
+          </article>
+          <article>
+            <span>班级</span>
+            <strong>{classes.length}<small>个</small></strong>
+          </article>
+          <article>
+            <span>学生</span>
+            <strong>{classStudentTotal}<small>人</small></strong>
+          </article>
+          <article>
+            <span>当前班级</span>
+            <strong>{selectedClass?.student_count || students.length || 0}<small>人</small></strong>
+          </article>
+          <article>
+            <span>已激活</span>
+            <strong>{activeStudentTotal}<small>人</small></strong>
+          </article>
+        </section>
+        <div className="legacy-class-dashboard-grid">
+          <TeacherCard className="legacy-table-card legacy-class-list-panel">
+            <div className="legacy-class-panel-head">
+              <div>
+                <h2>班级</h2>
+                <span>{classes.length} 个班级</span>
+              </div>
+              <TeacherButton type="primary" className="primary-button compact" onClick={() => setClassDialogOpen(true)}>
+                新增班级
               </TeacherButton>
-            </form>
-            <div className="legacy-class-grid management" aria-label="班级列表">
+            </div>
+            <div className="legacy-class-compact-list" aria-label="班级列表">
               {classes.length ? (
                 classes.map((item) => (
                   <button
                     key={item.id}
                     type="button"
-                    className={`legacy-module-card legacy-class-card-button${item.id === selectedClass?.id ? " selected" : ""}`}
+                    className={`legacy-class-compact-row${item.id === selectedClass?.id ? " selected" : ""}`}
                     onClick={() => setSelectedClassId(item.id)}
                   >
-                    <span className="legacy-row-label">{classStatusLabel(item.status)}</span>
                     <strong>{item.class_name}</strong>
-                    <span>{item.description || "暂无班级备注。"}</span>
-                    <div className="legacy-card-stats">
-                      <span>学生 {item.student_count || 0}</span>
-                      {typeof item.active_students === "number" ? <span>已激活 {item.active_students}</span> : null}
-                    </div>
+                    <span>{item.student_count || 0} 人</span>
+                    <em>{classStatusLabel(item.status)}</em>
                   </button>
                 ))
               ) : (
@@ -2213,40 +2280,37 @@ function ClassesPage() {
               )}
             </div>
           </TeacherCard>
-          <TeacherCard className="legacy-table-card">
-            <header>
-              <h2>学生名单</h2>
-              <span>{selectedClass?.class_name || "未选择班级"}</span>
-            </header>
-            <form className="legacy-inline-form two-column" onSubmit={createStudent}>
-              <label>
-                学号
-                <TeacherInput value={studentId} onChange={(event) => setStudentId(event.target.value)} placeholder="例如：20260001" disabled={!selectedClass} />
-              </label>
-              <label>
-                姓名
-                <TeacherInput value={studentName} onChange={(event) => setStudentName(event.target.value)} placeholder="学生姓名" disabled={!selectedClass} />
-              </label>
-              <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={!selectedClass || creatingStudent}>
-                {creatingStudent ? "添加中..." : "添加学生"}
-              </TeacherButton>
-            </form>
+          <TeacherCard className="legacy-table-card legacy-roster-panel">
+            <div className="legacy-class-panel-head">
+              <div>
+                <h2>学生名单</h2>
+                <span>{selectedClass?.class_name || "未选择班级"} · 初始密码：{initialPasswordLabel}</span>
+              </div>
+              <div className="legacy-class-toolbar">
+                <TeacherButton className="legacy-secondary-button" disabled={!selectedClass} onClick={() => setStudentDialogOpen(true)}>
+                  添加学生
+                </TeacherButton>
+                <TeacherButton type="primary" className="primary-button compact" disabled={!selectedClass} onClick={() => setImportDialogOpen(true)}>
+                  导入名单
+                </TeacherButton>
+              </div>
+            </div>
             <StateBlock loading={studentsState.loading && !studentsState.data} error={studentsState.error}>
               {selectedClass ? (
                 students.length ? (
-                  <div className="legacy-student-table legacy-student-table-management" aria-label="学生名单">
+                  <div className="legacy-student-table legacy-student-table-management compact" aria-label="学生名单">
                     <article className="legacy-student-table-head">
-                      <strong>学生</strong>
                       <span>学号</span>
+                      <strong>姓名</strong>
                       <span>状态</span>
-                      <span>登录方式</span>
                     </article>
-                    {students.map((student) => (
+                    {pagedStudents.map((student) => (
                       <article key={`${student.student_id}-${student.id || student.class_id || selectedClass.id}`}>
-                        <strong>{student.student_name || student.display_name || student.username || student.student_id}</strong>
                         <span>{student.student_id}</span>
-                        <span>{student.activated ? "已激活" : studentStatusLabel(student.status)}</span>
-                        <span>{activationModeLabel(student.activation_mode)}</span>
+                        <strong>{student.student_name || student.display_name || student.username || student.student_id}</strong>
+                        <span className={`legacy-status-pill status-${student.activated || student.status === "active" ? "active" : student.status}`}>
+                          {student.activated || student.status === "active" ? "已激活" : studentStatusLabel(student.status)}
+                        </span>
                       </article>
                     ))}
                   </div>
@@ -2257,9 +2321,131 @@ function ClassesPage() {
                 <TeacherEmptyState message="请选择或新增班级。" compact />
               )}
             </StateBlock>
+            <div className="legacy-class-pagination" aria-label="学生分页">
+              <span>第 {studentPage} / {studentPageCount} 页 · 共 {students.length} 人</span>
+              <div>
+                <button type="button" disabled={studentPage <= 1} onClick={() => setStudentPage((value) => Math.max(1, value - 1))}>
+                  上一页
+                </button>
+                <button type="button" disabled={studentPage >= studentPageCount} onClick={() => setStudentPage((value) => Math.min(studentPageCount, value + 1))}>
+                  下一页
+                </button>
+              </div>
+            </div>
           </TeacherCard>
         </div>
       </StateBlock>
+      <TeacherModal
+        open={classDialogOpen}
+        className="legacy-create-dialog"
+        title="新增班级"
+        onCancel={() => setClassDialogOpen(false)}
+        footer={null}
+        maskClosable={!creatingClass}
+      >
+        <form className="legacy-dialog-form" onSubmit={createClass}>
+          <label>
+            班级名称
+            <TeacherInput value={className} onChange={(event) => setClassName(event.target.value)} placeholder="例如：26级本科 1 班" autoFocus />
+          </label>
+          <label>
+            备注
+            <TeacherInput.TextArea value={classDescription} onChange={(event) => setClassDescription(event.target.value)} rows={3} placeholder="选填，用于区分教学班或实验分组。" />
+          </label>
+          <div className="legacy-create-dialog-actions">
+            <TeacherButton type="default" className="legacy-secondary-button" onClick={() => setClassDialogOpen(false)} disabled={creatingClass}>
+              取消
+            </TeacherButton>
+            <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={creatingClass}>
+              {creatingClass ? "创建中..." : "创建班级"}
+            </TeacherButton>
+          </div>
+        </form>
+      </TeacherModal>
+      <TeacherModal
+        open={studentDialogOpen}
+        className="legacy-create-dialog"
+        title="添加学生"
+        onCancel={() => setStudentDialogOpen(false)}
+        footer={null}
+        maskClosable={!creatingStudent}
+      >
+        <form className="legacy-dialog-form compact" onSubmit={createStudent}>
+          <label>
+            学号
+            <TeacherInput value={studentId} onChange={(event) => setStudentId(event.target.value)} placeholder="例如：26320001" autoFocus disabled={!selectedClass} />
+          </label>
+          <label>
+            姓名
+            <TeacherInput value={studentName} onChange={(event) => setStudentName(event.target.value)} placeholder="学生姓名" disabled={!selectedClass} />
+          </label>
+          <div className="legacy-create-dialog-actions">
+            <TeacherButton type="default" className="legacy-secondary-button" onClick={() => setStudentDialogOpen(false)} disabled={creatingStudent}>
+              取消
+            </TeacherButton>
+            <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={!selectedClass || creatingStudent}>
+              {creatingStudent ? "添加中..." : "添加学生"}
+            </TeacherButton>
+          </div>
+        </form>
+      </TeacherModal>
+      <TeacherModal
+        open={importDialogOpen}
+        className="legacy-create-dialog legacy-roster-import-dialog"
+        title="导入学生名单"
+        onCancel={() => {
+          setImportDialogOpen(false);
+          setRosterFile(null);
+        }}
+        footer={null}
+        maskClosable={!importingRoster}
+      >
+        <div className="legacy-roster-import-body">
+          <div className="legacy-segmented-row" role="group" aria-label="导入方式">
+            <button type="button" className={importMode === "upsert" ? "active" : ""} onClick={() => setImportMode("upsert")}>
+              追加更新
+            </button>
+            <button type="button" className={importMode === "overwrite" ? "active" : ""} onClick={() => setImportMode("overwrite")}>
+              覆盖名单
+            </button>
+          </div>
+          <div className="legacy-segmented-row" role="group" aria-label="初始密码">
+            <button type="button" className={passwordMode === "student_id" ? "active" : ""} onClick={() => setPasswordMode("student_id")}>
+              使用学号
+            </button>
+            <button type="button" className={passwordMode === "shared" ? "active" : ""} onClick={() => setPasswordMode("shared")}>
+              统一密码
+            </button>
+          </div>
+          {passwordMode === "shared" ? (
+            <label className="legacy-import-password-field">
+              统一初始密码
+              <TeacherInput.Password value={sharedPassword} onChange={(event) => setSharedPassword(event.target.value)} placeholder={registrationState.data?.has_default_password ? "留空则沿用当前密码" : "至少 8 位"} />
+            </label>
+          ) : null}
+          <TeacherUpload
+            accept=".csv,.xlsx"
+            maxCount={1}
+            beforeUpload={(file) => {
+              setRosterFile(file);
+              return false;
+            }}
+            onRemove={() => setRosterFile(null)}
+          >
+            <button type="button" className="legacy-roster-file-button">
+              {rosterFile ? rosterFile.name : "选择 CSV/XLSX 文件"}
+            </button>
+          </TeacherUpload>
+          <div className="legacy-create-dialog-actions">
+            <TeacherButton type="default" className="legacy-secondary-button" onClick={() => setImportDialogOpen(false)} disabled={importingRoster}>
+              取消
+            </TeacherButton>
+            <TeacherButton type="primary" className="primary-button" disabled={!selectedClass || !rosterFile || importingRoster} onClick={importRoster}>
+              {importingRoster ? "导入中..." : "导入名单"}
+            </TeacherButton>
+          </div>
+        </div>
+      </TeacherModal>
     </PageFrame>
   );
 }

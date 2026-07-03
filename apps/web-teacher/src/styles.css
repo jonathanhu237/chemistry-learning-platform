@@ -1065,6 +1065,294 @@ p {
   gap: 18px;
 }
 
+.legacy-class-summary-strip {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.5fr) repeat(4, minmax(110px, 0.75fr));
+  border: 1px solid var(--legacy-line);
+  background: #fff;
+  margin-bottom: 12px;
+}
+
+.legacy-class-summary-strip article {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  border-right: 1px solid var(--legacy-line);
+  padding: 10px 12px;
+}
+
+.legacy-class-summary-strip article:last-child {
+  border-right: 0;
+}
+
+.legacy-class-summary-strip span {
+  overflow: hidden;
+  color: var(--legacy-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legacy-class-summary-strip strong {
+  overflow: hidden;
+  color: var(--legacy-sysu-red);
+  font-size: 22px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legacy-class-summary-strip small {
+  margin-left: 3px;
+  color: var(--legacy-muted);
+  font-size: 12px;
+}
+
+.legacy-class-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.38fr) minmax(620px, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.legacy-class-dashboard-grid > .teacher-ui-card.legacy-table-card {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.legacy-class-list-panel .ant-card-body,
+.legacy-roster-panel .ant-card-body {
+  padding: 14px;
+}
+
+.legacy-class-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+  gap: 12px;
+  border-bottom: 1px solid var(--legacy-line);
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+}
+
+.legacy-class-panel-head h2 {
+  margin: 0;
+  color: var(--legacy-ink);
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.legacy-class-panel-head span {
+  display: block;
+  margin-top: 3px;
+  color: var(--legacy-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.primary-button.compact.ant-btn,
+.primary-button.compact {
+  min-height: 34px;
+  padding: 5px 12px;
+}
+
+.legacy-class-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.legacy-class-toolbar .legacy-secondary-button {
+  min-height: 34px;
+  padding: 5px 12px;
+}
+
+.legacy-class-compact-list {
+  display: grid;
+  gap: 7px;
+}
+
+.legacy-class-compact-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid var(--legacy-line);
+  background: #fffdfb;
+  color: var(--legacy-ink);
+  cursor: pointer;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.legacy-class-compact-row:hover,
+.legacy-class-compact-row:focus-visible,
+.legacy-class-compact-row.selected {
+  border-color: var(--legacy-sysu-red);
+  background: #fff8f4;
+  outline: none;
+}
+
+.legacy-class-compact-row.selected {
+  box-shadow: inset 4px 0 0 var(--legacy-sysu-red);
+}
+
+.legacy-class-compact-row strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legacy-class-compact-row span,
+.legacy-class-compact-row em {
+  color: var(--legacy-muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.legacy-student-table-management.compact {
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.legacy-student-table-management.compact article {
+  grid-template-columns: 132px minmax(0, 1fr) 88px;
+  min-height: 36px;
+  gap: 10px;
+  padding: 7px 10px;
+}
+
+.legacy-student-table-management.compact span,
+.legacy-student-table-management.compact strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legacy-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-width: 58px;
+  border: 1px solid #d8c5be;
+  background: #fff;
+  color: var(--legacy-muted);
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.legacy-status-pill.status-active {
+  border-color: rgba(8, 124, 95, 0.28);
+  background: #eefaf5;
+  color: #087c5f;
+}
+
+.legacy-status-pill.status-pending {
+  border-color: rgba(132, 0, 6, 0.2);
+  background: #fff8f4;
+  color: var(--legacy-sysu-red);
+}
+
+.legacy-status-pill.status-disabled {
+  border-color: #d8c5be;
+  background: #f7f1ef;
+  color: var(--legacy-muted);
+}
+
+.legacy-class-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--legacy-line);
+  margin-top: 10px;
+  padding-top: 10px;
+  color: var(--legacy-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.legacy-class-pagination div {
+  display: flex;
+  gap: 6px;
+}
+
+.legacy-class-pagination button {
+  min-height: 30px;
+  border: 1px solid #d8c5be;
+  background: #fff;
+  color: var(--legacy-sysu-red);
+  cursor: pointer;
+  padding: 4px 10px;
+  font-weight: 900;
+}
+
+.legacy-class-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.legacy-dialog-form {
+  display: grid;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.legacy-dialog-form.compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.legacy-dialog-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--legacy-sysu-red);
+  font-weight: 900;
+}
+
+.legacy-dialog-form.compact .legacy-create-dialog-actions {
+  grid-column: 1 / -1;
+}
+
+.legacy-roster-import-body {
+  display: grid;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.legacy-import-password-field {
+  display: grid;
+  gap: 7px;
+  color: var(--legacy-sysu-red);
+  font-weight: 900;
+}
+
+.legacy-roster-import-dialog .teacher-ui-upload .ant-upload {
+  display: block;
+  width: 100%;
+}
+
+.legacy-roster-file-button {
+  width: 100%;
+  min-height: 44px;
+  border: 1px dashed #d8b8b1;
+  background: #fff8f4;
+  color: var(--legacy-sysu-red);
+  cursor: pointer;
+  padding: 10px 12px;
+  font-weight: 900;
+  text-align: left;
+}
+
 .legacy-management-grid {
   display: grid;
   grid-template-columns: minmax(320px, 0.82fr) minmax(520px, 1.18fr);
@@ -3087,8 +3375,13 @@ p {
 
   .legacy-management-grid,
   .legacy-class-management-grid,
+  .legacy-class-dashboard-grid,
   .legacy-inline-form.two-column {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .legacy-class-summary-strip {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .legacy-report-summary-grid {

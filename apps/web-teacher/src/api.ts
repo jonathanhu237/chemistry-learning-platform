@@ -121,6 +121,23 @@ export type TeacherStudentSummary = {
   class_name?: string;
 };
 
+export type TeacherClassRegistrationSettings = {
+  mode: "roster_only" | "self_registration" | string;
+  default_password_policy: string;
+  default_password_mode: "student_id" | "shared" | string;
+  has_default_password: boolean;
+  source?: string | null;
+};
+
+export type TeacherRosterImportResult = {
+  import_id: string;
+  mode: "upsert" | "overwrite" | string;
+  total_rows: number;
+  valid_rows: number;
+  invalid_rows: number;
+  disabled_missing: number;
+};
+
 export type TeacherDemoStudentAnalytics = {
   student_id: string;
   student_name: string;
@@ -310,6 +327,34 @@ export function createTeacherClassStudent(
     ...payload,
     status: payload.status || "pending",
     activation_mode: payload.activation_mode || "default_password",
+  });
+}
+
+export function getTeacherClassRegistrationSettings(classId: string): Promise<TeacherClassRegistrationSettings> {
+  return api<TeacherClassRegistrationSettings>(`/api/teacher/classes/${encodeURIComponent(classId)}/registration-settings`);
+}
+
+export function updateTeacherClassRegistrationSettings(
+  classId: string,
+  payload: { default_password_mode: "student_id" | "shared"; default_password?: string },
+): Promise<TeacherClassRegistrationSettings> {
+  return api<TeacherClassRegistrationSettings>(`/api/teacher/classes/${encodeURIComponent(classId)}/registration-settings`, {
+    method: "PUT",
+    body: JSON.stringify({
+      mode: "roster_only",
+      default_password_policy: "student_id_name_activation",
+      ...payload,
+    }),
+  });
+}
+
+export function importTeacherClassRoster(classId: string, payload: { file: File; mode: "upsert" | "overwrite" }): Promise<TeacherRosterImportResult> {
+  const formData = new FormData();
+  formData.append("file", payload.file);
+  formData.append("mode", payload.mode);
+  return api<TeacherRosterImportResult>(`/api/teacher/classes/${encodeURIComponent(classId)}/roster/import`, {
+    method: "POST",
+    body: formData,
   });
 }
 

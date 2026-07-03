@@ -95,7 +95,8 @@ test.describe("legacy teacher/student browser flows", () => {
     await page.getByTestId("teacher-nav-classes").click();
     await expect(page.getByTestId("teacher-page-classes")).toBeVisible();
     await expect(page.getByRole("heading", { name: "班级管理" })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "班级列表" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "学生名单" })).toBeVisible();
+    await expect(page.getByText("登录方式")).toHaveCount(0);
     await expectNoVisibleLegacyError(page);
 
     await page.getByTestId("teacher-nav-questions").click();
