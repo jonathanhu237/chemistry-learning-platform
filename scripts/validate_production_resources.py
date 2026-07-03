@@ -33,8 +33,8 @@ EXPECTED_DATABASE_COUNTS = {
     "catalog_point_textbook_evidence_states": 393,
     "catalog_point_textbook_evidence_bindings": 3537,
     "seed_teacher_accounts": 1,
-    "seed_classes": 1,
-    "seed_students": 30,
+    "seed_classes": 5,
+    "seed_students": 150,
     "seed_media_assets": 5,
     "seed_active_point_media_bindings": 357,
     "seed_video_covered_point_nodes": 393,
@@ -210,12 +210,15 @@ def _current_question_bank_seed_count(path: Path) -> dict[str, int]:
 def _demo_identity_seed_count(path: Path) -> dict[str, int]:
     data = _json(path)
     students = data.get("students") or []
+    classes = data.get("classes") or []
     expected = data.get("expected_counts") or {}
     if not isinstance(students, list):
         raise ValueError(f"{path} students must be a list")
+    if classes and not isinstance(classes, list):
+        raise ValueError(f"{path} classes must be a list")
     return {
         "teachers": 1 if isinstance(data.get("teacher"), dict) else 0,
-        "classes": 1 if isinstance(data.get("class"), dict) else 0,
+        "classes": len(classes) if classes else (1 if isinstance(data.get("class"), dict) else 0),
         "students": len(students),
         "expected_students": int(expected.get("students") or 0),
         "shared_password_policy": 1
@@ -630,15 +633,15 @@ RESOURCE_SPECS: list[dict[str, Any]] = [
     },
     {
         "id": "demo_identity_seed",
-        "role": "Default teacher account, demo class, and active student roster/accounts",
+        "role": "Default teacher account, demo classes, and active student roster/accounts",
         "path": "data/seed/identity/demo_identity_seed_v1.json",
         "kind": "json",
         "count": _demo_identity_seed_count,
         "expected_counts": {
             "teachers": 1,
-            "classes": 1,
-            "students": 30,
-            "expected_students": 30,
+            "classes": 5,
+            "students": 150,
+            "expected_students": 150,
             "shared_password_policy": 1,
         },
         "source_path": "demo seed manifest",

@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -49,6 +49,39 @@ def _normalize_student_id(value: str) -> str:
     return value.strip().upper()
 
 
+def _seed_classes(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    classes = payload.get("classes")
+    if isinstance(classes, list) and classes:
+        return [item for item in classes if isinstance(item, dict)]
+    klass = payload.get("class")
+    return [klass] if isinstance(klass, dict) else []
+
+
+def _resolved_classes(
+    payload: dict[str, Any],
+    *,
+    class_id: str | None = None,
+    class_name: str | None = None,
+) -> list[dict[str, Any]]:
+    class_id_override = class_id or os.getenv("SEED_CLASS_ID")
+    class_name_override = class_name or os.getenv("SEED_CLASS_NAME")
+    resolved: list[dict[str, Any]] = []
+    for index, klass in enumerate(_seed_classes(payload)):
+        source_id = str(klass.get("id") or "").strip()
+        source_name = str(klass.get("class_name") or source_id).strip()
+        resolved_id = class_id_override if index == 0 and class_id_override else source_id
+        resolved_name = class_name_override if index == 0 and class_name_override else source_name
+        resolved.append(
+            {
+                "source_id": source_id,
+                "id": str(resolved_id).strip(),
+                "class_name": str(resolved_name).strip(),
+                "payload": klass,
+            }
+        )
+    return resolved
+
+
 def load_seed(path: Path = DEFAULT_SEED_PATH) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8-sig"))
     if not isinstance(payload, dict):
@@ -59,8 +92,8 @@ def load_seed(path: Path = DEFAULT_SEED_PATH) -> dict[str, Any]:
         raise ValueError(f"{path} version must be {SEED_VERSION}")
     if not isinstance(payload.get("teacher"), dict):
         raise ValueError(f"{path} teacher must be an object")
-    if not isinstance(payload.get("class"), dict):
-        raise ValueError(f"{path} class must be an object")
+    if not _seed_classes(payload):
+        raise ValueError(f"{path} must define class or classes")
     if not isinstance(payload.get("students"), list):
         raise ValueError(f"{path} students must be a list")
     return payload
@@ -96,16 +129,26 @@ def _password_hash_for_upsert(session: Any, *, username: str, password: str) -> 
 def _validate_payload(payload: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     teacher = payload.get("teacher") or {}
-    klass = payload.get("class") or {}
+    classes = _seed_classes(payload)
     students = payload.get("students") or []
     if not str(teacher.get("username") or "").strip():
         errors.append("teacher.username is required")
     if (teacher.get("role") or "teacher") != "teacher":
         errors.append("teacher.role must be teacher")
-    if not str(klass.get("id") or "").strip():
-        errors.append("class.id is required")
-    if not str(klass.get("class_name") or "").strip():
-        errors.append("class.class_name is required")
+    if not classes:
+        errors.append("class or classes is required")
+    seen_classes: set[str] = set()
+    for index, klass in enumerate(classes, start=1):
+        class_id = str(klass.get("id") or "").strip()
+        if not class_id:
+            errors.append(f"classes[{index}].id is required")
+            continue
+        if class_id in seen_classes:
+            errors.append(f"classes[{index}].id duplicates {class_id}")
+        seen_classes.add(class_id)
+        if not str(klass.get("class_name") or "").strip():
+            errors.append(f"classes[{index}].class_name is required")
+    default_class_id = str(classes[0].get("id") or "").strip() if classes else ""
     seen_students: set[str] = set()
     for index, student in enumerate(students, start=1):
         if not isinstance(student, dict):
@@ -118,9 +161,17 @@ def _validate_payload(payload: dict[str, Any]) -> list[str]:
         if student_id in seen_students:
             errors.append(f"students[{index}].student_id duplicates {student_id}")
         seen_students.add(student_id)
+        student_class_id = str(student.get("class_id") or default_class_id).strip()
+        if not student_class_id:
+            errors.append(f"students[{index}].class_id is required")
+        elif seen_classes and student_class_id not in seen_classes:
+            errors.append(f"students[{index}].class_id {student_class_id!r} is not defined")
         if not str(student.get("student_name") or "").strip():
             errors.append(f"students[{index}].student_name is required")
     expected = payload.get("expected_counts") or {}
+    expected_classes = int(expected.get("classes") or len(classes))
+    if len(classes) != expected_classes:
+        errors.append(f"classes: expected {expected_classes}, got {len(classes)}")
     expected_students = int(expected.get("students") or len(students))
     if len(students) != expected_students:
         errors.append(f"students: expected {expected_students}, got {len(students)}")
@@ -134,7 +185,7 @@ def validate_seed_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "errors": errors,
         "summary": {
             "teacher": 1 if isinstance(payload.get("teacher"), dict) else 0,
-            "classes": 1 if isinstance(payload.get("class"), dict) else 0,
+            "classes": len(_seed_classes(payload)),
             "students": len(payload.get("students") or []),
         },
     }
@@ -244,11 +295,11 @@ def _upsert_class(
     session: Any,
     payload: dict[str, Any],
     *,
+    klass: dict[str, Any],
     teacher_user_id: str,
     class_id: str,
     class_name: str | None = None,
 ) -> None:
-    klass = payload["class"]
     session.execute(
         text(
             """
@@ -554,18 +605,20 @@ def import_seed(
     if not validation["ok"]:
         raise ValueError("Identity seed validation failed:\n" + "\n".join(validation["errors"]))
     teacher = payload["teacher"]
-    klass = payload["class"]
     settings = payload.get("registration_settings") or {}
     resolved_teacher_username = teacher_username or os.getenv("SEED_TEACHER_USERNAME") or str(teacher["username"])
     resolved_teacher_password = _secret_from_spec(teacher.get("password") or {}, override=teacher_password)
-    resolved_class_id = class_id or os.getenv("SEED_CLASS_ID") or str(klass["id"])
-    resolved_class_name = class_name or os.getenv("SEED_CLASS_NAME") or str(klass["class_name"])
+    resolved_seed_classes = _resolved_classes(payload, class_id=class_id, class_name=class_name)
+    if not resolved_seed_classes:
+        raise ValueError("Identity seed has no classes to import.")
+    class_by_source_id = {item["source_id"]: item for item in resolved_seed_classes}
+    default_source_class_id = resolved_seed_classes[0]["source_id"]
     resolved_student_password = _secret_from_spec(settings.get("default_password") or {}, override=student_password)
     students = [item for item in payload.get("students") or [] if isinstance(item, dict)]
     summary = {
         "teacher_username": resolved_teacher_username,
-        "class_id": resolved_class_id,
-        "class_name": resolved_class_name,
+        "classes": len(resolved_seed_classes),
+        "class_ids": [item["id"] for item in resolved_seed_classes],
         "students": len(students),
         "writes": not dry_run,
     }
@@ -579,30 +632,36 @@ def import_seed(
             password=resolved_teacher_password,
             display_name=teacher_display_name,
         )
-        _upsert_class(
-            session,
-            payload,
-            teacher_user_id=teacher_user_id,
-            class_id=resolved_class_id,
-            class_name=resolved_class_name,
-        )
-        _upsert_registration_settings(
-            session,
-            payload,
-            teacher_user_id=teacher_user_id,
-            class_id=resolved_class_id,
-            student_password=resolved_student_password,
-        )
+        for resolved_class in resolved_seed_classes:
+            _upsert_class(
+                session,
+                payload,
+                klass=resolved_class["payload"],
+                teacher_user_id=teacher_user_id,
+                class_id=resolved_class["id"],
+                class_name=resolved_class["class_name"],
+            )
+            _upsert_registration_settings(
+                session,
+                payload,
+                teacher_user_id=teacher_user_id,
+                class_id=resolved_class["id"],
+                student_password=resolved_student_password,
+            )
         pruned_legacy_seed_students = _prune_legacy_seed_students(session, payload)
-        for index, student in enumerate(students, start=1):
+        row_numbers_by_class: dict[str, int] = {}
+        for student in students:
+            source_class_id = str(student.get("class_id") or default_source_class_id).strip()
+            resolved_class = class_by_source_id[source_class_id]
+            row_numbers_by_class[resolved_class["id"]] = row_numbers_by_class.get(resolved_class["id"], 0) + 1
             _upsert_student(
                 session,
                 payload,
                 student=student,
                 teacher_user_id=teacher_user_id,
-                class_id=resolved_class_id,
-                class_name=resolved_class_name,
-                row_number=index,
+                class_id=resolved_class["id"],
+                class_name=resolved_class["class_name"],
+                row_number=row_numbers_by_class[resolved_class["id"]],
                 student_password=resolved_student_password,
             )
     return {**summary, "teacher_user_id": teacher_user_id, "pruned_legacy_seed_students": pruned_legacy_seed_students}
@@ -610,13 +669,23 @@ def import_seed(
 
 def validate_database(payload: dict[str, Any], *, teacher_username: str | None = None, class_id: str | None = None) -> dict[str, Any]:
     teacher = payload["teacher"]
-    klass = payload["class"]
     students = [item for item in payload.get("students") or [] if isinstance(item, dict)]
+    resolved_seed_classes = _resolved_classes(payload, class_id=class_id)
+    if not resolved_seed_classes:
+        raise ValueError("Identity seed has no classes to validate.")
+    class_by_source_id = {item["source_id"]: item for item in resolved_seed_classes}
+    default_source_class_id = resolved_seed_classes[0]["source_id"]
+    expected_students_by_class = {item["id"]: 0 for item in resolved_seed_classes}
+    for student in students:
+        source_class_id = str(student.get("class_id") or default_source_class_id).strip()
+        resolved_class = class_by_source_id[source_class_id]
+        expected_students_by_class[resolved_class["id"]] += 1
     expected_students = len(students)
     resolved_teacher_username = teacher_username or os.getenv("SEED_TEACHER_USERNAME") or str(teacher["username"])
-    resolved_class_id = class_id or os.getenv("SEED_CLASS_ID") or str(klass["id"])
+    resolved_class_ids = [item["id"] for item in resolved_seed_classes]
+    class_id_bind = bindparam("class_ids", expanding=True)
     with db_session() as session:
-        row = session.execute(
+        teacher_row = session.execute(
             text(
                 """
                 SELECT
@@ -625,72 +694,128 @@ def validate_database(payload: dict[str, Any], *, teacher_username: str | None =
                     WHERE username = :teacher_username
                       AND role = 'teacher'
                       AND status = 'active'
-                  ) AS teacher_ready,
-                  EXISTS (
-                    SELECT 1 FROM classes
-                    WHERE id = :class_id AND status = 'active'
-                  ) AS class_ready,
-                  EXISTS (
-                    SELECT 1
-                    FROM teacher_classes tc
-                    JOIN app_users u ON u.id = tc.teacher_user_id
-                    WHERE tc.class_id = :class_id
-                      AND u.username = :teacher_username
-                  ) AS teacher_class_ready,
-                  (
-                    SELECT count(*) FROM roster_entries
-                    WHERE class_id = :class_id
-                      AND status = 'active'
-                      AND activated_user_id IS NOT NULL
-                  ) AS active_roster_entries,
-                  (
-                    SELECT count(*)
-                    FROM student_profiles sp
-                    JOIN app_users u ON u.id = sp.user_id
-                    WHERE sp.class_id = :class_id
-                      AND u.role = 'student'
-                      AND u.status = 'active'
-                  ) AS active_student_profiles,
-                  (
-                    SELECT count(*)
-                    FROM students
-                    WHERE class_id = :class_id
-                      AND status = 'active'
-                  ) AS active_legacy_students,
-                  (
-                    SELECT count(*)
-                    FROM (
-                      SELECT normalized_student_id
-                      FROM roster_entries
-                      WHERE status <> 'disabled'
-                      GROUP BY normalized_student_id
-                      HAVING count(*) > 1
-                    ) duplicate_ids
-                  ) AS duplicate_active_student_ids
+                  ) AS teacher_ready
                 """
             ),
-            {"teacher_username": resolved_teacher_username, "class_id": resolved_class_id},
+            {"teacher_username": resolved_teacher_username},
+        ).mappings().one()
+        active_class_ids = {
+            str(row["id"])
+            for row in session.execute(
+                text("SELECT id FROM classes WHERE id IN :class_ids AND status = 'active'").bindparams(class_id_bind),
+                {"class_ids": tuple(resolved_class_ids)},
+            ).mappings()
+        }
+        teacher_class_ids = {
+            str(row["class_id"])
+            for row in session.execute(
+                text(
+                    """
+                    SELECT tc.class_id
+                    FROM teacher_classes tc
+                    JOIN app_users u ON u.id = tc.teacher_user_id
+                    WHERE tc.class_id IN :class_ids
+                      AND u.username = :teacher_username
+                    """
+                ).bindparams(class_id_bind),
+                {"class_ids": tuple(resolved_class_ids), "teacher_username": resolved_teacher_username},
+            ).mappings()
+        }
+        roster_counts = {
+            str(row["class_id"]): int(row["count"] or 0)
+            for row in session.execute(
+                text(
+                    """
+                    SELECT class_id, count(*) AS count
+                    FROM roster_entries
+                    WHERE class_id IN :class_ids
+                      AND status = 'active'
+                      AND activated_user_id IS NOT NULL
+                    GROUP BY class_id
+                    """
+                ).bindparams(class_id_bind),
+                {"class_ids": tuple(resolved_class_ids)},
+            ).mappings()
+        }
+        profile_counts = {
+            str(row["class_id"]): int(row["count"] or 0)
+            for row in session.execute(
+                text(
+                    """
+                    SELECT sp.class_id, count(*) AS count
+                    FROM student_profiles sp
+                    JOIN app_users u ON u.id = sp.user_id
+                    WHERE sp.class_id IN :class_ids
+                      AND u.role = 'student'
+                      AND u.status = 'active'
+                    GROUP BY sp.class_id
+                    """
+                ).bindparams(class_id_bind),
+                {"class_ids": tuple(resolved_class_ids)},
+            ).mappings()
+        }
+        legacy_counts = {
+            str(row["class_id"]): int(row["count"] or 0)
+            for row in session.execute(
+                text(
+                    """
+                    SELECT class_id, count(*) AS count
+                    FROM students
+                    WHERE class_id IN :class_ids
+                      AND status = 'active'
+                    GROUP BY class_id
+                    """
+                ).bindparams(class_id_bind),
+                {"class_ids": tuple(resolved_class_ids)},
+            ).mappings()
+        }
+        duplicate_row = session.execute(
+            text(
+                """
+                SELECT count(*) AS duplicate_active_student_ids
+                FROM (
+                  SELECT normalized_student_id
+                  FROM roster_entries
+                  WHERE status <> 'disabled'
+                  GROUP BY normalized_student_id
+                  HAVING count(*) > 1
+                ) duplicate_ids
+                """
+            )
         ).mappings().one()
     errors: list[str] = []
-    if not row["teacher_ready"]:
+    if not teacher_row["teacher_ready"]:
         errors.append(f"seed teacher {resolved_teacher_username!r} is missing or inactive")
-    if not row["class_ready"]:
-        errors.append(f"seed class {resolved_class_id!r} is missing or inactive")
-    if not row["teacher_class_ready"]:
-        errors.append("teacher-class ownership is missing")
-    for key in ["active_roster_entries", "active_student_profiles", "active_legacy_students"]:
-        if int(row[key] or 0) != expected_students:
-            errors.append(f"{key}: expected {expected_students}, got {int(row[key] or 0)}")
-    if int(row["duplicate_active_student_ids"] or 0) != 0:
-        errors.append(f"duplicate active student ids: {int(row['duplicate_active_student_ids'])}")
+    missing_class_ids = [item for item in resolved_class_ids if item not in active_class_ids]
+    if missing_class_ids:
+        errors.append(f"seed classes missing or inactive: {', '.join(missing_class_ids)}")
+    missing_teacher_class_ids = [item for item in resolved_class_ids if item not in teacher_class_ids]
+    if missing_teacher_class_ids:
+        errors.append(f"teacher-class ownership is missing for: {', '.join(missing_teacher_class_ids)}")
+    count_sets = {
+        "active_roster_entries": roster_counts,
+        "active_student_profiles": profile_counts,
+        "active_legacy_students": legacy_counts,
+    }
+    for class_id_value, expected_count in expected_students_by_class.items():
+        for key, counts in count_sets.items():
+            actual_count = counts.get(class_id_value, 0)
+            if actual_count != expected_count:
+                errors.append(f"{key} for {class_id_value}: expected {expected_count}, got {actual_count}")
+    duplicate_count = int(duplicate_row["duplicate_active_student_ids"] or 0)
+    if duplicate_count != 0:
+        errors.append(f"duplicate active student ids: {duplicate_count}")
     return {
         "ok": not errors,
         "errors": errors,
         "summary": {
             "teacher_username": resolved_teacher_username,
-            "class_id": resolved_class_id,
+            "classes": len(resolved_class_ids),
+            "class_ids": resolved_class_ids,
             "students": expected_students,
-            **{key: int(row[key] or 0) for key in ["active_roster_entries", "active_student_profiles", "active_legacy_students"]},
+            "active_roster_entries": sum(roster_counts.values()),
+            "active_student_profiles": sum(profile_counts.values()),
+            "active_legacy_students": sum(legacy_counts.values()),
         },
     }
 

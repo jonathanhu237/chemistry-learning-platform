@@ -11,7 +11,7 @@ Protected current resources:
 - `experiment_catalog/full_point_content_seed.json`: authoritative current catalog point-content seed with 393 published point descriptions and structured reaction equations.
 - `experiment_catalog/point_textbook_evidence_seed.json.zip`: current catalog-node textbook evidence state and bindings for all 393 active point placements, keyed by catalog node/canonical point identities.
 - `question_banks/current_catalog_node_question_bank_seed_v1.json.zip`: current published generated question-bank baseline with 52 catalog-root banks and 1,785 real published point questions, five per canonical point.
-- `identity/demo_identity_seed_v1.json`: default demo teacher account, one active class, and 30 active student roster/accounts. Defaults are demo credentials only and can be overridden at bootstrap time.
+- `identity/demo_identity_seed_v1.json`: default demo teacher account, five active classes, and 150 active student roster/accounts. Defaults are demo credentials only and can be overridden at bootstrap time.
 - `media/video_inventory_v1.json`: checksummed inventory for the reviewed experiment videos and generated placeholder video.
 - `media/experiment_video_seed_v1.json`: media asset and point-video binding seed. Four real videos cover five point placements; one generated placeholder video covers the remaining 388 point placements.
 - `media/experiment-videos-new-v1/**`: protected media seed package restored into `MEDIA_ROOT/seed/experiment-videos-new-v1/**`.
@@ -35,7 +35,7 @@ Current restore order:
 python scripts/bootstrap_production_seed.py
 ```
 
-The bootstrap command creates or updates the demo teacher account as `teacher / 123456`, creates `seed-class-2026` as `26级本科 1 班`, creates 30 active student accounts `26320001` through `26320030` with default password `123456`, restores seed videos into `MEDIA_ROOT`, imports precomputed RAG evidence/questions, and finishes with complete seed validation.
+The bootstrap command creates or updates the demo teacher account as `teacher / 123456`, creates five 2026 undergraduate demo classes, creates 150 active student accounts across `263200xx` through `263204xx` class ranges with default password `123456`, restores seed videos into `MEDIA_ROOT`, imports precomputed RAG evidence/questions, and finishes with complete seed validation.
 
 Recommended blank-server flow:
 

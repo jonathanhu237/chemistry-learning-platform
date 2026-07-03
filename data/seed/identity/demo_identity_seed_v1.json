@@ -3,7 +3,7 @@
   "version": 1,
   "seed_version": "demo-identity-v1",
   "generated_at": "2026-06-26T16:51:26.632823+00:00",
-  "description": "Default teacher account, one active class, and seeded student roster/accounts for blank-server demos. Demo passwords can be overridden through CLI or environment variables.",
+  "description": "Default teacher account, five active classes, and seeded student roster/accounts for blank-server demos. Demo passwords can be overridden through CLI or environment variables.",
   "teacher": {
     "username": "teacher",
     "display_name": "教师管理员",
@@ -23,7 +23,7 @@
   "class": {
     "id": "seed-class-2026",
     "class_name": "26级本科 1 班",
-    "description": "2026 级本科无机化学实验教学班",
+    "description": "2026 级本科无机化学实验教学班（1 班）",
     "status": "active",
     "class_purpose": "instructional",
     "system_managed": false,
@@ -52,6 +52,7 @@
     {
       "student_id": "26320001",
       "username": "26320001",
+      "class_id": "seed-class-2026",
       "student_name": "张三",
       "display_name": "张三",
       "status": "active",
@@ -68,6 +69,7 @@
     {
       "student_id": "26320002",
       "username": "26320002",
+      "class_id": "seed-class-2026",
       "student_name": "李四",
       "display_name": "李四",
       "status": "active",
@@ -84,6 +86,7 @@
     {
       "student_id": "26320003",
       "username": "26320003",
+      "class_id": "seed-class-2026",
       "student_name": "王五",
       "display_name": "王五",
       "status": "active",
@@ -100,6 +103,7 @@
     {
       "student_id": "26320004",
       "username": "26320004",
+      "class_id": "seed-class-2026",
       "student_name": "赵六",
       "display_name": "赵六",
       "status": "active",
@@ -116,6 +120,7 @@
     {
       "student_id": "26320005",
       "username": "26320005",
+      "class_id": "seed-class-2026",
       "student_name": "陈晨",
       "display_name": "陈晨",
       "status": "active",
@@ -132,6 +137,7 @@
     {
       "student_id": "26320006",
       "username": "26320006",
+      "class_id": "seed-class-2026",
       "student_name": "刘洋",
       "display_name": "刘洋",
       "status": "active",
@@ -148,6 +154,7 @@
     {
       "student_id": "26320007",
       "username": "26320007",
+      "class_id": "seed-class-2026",
       "student_name": "王芳",
       "display_name": "王芳",
       "status": "active",
@@ -164,6 +171,7 @@
     {
       "student_id": "26320008",
       "username": "26320008",
+      "class_id": "seed-class-2026",
       "student_name": "李娜",
       "display_name": "李娜",
       "status": "active",
@@ -180,8 +188,9 @@
     {
       "student_id": "26320009",
       "username": "26320009",
-      "student_name": "张伟",
-      "display_name": "张伟",
+      "class_id": "seed-class-2026",
+      "student_name": "周杰",
+      "display_name": "周杰",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -196,8 +205,9 @@
     {
       "student_id": "26320010",
       "username": "26320010",
-      "student_name": "刘强",
-      "display_name": "刘强",
+      "class_id": "seed-class-2026",
+      "student_name": "吴敏",
+      "display_name": "吴敏",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -212,8 +222,9 @@
     {
       "student_id": "26320011",
       "username": "26320011",
-      "student_name": "陈静",
-      "display_name": "陈静",
+      "class_id": "seed-class-2026",
+      "student_name": "孙强",
+      "display_name": "孙强",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -228,8 +239,9 @@
     {
       "student_id": "26320012",
       "username": "26320012",
-      "student_name": "杨帆",
-      "display_name": "杨帆",
+      "class_id": "seed-class-2026",
+      "student_name": "朱莉",
+      "display_name": "朱莉",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -244,6 +256,7 @@
     {
       "student_id": "26320013",
       "username": "26320013",
+      "class_id": "seed-class-2026",
       "student_name": "黄磊",
       "display_name": "黄磊",
       "status": "active",
@@ -260,8 +273,9 @@
     {
       "student_id": "26320014",
       "username": "26320014",
-      "student_name": "周敏",
-      "display_name": "周敏",
+      "class_id": "seed-class-2026",
+      "student_name": "林娜",
+      "display_name": "林娜",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -276,8 +290,9 @@
     {
       "student_id": "26320015",
       "username": "26320015",
-      "student_name": "吴昊",
-      "display_name": "吴昊",
+      "class_id": "seed-class-2026",
+      "student_name": "何伟",
+      "display_name": "何伟",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -292,8 +307,9 @@
     {
       "student_id": "26320016",
       "username": "26320016",
-      "student_name": "徐婷",
-      "display_name": "徐婷",
+      "class_id": "seed-class-2026",
+      "student_name": "郭静",
+      "display_name": "郭静",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -308,38 +324,7 @@
     {
       "student_id": "26320017",
       "username": "26320017",
-      "student_name": "何欣",
-      "display_name": "何欣",
-      "status": "active",
-      "must_change_password": false,
-      "account_purpose": "standard",
-      "entry_purpose": "instructional",
-      "profile_purpose": "instructional",
-      "password": {
-        "mode": "env_or_default",
-        "env": "SEED_STUDENT_PASSWORD",
-        "default": "123456"
-      }
-    },
-    {
-      "student_id": "26320018",
-      "username": "26320018",
-      "student_name": "郑宇",
-      "display_name": "郑宇",
-      "status": "active",
-      "must_change_password": false,
-      "account_purpose": "standard",
-      "entry_purpose": "instructional",
-      "profile_purpose": "instructional",
-      "password": {
-        "mode": "env_or_default",
-        "env": "SEED_STUDENT_PASSWORD",
-        "default": "123456"
-      }
-    },
-    {
-      "student_id": "26320019",
-      "username": "26320019",
+      "class_id": "seed-class-2026",
       "student_name": "马超",
       "display_name": "马超",
       "status": "active",
@@ -354,10 +339,45 @@
       }
     },
     {
+      "student_id": "26320018",
+      "username": "26320018",
+      "class_id": "seed-class-2026",
+      "student_name": "胡婷",
+      "display_name": "胡婷",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320019",
+      "username": "26320019",
+      "class_id": "seed-class-2026",
+      "student_name": "罗杰",
+      "display_name": "罗杰",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
       "student_id": "26320020",
       "username": "26320020",
-      "student_name": "朱琳",
-      "display_name": "朱琳",
+      "class_id": "seed-class-2026",
+      "student_name": "郑爽",
+      "display_name": "郑爽",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -372,8 +392,9 @@
     {
       "student_id": "26320021",
       "username": "26320021",
-      "student_name": "胡悦",
-      "display_name": "胡悦",
+      "class_id": "seed-class-2026",
+      "student_name": "冯涛",
+      "display_name": "冯涛",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -388,8 +409,9 @@
     {
       "student_id": "26320022",
       "username": "26320022",
-      "student_name": "林浩",
-      "display_name": "林浩",
+      "class_id": "seed-class-2026",
+      "student_name": "谢琳",
+      "display_name": "谢琳",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -404,8 +426,9 @@
     {
       "student_id": "26320023",
       "username": "26320023",
-      "student_name": "郭阳",
-      "display_name": "郭阳",
+      "class_id": "seed-class-2026",
+      "student_name": "曾华",
+      "display_name": "曾华",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -420,8 +443,9 @@
     {
       "student_id": "26320024",
       "username": "26320024",
-      "student_name": "罗洁",
-      "display_name": "罗洁",
+      "class_id": "seed-class-2026",
+      "student_name": "董悦",
+      "display_name": "董悦",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -436,8 +460,9 @@
     {
       "student_id": "26320025",
       "username": "26320025",
-      "student_name": "梁辰",
-      "display_name": "梁辰",
+      "class_id": "seed-class-2026",
+      "student_name": "潘婷",
+      "display_name": "潘婷",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -452,8 +477,9 @@
     {
       "student_id": "26320026",
       "username": "26320026",
-      "student_name": "宋佳",
-      "display_name": "宋佳",
+      "class_id": "seed-class-2026",
+      "student_name": "袁凯",
+      "display_name": "袁凯",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -468,22 +494,7 @@
     {
       "student_id": "26320027",
       "username": "26320027",
-      "student_name": "唐宁",
-      "display_name": "唐宁",
-      "status": "active",
-      "must_change_password": false,
-      "account_purpose": "standard",
-      "entry_purpose": "instructional",
-      "profile_purpose": "instructional",
-      "password": {
-        "mode": "env_or_default",
-        "env": "SEED_STUDENT_PASSWORD",
-        "default": "123456"
-      }
-    },
-    {
-      "student_id": "26320028",
-      "username": "26320028",
+      "class_id": "seed-class-2026",
       "student_name": "邓凯",
       "display_name": "邓凯",
       "status": "active",
@@ -498,8 +509,9 @@
       }
     },
     {
-      "student_id": "26320029",
-      "username": "26320029",
+      "student_id": "26320028",
+      "username": "26320028",
+      "class_id": "seed-class-2026",
       "student_name": "许诺",
       "display_name": "许诺",
       "status": "active",
@@ -514,10 +526,2068 @@
       }
     },
     {
-      "student_id": "26320030",
-      "username": "26320030",
+      "student_id": "26320029",
+      "username": "26320029",
+      "class_id": "seed-class-2026",
       "student_name": "高远",
       "display_name": "高远",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320030",
+      "username": "26320030",
+      "class_id": "seed-class-2026",
+      "student_name": "梁晨",
+      "display_name": "梁晨",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320101",
+      "username": "26320101",
+      "class_id": "seed-class-2026-2",
+      "student_name": "宋佳",
+      "display_name": "宋佳",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320102",
+      "username": "26320102",
+      "class_id": "seed-class-2026-2",
+      "student_name": "唐宁",
+      "display_name": "唐宁",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320103",
+      "username": "26320103",
+      "class_id": "seed-class-2026-2",
+      "student_name": "韩雪",
+      "display_name": "韩雪",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320104",
+      "username": "26320104",
+      "class_id": "seed-class-2026-2",
+      "student_name": "曹宇",
+      "display_name": "曹宇",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320105",
+      "username": "26320105",
+      "class_id": "seed-class-2026-2",
+      "student_name": "魏然",
+      "display_name": "魏然",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320106",
+      "username": "26320106",
+      "class_id": "seed-class-2026-2",
+      "student_name": "余航",
+      "display_name": "余航",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320107",
+      "username": "26320107",
+      "class_id": "seed-class-2026-2",
+      "student_name": "沈悦",
+      "display_name": "沈悦",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320108",
+      "username": "26320108",
+      "class_id": "seed-class-2026-2",
+      "student_name": "蒋磊",
+      "display_name": "蒋磊",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320109",
+      "username": "26320109",
+      "class_id": "seed-class-2026-2",
+      "student_name": "卢婷",
+      "display_name": "卢婷",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320110",
+      "username": "26320110",
+      "class_id": "seed-class-2026-2",
+      "student_name": "叶晨",
+      "display_name": "叶晨",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320111",
+      "username": "26320111",
+      "class_id": "seed-class-2026-2",
+      "student_name": "程浩",
+      "display_name": "程浩",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320112",
+      "username": "26320112",
+      "class_id": "seed-class-2026-2",
+      "student_name": "苏萌",
+      "display_name": "苏萌",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320113",
+      "username": "26320113",
+      "class_id": "seed-class-2026-2",
+      "student_name": "方圆",
+      "display_name": "方圆",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320114",
+      "username": "26320114",
+      "class_id": "seed-class-2026-2",
+      "student_name": "邹静",
+      "display_name": "邹静",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320115",
+      "username": "26320115",
+      "class_id": "seed-class-2026-2",
+      "student_name": "戴维",
+      "display_name": "戴维",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320116",
+      "username": "26320116",
+      "class_id": "seed-class-2026-2",
+      "student_name": "孟琪",
+      "display_name": "孟琪",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320117",
+      "username": "26320117",
+      "class_id": "seed-class-2026-2",
+      "student_name": "石磊",
+      "display_name": "石磊",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320118",
+      "username": "26320118",
+      "class_id": "seed-class-2026-2",
+      "student_name": "贾欣",
+      "display_name": "贾欣",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320119",
+      "username": "26320119",
+      "class_id": "seed-class-2026-2",
+      "student_name": "廖凡",
+      "display_name": "廖凡",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320120",
+      "username": "26320120",
+      "class_id": "seed-class-2026-2",
+      "student_name": "龚雪",
+      "display_name": "龚雪",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320121",
+      "username": "26320121",
+      "class_id": "seed-class-2026-2",
+      "student_name": "邵阳",
+      "display_name": "邵阳",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320122",
+      "username": "26320122",
+      "class_id": "seed-class-2026-2",
+      "student_name": "覃敏",
+      "display_name": "覃敏",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320123",
+      "username": "26320123",
+      "class_id": "seed-class-2026-2",
+      "student_name": "秦川",
+      "display_name": "秦川",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320124",
+      "username": "26320124",
+      "class_id": "seed-class-2026-2",
+      "student_name": "尹航",
+      "display_name": "尹航",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320125",
+      "username": "26320125",
+      "class_id": "seed-class-2026-2",
+      "student_name": "薛瑶",
+      "display_name": "薛瑶",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320126",
+      "username": "26320126",
+      "class_id": "seed-class-2026-2",
+      "student_name": "常乐",
+      "display_name": "常乐",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320127",
+      "username": "26320127",
+      "class_id": "seed-class-2026-2",
+      "student_name": "乔宇",
+      "display_name": "乔宇",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320128",
+      "username": "26320128",
+      "class_id": "seed-class-2026-2",
+      "student_name": "任洁",
+      "display_name": "任洁",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320129",
+      "username": "26320129",
+      "class_id": "seed-class-2026-2",
+      "student_name": "祝琳",
+      "display_name": "祝琳",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320130",
+      "username": "26320130",
+      "class_id": "seed-class-2026-2",
+      "student_name": "康宁",
+      "display_name": "康宁",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320201",
+      "username": "26320201",
+      "class_id": "seed-class-2026-3",
+      "student_name": "侯明",
+      "display_name": "侯明",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320202",
+      "username": "26320202",
+      "class_id": "seed-class-2026-3",
+      "student_name": "江雨",
+      "display_name": "江雨",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320203",
+      "username": "26320203",
+      "class_id": "seed-class-2026-3",
+      "student_name": "崔浩",
+      "display_name": "崔浩",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320204",
+      "username": "26320204",
+      "class_id": "seed-class-2026-3",
+      "student_name": "谭欣",
+      "display_name": "谭欣",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320205",
+      "username": "26320205",
+      "class_id": "seed-class-2026-3",
+      "student_name": "白雪",
+      "display_name": "白雪",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320206",
+      "username": "26320206",
+      "class_id": "seed-class-2026-3",
+      "student_name": "彭宇",
+      "display_name": "彭宇",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320207",
+      "username": "26320207",
+      "class_id": "seed-class-2026-3",
+      "student_name": "顾晨",
+      "display_name": "顾晨",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320208",
+      "username": "26320208",
+      "class_id": "seed-class-2026-3",
+      "student_name": "丁宁",
+      "display_name": "丁宁",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320209",
+      "username": "26320209",
+      "class_id": "seed-class-2026-3",
+      "student_name": "阎凯",
+      "display_name": "阎凯",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320210",
+      "username": "26320210",
+      "class_id": "seed-class-2026-3",
+      "student_name": "夏雨",
+      "display_name": "夏雨",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320211",
+      "username": "26320211",
+      "class_id": "seed-class-2026-3",
+      "student_name": "邱悦",
+      "display_name": "邱悦",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320212",
+      "username": "26320212",
+      "class_id": "seed-class-2026-3",
+      "student_name": "范磊",
+      "display_name": "范磊",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320213",
+      "username": "26320213",
+      "class_id": "seed-class-2026-3",
+      "student_name": "金鑫",
+      "display_name": "金鑫",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320214",
+      "username": "26320214",
+      "class_id": "seed-class-2026-3",
+      "student_name": "陆遥",
+      "display_name": "陆遥",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320215",
+      "username": "26320215",
+      "class_id": "seed-class-2026-3",
+      "student_name": "韦嘉",
+      "display_name": "韦嘉",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320216",
+      "username": "26320216",
+      "class_id": "seed-class-2026-3",
+      "student_name": "安然",
+      "display_name": "安然",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320217",
+      "username": "26320217",
+      "class_id": "seed-class-2026-3",
+      "student_name": "段宇",
+      "display_name": "段宇",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320218",
+      "username": "26320218",
+      "class_id": "seed-class-2026-3",
+      "student_name": "毛宁",
+      "display_name": "毛宁",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320219",
+      "username": "26320219",
+      "class_id": "seed-class-2026-3",
+      "student_name": "贺欣",
+      "display_name": "贺欣",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320220",
+      "username": "26320220",
+      "class_id": "seed-class-2026-3",
+      "student_name": "莫凡",
+      "display_name": "莫凡",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320221",
+      "username": "26320221",
+      "class_id": "seed-class-2026-3",
+      "student_name": "席悦",
+      "display_name": "席悦",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320222",
+      "username": "26320222",
+      "class_id": "seed-class-2026-3",
+      "student_name": "包涵",
+      "display_name": "包涵",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320223",
+      "username": "26320223",
+      "class_id": "seed-class-2026-3",
+      "student_name": "舒婷",
+      "display_name": "舒婷",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320224",
+      "username": "26320224",
+      "class_id": "seed-class-2026-3",
+      "student_name": "蓝天",
+      "display_name": "蓝天",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320225",
+      "username": "26320225",
+      "class_id": "seed-class-2026-3",
+      "student_name": "成龙",
+      "display_name": "成龙",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320226",
+      "username": "26320226",
+      "class_id": "seed-class-2026-3",
+      "student_name": "梅婷",
+      "display_name": "梅婷",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320227",
+      "username": "26320227",
+      "class_id": "seed-class-2026-3",
+      "student_name": "易辰",
+      "display_name": "易辰",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320228",
+      "username": "26320228",
+      "class_id": "seed-class-2026-3",
+      "student_name": "温雅",
+      "display_name": "温雅",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320229",
+      "username": "26320229",
+      "class_id": "seed-class-2026-3",
+      "student_name": "符浩",
+      "display_name": "符浩",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320230",
+      "username": "26320230",
+      "class_id": "seed-class-2026-3",
+      "student_name": "景然",
+      "display_name": "景然",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320301",
+      "username": "26320301",
+      "class_id": "seed-class-2026-4",
+      "student_name": "龙飞",
+      "display_name": "龙飞",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320302",
+      "username": "26320302",
+      "class_id": "seed-class-2026-4",
+      "student_name": "向阳",
+      "display_name": "向阳",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320303",
+      "username": "26320303",
+      "class_id": "seed-class-2026-4",
+      "student_name": "伍思",
+      "display_name": "伍思",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320304",
+      "username": "26320304",
+      "class_id": "seed-class-2026-4",
+      "student_name": "申浩",
+      "display_name": "申浩",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320305",
+      "username": "26320305",
+      "class_id": "seed-class-2026-4",
+      "student_name": "佟佳",
+      "display_name": "佟佳",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320306",
+      "username": "26320306",
+      "class_id": "seed-class-2026-4",
+      "student_name": "盛夏",
+      "display_name": "盛夏",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320307",
+      "username": "26320307",
+      "class_id": "seed-class-2026-4",
+      "student_name": "万鹏",
+      "display_name": "万鹏",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320308",
+      "username": "26320308",
+      "class_id": "seed-class-2026-4",
+      "student_name": "欧阳晨",
+      "display_name": "欧阳晨",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320309",
+      "username": "26320309",
+      "class_id": "seed-class-2026-4",
+      "student_name": "司徒静",
+      "display_name": "司徒静",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320310",
+      "username": "26320310",
+      "class_id": "seed-class-2026-4",
+      "student_name": "诸葛明",
+      "display_name": "诸葛明",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320311",
+      "username": "26320311",
+      "class_id": "seed-class-2026-4",
+      "student_name": "上官悦",
+      "display_name": "上官悦",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320312",
+      "username": "26320312",
+      "class_id": "seed-class-2026-4",
+      "student_name": "夏侯宇",
+      "display_name": "夏侯宇",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320313",
+      "username": "26320313",
+      "class_id": "seed-class-2026-4",
+      "student_name": "闻人杰",
+      "display_name": "闻人杰",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320314",
+      "username": "26320314",
+      "class_id": "seed-class-2026-4",
+      "student_name": "南宫雪",
+      "display_name": "南宫雪",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320315",
+      "username": "26320315",
+      "class_id": "seed-class-2026-4",
+      "student_name": "慕容清",
+      "display_name": "慕容清",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320316",
+      "username": "26320316",
+      "class_id": "seed-class-2026-4",
+      "student_name": "司马航",
+      "display_name": "司马航",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320317",
+      "username": "26320317",
+      "class_id": "seed-class-2026-4",
+      "student_name": "东方宁",
+      "display_name": "东方宁",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320318",
+      "username": "26320318",
+      "class_id": "seed-class-2026-4",
+      "student_name": "端木磊",
+      "display_name": "端木磊",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320319",
+      "username": "26320319",
+      "class_id": "seed-class-2026-4",
+      "student_name": "尉迟然",
+      "display_name": "尉迟然",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320320",
+      "username": "26320320",
+      "class_id": "seed-class-2026-4",
+      "student_name": "令狐欣",
+      "display_name": "令狐欣",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320321",
+      "username": "26320321",
+      "class_id": "seed-class-2026-4",
+      "student_name": "钟离远",
+      "display_name": "钟离远",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320322",
+      "username": "26320322",
+      "class_id": "seed-class-2026-4",
+      "student_name": "宇文浩",
+      "display_name": "宇文浩",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320323",
+      "username": "26320323",
+      "class_id": "seed-class-2026-4",
+      "student_name": "长孙琪",
+      "display_name": "长孙琪",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320324",
+      "username": "26320324",
+      "class_id": "seed-class-2026-4",
+      "student_name": "公孙卓",
+      "display_name": "公孙卓",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320325",
+      "username": "26320325",
+      "class_id": "seed-class-2026-4",
+      "student_name": "鲜于敏",
+      "display_name": "鲜于敏",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320326",
+      "username": "26320326",
+      "class_id": "seed-class-2026-4",
+      "student_name": "赫连晨",
+      "display_name": "赫连晨",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320327",
+      "username": "26320327",
+      "class_id": "seed-class-2026-4",
+      "student_name": "澹台玥",
+      "display_name": "澹台玥",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320328",
+      "username": "26320328",
+      "class_id": "seed-class-2026-4",
+      "student_name": "皇甫林",
+      "display_name": "皇甫林",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320329",
+      "username": "26320329",
+      "class_id": "seed-class-2026-4",
+      "student_name": "乐正阳",
+      "display_name": "乐正阳",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320330",
+      "username": "26320330",
+      "class_id": "seed-class-2026-4",
+      "student_name": "第五嘉",
+      "display_name": "第五嘉",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320401",
+      "username": "26320401",
+      "class_id": "seed-class-2026-5",
+      "student_name": "裴航",
+      "display_name": "裴航",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320402",
+      "username": "26320402",
+      "class_id": "seed-class-2026-5",
+      "student_name": "滕宇",
+      "display_name": "滕宇",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320403",
+      "username": "26320403",
+      "class_id": "seed-class-2026-5",
+      "student_name": "殷悦",
+      "display_name": "殷悦",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320404",
+      "username": "26320404",
+      "class_id": "seed-class-2026-5",
+      "student_name": "鲍宁",
+      "display_name": "鲍宁",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320405",
+      "username": "26320405",
+      "class_id": "seed-class-2026-5",
+      "student_name": "严浩",
+      "display_name": "严浩",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320406",
+      "username": "26320406",
+      "class_id": "seed-class-2026-5",
+      "student_name": "华晨",
+      "display_name": "华晨",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320407",
+      "username": "26320407",
+      "class_id": "seed-class-2026-5",
+      "student_name": "施然",
+      "display_name": "施然",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320408",
+      "username": "26320408",
+      "class_id": "seed-class-2026-5",
+      "student_name": "孔明",
+      "display_name": "孔明",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320409",
+      "username": "26320409",
+      "class_id": "seed-class-2026-5",
+      "student_name": "俞婷",
+      "display_name": "俞婷",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320410",
+      "username": "26320410",
+      "class_id": "seed-class-2026-5",
+      "student_name": "任远",
+      "display_name": "任远",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320411",
+      "username": "26320411",
+      "class_id": "seed-class-2026-5",
+      "student_name": "袁野",
+      "display_name": "袁野",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320412",
+      "username": "26320412",
+      "class_id": "seed-class-2026-5",
+      "student_name": "柳青",
+      "display_name": "柳青",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320413",
+      "username": "26320413",
+      "class_id": "seed-class-2026-5",
+      "student_name": "葛亮",
+      "display_name": "葛亮",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320414",
+      "username": "26320414",
+      "class_id": "seed-class-2026-5",
+      "student_name": "费翔",
+      "display_name": "费翔",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320415",
+      "username": "26320415",
+      "class_id": "seed-class-2026-5",
+      "student_name": "陶然",
+      "display_name": "陶然",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320416",
+      "username": "26320416",
+      "class_id": "seed-class-2026-5",
+      "student_name": "庞博",
+      "display_name": "庞博",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320417",
+      "username": "26320417",
+      "class_id": "seed-class-2026-5",
+      "student_name": "樊静",
+      "display_name": "樊静",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320418",
+      "username": "26320418",
+      "class_id": "seed-class-2026-5",
+      "student_name": "柯宇",
+      "display_name": "柯宇",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320419",
+      "username": "26320419",
+      "class_id": "seed-class-2026-5",
+      "student_name": "苗欣",
+      "display_name": "苗欣",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320420",
+      "username": "26320420",
+      "class_id": "seed-class-2026-5",
+      "student_name": "管乐",
+      "display_name": "管乐",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320421",
+      "username": "26320421",
+      "class_id": "seed-class-2026-5",
+      "student_name": "毕晨",
+      "display_name": "毕晨",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320422",
+      "username": "26320422",
+      "class_id": "seed-class-2026-5",
+      "student_name": "甘宁",
+      "display_name": "甘宁",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320423",
+      "username": "26320423",
+      "class_id": "seed-class-2026-5",
+      "student_name": "解语",
+      "display_name": "解语",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320424",
+      "username": "26320424",
+      "class_id": "seed-class-2026-5",
+      "student_name": "宁远",
+      "display_name": "宁远",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320425",
+      "username": "26320425",
+      "class_id": "seed-class-2026-5",
+      "student_name": "荣浩",
+      "display_name": "荣浩",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320426",
+      "username": "26320426",
+      "class_id": "seed-class-2026-5",
+      "student_name": "左岸",
+      "display_name": "左岸",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320427",
+      "username": "26320427",
+      "class_id": "seed-class-2026-5",
+      "student_name": "明月",
+      "display_name": "明月",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320428",
+      "username": "26320428",
+      "class_id": "seed-class-2026-5",
+      "student_name": "辛晨",
+      "display_name": "辛晨",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320429",
+      "username": "26320429",
+      "class_id": "seed-class-2026-5",
+      "student_name": "骆冰",
+      "display_name": "骆冰",
+      "status": "active",
+      "must_change_password": false,
+      "account_purpose": "standard",
+      "entry_purpose": "instructional",
+      "profile_purpose": "instructional",
+      "password": {
+        "mode": "env_or_default",
+        "env": "SEED_STUDENT_PASSWORD",
+        "default": "123456"
+      }
+    },
+    {
+      "student_id": "26320430",
+      "username": "26320430",
+      "class_id": "seed-class-2026-5",
+      "student_name": "简宁",
+      "display_name": "简宁",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -532,11 +2602,11 @@
   ],
   "expected_counts": {
     "teachers": 1,
-    "classes": 1,
-    "teacher_class_links": 1,
-    "students": 30,
-    "roster_entries": 30,
-    "student_profiles": 30
+    "classes": 5,
+    "teacher_class_links": 5,
+    "students": 150,
+    "roster_entries": 150,
+    "student_profiles": 150
   },
   "operator_overrides": {
     "teacher_username_env": "SEED_TEACHER_USERNAME",
@@ -544,5 +2614,77 @@
     "student_password_env": "SEED_STUDENT_PASSWORD",
     "class_id_env": "SEED_CLASS_ID",
     "class_name_env": "SEED_CLASS_NAME"
-  }
+  },
+  "classes": [
+    {
+      "id": "seed-class-2026",
+      "class_name": "26级本科 1 班",
+      "description": "2026 级本科无机化学实验教学班（1 班）",
+      "status": "active",
+      "class_purpose": "instructional",
+      "system_managed": false,
+      "hidden_from_teacher": false,
+      "metadata": {
+        "seed_owned": true,
+        "seed_version": "demo-identity-v1"
+      },
+      "teacher_class_role": "owner"
+    },
+    {
+      "id": "seed-class-2026-2",
+      "class_name": "26级本科 2 班",
+      "description": "2026 级本科无机化学实验教学班（2 班）",
+      "status": "active",
+      "class_purpose": "instructional",
+      "system_managed": false,
+      "hidden_from_teacher": false,
+      "metadata": {
+        "seed_owned": true,
+        "seed_version": "demo-identity-v1"
+      },
+      "teacher_class_role": "owner"
+    },
+    {
+      "id": "seed-class-2026-3",
+      "class_name": "26级本科 3 班",
+      "description": "2026 级本科无机化学实验教学班（3 班）",
+      "status": "active",
+      "class_purpose": "instructional",
+      "system_managed": false,
+      "hidden_from_teacher": false,
+      "metadata": {
+        "seed_owned": true,
+        "seed_version": "demo-identity-v1"
+      },
+      "teacher_class_role": "owner"
+    },
+    {
+      "id": "seed-class-2026-4",
+      "class_name": "26级本科 4 班",
+      "description": "2026 级本科无机化学实验教学班（4 班）",
+      "status": "active",
+      "class_purpose": "instructional",
+      "system_managed": false,
+      "hidden_from_teacher": false,
+      "metadata": {
+        "seed_owned": true,
+        "seed_version": "demo-identity-v1"
+      },
+      "teacher_class_role": "owner"
+    },
+    {
+      "id": "seed-class-2026-5",
+      "class_name": "26级本科 5 班",
+      "description": "2026 级本科无机化学实验教学班（5 班）",
+      "status": "active",
+      "class_purpose": "instructional",
+      "system_managed": false,
+      "hidden_from_teacher": false,
+      "metadata": {
+        "seed_owned": true,
+        "seed_version": "demo-identity-v1"
+      },
+      "teacher_class_role": "owner"
+    }
+  ]
 }
