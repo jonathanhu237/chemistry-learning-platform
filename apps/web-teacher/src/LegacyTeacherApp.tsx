@@ -903,7 +903,6 @@ function PaperManagementPage() {
                   <section className="legacy-paper-section" aria-label="当前班级预估">
                     <div className="legacy-paper-section-head">
                       <h3>当前班级预估</h3>
-                      <span className="legacy-paper-source">{preview?.has_override ? "本班策略" : "继承策略"}</span>
                     </div>
                     <StateBlock loading={previewState.loading && !previewState.data} error={previewState.error}>
                       {preview ? (
