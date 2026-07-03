@@ -727,8 +727,8 @@ export type AIConfigurationUpdate = {
   base_url: string;
   model: string;
   api_key?: string;
-  connection_check_interval_minutes: number;
-  enabled_features: AIEnabledFeatureScopes;
+  connection_check_interval_minutes?: number;
+  enabled_features?: AIEnabledFeatureScopes;
   chat_provider: {
     provider: "openai";
     base_url: string;

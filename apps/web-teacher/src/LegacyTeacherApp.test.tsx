@@ -965,6 +965,11 @@ describe("LegacyTeacherApp", () => {
     expect(screen.queryByRole("heading", { name: "AI 模型配置" })).toBeNull();
     expect(await within(sidebar).findByDisplayValue("https://api.deepseek.com")).toBeTruthy();
     expect(within(sidebar).getByDisplayValue("deepseek-v4-flash")).toBeTruthy();
+    expect(within(sidebar).queryByText("模型服务")).toBeNull();
+    expect(within(sidebar).queryByText("连接检测间隔")).toBeNull();
+    expect(within(sidebar).queryByText("启用范围")).toBeNull();
+    expect(within(sidebar).queryByText("上次检测")).toBeNull();
+    expect(within(sidebar).queryByText("近期调用")).toBeNull();
 
     fireEvent.change(within(sidebar).getByLabelText("API 密钥"), { target: { value: "sk-test-from-ui" } });
     fireEvent.click(within(sidebar).getByRole("button", { name: "保存配置" }));
@@ -985,11 +990,9 @@ describe("LegacyTeacherApp", () => {
         model: "deepseek-v4-flash",
         api_key: "sk-test-from-ui",
       },
-      enabled_features: {
-        question_bank_assistant: true,
-        student_learning_analytics: true,
-      },
     });
+    expect(JSON.parse(String(updateCall?.[1]?.body))).not.toHaveProperty("enabled_features");
+    expect(JSON.parse(String(updateCall?.[1]?.body))).not.toHaveProperty("connection_check_interval_minutes");
   });
 
   it("uploads and binds a video from the catalog point editor", async () => {

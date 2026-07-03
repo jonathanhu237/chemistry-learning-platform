@@ -1432,78 +1432,6 @@ p {
   padding: 0;
 }
 
-.legacy-ai-feature-fieldset {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  border: 1px solid var(--legacy-line);
-  background: #fff8f4;
-  padding: 12px;
-}
-
-.legacy-ai-feature-fieldset legend {
-  padding: 0 6px;
-  color: var(--legacy-sysu-red);
-  font-weight: 900;
-}
-
-.legacy-ai-feature-fieldset label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  color: var(--legacy-ink);
-  font-weight: 900;
-}
-
-.legacy-ai-status-list {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-}
-
-.legacy-ai-status-list div {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 12px;
-  border: 1px solid var(--legacy-line);
-  background: #fffdfb;
-  padding: 10px;
-}
-
-.legacy-ai-status-list dt {
-  color: var(--legacy-sysu-red);
-  font-weight: 900;
-}
-
-.legacy-ai-status-list dd {
-  min-width: 0;
-  margin: 0;
-  overflow-wrap: anywhere;
-  color: var(--legacy-muted);
-  line-height: 1.55;
-}
-
-.teacher-ui-drawer.legacy-ai-config-sidebar .ant-drawer-header {
-  border-bottom: 1px solid var(--legacy-line);
-  padding: 18px 20px;
-}
-
-.teacher-ui-drawer.legacy-ai-config-sidebar .ant-drawer-title {
-  color: var(--legacy-ink);
-  font-size: 21px;
-  font-weight: 900;
-}
-
-.teacher-ui-drawer.legacy-ai-config-sidebar .ant-drawer-close {
-  color: var(--legacy-sysu-red);
-}
-
-.teacher-ui-drawer.legacy-ai-config-sidebar .ant-drawer-body {
-  background: #fffaf8;
-  padding: 18px 20px 20px;
-}
-
 .legacy-ai-config-sidebar-body {
   display: grid;
   min-height: 100%;
@@ -1511,75 +1439,10 @@ p {
   gap: 14px;
 }
 
-.legacy-ai-config-provider-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 12px;
-  border: 1px solid var(--legacy-line);
-  background: #fff;
-  padding: 14px;
-}
-
-.legacy-ai-config-provider-card span {
-  color: var(--legacy-muted);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.legacy-ai-config-provider-card strong {
-  display: block;
-  color: var(--legacy-ink);
-  font-size: 19px;
-  line-height: 1.35;
-}
-
-.legacy-ai-config-provider-card small {
-  display: block;
-  margin-top: 4px;
-  color: var(--legacy-muted);
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.45;
-}
-
-.legacy-ai-config-provider-card em {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  min-height: 26px;
-  border: 1px solid #d7b8b2;
-  background: #fff8e8;
-  color: var(--legacy-sysu-red);
-  padding: 4px 8px;
-  font-size: 12px;
-  font-style: normal;
-  font-weight: 900;
-  line-height: 1;
-  text-align: center;
-  white-space: nowrap;
-}
-
 .legacy-ai-config-sidebar .legacy-ai-config-form {
   border: 1px solid var(--legacy-line);
   background: #fff;
   padding: 14px;
-}
-
-.legacy-ai-config-sidebar .legacy-ai-status-list {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.legacy-ai-config-sidebar .legacy-ai-status-list div {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 4px;
-  padding: 8px 10px;
-}
-
-.legacy-ai-config-sidebar .legacy-ai-status-list div:nth-child(3) {
-  grid-column: 1 / -1;
 }
 
 .legacy-ai-config-sidebar-actions {
@@ -1595,10 +1458,6 @@ p {
 }
 
 @media (max-width: 520px) {
-  .legacy-ai-config-sidebar .legacy-ai-status-list {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .legacy-ai-config-sidebar-actions {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -3303,7 +3162,6 @@ p {
   min-height: auto;
 }
 
-.legacy-settings-ai-section .legacy-ai-config-provider-card,
 .legacy-settings-ai-section .legacy-ai-config-form {
   border-color: var(--legacy-line);
 }

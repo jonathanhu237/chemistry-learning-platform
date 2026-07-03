@@ -128,6 +128,11 @@ test.describe("legacy teacher/student browser flows", () => {
     await expect(aiConfigSidebar).toBeVisible();
     await expect(page.getByRole("heading", { name: "AI 模型配置" })).toHaveCount(0);
     await expect(aiConfigSidebar.getByLabel("模型名称", { exact: true })).toBeVisible();
+    await expect(aiConfigSidebar.getByText("模型服务")).toHaveCount(0);
+    await expect(aiConfigSidebar.getByText("连接检测间隔")).toHaveCount(0);
+    await expect(aiConfigSidebar.getByText("启用范围")).toHaveCount(0);
+    await expect(aiConfigSidebar.getByText("上次检测")).toHaveCount(0);
+    await expect(aiConfigSidebar.getByText("近期调用")).toHaveCount(0);
     await expectNoVisibleLegacyError(page);
   });
 

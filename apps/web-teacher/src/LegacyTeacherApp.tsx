@@ -39,7 +39,6 @@ import {
   updateGlobalAssessmentReportPrompts,
   uploadTeacherMediaAsset,
   type AIConfigurationResponse,
-  type AIEnabledFeatureScopes,
   type AnalyticsDashboard,
   type AnalyticsPointScore,
   type AnalyticsScoreCell,
@@ -116,10 +115,6 @@ const objectiveQuestionTypeOptions: Array<{ value: ObjectiveQuestionType; label:
 ];
 const deepSeekDefaultBaseUrl = "https://api.deepseek.com";
 const deepSeekDefaultModel = "deepseek-v4-flash";
-const aiConfigFeatureOptions: Array<{ key: keyof AIEnabledFeatureScopes; label: string }> = [
-  { key: "question_bank_assistant", label: "AI 出题" },
-  { key: "student_learning_analytics", label: "AI 报告" },
-];
 
 function catalogContentStatusLabel(status?: string | null, fallback = "未填写资料"): string {
   if (!status) return fallback;
@@ -620,31 +615,6 @@ function NoticeBlock({ children }: { children: ReactNode }) {
 
 function ErrorBlock({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
   return <TeacherAlert className={`legacy-error${compact ? " compact" : ""}`} type="error" message={children} />;
-}
-
-function aiConnectivityStatusLabel(status?: string | null): string {
-  const labels: Record<string, string> = {
-    authenticated: "启用",
-    connected: "启用",
-    failed: "连接失败",
-    not_configured: "未配置",
-    stale: "待复检",
-    untested: "未检测",
-  };
-  return labels[status || ""] || "未检测";
-}
-
-function aiStatusMessageLabel(message?: string | null): string {
-  const normalized = (message || "").trim().toLowerCase();
-  if (normalized === "authenticated" || normalized === "connected") return "启用";
-  return (message || "未检测").replaceAll("API Key", "API 密钥");
-}
-
-function formatDateTime(value?: string | null): string {
-  if (!value) return "未记录";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "未记录";
-  return date.toLocaleString("zh-CN", { hour12: false });
 }
 
 function normalizedScore(value?: number | string | null): number | null {
@@ -1435,14 +1405,6 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
   const [baseUrl, setBaseUrl] = useState(deepSeekDefaultBaseUrl);
   const [model, setModel] = useState(deepSeekDefaultModel);
   const [apiKey, setApiKey] = useState("");
-  const [checkInterval, setCheckInterval] = useState(30);
-  const [enabledFeatures, setEnabledFeatures] = useState<AIEnabledFeatureScopes>({
-    rag_access_enabled: true,
-    student_ai_assistant: true,
-    student_learning_analytics: true,
-    question_bank_assistant: true,
-    teacher_learning_analytics: true,
-  });
   const [notice, setNotice] = useState("");
   const [actionError, setActionError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -1452,21 +1414,10 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
     if (!config) return;
     setBaseUrl(config.base_url || config.chat_provider?.base_url || deepSeekDefaultBaseUrl);
     setModel(config.model || config.chat_provider?.model || deepSeekDefaultModel);
-    setCheckInterval(config.connection_check_interval_minutes || 30);
-    setEnabledFeatures((current) => ({
-      ...current,
-      ...(config.enabled_features || {}),
-      question_bank_assistant: config.enabled_features?.question_bank_assistant ?? true,
-      student_learning_analytics: config.enabled_features?.student_learning_analytics ?? true,
-    }));
     setApiKey("");
     setNotice("");
     setActionError("");
   }, [state.data]);
-
-  const toggleFeature = (key: keyof AIEnabledFeatureScopes, enabled: boolean) => {
-    setEnabledFeatures((current) => ({ ...current, [key]: enabled }));
-  };
 
   const saveConfig = async (event: FormEvent) => {
     event.preventDefault();
@@ -1486,8 +1437,6 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
         base_url: nextBaseUrl,
         model: nextModel,
         ...(nextApiKey ? { api_key: nextApiKey } : {}),
-        connection_check_interval_minutes: checkInterval,
-        enabled_features: enabledFeatures,
         chat_provider: {
           provider: "openai",
           base_url: nextBaseUrl,
@@ -1505,9 +1454,6 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
     }
   };
 
-  const status = state.data?.status;
-  const configuredKey = state.data?.api_key_configured ? state.data.api_key_fingerprint || "已保存" : "未保存";
-
   return (
     <section className="legacy-ai-config-sidebar legacy-settings-ai-section" data-testid="teacher-ai-config-settings" aria-label="AI 配置">
       <div className="legacy-profile-form-head">
@@ -1518,14 +1464,6 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
         {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
         {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
         <StateBlock loading={state.loading && !state.data} error={state.error}>
-          <div className="legacy-ai-config-provider-card">
-            <div>
-              <span>模型服务</span>
-              <strong>DeepSeek 接入</strong>
-              <small>OpenAI 兼容接口，用于 AI 出题和 AI 报告。</small>
-            </div>
-            <em>{aiConnectivityStatusLabel(status?.connectivity_status)}</em>
-          </div>
           <form className="legacy-ai-config-form" onSubmit={saveConfig}>
             <label>
               接口地址
@@ -1549,49 +1487,6 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
                 onChange={(event) => setApiKey(event.target.value)}
               />
             </label>
-            <label>
-              连接检测间隔
-              <select value={checkInterval} onChange={(event) => setCheckInterval(Number(event.target.value) || 30)}>
-                <option value={5}>5 分钟</option>
-                <option value={15}>15 分钟</option>
-                <option value={30}>30 分钟</option>
-                <option value={60}>60 分钟</option>
-                <option value={180}>180 分钟</option>
-              </select>
-            </label>
-            <fieldset className="legacy-ai-feature-fieldset">
-              <legend>启用范围</legend>
-              {aiConfigFeatureOptions.map((item) => (
-                <label key={item.key}>
-                  <TeacherSwitch checked={Boolean(enabledFeatures[item.key])} onChange={(checked) => toggleFeature(item.key, checked)} />
-                  <span>{item.label}</span>
-                </label>
-              ))}
-            </fieldset>
-            <dl className="legacy-ai-status-list">
-              <div>
-                <dt>模型</dt>
-                <dd>{state.data?.model || deepSeekDefaultModel}</dd>
-              </div>
-              <div>
-                <dt>密钥</dt>
-                <dd>{configuredKey}</dd>
-              </div>
-              <div>
-                <dt>状态</dt>
-                <dd>{aiStatusMessageLabel(status?.message)}</dd>
-              </div>
-              <div>
-                <dt>上次检测</dt>
-                <dd>{formatDateTime(status?.last_checked_at)}</dd>
-              </div>
-              <div>
-                <dt>近期调用</dt>
-                <dd>
-                  请求 {status?.recent_request_count ?? 0} 次，错误 {status?.recent_error_count ?? 0} 次
-                </dd>
-              </div>
-            </dl>
             <div className="legacy-ai-config-sidebar-actions">
               <TeacherButton
                 type="default"
