@@ -1297,8 +1297,9 @@ describe("LegacyTeacherApp", () => {
     expect(screen.getByText("正式题库")).toBeTruthy();
     expect(await screen.findByText("为什么干燥有色布条放入氯气中不明显褪色？")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "退回修改" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "撤销到待审" })).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "撤销到待审" }));
+    fireEvent.click(screen.getByRole("button", { name: "撤销选中正式题" }));
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/questions/question-ch13-1/revoke-to-draft"));
 
     fireEvent.click(screen.getByRole("button", { name: "修改" }));
@@ -1335,7 +1336,7 @@ describe("LegacyTeacherApp", () => {
       count: 1,
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "通过入库" }));
+    fireEvent.click(screen.getByRole("button", { name: "入库选中待审题" }));
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/drafts/draft-ch13-1/publish"));
     expect(screen.queryByText("教师审核通过，题目已入库。")).toBeNull();
     expect(await screen.findByText("为什么干燥有色布条放入氯气中不明显褪色？")).toBeTruthy();
