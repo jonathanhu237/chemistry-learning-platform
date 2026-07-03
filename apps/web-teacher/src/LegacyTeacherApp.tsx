@@ -1635,14 +1635,12 @@ function QuestionsPage() {
   const [questionTypes, setQuestionTypes] = useState<ObjectiveQuestionType[]>(["single_choice"]);
   const [count, setCount] = useState(1);
   const [prompt, setPrompt] = useState("");
-  const [notice, setNotice] = useState("");
   const [actionError, setActionError] = useState("");
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (selectedPoint) {
       setPrompt(`请围绕“${selectedPoint.title}”生成 1 道课堂测评题，依据点位原理、现象和安全资料命题。`);
-      setNotice("");
       setActionError("");
     }
   }, [selectedPoint?.node_id]);
@@ -1661,10 +1659,9 @@ function QuestionsPage() {
       return;
     }
     setGenerating(true);
-    setNotice("");
     setActionError("");
     try {
-      const response = await generateLegacyPointQuestions({
+      await generateLegacyPointQuestions({
         experiment_id: selectedPoint.experiment_id,
         prompt: prompt.trim(),
         question_types: questionTypes,
@@ -1673,7 +1670,6 @@ function QuestionsPage() {
         chapter_ids: [selectedPoint.chapter_id],
         target_point_node_ids: [selectedPoint.node_id],
       });
-      setNotice(`已生成 ${response.drafts.length} 条待审题，来源为点位三段式资料。`);
       setReloadKey((value) => value + 1);
     } catch (caught) {
       setActionError(legacyTeacherErrorMessage(caught));
@@ -1683,15 +1679,12 @@ function QuestionsPage() {
   };
 
   const reviewDraft = async (draftId: string, action: "publish" | "reject") => {
-    setNotice("");
     setActionError("");
     try {
       if (action === "publish") {
         await publishQuestionDraft(draftId);
-        setNotice("教师审核通过，题目已入库。");
       } else {
         await rejectQuestionDraft(draftId);
-        setNotice("已退回这条待审题目。");
       }
       setReloadKey((value) => value + 1);
     } catch (caught) {
@@ -1712,7 +1705,6 @@ function QuestionsPage() {
       testId="teacher-page-questions"
     >
       <StateBlock loading={catalog.loading && !catalog.data} error={catalog.error}>
-        {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
         {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
         <TeacherCard className="legacy-table-card legacy-question-workbench">
           <header className="legacy-question-workbench-head">

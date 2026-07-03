@@ -1162,7 +1162,8 @@ describe("LegacyTeacherApp", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "生成待审题" }));
 
-    expect(await screen.findByText("已生成 1 条待审题，来源为点位三段式资料。")).toBeTruthy();
+    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/legacy-point-generate"));
+    expect(screen.queryByText("已生成 1 条待审题，来源为点位三段式资料。")).toBeNull();
 
     const generationCall = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/teacher/question-banks/legacy-point-generate");
     expect(generationCall).toBeTruthy();
@@ -1176,7 +1177,8 @@ describe("LegacyTeacherApp", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "通过入库" }));
-    expect(await screen.findByText("教师审核通过，题目已入库。")).toBeTruthy();
+    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/drafts/draft-ch13-1/publish"));
+    expect(screen.queryByText("教师审核通过，题目已入库。")).toBeNull();
 
     const paths = requestPaths(fetchMock);
     expect(paths).toContain("/api/teacher/question-banks/drafts?point_node_id=point-ch13-bleach&canonical_point_id=canon-bleach");
