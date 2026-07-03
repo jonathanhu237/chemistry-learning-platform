@@ -1067,6 +1067,12 @@ type AnalyticsFamilyColumn = {
   experiment_count?: number;
 };
 
+type AnalyticsScoreDetailDialog = {
+  student: AnalyticsDashboard["matrix"][number];
+  family: AnalyticsFamilyColumn;
+  cell: AnalyticsScoreCell | null;
+};
+
 const elementFamilyTitleByChapter: Record<string, string> = {
   CH13: "卤族元素",
   CH14: "氧族元素",
@@ -2940,20 +2946,16 @@ function AnalyticsPage() {
   const rows = dashboard?.matrix || [];
   const rawColumns = dashboard?.experiment_groups?.length ? dashboard.experiment_groups : dashboard?.experiments || [];
   const columns = useMemo(() => analyticsFamilyColumns(rawColumns), [rawColumns]);
-  const [selectedFamilyId, setSelectedFamilyId] = useState("");
+  const [scoreDetail, setScoreDetail] = useState<AnalyticsScoreDetailDialog | null>(null);
 
   useEffect(() => {
     if (!selectedStudentId && rows[0]?.student_id) setSelectedStudentId(rows[0].student_id);
   }, [rows, selectedStudentId]);
   useEffect(() => {
-    if (!selectedFamilyId && columns[0]?.id) setSelectedFamilyId(columns[0].id);
-    if (selectedFamilyId && columns.length && !columns.some((item) => item.id === selectedFamilyId)) setSelectedFamilyId(columns[0]?.id || "");
-  }, [columns, selectedFamilyId]);
-
-  const selectedStudent = rows.find((row) => row.student_id === selectedStudentId) || rows[0] || null;
-  const selectedFamily = columns.find((item) => item.id === selectedFamilyId) || columns[0] || null;
-  const selectedFamilyCell = selectedStudent && selectedFamily ? analyticsScoreCellForColumn(selectedStudent, selectedFamily) : null;
-  const selectedPointScores = selectedFamilyCell?.points || [];
+    if (scoreDetail && (!rows.some((row) => row.student_id === scoreDetail.student.student_id) || !columns.some((item) => item.id === scoreDetail.family.id))) {
+      setScoreDetail(null);
+    }
+  }, [columns, rows, scoreDetail]);
   const familyGridStyle = useMemo<CSSProperties>(() => {
     const familyTracks = columns.length ? ` repeat(${columns.length}, minmax(118px, 1fr))` : "";
     return { gridTemplateColumns: `minmax(176px, 1.25fr) 92px${familyTracks}` };
@@ -3015,16 +3017,21 @@ function AnalyticsPage() {
                       <span className="legacy-family-average-cell">{scoreLabel(student.average_score)}</span>
                       {columns.map((item) => {
                         const state = analyticsScoreCellForColumn(student, item);
-                        const selected = student.student_id === selectedStudentId && item.id === selectedFamilyId;
+                        const selected = scoreDetail?.student.student_id === student.student_id && scoreDetail.family.id === item.id;
+                        const pointScores = state?.points || [];
+                        const pointSummary = pointScores.length
+                          ? pointScores.map((point) => `${point.point_title || "未命名点位"}：${scoreLabel(point.score ?? point.mastery_score)}`).join("\n")
+                          : "暂无点位得分";
                         return (
                           <button
                             type="button"
                             className={`legacy-family-score-cell${selected ? " selected" : ""}`}
                             key={item.id}
                             aria-label={`${student.student_name} ${item.title} ${scoreLabel(state?.score ?? state?.mastery_score)}`}
+                            title={pointSummary}
                             onClick={() => {
                               setSelectedStudentId(student.student_id);
-                              setSelectedFamilyId(item.id);
+                              setScoreDetail({ student, family: item, cell: state });
                             }}
                           >
                             <strong>{scoreLabel(state?.score ?? state?.mastery_score)}</strong>
@@ -3036,24 +3043,45 @@ function AnalyticsPage() {
                   ))}
                 </div>
               </TeacherCard>
-              <TeacherCard className="legacy-table-card">
-                <header>
-                  <h2>点位得分明细</h2>
-                  <span>
-                    {selectedStudent?.student_name || "未选择学生"} · {selectedFamily?.title || "未选择族元素"}
-                  </span>
-                </header>
-                {selectedPointScores.length ? (
-                  <PointScoreList points={selectedPointScores} />
-                ) : (
-                  <TeacherEmptyState message="当前学生在该族元素下暂无点位得分。" compact />
-                )}
-              </TeacherCard>
+              <TeacherModal
+                open={Boolean(scoreDetail)}
+                className="legacy-score-detail-dialog"
+                title={scoreDetail ? `${scoreDetail.student.student_name} · ${scoreDetail.family.title}` : "点位得分"}
+                onCancel={() => setScoreDetail(null)}
+                footer={null}
+                width={760}
+              >
+                {scoreDetail ? <AnalyticsScoreDetail detail={scoreDetail} /> : null}
+              </TeacherModal>
             </>
           ) : null}
         </StateBlock>
       </StateBlock>
     </PageFrame>
+  );
+}
+
+function AnalyticsScoreDetail({ detail }: { detail: AnalyticsScoreDetailDialog }) {
+  const points = detail.cell?.points || [];
+  const score = detail.cell?.score ?? detail.cell?.mastery_score;
+  return (
+    <div className="legacy-score-detail-content">
+      <div className="legacy-score-detail-strip">
+        <article>
+          <span>族元素得分</span>
+          <strong>{scoreLabel(score)}</strong>
+        </article>
+        <article>
+          <span>点位数量</span>
+          <strong>{points.length}</strong>
+        </article>
+        <article>
+          <span>证据数量</span>
+          <strong>{detail.cell?.evidence_count || 0}</strong>
+        </article>
+      </div>
+      {points.length ? <PointScoreList points={points} /> : <TeacherEmptyState message="当前学生在该族元素下暂无点位得分。" compact />}
+    </div>
   );
 }
 

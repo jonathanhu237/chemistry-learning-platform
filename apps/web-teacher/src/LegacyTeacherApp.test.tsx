@@ -1444,15 +1444,19 @@ describe("LegacyTeacherApp", () => {
     expect(screen.getByText("卤族元素")).toBeTruthy();
     expect(screen.getByText("氧族元素")).toBeTruthy();
     expect(screen.queryByText("CAT-CH13-f99cb352")).toBeNull();
-    expect(await screen.findByRole("heading", { name: "点位得分明细" })).toBeTruthy();
-    expect(screen.getByText("氯水漂白性实验")).toBeTruthy();
-    expect(screen.getByText("92 分")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "点位得分明细" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "学生报告摘要" })).toBeNull();
     expect(screen.queryByText("张三已经掌握 CH13 氯水漂白的核心证据。")).toBeNull();
 
+    fireEvent.click(screen.getByRole("button", { name: "张三 卤族元素 88 分" }));
+    const zhangDialog = await screen.findByRole("dialog", { name: "张三 · 卤族元素" });
+    expect(within(zhangDialog).getByText("氯水漂白性实验")).toBeTruthy();
+    expect(within(zhangDialog).getByText("92 分")).toBeTruthy();
+
     fireEvent.click(screen.getByRole("button", { name: "李四 卤族元素 70 分" }));
-    expect(await screen.findByText("62 分")).toBeTruthy();
-    expect(screen.getAllByText("碘离子检验").length).toBeGreaterThan(0);
+    const liDialog = await screen.findByRole("dialog", { name: "李四 · 卤族元素" });
+    expect(within(liDialog).getByText("62 分")).toBeTruthy();
+    expect(within(liDialog).getByText("碘离子检验")).toBeTruthy();
 
     const paths = requestPaths(fetchMock);
     expect(paths).toContain("/api/teacher/classes");
