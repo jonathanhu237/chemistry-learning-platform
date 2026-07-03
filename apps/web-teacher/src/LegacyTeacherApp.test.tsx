@@ -330,6 +330,55 @@ const students = [
   },
 ];
 
+const smartAssessmentStrategy = {
+  enabled: true,
+  question_count: 10,
+  untested_ratio_percent: 20,
+  weak_tendency_percent: 70,
+  max_questions_per_experiment: 2,
+  weak_curve: 2,
+  weak_max_bonus: 9,
+};
+
+const smartAssessmentPreview = {
+  strategy: smartAssessmentStrategy,
+  source: "system_default",
+  has_override: false,
+  class_student_count: 2,
+  candidate_point_count: 8,
+  measured_point_count: 5,
+  untested_point_count: 3,
+  target_question_count: 10,
+  untested_target_count: 2,
+  measured_target_count: 8,
+  experiments: [
+    {
+      id: "exp-ch13-bleach",
+      title: "氯水漂白性实验",
+      candidate_point_count: 3,
+      untested_point_count: 1,
+      measured_point_count: 2,
+      average_mastery_score: 72,
+      estimated_draw_tickets: 5.4,
+      estimated_question_count: 2,
+    },
+    {
+      id: "exp-ch13-kbr",
+      title: "氯水 + KBr + CCl4",
+      candidate_point_count: 5,
+      untested_point_count: 2,
+      measured_point_count: 3,
+      average_mastery_score: 58,
+      estimated_draw_tickets: 8.2,
+      estimated_question_count: 2,
+    },
+  ],
+  warnings: {
+    untested_pool_underfilled: false,
+    measured_pool_empty: false,
+  },
+};
+
 function analyticsDashboard() {
   return {
     class_id: "class-1",
@@ -719,6 +768,39 @@ function installTeacherFetchMock() {
       return jsonResponse(classes);
     }
 
+    if (path === "/api/teacher/classes/class-1/smart-assessment-strategy") {
+      if (method === "PUT") {
+        const body = JSON.parse(String(init?.body || "{}"));
+        return jsonResponse({
+          strategy: body,
+          inherited_strategy: smartAssessmentStrategy,
+          source: "class",
+          has_override: true,
+          can_edit: true,
+        });
+      }
+      if (method === "DELETE") {
+        return jsonResponse({
+          strategy: smartAssessmentStrategy,
+          inherited_strategy: smartAssessmentStrategy,
+          source: "system_default",
+          has_override: false,
+          can_edit: true,
+        });
+      }
+      return jsonResponse({
+        strategy: smartAssessmentStrategy,
+        inherited_strategy: smartAssessmentStrategy,
+        source: "system_default",
+        has_override: false,
+        can_edit: true,
+      });
+    }
+
+    if (path === "/api/teacher/classes/class-1/smart-assessment-preview") {
+      return jsonResponse(smartAssessmentPreview);
+    }
+
     if (/^\/api\/teacher\/classes\/[^/]+\/registration-settings$/.test(path)) {
       if (method === "PUT") {
         const body = JSON.parse(String(init?.body || "{}"));
@@ -863,7 +945,7 @@ describe("LegacyTeacherApp", () => {
     const navLabels = within(nav)
       .getAllByRole("button")
       .map((button) => String(button.textContent).trim());
-    expect(navLabels).toEqual(["实验管理", "班级管理", "AI 出题", "学情分析", "评价报告", "设置"]);
+    expect(navLabels).toEqual(["实验管理", "班级管理", "AI 出题", "组卷管理", "学情分析", "评价报告", "设置"]);
     expect(within(nav).queryByRole("button", { name: "视频资源" })).toBeNull();
     expect(within(nav).queryByRole("button", { name: "题库资源" })).toBeNull();
     expect(within(nav).getByRole("button", { name: "班级管理" })).toBeTruthy();
@@ -1012,6 +1094,42 @@ describe("LegacyTeacherApp", () => {
       display_name: "陈老师",
       password: "teacher-pass-123",
       must_change_password: true,
+    });
+  });
+
+  it("lets a teacher configure smart assessment paper assembly", async () => {
+    const fetchMock = installTeacherFetchMock();
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<LegacyTeacherApp />);
+
+    await screen.findByRole("navigation", { name: "当前位置" });
+    fireEvent.click(screen.getByTestId("teacher-nav-paper"));
+
+    const page = await screen.findByTestId("teacher-page-paper");
+    const workbench = await within(page).findByTestId("teacher-paper-management");
+    expect(within(workbench).getByText("智能组卷策略")).toBeTruthy();
+    expect(within(workbench).getByText("当前班级预估")).toBeTruthy();
+    expect(within(workbench).getByText("氯水漂白性实验")).toBeTruthy();
+    expect(within(workbench).getByText("未测目标 2 题")).toBeTruthy();
+    expect(await within(workbench).findByText("当前班级继承默认策略")).toBeTruthy();
+
+    fireEvent.change(within(workbench).getByLabelText("每次题量数值"), { target: { value: "15" } });
+    fireEvent.change(within(workbench).getByLabelText("未测点位比例数值"), { target: { value: "30" } });
+    fireEvent.click(within(workbench).getByRole("button", { name: "保存策略" }));
+
+    expect(await within(page).findByText("智能组卷策略已保存。")).toBeTruthy();
+    const saveRequest = fetchMock.mock.calls.find(
+      (call) =>
+        requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/smart-assessment-strategy" &&
+        String(call[1]?.method || "GET").toUpperCase() === "PUT",
+    );
+    expect(saveRequest).toBeTruthy();
+    expect(JSON.parse(String(saveRequest?.[1]?.body))).toMatchObject({
+      enabled: true,
+      question_count: 15,
+      untested_ratio_percent: 30,
+      max_questions_per_experiment: 2,
     });
   });
 

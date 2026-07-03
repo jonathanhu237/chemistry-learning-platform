@@ -5,6 +5,7 @@ import {
   changeCatalogNodeStatus,
   changeCurrentPassword,
   changeCatalogPointMediaBinding,
+  clearTeacherClassSmartAssessmentStrategy,
   createCatalogNode,
   createTeacherAccount,
   createTeacherClass,
@@ -15,6 +16,8 @@ import {
   getAuthToken,
   getCatalogNode,
   getTeacherClassRegistrationSettings,
+  getTeacherClassSmartAssessmentPreview,
+  getTeacherClassSmartAssessmentStrategy,
   getTeacherMediaUploadPolicy,
   getGlobalAssessmentReportPrompts,
   getStudentReport,
@@ -52,6 +55,9 @@ import {
   type CatalogQuestionBankResponse,
   type Question,
   type QuestionDraft,
+  type SmartAssessmentClassPreviewResponse,
+  type SmartAssessmentSettings,
+  type SmartAssessmentStrategyResponse,
   type TeacherMediaUploadPolicy,
   type StudentAssessmentReportSummary,
   type StudentReport,
@@ -60,6 +66,7 @@ import {
   type TeacherClassSummary,
   type TeacherStudentSummary,
   type User,
+  updateTeacherClassSmartAssessmentStrategy,
   updateTeacherClassRegistrationSettings,
 } from "./api";
 import {
@@ -100,13 +107,14 @@ const forbiddenPathSegments = [
   "/import",
 ];
 
-type RouteKey = "experiments" | "classes" | "questions" | "analytics" | "reports" | "settings";
+type RouteKey = "experiments" | "classes" | "questions" | "paper" | "analytics" | "reports" | "settings";
 type ObjectiveQuestionType = Question["question_type"];
 
 const navItems: Array<{ key: RouteKey; label: string; path: string }> = [
   { key: "experiments", label: "实验管理", path: "/experiments" },
   { key: "classes", label: "班级管理", path: "/classes" },
   { key: "questions", label: "AI 出题", path: "/questions" },
+  { key: "paper", label: "组卷管理", path: "/paper" },
   { key: "analytics", label: "学情分析", path: "/analytics" },
   { key: "reports", label: "评价报告", path: "/reports" },
   { key: "settings", label: "设置", path: "/settings" },
@@ -159,6 +167,7 @@ function isForbiddenPath(path: string): boolean {
 function routeFromPath(path: string): RouteKey {
   if (path.startsWith("/classes")) return "classes";
   if (path.startsWith("/questions")) return "questions";
+  if (path.startsWith("/paper")) return "paper";
   if (path.startsWith("/analytics")) return "analytics";
   if (path.startsWith("/reports")) return "reports";
   if (path.startsWith("/settings")) return "settings";
@@ -282,6 +291,8 @@ function LegacyTeacherAppContent() {
             <QuestionsPage />
           ) : activeRoute === "classes" ? (
             <ClassesPage />
+          ) : activeRoute === "paper" ? (
+            <PaperManagementPage />
           ) : activeRoute === "analytics" ? (
             <AnalyticsPage />
           ) : activeRoute === "reports" ? (
@@ -635,6 +646,332 @@ function SettingsPage({ currentUser }: { currentUser: User }) {
         </div>
       </section>
     </PageFrame>
+  );
+}
+
+const smartAssessmentDefaults: SmartAssessmentSettings = {
+  enabled: true,
+  question_count: 10,
+  untested_ratio_percent: 20,
+  weak_tendency_percent: 70,
+  max_questions_per_experiment: 2,
+  weak_curve: 2,
+  weak_max_bonus: 9,
+};
+
+const smartAssessmentWarningLabels: Record<string, string> = {
+  no_candidate_points: "题库暂无可用于测评的点位题",
+  underfilled_by_candidate_points: "候选点位少于目标题数",
+  untested_pool_underfilled: "未测点位不足，会回填已测点位",
+  measured_pool_empty: "暂无已测点位，会优先覆盖未测点位",
+  experiment_cap_underfilled: "单实验题数上限可能导致题量不足",
+};
+
+function normalizeSmartAssessmentSettings(value?: Partial<SmartAssessmentSettings> | null): SmartAssessmentSettings {
+  return { ...smartAssessmentDefaults, ...(value || {}) };
+}
+
+function smartAssessmentTickets(settings: SmartAssessmentSettings, mastery: number): number {
+  const weakness = Math.max(0, Math.min(1, (100 - mastery) / 100));
+  return 1 + (settings.weak_tendency_percent / 100) * settings.weak_max_bonus * Math.pow(weakness, settings.weak_curve);
+}
+
+function PaperManagementPage() {
+  const classesState = useAsyncData<TeacherClassSummary[]>(listTeacherClasses, []);
+  const classes = classesState.data || [];
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [settings, setSettings] = useState<SmartAssessmentSettings>(smartAssessmentDefaults);
+  const selectedClass = classes.find((item) => item.id === selectedClassId) || classes[0] || null;
+  const effectiveClassId = selectedClass?.id || "";
+  const strategyState = useAsyncData<SmartAssessmentStrategyResponse | null>(
+    () => (effectiveClassId ? getTeacherClassSmartAssessmentStrategy(effectiveClassId) : Promise.resolve(null)),
+    [effectiveClassId, reloadKey],
+  );
+  const previewState = useAsyncData<SmartAssessmentClassPreviewResponse | null>(
+    () => (effectiveClassId ? getTeacherClassSmartAssessmentPreview(effectiveClassId) : Promise.resolve(null)),
+    [effectiveClassId, reloadKey],
+  );
+  const strategy = strategyState.data;
+  const preview = previewState.data;
+  const previewWarnings = Object.entries(preview?.warnings || {})
+    .filter(([, active]) => Boolean(active))
+    .map(([key]) => smartAssessmentWarningLabels[key] || key);
+  const previewExperiments = preview?.experiments || [];
+
+  useEffect(() => {
+    if (!selectedClassId && classes[0]?.id) setSelectedClassId(classes[0].id);
+  }, [classes, selectedClassId]);
+
+  useEffect(() => {
+    if (strategy?.strategy) setSettings(normalizeSmartAssessmentSettings(strategy.strategy));
+  }, [strategy]);
+
+  const setSetting = (key: keyof SmartAssessmentSettings, value: boolean | number) => {
+    setSettings((current) => ({ ...current, [key]: value }));
+  };
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!effectiveClassId) return;
+    setSaving(true);
+    setNotice("");
+    setError("");
+    try {
+      const saved = await updateTeacherClassSmartAssessmentStrategy(effectiveClassId, settings);
+      setSettings(normalizeSmartAssessmentSettings(saved.strategy));
+      setNotice("智能组卷策略已保存。");
+      setReloadKey((value) => value + 1);
+    } catch (caught) {
+      setError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reset = async () => {
+    if (!effectiveClassId) return;
+    setSaving(true);
+    setNotice("");
+    setError("");
+    try {
+      const saved = await clearTeacherClassSmartAssessmentStrategy(effectiveClassId);
+      setSettings(normalizeSmartAssessmentSettings(saved.strategy));
+      setNotice("已恢复默认智能组卷策略。");
+      setReloadKey((value) => value + 1);
+    } catch (caught) {
+      setError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <PageFrame title="组卷管理" showHeader={false} testId="teacher-page-paper">
+      <StateBlock loading={classesState.loading && !classesState.data} error={classesState.error}>
+        {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
+        {error ? <ErrorBlock>{error}</ErrorBlock> : null}
+        {classes.length ? (
+          <div className="legacy-paper-workbench" data-testid="teacher-paper-management">
+            <TeacherCard className="legacy-paper-class-card">
+              <div>
+                <strong>当前班级</strong>
+                <span>策略按班级生效，学生端智能组卷会读取这里的配置。</span>
+              </div>
+              <select
+                className="legacy-paper-class-select"
+                aria-label="选择班级"
+                value={effectiveClassId}
+                onChange={(event) => {
+                  setSelectedClassId(event.target.value);
+                  setNotice("");
+                  setError("");
+                }}
+              >
+                {classes.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.class_name}
+                  </option>
+                ))}
+              </select>
+            </TeacherCard>
+
+            <MetricGrid
+              metrics={[
+                { label: "班级学生", value: preview?.class_student_count ?? selectedClass?.student_count ?? 0, unit: "人" },
+                { label: "候选点位", value: preview?.candidate_point_count ?? 0, unit: "个" },
+                { label: "未测点位", value: preview?.untested_point_count ?? 0, unit: "个" },
+                { label: "组卷题量", value: settings.question_count, unit: "题" },
+              ]}
+            />
+
+            <div className="legacy-paper-grid">
+              <TeacherCard className="legacy-paper-panel">
+                <header>
+                  <div>
+                    <h2>智能组卷策略</h2>
+                    <span>{strategy?.has_override ? "当前班级使用独立策略" : "当前班级继承默认策略"}</span>
+                  </div>
+                  <label className="legacy-paper-enable">
+                    <input
+                      type="checkbox"
+                      checked={settings.enabled}
+                      onChange={(event) => setSetting("enabled", event.target.checked)}
+                    />
+                    <span>启用</span>
+                  </label>
+                </header>
+                <form className="legacy-paper-form" onSubmit={submit}>
+                  <PaperNumberField
+                    label="每次题量"
+                    value={settings.question_count}
+                    min={1}
+                    max={50}
+                    unit="题"
+                    onChange={(value) => setSetting("question_count", value)}
+                  />
+                  <PaperNumberField
+                    label="未测点位比例"
+                    value={settings.untested_ratio_percent}
+                    min={0}
+                    max={100}
+                    step={5}
+                    unit="%"
+                    onChange={(value) => setSetting("untested_ratio_percent", value)}
+                  />
+                  <PaperNumberField
+                    label="薄弱点位倾向"
+                    value={settings.weak_tendency_percent}
+                    min={0}
+                    max={100}
+                    step={5}
+                    unit="%"
+                    onChange={(value) => setSetting("weak_tendency_percent", value)}
+                  />
+                  <PaperNumberField
+                    label="单实验最多题数"
+                    value={settings.max_questions_per_experiment}
+                    min={1}
+                    max={10}
+                    unit="题"
+                    onChange={(value) => setSetting("max_questions_per_experiment", value)}
+                  />
+                  <PaperNumberField
+                    label="薄弱曲线"
+                    value={settings.weak_curve}
+                    min={0.5}
+                    max={4}
+                    step={0.5}
+                    unit=""
+                    onChange={(value) => setSetting("weak_curve", value)}
+                  />
+                  <PaperNumberField
+                    label="薄弱加权上限"
+                    value={settings.weak_max_bonus}
+                    min={1}
+                    max={20}
+                    step={1}
+                    unit="倍"
+                    onChange={(value) => setSetting("weak_max_bonus", value)}
+                  />
+                  <div className="legacy-paper-actions">
+                    <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={saving || !effectiveClassId}>
+                      {saving ? "保存中..." : "保存策略"}
+                    </TeacherButton>
+                    <TeacherButton type="default" onClick={reset} disabled={saving || !strategy?.has_override}>
+                      恢复默认
+                    </TeacherButton>
+                  </div>
+                </form>
+              </TeacherCard>
+
+              <TeacherCard className="legacy-paper-panel">
+                <header>
+                  <div>
+                    <h2>当前班级预估</h2>
+                    <span>按题库、学生掌握记录和当前策略估算。</span>
+                  </div>
+                  <span className="legacy-paper-source">{preview?.has_override ? "本班策略" : "继承策略"}</span>
+                </header>
+                <StateBlock loading={previewState.loading && !previewState.data} error={previewState.error}>
+                  {preview ? (
+                    <div className="legacy-paper-preview">
+                      <div className="legacy-paper-targets">
+                        <span>未测目标 {preview.untested_target_count} 题</span>
+                        <span>薄弱目标 {preview.measured_target_count} 题</span>
+                      </div>
+                      <PaperWeakCurve settings={settings} />
+                      <div className="legacy-paper-preview-list">
+                        {previewExperiments.length ? (
+                          previewExperiments.map((item) => <PaperPreviewRow key={item.id} item={item} max={Math.max(1, ...previewExperiments.map((experiment) => experiment.estimated_question_count))} />)
+                        ) : (
+                          <TeacherEmptyState message="当前班级暂无可预估的组卷点位。" compact />
+                        )}
+                      </div>
+                      {previewWarnings.length ? (
+                        <div className="legacy-paper-warnings">
+                          {previewWarnings.map((item) => (
+                            <span key={item}>{item}</span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <TeacherEmptyState message="请选择班级查看组卷预估。" compact />
+                  )}
+                </StateBlock>
+              </TeacherCard>
+            </div>
+          </div>
+        ) : (
+          <TeacherEmptyState message="暂无班级，请先在班级管理中创建班级。" />
+        )}
+      </StateBlock>
+    </PageFrame>
+  );
+}
+
+function PaperNumberField({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  unit,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  unit: string;
+  onChange: (value: number) => void;
+}) {
+  const update = (next: number) => onChange(Math.max(min, Math.min(max, Number.isFinite(next) ? next : min)));
+  return (
+    <label className="legacy-paper-field">
+      <span>{label}</span>
+      <div>
+        <input aria-label={`${label}滑块`} type="range" min={min} max={max} step={step} value={value} onChange={(event) => update(Number(event.target.value))} />
+        <input aria-label={`${label}数值`} type="number" min={min} max={max} step={step} value={value} onChange={(event) => update(Number(event.target.value))} />
+        {unit ? <em>{unit}</em> : null}
+      </div>
+    </label>
+  );
+}
+
+function PaperWeakCurve({ settings }: { settings: SmartAssessmentSettings }) {
+  const marks = [0, 25, 50, 75, 100];
+  const max = Math.max(...marks.map((mastery) => smartAssessmentTickets(settings, mastery)));
+  return (
+    <div className="legacy-paper-curve" aria-label="薄弱权重曲线">
+      {marks.map((mastery) => {
+        const tickets = smartAssessmentTickets(settings, mastery);
+        return (
+          <div key={mastery}>
+            <span>{mastery} 分</span>
+            <b style={{ width: `${Math.max(8, (tickets / max) * 100)}%` }} />
+            <small>{tickets.toFixed(1)} 票</small>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function PaperPreviewRow({ item, max }: { item: SmartAssessmentClassPreviewResponse["experiments"][number]; max: number }) {
+  return (
+    <div className="legacy-paper-preview-row">
+      <span>{item.title}</span>
+      <b style={{ width: `${Math.max(5, (item.estimated_question_count / max) * 100)}%` }} />
+      <small>
+        约 {item.estimated_question_count.toFixed(1)} 题 · 未测 {item.untested_point_count} · 已测 {item.measured_point_count}
+      </small>
+    </div>
   );
 }
 
