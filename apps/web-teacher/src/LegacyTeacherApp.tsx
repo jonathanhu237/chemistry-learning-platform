@@ -1099,7 +1099,6 @@ function CatalogContextMenu({
   const deleteLabel = target?.node_kind === "directory" ? "删除目录" : "删除点位";
   return (
     <div className="legacy-catalog-context-menu" role="menu" style={{ left: menu.x, top: menu.y }} onClick={(event) => event.stopPropagation()}>
-      <strong>{target?.title || menu.parentTitle}</strong>
       {canCreate ? (
         <>
           <button type="button" role="menuitem" onClick={() => onChoose("directory")}>

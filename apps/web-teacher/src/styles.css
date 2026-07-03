@@ -1523,23 +1523,11 @@ p {
   position: fixed;
   z-index: 50;
   display: grid;
-  width: 180px;
+  min-width: 128px;
   border: 1px solid #d7b8b2;
   background: #fff;
   box-shadow: 0 16px 36px rgba(75, 0, 2, 0.18);
   padding: 6px;
-}
-
-.legacy-catalog-context-menu strong {
-  min-width: 0;
-  overflow: hidden;
-  border-bottom: 1px solid var(--legacy-line);
-  color: var(--legacy-muted);
-  font-size: 12px;
-  line-height: 1.35;
-  padding: 7px 8px 8px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .legacy-catalog-context-menu button {
@@ -1557,8 +1545,11 @@ p {
 }
 
 .legacy-catalog-context-menu button.danger {
-  border-top: 1px solid var(--legacy-line);
   color: #a01318;
+}
+
+.legacy-catalog-context-menu button + button.danger {
+  border-top: 1px solid var(--legacy-line);
 }
 
 .legacy-catalog-context-menu button.danger:hover {

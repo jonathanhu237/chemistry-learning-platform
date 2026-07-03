@@ -826,6 +826,7 @@ describe("LegacyTeacherApp", () => {
     const pointMenu = await screen.findByRole("menu");
     expect(within(pointMenu).getByRole("menuitem", { name: "删除点位" })).toBeTruthy();
     expect(within(pointMenu).queryByRole("menuitem", { name: "新增目录" })).toBeNull();
+    expect(within(pointMenu).queryByText("碘离子检验")).toBeNull();
     fireEvent.click(within(pointMenu).getByRole("menuitem", { name: "删除点位" }));
     const pointDeleteDialog = await screen.findByRole("dialog", { name: "删除点位" });
     expect(within(pointDeleteDialog).getByText("碘离子检验")).toBeTruthy();
@@ -840,6 +841,7 @@ describe("LegacyTeacherApp", () => {
     expect(within(directoryMenu).getByRole("menuitem", { name: "新增目录" })).toBeTruthy();
     expect(within(directoryMenu).getByRole("menuitem", { name: "新增点位" })).toBeTruthy();
     expect(within(directoryMenu).getByRole("menuitem", { name: "删除目录" })).toBeTruthy();
+    expect(within(directoryMenu).queryByText("溴碘置换")).toBeNull();
     fireEvent.click(within(directoryMenu).getByRole("menuitem", { name: "新增点位" }));
     const dialog = await screen.findByRole("dialog", { name: "新增点位" });
     expect(within(dialog).getByText("位置：溴碘置换")).toBeTruthy();
