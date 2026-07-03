@@ -3207,6 +3207,14 @@ p {
   font-weight: 900;
 }
 
+.teacher-ui-button.ant-btn > span {
+  margin: 0 !important;
+  color: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  line-height: inherit !important;
+}
+
 .primary-button.ant-btn:hover,
 .primary-button.ant-btn:focus,
 .primary-button.ant-btn:active {
