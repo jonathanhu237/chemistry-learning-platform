@@ -59,6 +59,7 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="Print commands without running them.")
     parser.add_argument("--skip-migrations", action="store_true")
     parser.add_argument("--skip-identities", action="store_true", help="Skip teacher/class/student demo identity seed.")
+    parser.add_argument("--skip-assessments", action="store_true", help="Skip simulated demo student assessment data.")
     parser.add_argument("--skip-media", action="store_true", help="Skip experiment video media restore/import.")
     parser.add_argument("--skip-es", action="store_true", help="Skip textbook RAG Elasticsearch import.")
     parser.add_argument("--skip-validation", action="store_true", help="Skip final complete seed validation.")
@@ -107,6 +108,9 @@ def main() -> None:
     ]
     for step in steps:
         _run(step, dry_run=args.dry_run)
+
+    if not args.skip_assessments:
+        _run(["scripts/seed_demo_student_assessments.py", "import", "--skip-migrations"], dry_run=args.dry_run)
 
     if not args.skip_media:
         media_step = ["scripts/seed_experiment_videos.py", "import", "--skip-migrations"]

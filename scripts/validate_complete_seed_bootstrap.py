@@ -15,6 +15,8 @@ if str(ROOT) not in sys.path:
 from scripts.seed_demo_identities import DEFAULT_SEED_PATH as IDENTITY_SEED_PATH
 from scripts.seed_demo_identities import load_seed as load_identity_seed
 from scripts.seed_demo_identities import validate_database as validate_identity_database
+from scripts.seed_demo_student_assessments import seed_students as load_assessment_students
+from scripts.seed_demo_student_assessments import validate_database as validate_assessment_database
 from scripts.seed_experiment_videos import DEFAULT_MANIFEST_PATH as MEDIA_SEED_PATH
 from scripts.seed_experiment_videos import load_manifest as load_media_seed
 from scripts.seed_experiment_videos import validate_database as validate_media_database
@@ -233,6 +235,9 @@ def validate_complete_seed(
     identity_result = validate_identity_database(identity_payload, teacher_username=teacher_username, class_id=class_id)
     sections["identity"] = identity_result
     errors.extend(f"identity: {item}" for item in identity_result.get("errors") or [])
+    assessment_result = validate_assessment_database(load_assessment_students(identity_payload))
+    sections["demo_student_assessments"] = assessment_result
+    errors.extend(f"demo_student_assessments: {item}" for item in assessment_result.get("errors") or [])
     media_payload = load_media_seed(MEDIA_SEED_PATH)
     media_result = validate_media_database(media_payload, media_root=media_root)
     sections["media"] = media_result

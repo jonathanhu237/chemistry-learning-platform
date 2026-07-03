@@ -35,7 +35,7 @@ Current restore order:
 python scripts/bootstrap_production_seed.py
 ```
 
-The bootstrap command creates or updates the demo teacher account as `teacher / 123456`, creates five 2026 undergraduate demo classes, creates 150 active student accounts across `263200xx` through `263204xx` class ranges with default password `123456`, restores seed videos into `MEDIA_ROOT`, imports precomputed RAG evidence/questions, and finishes with complete seed validation.
+The bootstrap command creates or updates the demo teacher account as `teacher / 123456`, creates five 2026 undergraduate demo classes, creates 150 active student accounts across `263200xx` through `263204xx` class ranges with default password `123456`, restores seed videos into `MEDIA_ROOT`, imports precomputed RAG evidence/questions, generates deterministic simulated smart-assessment answers and local reports for all 150 demo students, and finishes with complete seed validation.
 
 Recommended blank-server flow:
 
@@ -74,6 +74,7 @@ python scripts/seed_full_catalog_point_content.py import --skip-migrations
 python scripts/seed_experiment_videos.py import --skip-migrations
 python scripts/seed_catalog_point_evidence.py import --skip-migrations
 python scripts/seed_current_question_bank.py import --skip-migrations
+python scripts/seed_demo_student_assessments.py import --skip-migrations
 python scripts/import_precomputed_textbook_rag.py --recreate
 python scripts/validate_complete_seed_bootstrap.py
 ```
@@ -90,6 +91,7 @@ Validation:
 python scripts/validate_production_resources.py
 python scripts/validate_experiment_catalog_seed.py --write-report
 python scripts/seed_demo_identities.py validate --skip-migrations
+python scripts/seed_demo_student_assessments.py validate --skip-migrations
 python scripts/seed_experiment_videos.py validate --skip-migrations
 python scripts/seed_full_catalog_point_content.py validate
 python scripts/import_precomputed_textbook_rag.py --dry-run

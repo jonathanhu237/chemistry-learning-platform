@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+import scripts.seed_demo_student_assessments as assessment_seed
 import scripts.seed_demo_identities as identity_seed
 import scripts.seed_experiment_videos as video_seed
 
@@ -38,6 +39,56 @@ def test_demo_identity_seed_payload_has_expected_demo_roster() -> None:
     }
     assert payload["students"][0]["student_name"] == "张三"
     assert payload["students"][1]["student_name"] == "李四"
+
+
+def test_demo_assessment_seed_builds_varied_student_score_targets() -> None:
+    payload = identity_seed.load_seed()
+    students = assessment_seed.seed_students(payload)
+
+    ratios = [assessment_seed.target_correct_ratio(student) for student in students]
+
+    assert len(students) == 150
+    assert min(ratios) < 0.45
+    assert max(ratios) > 0.85
+    assert len({round(ratio, 3) for ratio in ratios}) > 20
+
+
+def test_demo_assessment_seed_generates_wrong_answers_by_question_type() -> None:
+    single_choice = type(
+        "Question",
+        (),
+        {
+            "id": "q1",
+            "question_type": "single_choice",
+            "options": [{"label": "A", "value": "A"}, {"label": "B", "value": "B"}],
+            "answer": {"value": "A"},
+        },
+    )()
+    true_false = type(
+        "Question",
+        (),
+        {
+            "id": "q2",
+            "question_type": "true_false",
+            "options": [],
+            "answer": {"value": True},
+        },
+    )()
+    fill_blank = type(
+        "Question",
+        (),
+        {
+            "id": "q3",
+            "question_type": "fill_blank",
+            "options": [],
+            "answer": {"accepted_answers": ["正确答案"]},
+        },
+    )()
+
+    assert assessment_seed.correct_answer(fill_blank) == "正确答案"
+    assert assessment_seed.wrong_answer(single_choice) == "B"
+    assert assessment_seed.wrong_answer(true_false) is False
+    assert assessment_seed.wrong_answer(fill_blank) == "模拟错误答案"
 
 
 def test_video_seed_payload_covers_all_points_with_one_binding_per_canonical_point() -> None:
