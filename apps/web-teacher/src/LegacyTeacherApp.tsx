@@ -1244,7 +1244,7 @@ function DeleteNodeDialog({
   return (
     <TeacherModal
       open
-      className="legacy-create-dialog"
+      className="legacy-create-dialog legacy-delete-dialog"
       title={isDirectory ? "删除目录" : "删除点位"}
       onCancel={onClose}
       footer={null}
@@ -1254,11 +1254,11 @@ function DeleteNodeDialog({
         <strong>{request.node.title}</strong>
         <p>{isDirectory ? "删除目录会同时删除它下面的目录和点位。相关视频、题目和历史引用不会被物理清除。" : "删除点位会将它从章节目录中移除。相关视频、题目和历史引用不会被物理清除。"}</p>
       </div>
-      <div className="legacy-create-dialog-actions">
-        <TeacherButton type="default" className="legacy-secondary-button" onClick={onClose} disabled={submitting}>
+      <div className="legacy-delete-dialog-actions">
+        <TeacherButton type="default" className="legacy-delete-dialog-cancel" onClick={onClose} disabled={submitting}>
           取消
         </TeacherButton>
-        <TeacherButton type="primary" danger className="primary-button" disabled={submitting} onClick={submit}>
+        <TeacherButton type="primary" danger className="legacy-delete-dialog-confirm" disabled={submitting} onClick={submit}>
           {submitting ? "删除中..." : "确认删除"}
         </TeacherButton>
       </div>

@@ -2865,6 +2865,14 @@ p {
   font-weight: 900;
 }
 
+.legacy-delete-dialog.ant-modal {
+  width: min(440px, 100%) !important;
+}
+
+.legacy-delete-dialog .ant-modal-title {
+  font-size: 20px;
+}
+
 .teacher-ui-drawer.legacy-profile-sidebar .ant-drawer-header {
   border-bottom: 1px solid var(--legacy-line);
   padding: 18px 20px;
@@ -3079,6 +3087,55 @@ p {
   color: var(--legacy-muted);
   font-size: 13px;
   line-height: 1.65;
+}
+
+.legacy-delete-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid var(--legacy-line);
+  margin-top: 14px;
+  padding-top: 12px;
+}
+
+.legacy-delete-dialog-actions .ant-btn {
+  min-width: 92px;
+  min-height: 38px;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 5px 16px;
+  font-weight: 900;
+}
+
+.legacy-delete-dialog-cancel.ant-btn {
+  border-color: #d9c7c2;
+  background: #fff;
+  color: var(--legacy-ink);
+}
+
+.legacy-delete-dialog-cancel.ant-btn:not(:disabled):hover,
+.legacy-delete-dialog-cancel.ant-btn:not(:disabled):focus-visible {
+  border-color: #bda6a0;
+  background: #fffaf8;
+  color: var(--legacy-ink);
+}
+
+.legacy-delete-dialog-confirm.ant-btn {
+  border-color: var(--legacy-sysu-red);
+  background: var(--legacy-sysu-red);
+  color: #fff;
+}
+
+.legacy-delete-dialog-confirm.ant-btn:not(:disabled):hover,
+.legacy-delete-dialog-confirm.ant-btn:not(:disabled):focus-visible {
+  border-color: #840006;
+  background: #840006;
+  color: #fff;
+}
+
+.legacy-delete-dialog-actions .ant-btn:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 @media (max-width: 1180px) {
