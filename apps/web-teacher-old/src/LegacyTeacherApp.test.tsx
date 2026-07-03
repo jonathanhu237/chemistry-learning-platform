@@ -419,6 +419,15 @@ function installTeacherFetchMock() {
       return jsonResponse(catalogResponse());
     }
 
+    if (path === "/api/admin/catalog/nodes" && method === "POST") {
+      return jsonResponse(catalogDetail("point-ch13-iodide"));
+    }
+
+    const catalogNodeStatusMatch = path.match(/^\/api\/admin\/catalog\/nodes\/([^/]+)\/status$/);
+    if (catalogNodeStatusMatch && method === "POST") {
+      return jsonResponse(catalogDetail(decodeURIComponent(catalogNodeStatusMatch[1])));
+    }
+
     const catalogNodeMatch = path.match(/^\/api\/admin\/catalog\/nodes\/([^/]+)$/);
     if (catalogNodeMatch) {
       return jsonResponse(catalogDetail(decodeURIComponent(catalogNodeMatch[1])));
@@ -542,24 +551,85 @@ describe("LegacyTeacherApp", () => {
 
     render(<LegacyTeacherApp />);
 
-    expect(await screen.findByRole("heading", { name: "实验目录与点位资料" })).toBeTruthy();
+    const breadcrumb = await screen.findByRole("navigation", { name: "当前位置" });
+    expect(within(breadcrumb).getByText("教师工作台")).toBeTruthy();
+    expect(within(breadcrumb).getByText("实验管理")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "实验管理" })).toBeNull();
+    const userMenuButton = screen.getByRole("button", { name: /王老师/ });
+    fireEvent.click(userMenuButton);
+    const userMenu = await screen.findByRole("menu");
+    expect(within(userMenu).getAllByRole("menuitem").map((item) => item.textContent?.trim())).toEqual(["登出"]);
+    expect(screen.queryByRole("button", { name: "退出登录" })).toBeNull();
 
     const nav = screen.getByRole("navigation", { name: "教师导航" });
     const navLabels = within(nav)
       .getAllByRole("button")
       .map((button) => String(button.textContent).trim());
-    expect(navLabels).toEqual(["实验与点位", "LLM 出题", "学情分析", "评价报告"]);
+    expect(navLabels).toEqual(["实验管理", "LLM 出题", "学情分析", "评价报告"]);
     expect(within(nav).queryByRole("button", { name: "视频资源" })).toBeNull();
     expect(within(nav).queryByRole("button", { name: "题库资源" })).toBeNull();
     expect(within(nav).queryByRole("button", { name: "班级" })).toBeNull();
     expect(within(nav).queryByRole("button", { name: "评价体系" })).toBeNull();
 
-    expect(await screen.findByText("CH13 卤族元素")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "章节目录与点位" })).toBeTruthy();
+    const tree = await screen.findByRole("tree", { name: "章节目录与点位" });
+    expect((await screen.findAllByRole("treeitem")).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "新增点位" })).toBeNull();
+    expect((await screen.findAllByText("CH13 卤族元素")).length).toBeGreaterThan(0);
     expect((await screen.findAllByText("氯的氧化性")).length).toBeGreaterThan(0);
     expect((await screen.findAllByText("溴碘置换")).length).toBeGreaterThan(0);
     expect((await screen.findAllByText("氯水漂白性实验")).length).toBeGreaterThan(0);
     expect(await screen.findByText("碘离子检验")).toBeTruthy();
+    expect(within(tree).queryByText("3 点")).toBeNull();
+    expect(within(tree).queryByText("5 题")).toBeNull();
     expect(await screen.findByDisplayValue("新制氯水中的 HClO 具有强氧化性。")).toBeTruthy();
+    expect(screen.queryByLabelText("摘要")).toBeNull();
+    expect(screen.queryByLabelText("教师备注")).toBeNull();
+    expect(screen.queryByLabelText("点位标题")).toBeNull();
+    expect(screen.queryByRole("button", { name: "发布" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "取消发布" })).toBeNull();
+    expect(screen.queryByText("点位资料")).toBeNull();
+    expect(screen.queryByText("目录信息")).toBeNull();
+    expect(screen.getByRole("button", { name: "学生端展示说明" })).toBeTruthy();
+    expect(screen.getByText("关闭后，该节点及下级不会展示给学生。")).toBeTruthy();
+    const visibilitySwitch = screen.getByRole("switch", { name: "学生端可见" });
+    expect(visibilitySwitch.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(visibilitySwitch);
+    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/admin/catalog/nodes/point-ch13-bleach/status"));
+    const statusCall = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/admin/catalog/nodes/point-ch13-bleach/status");
+    expect(statusCall).toBeTruthy();
+    expect(JSON.parse(String(statusCall?.[1]?.body))).toEqual({ action: "unpublish", include_subtree: true });
+
+    const pointItem = within(tree)
+      .getAllByRole("treeitem")
+      .find((item) => item.getAttribute("aria-expanded") === null && item.textContent?.includes("碘离子检验"));
+    expect(pointItem).toBeTruthy();
+    fireEvent.contextMenu(pointItem!);
+    expect(screen.queryByRole("menu")).toBeNull();
+
+    const displacementItem = within(tree)
+      .getAllByRole("treeitem")
+      .find((item) => item.getAttribute("aria-expanded") === "true" && item.textContent?.includes("溴碘置换"));
+    expect(displacementItem).toBeTruthy();
+    fireEvent.contextMenu(displacementItem!);
+    expect(await screen.findByRole("menu")).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "新增目录" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("menuitem", { name: "新增点位" }));
+    const dialog = await screen.findByRole("dialog", { name: "新增点位" });
+    expect(within(dialog).getByText("位置：溴碘置换")).toBeTruthy();
+    fireEvent.change(within(dialog).getByLabelText("名称"), { target: { value: "KI 淀粉验证" } });
+    expect(within(dialog).queryByLabelText("摘要")).toBeNull();
+    fireEvent.click(within(dialog).getByRole("button", { name: "创建点位" }));
+    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/admin/catalog/nodes"));
+    const createCall = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/admin/catalog/nodes");
+    expect(createCall).toBeTruthy();
+    expect(JSON.parse(String(createCall?.[1]?.body))).toMatchObject({
+      chapter_id: "CH13",
+      parent_id: "dir-ch13-displacement",
+      node_kind: "point",
+      title: "KI 淀粉验证",
+    });
+    expect(JSON.parse(String(createCall?.[1]?.body))).not.toHaveProperty("summary");
 
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/admin/question-banks/catalog?chapter_id=CH13"));
     expectNoForbiddenGenerationFlows(fetchMock);

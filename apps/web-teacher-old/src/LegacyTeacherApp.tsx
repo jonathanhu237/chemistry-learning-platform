@@ -1,8 +1,7 @@
-import { FormEvent, type DependencyList, type ReactNode, useEffect, useMemo, useState } from "react";
+import { FormEvent, type CSSProperties, type DependencyList, type MouseEvent as ReactMouseEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 
 import {
   changeCatalogNodeStatus,
-  changeCatalogPointContentPublication,
   createCatalogNode,
   generateLegacyPointQuestions,
   getAnalyticsDashboard,
@@ -64,7 +63,7 @@ type RouteKey = "experiments" | "questions" | "analytics" | "reports";
 type ObjectiveQuestionType = Question["question_type"];
 
 const navItems: Array<{ key: RouteKey; label: string; path: string }> = [
-  { key: "experiments", label: "实验与点位", path: "/experiments" },
+  { key: "experiments", label: "实验管理", path: "/experiments" },
   { key: "questions", label: "LLM 出题", path: "/questions" },
   { key: "analytics", label: "学情分析", path: "/analytics" },
   { key: "reports", label: "评价报告", path: "/reports" },
@@ -110,6 +109,7 @@ export function LegacyTeacherApp() {
   const path = usePath();
   const [user, setUser] = useState<User | null>(null);
   const [checkingSession, setCheckingSession] = useState(Boolean(getAuthToken()));
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!getAuthToken()) return;
@@ -134,10 +134,29 @@ export function LegacyTeacherApp() {
     if (isForbiddenPath(path)) navigate("/experiments");
   }, [path]);
 
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const closeMenu = () => setUserMenuOpen(false);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setUserMenuOpen(false);
+    };
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [userMenuOpen]);
+
   if (checkingSession) return <div className="legacy-teacher-loading">正在载入教师端...</div>;
   if (!user) return <LoginScreen onLogin={setUser} />;
 
   const activeRoute = routeFromPath(isForbiddenPath(path) ? "/experiments" : path);
+  const activeLabel = navItems.find((item) => item.key === activeRoute)?.label || "实验管理";
+  const logout = () => {
+    setAuthToken("");
+    window.location.assign("/");
+  };
 
   return (
     <div className="legacy-teacher-shell">
@@ -152,19 +171,30 @@ export function LegacyTeacherApp() {
       </aside>
       <div className="legacy-teacher-main">
         <header className="legacy-teacher-header">
-          <div>
+          <nav className="legacy-breadcrumb" aria-label="当前位置">
             <span>教师工作台</span>
-            <strong>{user.display_name || user.username}</strong>
+            <span aria-hidden="true">&gt;</span>
+            <strong>{activeLabel}</strong>
+          </nav>
+          <div className="legacy-user-menu" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className="legacy-user-menu-button"
+              aria-haspopup="menu"
+              aria-expanded={userMenuOpen}
+              onClick={() => setUserMenuOpen((value) => !value)}
+            >
+              <span>{user.display_name || user.username}</span>
+              <span aria-hidden="true">▾</span>
+            </button>
+            {userMenuOpen ? (
+              <div className="legacy-user-menu-panel" role="menu">
+                <button type="button" role="menuitem" onClick={logout}>
+                  登出
+                </button>
+              </div>
+            ) : null}
           </div>
-          <button
-            className="text-button"
-            onClick={() => {
-              setAuthToken("");
-              window.location.assign("/");
-            }}
-          >
-            退出登录
-          </button>
         </header>
         {activeRoute === "questions" ? (
           <QuestionsPage />
@@ -265,14 +295,16 @@ function useAsyncData<T>(loader: () => Promise<T>, deps: DependencyList): { data
   return { data, error, loading };
 }
 
-function PageFrame({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children: ReactNode }) {
+function PageFrame({ eyebrow, title, description, showHeader = true, children }: { eyebrow?: string; title: string; description?: string; showHeader?: boolean; children: ReactNode }) {
   return (
     <main className="legacy-teacher-page">
-      <section className="legacy-page-head">
-        <span className="eyebrow">{eyebrow}</span>
-        <h1>{title}</h1>
-        <p>{description}</p>
-      </section>
+      {showHeader ? (
+        <section className="legacy-page-head">
+          {eyebrow ? <span className="eyebrow">{eyebrow}</span> : null}
+          <h1>{title}</h1>
+          {description ? <p>{description}</p> : null}
+        </section>
+      ) : null}
       {children}
     </main>
   );
@@ -317,6 +349,32 @@ function nodePath(node?: Pick<CatalogQuestionBankNode, "breadcrumb_titles" | "ti
   return (node?.breadcrumb_titles || [node?.title || ""]).filter(Boolean).join(" / ");
 }
 
+type CatalogFileTreeNode = CatalogQuestionBankNode & { children: CatalogFileTreeNode[] };
+type CatalogCreateMenuState = { x: number; y: number; parentId: string; parentTitle: string };
+type CatalogCreateRequest = { kind: CatalogNodeKind; parentId: string; parentTitle: string };
+
+function sortCatalogNodes(items: CatalogQuestionBankNode[]): CatalogQuestionBankNode[] {
+  return [...items].sort((left, right) => Number(left.display_order || 0) - Number(right.display_order || 0) || left.title.localeCompare(right.title, "zh-Hans-CN"));
+}
+
+function buildCatalogFileTree(nodes: CatalogQuestionBankNode[]): CatalogFileTreeNode[] {
+  const childrenByParent = new Map<string | null, CatalogQuestionBankNode[]>();
+  nodes.forEach((node) => {
+    const parentId = node.parent_id && nodes.some((item) => item.node_id === node.parent_id) ? node.parent_id : null;
+    const current = childrenByParent.get(parentId) || [];
+    current.push(node);
+    childrenByParent.set(parentId, current);
+  });
+
+  const build = (parentId: string | null): CatalogFileTreeNode[] =>
+    sortCatalogNodes(childrenByParent.get(parentId) || []).map((node) => ({
+      ...node,
+      children: build(node.node_id),
+    }));
+
+  return build(null);
+}
+
 function ExperimentsPage() {
   const [chapterId, setChapterId] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
@@ -327,11 +385,36 @@ function ExperimentsPage() {
   const directoryNodes = nodes.filter((item) => item.node_kind === "directory");
   const [selectedNodeId, setSelectedNodeId] = useState("");
   const selectedFallback = useMemo(() => nodes.find((item) => item.node_id === selectedNodeId) || pointNodes[0] || nodes[0], [nodes, pointNodes, selectedNodeId]);
+  const rootDirectoryIds = useMemo(() => directoryNodes.filter((item) => !item.parent_id).map((item) => item.node_id), [directoryNodes]);
+  const rootDirectoryKey = rootDirectoryIds.join("|");
+  const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
+  const [createMenu, setCreateMenu] = useState<CatalogCreateMenuState | null>(null);
+  const [createRequest, setCreateRequest] = useState<CatalogCreateRequest | null>(null);
+  const currentChapterTitle = catalog.chapters.find((chapter) => chapter.chapter_id === chapterId)?.chapter_title || chapterId || "章节";
+  const rootCreateTitle = `${currentChapterTitle} 根目录`;
 
   useEffect(() => {
     if (!selectedNodeId && selectedFallback?.node_id) setSelectedNodeId(selectedFallback.node_id);
     if (selectedNodeId && nodes.length && !nodes.some((item) => item.node_id === selectedNodeId)) setSelectedNodeId(selectedFallback?.node_id || "");
   }, [nodes, selectedFallback, selectedNodeId]);
+
+  useEffect(() => {
+    setExpandedNodeIds(new Set(rootDirectoryIds));
+  }, [chapterId, rootDirectoryKey]);
+
+  useEffect(() => {
+    if (!createMenu) return;
+    const closeMenu = () => setCreateMenu(null);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCreateMenu(null);
+    };
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [createMenu]);
 
   const detailState = useAsyncData<CatalogNodeDetail | null>(() => (selectedFallback?.node_id ? getCatalogNode(selectedFallback.node_id) : Promise.resolve(null)), [
     selectedFallback?.node_id,
@@ -340,35 +423,71 @@ function ExperimentsPage() {
   const detail = detailState.data;
   const [notice, setNotice] = useState("");
   const [actionError, setActionError] = useState("");
+  const [visibilitySubmitting, setVisibilitySubmitting] = useState(false);
 
   const refresh = () => setReloadKey((value) => value + 1);
+  const toggleNodeVisibility = async (node: CatalogQuestionBankNode) => {
+    const nodeEnabled = node.status === "published";
+    setVisibilitySubmitting(true);
+    setActionError("");
+    try {
+      await changeCatalogNodeStatus(node.node_id, nodeEnabled ? "unpublish" : "publish", { includeSubtree: true });
+      setNotice(nodeEnabled ? "已关闭学生端展示。" : "已启用学生端展示。");
+      refresh();
+    } catch (caught) {
+      setActionError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setVisibilitySubmitting(false);
+    }
+  };
+  const toggleExpandedNode = (nodeId: string) => {
+    setExpandedNodeIds((current) => {
+      const next = new Set(current);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
+      return next;
+    });
+  };
+  const createParentFromNode = (node?: CatalogQuestionBankNode): Pick<CatalogCreateMenuState, "parentId" | "parentTitle"> => {
+    if (!node) return { parentId: "", parentTitle: rootCreateTitle };
+    if (node.node_kind === "directory") return { parentId: node.node_id, parentTitle: node.title };
+    const parent = nodes.find((item) => item.node_id === node.parent_id);
+    return { parentId: node.parent_id || "", parentTitle: parent?.title || rootCreateTitle };
+  };
+  const openCreateMenu = (event: ReactMouseEvent, node?: CatalogQuestionBankNode) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (node) setSelectedNodeId(node.node_id);
+    const parent = createParentFromNode(node);
+    setCreateMenu({
+      ...parent,
+      x: Math.max(12, Math.min(event.clientX, window.innerWidth - 220)),
+      y: Math.max(12, Math.min(event.clientY, window.innerHeight - 128)),
+    });
+  };
 
   return (
-    <PageFrame
-      eyebrow="实验与点位管理"
-      title="实验目录与点位资料"
-      description="维护可学习的实验目录、子目录和点位，并编辑每个点位用于学习与出题的原理、现象和安全三段式资料。"
-    >
+    <PageFrame title="实验管理" showHeader={false}>
       <StateBlock loading={catalog.loading} error={catalog.error}>
-        <MetricGrid
-          metrics={[
-            { label: "目录单元", value: directoryNodes.length, unit: "项" },
-            { label: "实验点位", value: pointNodes.length, unit: "项" },
-            { label: "已发布点位", value: pointNodes.filter((item) => item.status === "published").length, unit: "项" },
-            { label: "待补内容", value: pointNodes.filter((item) => item.content_status !== "published").length, unit: "项" },
-          ]}
-        />
         {notice ? <div className="legacy-notice">{notice}</div> : null}
         {actionError ? <div className="legacy-error">{actionError}</div> : null}
         <div className="legacy-management-grid">
           <section className="legacy-table-card">
             <header>
-              <h2>目录树</h2>
-              <span>{nodes.length} 个节点</span>
+              <h2>章节目录与点位</h2>
+              <span>目录 {directoryNodes.length} · 点位 {pointNodes.length}</span>
             </header>
             <label className="legacy-select-label">
               章节
-              <select value={chapterId} onChange={(event) => setChapterId(event.target.value)}>
+              <select
+                value={chapterId}
+                onChange={(event) => {
+                  setChapterId(event.target.value);
+                  setSelectedNodeId("");
+                  setCreateMenu(null);
+                  setCreateRequest(null);
+                }}
+              >
                 {catalog.chapters.map((chapter) => (
                   <option key={chapter.chapter_id} value={chapter.chapter_id}>
                     {chapter.chapter_title}
@@ -376,25 +495,43 @@ function ExperimentsPage() {
                 ))}
               </select>
             </label>
-            <CreateNodeForm chapterId={chapterId || catalog.chapters[0]?.chapter_id || ""} directories={directoryNodes} onCreated={refresh} onNotice={setNotice} onError={setActionError} />
-            <div className="legacy-node-list">
-              {nodes.map((node) => (
-                <button
-                  type="button"
-                  key={node.node_id}
-                  className={`legacy-node-button${node.node_id === selectedFallback?.node_id ? " selected" : ""}`}
-                  onClick={() => setSelectedNodeId(node.node_id)}
-                >
-                  <strong>{node.title}</strong>
-                  <span>{node.node_kind === "point" ? "点位" : "目录"} · {node.status} · {nodePath(node)}</span>
-                </button>
-              ))}
-            </div>
+            <CatalogFileTree
+              nodes={nodes}
+              selectedNodeId={selectedFallback?.node_id || ""}
+              expandedNodeIds={expandedNodeIds}
+              onToggle={toggleExpandedNode}
+              onSelect={(node) => {
+                setSelectedNodeId(node.node_id);
+                if (node.node_kind === "directory" && !expandedNodeIds.has(node.node_id)) toggleExpandedNode(node.node_id);
+              }}
+              onContextMenu={openCreateMenu}
+            />
+            <CatalogCreateContextMenu
+              menu={createMenu}
+              onChoose={(kind) => {
+                if (!createMenu) return;
+                setCreateRequest({ kind, parentId: createMenu.parentId, parentTitle: createMenu.parentTitle });
+                setCreateMenu(null);
+              }}
+            />
+            <CreateNodeDialog
+              request={createRequest}
+              chapterId={chapterId || catalog.chapters[0]?.chapter_id || ""}
+              onClose={() => setCreateRequest(null)}
+              onCreated={(parentId) => {
+                if (parentId) {
+                  setExpandedNodeIds((current) => new Set(current).add(parentId));
+                }
+                refresh();
+              }}
+              onNotice={setNotice}
+              onError={setActionError}
+            />
           </section>
           <section className="legacy-table-card">
             <header>
               <h2>节点编辑</h2>
-              <span>{selectedFallback?.node_kind === "point" ? "点位资料" : "目录信息"}</span>
+              {detail ? <NodeVisibilityControl node={detail.node} disabled={visibilitySubmitting} onToggle={toggleNodeVisibility} /> : null}
             </header>
             <StateBlock loading={detailState.loading} error={detailState.error}>
               {detail ? (
@@ -417,24 +554,165 @@ function ExperimentsPage() {
   );
 }
 
-function CreateNodeForm({
+function CatalogFileTree({
+  nodes,
+  selectedNodeId,
+  expandedNodeIds,
+  onToggle,
+  onSelect,
+  onContextMenu,
+}: {
+  nodes: CatalogQuestionBankNode[];
+  selectedNodeId: string;
+  expandedNodeIds: Set<string>;
+  onToggle: (nodeId: string) => void;
+  onSelect: (node: CatalogQuestionBankNode) => void;
+  onContextMenu: (event: ReactMouseEvent, node?: CatalogQuestionBankNode) => void;
+}) {
+  const tree = useMemo(() => buildCatalogFileTree(nodes), [nodes]);
+  if (!tree.length) return <div className="legacy-empty compact" onContextMenu={(event) => onContextMenu(event)}>当前章节暂无目录或点位。</div>;
+  return (
+    <div className="legacy-file-tree" role="tree" aria-label="章节目录与点位" onContextMenu={(event) => onContextMenu(event)}>
+      {tree.map((node) => (
+        <CatalogFileTreeRow
+          key={node.node_id}
+          node={node}
+          depth={0}
+          selectedNodeId={selectedNodeId}
+          expandedNodeIds={expandedNodeIds}
+          onToggle={onToggle}
+          onSelect={onSelect}
+          onContextMenu={onContextMenu}
+        />
+      ))}
+    </div>
+  );
+}
+
+function CatalogFileTreeRow({
+  node,
+  depth,
+  selectedNodeId,
+  expandedNodeIds,
+  onToggle,
+  onSelect,
+  onContextMenu,
+}: {
+  node: CatalogFileTreeNode;
+  depth: number;
+  selectedNodeId: string;
+  expandedNodeIds: Set<string>;
+  onToggle: (nodeId: string) => void;
+  onSelect: (node: CatalogQuestionBankNode) => void;
+  onContextMenu: (event: ReactMouseEvent, node?: CatalogQuestionBankNode) => void;
+}) {
+  const isDirectory = node.node_kind === "directory";
+  const hasChildren = node.children.length > 0;
+  const isExpanded = expandedNodeIds.has(node.node_id);
+  const isSelected = selectedNodeId === node.node_id;
+  const style = { "--tree-depth": depth } as CSSProperties;
+  return (
+    <div className="legacy-file-tree-branch">
+      <div className={`legacy-file-tree-row${isSelected ? " selected" : ""}`} style={style}>
+        <button
+          type="button"
+          className="legacy-file-tree-toggle"
+          disabled={!hasChildren}
+          aria-label={hasChildren ? (isExpanded ? `收起 ${node.title}` : `展开 ${node.title}`) : undefined}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (hasChildren) onToggle(node.node_id);
+          }}
+        >
+          {hasChildren ? (isExpanded ? "▾" : "▸") : ""}
+        </button>
+        <button
+          type="button"
+          className={`legacy-file-tree-node is-${node.node_kind}`}
+          role="treeitem"
+          aria-selected={isSelected}
+          aria-expanded={isDirectory && hasChildren ? isExpanded : undefined}
+          onClick={() => onSelect(node)}
+          onContextMenu={(event) => {
+            if (isDirectory) onContextMenu(event, node);
+            else {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+          }}
+        >
+          <span className="legacy-file-tree-icon" aria-hidden="true" />
+          <span className="legacy-file-tree-main">
+            <strong>{node.title}</strong>
+          </span>
+        </button>
+      </div>
+      {hasChildren && isExpanded ? (
+        <div className="legacy-file-tree-children" role="group">
+          {node.children.map((child) => (
+            <CatalogFileTreeRow
+              key={child.node_id}
+              node={child}
+              depth={depth + 1}
+              selectedNodeId={selectedNodeId}
+              expandedNodeIds={expandedNodeIds}
+              onToggle={onToggle}
+              onSelect={onSelect}
+              onContextMenu={onContextMenu}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CatalogCreateContextMenu({
+  menu,
+  onChoose,
+}: {
+  menu: CatalogCreateMenuState | null;
+  onChoose: (kind: CatalogNodeKind) => void;
+}) {
+  if (!menu) return null;
+  return (
+    <div className="legacy-catalog-context-menu" role="menu" style={{ left: menu.x, top: menu.y }} onClick={(event) => event.stopPropagation()}>
+      <strong>{menu.parentTitle}</strong>
+      <button type="button" role="menuitem" onClick={() => onChoose("directory")}>
+        新增目录
+      </button>
+      <button type="button" role="menuitem" onClick={() => onChoose("point")}>
+        新增点位
+      </button>
+    </div>
+  );
+}
+
+function CreateNodeDialog({
+  request,
   chapterId,
-  directories,
+  onClose,
   onCreated,
   onNotice,
   onError,
 }: {
+  request: CatalogCreateRequest | null;
   chapterId: string;
-  directories: CatalogQuestionBankNode[];
-  onCreated: () => void;
+  onClose: () => void;
+  onCreated: (parentId: string) => void;
   onNotice: (value: string) => void;
   onError: (value: string) => void;
 }) {
-  const [kind, setKind] = useState<CatalogNodeKind>("point");
-  const [parentId, setParentId] = useState("");
   const [title, setTitle] = useState("");
-  const [summary, setSummary] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!request) return;
+    setTitle("");
+    setSubmitting(false);
+  }, [request]);
+
+  if (!request) return null;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -448,15 +726,13 @@ function CreateNodeForm({
     try {
       await createCatalogNode({
         chapter_id: chapterId,
-        parent_id: parentId || null,
-        node_kind: kind,
+        parent_id: request.parentId || null,
+        node_kind: request.kind,
         title: title.trim(),
-        summary: summary.trim() || null,
       });
-      setTitle("");
-      setSummary("");
-      onNotice(kind === "point" ? "已新增实验点位。" : "已新增目录。");
-      onCreated();
+      onNotice(request.kind === "point" ? "已新增点位。" : "已新增目录。");
+      onCreated(request.parentId);
+      onClose();
     } catch (caught) {
       onError(legacyTeacherErrorMessage(caught));
     } finally {
@@ -465,37 +741,65 @@ function CreateNodeForm({
   };
 
   return (
-    <form className="legacy-inline-form" onSubmit={submit}>
-      <div className="legacy-segmented-row" role="radiogroup" aria-label="节点类型">
-        {(["point", "directory"] as CatalogNodeKind[]).map((value) => (
-          <button type="button" className={kind === value ? "active" : ""} key={value} onClick={() => setKind(value)}>
-            {value === "point" ? "点位" : "目录"}
+    <div className="legacy-create-dialog-backdrop" role="presentation" onMouseDown={onClose}>
+      <section className="legacy-create-dialog" role="dialog" aria-modal="true" aria-labelledby="legacy-create-dialog-title" onMouseDown={(event) => event.stopPropagation()}>
+        <header>
+          <div>
+            <h2 id="legacy-create-dialog-title">{request.kind === "directory" ? "新增目录" : "新增点位"}</h2>
+            <span>位置：{request.parentTitle}</span>
+          </div>
+          <button type="button" className="text-button" onClick={onClose}>
+            关闭
           </button>
-        ))}
-      </div>
-      <label>
-        上级目录
-        <select value={parentId} onChange={(event) => setParentId(event.target.value)}>
-          <option value="">章节根目录</option>
-          {directories.map((node) => (
-            <option key={node.node_id} value={node.node_id}>
-              {nodePath(node)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        名称
-        <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="输入目录或实验点位名称" />
-      </label>
-      <label>
-        摘要
-        <input value={summary} onChange={(event) => setSummary(event.target.value)} placeholder="选填，便于检索和出题" />
-      </label>
-      <button className="primary-button" disabled={submitting}>
-        {submitting ? "创建中..." : "新增节点"}
+        </header>
+        <form onSubmit={submit}>
+          <label>
+            名称
+            <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={request.kind === "directory" ? "输入目录名称" : "输入实验点位名称"} autoFocus />
+          </label>
+          <div className="legacy-create-dialog-actions">
+            <button type="button" className="legacy-secondary-button" onClick={onClose}>
+              取消
+            </button>
+            <button className="primary-button" disabled={submitting}>
+              {submitting ? "创建中..." : request.kind === "directory" ? "创建目录" : "创建点位"}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function NodeVisibilityControl({ node, disabled, onToggle }: { node: CatalogQuestionBankNode; disabled: boolean; onToggle: (node: CatalogQuestionBankNode) => void }) {
+  const nodeEnabled = node.status === "published";
+  const helpId = `legacy-visibility-help-${node.node_id}`;
+
+  return (
+    <div className="legacy-header-visibility">
+      <button
+        type="button"
+        className={`legacy-enable-switch${nodeEnabled ? " is-on" : ""}`}
+        role="switch"
+        aria-checked={nodeEnabled}
+        aria-label="学生端可见"
+        disabled={disabled}
+        onClick={() => onToggle(node)}
+      >
+        <span className="legacy-enable-switch-track" aria-hidden="true">
+          <span className="legacy-enable-switch-knob" />
+        </span>
+        <strong>{nodeEnabled ? "已启用" : "未启用"}</strong>
       </button>
-    </form>
+      <span className="legacy-help-tooltip">
+        <button type="button" className="legacy-help-dot" aria-label="学生端展示说明" aria-describedby={helpId}>
+          ?
+        </button>
+        <span id={helpId} className="legacy-help-bubble" role="tooltip">
+          关闭后，该节点及下级不会展示给学生。
+        </span>
+      </span>
+    </div>
   );
 }
 
@@ -503,9 +807,6 @@ function NodeEditor({ detail, onSaved, onError }: { detail: CatalogNodeDetail; o
   const node = detail.node;
   const content = detail.point_content;
   const [title, setTitle] = useState(node.title || "");
-  const [summary, setSummary] = useState(node.summary || "");
-  const [teacherNote, setTeacherNote] = useState(node.teacher_note || "");
-  const [pointTitle, setPointTitle] = useState(content?.point_title || node.title || "");
   const [principle, setPrinciple] = useState(content?.principle_text || content?.principle_equation || "");
   const [phenomenon, setPhenomenon] = useState(content?.phenomenon_explanation || "");
   const [safety, setSafety] = useState(content?.safety_note || "");
@@ -513,13 +814,10 @@ function NodeEditor({ detail, onSaved, onError }: { detail: CatalogNodeDetail; o
 
   useEffect(() => {
     setTitle(node.title || "");
-    setSummary(node.summary || "");
-    setTeacherNote(node.teacher_note || "");
-    setPointTitle(content?.point_title || node.title || "");
     setPrinciple(content?.principle_text || content?.principle_equation || "");
     setPhenomenon(content?.phenomenon_explanation || "");
     setSafety(content?.safety_note || "");
-  }, [node.node_id, node.summary, node.teacher_note, node.title, content]);
+  }, [node.node_id, node.title, content]);
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -532,34 +830,15 @@ function NodeEditor({ detail, onSaved, onError }: { detail: CatalogNodeDetail; o
     try {
       await updateCatalogNode(node.node_id, {
         title: title.trim(),
-        summary: summary.trim() || null,
-        teacher_note: teacherNote.trim() || null,
       });
       if (node.node_kind === "point") {
         await saveCatalogPointContent(node.node_id, {
-          point_title: pointTitle.trim() || title.trim(),
-          teacher_note: teacherNote.trim() || null,
+          point_title: title.trim(),
           principle_mode: "text",
           principle_text: principle.trim() || null,
           phenomenon_explanation: phenomenon.trim() || null,
           safety_note: safety.trim() || null,
         });
-      }
-      onSaved();
-    } catch (caught) {
-      onError(legacyTeacherErrorMessage(caught));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const changeStatus = async (action: "publish" | "unpublish" | "archive" | "restore") => {
-    setSubmitting(true);
-    onError("");
-    try {
-      await changeCatalogNodeStatus(node.node_id, action);
-      if (node.node_kind === "point" && (action === "publish" || action === "unpublish" || action === "archive")) {
-        await changeCatalogPointContentPublication(node.node_id, action);
       }
       onSaved();
     } catch (caught) {
@@ -575,43 +854,25 @@ function NodeEditor({ detail, onSaved, onError }: { detail: CatalogNodeDetail; o
         名称
         <input value={title} onChange={(event) => setTitle(event.target.value)} />
       </label>
-      <label>
-        摘要
-        <textarea value={summary} onChange={(event) => setSummary(event.target.value)} rows={3} />
-      </label>
-      <label>
-        教师备注
-        <textarea value={teacherNote} onChange={(event) => setTeacherNote(event.target.value)} rows={3} />
-      </label>
       {node.node_kind === "point" ? (
         <div className="legacy-point-content-fields">
           <label>
-            点位标题
-            <input value={pointTitle} onChange={(event) => setPointTitle(event.target.value)} />
-          </label>
-          <label>
             原理
-            <textarea value={principle} onChange={(event) => setPrinciple(event.target.value)} rows={5} />
+            <textarea value={principle} onChange={(event) => setPrinciple(event.target.value)} rows={3} />
           </label>
           <label>
             现象
-            <textarea value={phenomenon} onChange={(event) => setPhenomenon(event.target.value)} rows={5} />
+            <textarea value={phenomenon} onChange={(event) => setPhenomenon(event.target.value)} rows={3} />
           </label>
           <label>
             安全
-            <textarea value={safety} onChange={(event) => setSafety(event.target.value)} rows={4} />
+            <textarea value={safety} onChange={(event) => setSafety(event.target.value)} rows={3} />
           </label>
         </div>
       ) : null}
       <div className="legacy-editor-actions">
         <button className="primary-button" disabled={submitting}>
-          {submitting ? "保存中..." : "保存资料"}
-        </button>
-        <button type="button" className="legacy-secondary-button" disabled={submitting} onClick={() => changeStatus("publish")}>
-          发布
-        </button>
-        <button type="button" className="legacy-secondary-button" disabled={submitting} onClick={() => changeStatus("unpublish")}>
-          取消发布
+          {submitting ? "保存中..." : "保存"}
         </button>
       </div>
     </form>

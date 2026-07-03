@@ -552,8 +552,12 @@ export function updateCatalogNode(nodeId: string, payload: CatalogNodeUpdatePayl
   return patchJson<CatalogNodeDetail>(`/api/admin/catalog/nodes/${encodeURIComponent(nodeId)}`, payload);
 }
 
-export function changeCatalogNodeStatus(nodeId: string, action: "archive" | "restore" | "publish" | "unpublish"): Promise<CatalogNodeDetail> {
-  return postJson<CatalogNodeDetail>(`/api/admin/catalog/nodes/${encodeURIComponent(nodeId)}/status`, { action });
+export function changeCatalogNodeStatus(
+  nodeId: string,
+  action: "archive" | "restore" | "publish" | "unpublish",
+  options: { includeSubtree?: boolean } = {},
+): Promise<CatalogNodeDetail> {
+  return postJson<CatalogNodeDetail>(`/api/admin/catalog/nodes/${encodeURIComponent(nodeId)}/status`, { action, include_subtree: Boolean(options.includeSubtree) });
 }
 
 export function saveCatalogPointContent(nodeId: string, payload: CatalogPointContentPayload): Promise<CatalogNodeDetail> {
