@@ -1171,6 +1171,8 @@ describe("LegacyTeacherApp", () => {
     const workbench = await within(page).findByTestId("teacher-paper-management");
     expect(within(workbench).getByText("智能组卷策略")).toBeTruthy();
     expect(await within(workbench).findByText("当前班级继承默认策略")).toBeTruthy();
+    expect(within(workbench).getByText("薄弱权重曲线")).toBeTruthy();
+    expect(within(workbench).getByText("7.3 票")).toBeTruthy();
     expect(within(workbench).queryByText("当前班级预估")).toBeNull();
     expect(within(workbench).queryByText("氯水漂白性实验")).toBeNull();
     expect(within(workbench).queryByText("未测目标 2 题")).toBeNull();

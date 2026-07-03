@@ -663,6 +663,11 @@ function normalizeSmartAssessmentSettings(value?: Partial<SmartAssessmentSetting
   return { ...smartAssessmentDefaults, ...(value || {}), enabled: true };
 }
 
+function smartAssessmentTickets(settings: SmartAssessmentSettings, mastery: number): number {
+  const weakness = Math.max(0, Math.min(1, (100 - mastery) / 100));
+  return 1 + (settings.weak_tendency_percent / 100) * settings.weak_max_bonus * Math.pow(weakness, settings.weak_curve);
+}
+
 function PaperManagementPage() {
   const classesState = useAsyncData<TeacherClassSummary[]>(listTeacherClasses, []);
   const classes = classesState.data || [];
@@ -773,72 +778,79 @@ function PaperManagementPage() {
                   </div>
                 </header>
 
-                <section className="legacy-paper-section" aria-label="策略参数">
-                  <h3>策略参数</h3>
-                  <table className="legacy-paper-settings-table">
-                    <thead>
-                      <tr>
-                        <th scope="col">参数</th>
-                        <th scope="col">当前值</th>
-                        <th scope="col">调整</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <PaperNumberField
-                        label="每次题量"
-                        value={settings.question_count}
-                        min={1}
-                        max={50}
-                        unit="题"
-                        onChange={(value) => setSetting("question_count", value)}
-                      />
-                      <PaperNumberField
-                        label="未测点位比例"
-                        value={settings.untested_ratio_percent}
-                        min={0}
-                        max={100}
-                        step={5}
-                        unit="%"
-                        onChange={(value) => setSetting("untested_ratio_percent", value)}
-                      />
-                      <PaperNumberField
-                        label="薄弱点位倾向"
-                        value={settings.weak_tendency_percent}
-                        min={0}
-                        max={100}
-                        step={5}
-                        unit="%"
-                        onChange={(value) => setSetting("weak_tendency_percent", value)}
-                      />
-                      <PaperNumberField
-                        label="单实验最多题数"
-                        value={settings.max_questions_per_experiment}
-                        min={1}
-                        max={10}
-                        unit="题"
-                        onChange={(value) => setSetting("max_questions_per_experiment", value)}
-                      />
-                      <PaperNumberField
-                        label="薄弱曲线"
-                        value={settings.weak_curve}
-                        min={0.5}
-                        max={4}
-                        step={0.5}
-                        unit=""
-                        onChange={(value) => setSetting("weak_curve", value)}
-                      />
-                      <PaperNumberField
-                        label="薄弱加权上限"
-                        value={settings.weak_max_bonus}
-                        min={1}
-                        max={20}
-                        step={1}
-                        unit="倍"
-                        onChange={(value) => setSetting("weak_max_bonus", value)}
-                      />
-                    </tbody>
-                  </table>
-                </section>
+                <div className="legacy-paper-board-grid">
+                  <section className="legacy-paper-section" aria-label="策略参数">
+                    <h3>策略参数</h3>
+                    <table className="legacy-paper-settings-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">参数</th>
+                          <th scope="col">当前值</th>
+                          <th scope="col">调整</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <PaperNumberField
+                          label="每次题量"
+                          value={settings.question_count}
+                          min={1}
+                          max={50}
+                          unit="题"
+                          onChange={(value) => setSetting("question_count", value)}
+                        />
+                        <PaperNumberField
+                          label="未测点位比例"
+                          value={settings.untested_ratio_percent}
+                          min={0}
+                          max={100}
+                          step={5}
+                          unit="%"
+                          onChange={(value) => setSetting("untested_ratio_percent", value)}
+                        />
+                        <PaperNumberField
+                          label="薄弱点位倾向"
+                          value={settings.weak_tendency_percent}
+                          min={0}
+                          max={100}
+                          step={5}
+                          unit="%"
+                          onChange={(value) => setSetting("weak_tendency_percent", value)}
+                        />
+                        <PaperNumberField
+                          label="单实验最多题数"
+                          value={settings.max_questions_per_experiment}
+                          min={1}
+                          max={10}
+                          unit="题"
+                          onChange={(value) => setSetting("max_questions_per_experiment", value)}
+                        />
+                        <PaperNumberField
+                          label="薄弱曲线"
+                          value={settings.weak_curve}
+                          min={0.5}
+                          max={4}
+                          step={0.5}
+                          unit=""
+                          onChange={(value) => setSetting("weak_curve", value)}
+                        />
+                        <PaperNumberField
+                          label="薄弱加权上限"
+                          value={settings.weak_max_bonus}
+                          min={1}
+                          max={20}
+                          step={1}
+                          unit="倍"
+                          onChange={(value) => setSetting("weak_max_bonus", value)}
+                        />
+                      </tbody>
+                    </table>
+                  </section>
+
+                  <section className="legacy-paper-section" aria-label="薄弱权重曲线">
+                    <h3>薄弱权重曲线</h3>
+                    <PaperWeakCurve settings={settings} />
+                  </section>
+                </div>
               </TeacherCard>
             </form>
           </div>
@@ -882,6 +894,35 @@ function PaperNumberField({
         </div>
       </td>
     </tr>
+  );
+}
+
+function PaperWeakCurve({ settings }: { settings: SmartAssessmentSettings }) {
+  const marks = [0, 25, 50, 75, 100];
+  const max = Math.max(...marks.map((mastery) => smartAssessmentTickets(settings, mastery)));
+  return (
+    <table className="legacy-paper-mini-table" aria-label="薄弱权重曲线">
+      <thead>
+        <tr>
+          <th scope="col">掌握度</th>
+          <th scope="col">抽题权重</th>
+        </tr>
+      </thead>
+      <tbody>
+        {marks.map((mastery) => {
+          const tickets = smartAssessmentTickets(settings, mastery);
+          return (
+            <tr key={mastery}>
+              <th scope="row">{mastery} 分</th>
+              <td>
+                <b style={{ width: `${Math.max(8, (tickets / max) * 100)}%` }} />
+                <span>{tickets.toFixed(1)} 票</span>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 

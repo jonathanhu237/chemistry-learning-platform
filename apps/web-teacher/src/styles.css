@@ -3860,6 +3860,13 @@ p {
   line-height: 1;
 }
 
+.legacy-paper-board-grid {
+  display: grid;
+  grid-template-columns: minmax(480px, 1.3fr) minmax(260px, 0.7fr);
+  gap: 14px;
+  align-items: start;
+}
+
 .legacy-paper-section {
   display: grid;
   min-width: 0;
@@ -3873,21 +3880,25 @@ p {
   font-weight: 900;
 }
 
-.legacy-paper-settings-table {
+.legacy-paper-settings-table,
+.legacy-paper-mini-table {
   width: 100%;
   border-collapse: collapse;
   background: #fff;
 }
 
 .legacy-paper-settings-table th,
-.legacy-paper-settings-table td {
+.legacy-paper-settings-table td,
+.legacy-paper-mini-table th,
+.legacy-paper-mini-table td {
   border: 1px solid var(--legacy-line);
   padding: 8px 10px;
   text-align: left;
   vertical-align: middle;
 }
 
-.legacy-paper-settings-table thead th {
+.legacy-paper-settings-table thead th,
+.legacy-paper-mini-table thead th {
   border-color: #e1c8c2;
   background: var(--legacy-red-050);
   color: var(--legacy-sysu-red);
@@ -3895,13 +3906,15 @@ p {
   font-weight: 900;
 }
 
-.legacy-paper-settings-table tbody th {
+.legacy-paper-settings-table tbody th,
+.legacy-paper-mini-table tbody th {
   color: var(--legacy-ink);
   font-size: 12px;
   font-weight: 900;
 }
 
-.legacy-paper-settings-table tbody td {
+.legacy-paper-settings-table tbody td,
+.legacy-paper-mini-table tbody td {
   color: var(--legacy-ink);
   font-size: 12px;
   font-weight: 900;
@@ -3950,6 +3963,30 @@ p {
   padding: 0 6px;
   color: var(--legacy-ink);
   font-weight: 900;
+}
+
+.legacy-paper-mini-table th:first-child {
+  width: 70px;
+}
+
+.legacy-paper-mini-table td {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 8px;
+}
+
+.legacy-paper-mini-table b {
+  display: block;
+  height: 8px;
+  background: var(--legacy-sysu-red);
+}
+
+.legacy-paper-mini-table span {
+  color: var(--legacy-muted);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
 }
 
 .legacy-profile-sidebar-actions {
@@ -4097,6 +4134,7 @@ p {
   .legacy-class-dashboard-grid,
   .legacy-settings-page-grid,
   .legacy-account-create-grid,
+  .legacy-paper-board-grid,
   .legacy-paper-control-card,
   .legacy-inline-form.two-column {
     grid-template-columns: minmax(0, 1fr);
