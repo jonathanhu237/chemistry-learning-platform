@@ -803,11 +803,12 @@ describe("LegacyTeacherApp", () => {
     expect(screen.queryByRole("button", { name: "取消发布" })).toBeNull();
     expect(screen.queryByText("点位资料")).toBeNull();
     expect(screen.queryByText("目录信息")).toBeNull();
-    expect(await screen.findByRole("region", { name: "点位视频" })).toBeTruthy();
+    expect(await screen.findByRole("region", { name: "视频" })).toBeTruthy();
     expect(screen.getByText("氯水漂白性实验视频")).toBeTruthy();
     expect(screen.getByText("bleach-demo.mp4")).toBeTruthy();
-    expect(screen.getByText("1000 KB")).toBeTruthy();
-    expect(screen.getByText("1:36")).toBeTruthy();
+    expect(screen.queryByText("1000 KB")).toBeNull();
+    expect(screen.queryByText("1:36")).toBeNull();
+    expect(screen.queryByLabelText("视频标题")).toBeNull();
     expect(screen.getByRole("button", { name: "学生端展示说明" })).toBeTruthy();
     expect(screen.getByText("关闭后，该节点及下级不会展示给学生。")).toBeTruthy();
     const visibilitySwitch = screen.getByRole("switch", { name: "学生端可见" });
@@ -961,19 +962,17 @@ describe("LegacyTeacherApp", () => {
     fireEvent.click(iodideItem);
 
     expect(await screen.findByDisplayValue("I- 被氧化后与淀粉形成蓝色络合物。")).toBeTruthy();
-    const videoRegion = await screen.findByRole("region", { name: "点位视频" });
-    expect(within(videoRegion).getByText("当前点位暂无视频。")).toBeTruthy();
+    const videoRegion = await screen.findByRole("region", { name: "视频" });
+    expect(within(videoRegion).getByText("暂无真实视频")).toBeTruthy();
+    expect(within(videoRegion).queryByLabelText("视频标题")).toBeNull();
 
-    const titleInput = within(videoRegion).getByDisplayValue("碘离子检验");
-    fireEvent.change(titleInput, { target: { value: "碘离子检验演示" } });
-
-    const fileInput = container.querySelector(".legacy-point-video-panel input[type='file']") as HTMLInputElement | null;
+    const fileInput = container.querySelector(".legacy-point-video-field input[type='file']") as HTMLInputElement | null;
     expect(fileInput).toBeTruthy();
     const file = new File(["demo-content"], "iodide-demo.mp4", { type: "video/mp4" });
     fireEvent.change(fileInput!, { target: { files: [file] } });
 
     expect(await within(videoRegion).findByText("iodide-demo.mp4")).toBeTruthy();
-    fireEvent.click(within(videoRegion).getByRole("button", { name: "上传并绑定" }));
+    fireEvent.click(within(videoRegion).getByRole("button", { name: "上传视频" }));
 
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/media/assets"));
     const uploadCall = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/teacher/media/assets");
@@ -981,7 +980,7 @@ describe("LegacyTeacherApp", () => {
     expect(uploadCall?.[1]?.method).toBe("POST");
     expect(uploadCall?.[1]?.body).toBeInstanceOf(FormData);
     const formData = uploadCall?.[1]?.body as FormData;
-    expect(formData.get("title")).toBe("碘离子检验演示");
+    expect(formData.get("title")).toBe("碘离子检验");
     expect((formData.get("file") as File).name).toBe("iodide-demo.mp4");
 
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/catalog/nodes/point-ch13-iodide/media-bindings"));
@@ -989,10 +988,10 @@ describe("LegacyTeacherApp", () => {
     expect(bindingCall).toBeTruthy();
     expect(JSON.parse(String(bindingCall?.[1]?.body))).toEqual({
       media_asset_id: "media-uploaded-iodide",
-      title: "碘离子检验演示",
+      title: "碘离子检验",
       metadata: { source: "teacher_point_editor" },
     });
-    expect(await screen.findByText("已上传并绑定点位视频，处理完成后学生端可播放。")).toBeTruthy();
+    expect(await screen.findByText("已上传并绑定视频，处理完成后学生端可播放。")).toBeTruthy();
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 

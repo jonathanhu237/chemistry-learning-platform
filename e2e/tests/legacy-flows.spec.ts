@@ -187,12 +187,10 @@ test.describe("legacy teacher/student browser flows", () => {
       await expandVisibleCatalogDirectories(page);
       await page.getByRole("treeitem", { name: pointTitle }).click();
 
-      const videoRegion = page.getByRole("region", { name: "点位视频" });
+      const videoRegion = page.getByRole("region", { name: "视频" });
       await expect(videoRegion).toBeVisible();
-      await expect(videoRegion.getByText("当前点位暂无视频。")).toBeVisible();
+      await expect(videoRegion.getByText("暂无真实视频")).toBeVisible();
 
-      const videoTitle = `${pointTitle} 演示`;
-      await videoRegion.getByRole("textbox").fill(videoTitle);
       await videoRegion.locator("input[type='file']").setInputFiles({
         name: "e2e-point-video.mp4",
         mimeType: "video/mp4",
@@ -202,10 +200,10 @@ test.describe("legacy teacher/student browser flows", () => {
 
       const uploadResponse = page.waitForResponse((response) => response.url().includes("/api/teacher/media/assets") && response.request().method() === "POST");
       const bindingResponse = page.waitForResponse((response) => response.url().includes(`/api/teacher/catalog/nodes/${pointNodeId}/media-bindings`));
-      await videoRegion.getByRole("button", { name: "上传并绑定" }).click();
+      await videoRegion.getByRole("button", { name: "上传视频" }).click();
       expect((await uploadResponse).ok(), "media upload should succeed").toBeTruthy();
       expect((await bindingResponse).ok(), "point media binding should succeed").toBeTruthy();
-      await expect(page.getByText(/已上传并绑定点位视频|已添加点位视频/)).toBeVisible();
+      await expect(page.getByText(/已上传并绑定视频|已添加视频/)).toBeVisible();
       await expectNoVisibleLegacyError(page);
     } finally {
       if (pointNodeId) {

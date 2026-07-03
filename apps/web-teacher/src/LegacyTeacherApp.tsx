@@ -1368,29 +1368,17 @@ function NodeEditor({ detail, onSaved, onError }: { detail: CatalogNodeDetail; o
 }
 
 function uploadTitleFromFilename(filename: string): string {
-  return filename.replace(/\.[^/.]+$/, "").trim() || "点位视频";
+  return filename.replace(/\.[^/.]+$/, "").trim() || "视频";
 }
 
-function formatMediaSize(value?: number | null): string | null {
-  if (!value || value <= 0) return null;
-  if (value < 1024 * 1024) return `${Math.ceil(value / 1024)} KB`;
-  return `${(value / 1024 / 1024).toFixed(1)} MB`;
-}
-
-function formatMediaDuration(value?: number | null): string | null {
-  if (!value || value <= 0) return null;
-  const totalSeconds = Math.round(value);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return minutes ? `${minutes}:${String(seconds).padStart(2, "0")}` : `${seconds}s`;
-}
-
-function pointVideoStatusLabel(binding: CatalogPointMediaBinding): string {
-  if (binding.upload_status === "ready") return binding.binding_status === "published" ? "已发布" : "未发布";
-  if (binding.upload_status === "processing") return "处理中";
-  if (binding.upload_status === "failed") return "处理失败";
-  if (binding.upload_status === "replaced") return "已替换";
-  return binding.upload_status || "未知状态";
+function isPlaceholderPointVideoBinding(binding: CatalogPointMediaBinding): boolean {
+  const metadata = binding.metadata || {};
+  return (
+    metadata.placeholder_video === true ||
+    metadata.coverage_kind === "placeholder_video" ||
+    binding.original_file_name === "no-video-placeholder.mp4" ||
+    binding.title.includes("占位视频")
+  );
 }
 
 function VideoGlyph() {
@@ -1435,9 +1423,9 @@ function PointVideoManager({
   onError: (value: string) => void;
 }) {
   const node = detail.node;
-  const binding = detail.media_bindings?.[0] || null;
+  const rawBinding = detail.media_bindings?.[0] || null;
+  const binding = rawBinding && !isPlaceholderPointVideoBinding(rawBinding) ? rawBinding : null;
   const [policy, setPolicy] = useState<TeacherMediaUploadPolicy | null>(null);
-  const [videoTitle, setVideoTitle] = useState(binding?.title || fallbackTitle);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -1457,16 +1445,15 @@ function PointVideoManager({
   }, []);
 
   useEffect(() => {
-    setVideoTitle(binding?.title || fallbackTitle);
     setVideoFile(null);
-  }, [node.node_id, binding?.binding_id, binding?.title, fallbackTitle]);
+  }, [node.node_id, binding?.binding_id]);
 
   const uploadPointVideo = async () => {
     if (!videoFile) {
       onError("请选择要添加的视频文件。");
       return;
     }
-    const nextTitle = videoTitle.trim() || fallbackTitle || uploadTitleFromFilename(videoFile.name);
+    const nextTitle = fallbackTitle || uploadTitleFromFilename(videoFile.name);
     setSubmitting(true);
     onError("");
     try {
@@ -1477,7 +1464,7 @@ function PointVideoManager({
         metadata: { source: "teacher_point_editor" },
       });
       setVideoFile(null);
-      onSaved(asset.upload_status === "ready" ? "已添加点位视频。" : "已上传并绑定点位视频，处理完成后学生端可播放。");
+      onSaved(asset.upload_status === "ready" ? "已添加视频。" : "已上传并绑定视频，处理完成后学生端可播放。");
     } catch (caught) {
       onError(legacyTeacherErrorMessage(caught));
     } finally {
@@ -1491,7 +1478,7 @@ function PointVideoManager({
     onError("");
     try {
       await changeCatalogPointMediaBinding(binding.binding_id, "delete");
-      onSaved("已移除点位视频。");
+      onSaved("已移除视频。");
     } catch (caught) {
       onError(legacyTeacherErrorMessage(caught));
     } finally {
@@ -1499,64 +1486,34 @@ function PointVideoManager({
     }
   };
 
-  const currentMeta = [
-    binding?.original_file_name || null,
-    formatMediaSize(binding?.playback_file_size_bytes || binding?.source_file_size_bytes),
-    formatMediaDuration(binding?.playback_duration_seconds),
-  ].filter(Boolean);
-  const selectedFileMeta = [videoFile?.type || null, formatMediaSize(videoFile?.size)].filter(Boolean);
-  const policyText = policy ? `支持 ${policy.allowed_extensions.join(" / ")}，单文件不超过 ${policy.max_media_upload_mb} MB。` : "支持常见视频格式，文件限制以后端校验为准。";
+  const uploadLabel = binding ? "更换视频" : "上传视频";
+  const pickerTitle = videoFile ? videoFile.name : binding ? "选择视频文件" : "暂无真实视频";
+  const pickerHelp = videoFile ? "已选择，点击右侧按钮上传。" : binding ? "选择本地视频文件，系统会自动校验文件。" : "选择本地视频文件，上传后学生端会展示该视频。";
 
   return (
-    <section className="legacy-point-video-panel" aria-labelledby="legacy-point-video-title">
-      <header className="legacy-point-video-head">
-        <div>
-          <h3 id="legacy-point-video-title">点位视频</h3>
-          <p>当前点位只保留一个学生端视频，上传新文件会替换现有绑定。</p>
-        </div>
-        {binding ? <span className={`legacy-point-video-status status-${binding.upload_status}`}>{pointVideoStatusLabel(binding)}</span> : <span className="legacy-point-video-status status-empty">未添加</span>}
-      </header>
+    <section className="legacy-point-video-field" aria-label="视频">
+      <span className="legacy-point-video-field-label">视频</span>
       {binding ? (
         <div className="legacy-point-video-current">
-          <div className="legacy-point-video-preview">
+          <div className="legacy-point-video-icon">
             <VideoGlyph />
           </div>
           <div>
             <strong>{binding.title}</strong>
-            {currentMeta.length ? (
-              <span className="legacy-point-video-meta">
-                {currentMeta.map((item) => (
-                  <small key={item}>{item}</small>
-                ))}
-              </span>
-            ) : null}
+            {binding.original_file_name ? <small>{binding.original_file_name}</small> : null}
             {binding.error_reason ? <small>{binding.error_reason}</small> : null}
           </div>
-          <TeacherButton htmlType="button" danger className="legacy-secondary-button" disabled={removing || submitting} onClick={removePointVideo}>
-            {removing ? "移除中..." : "移除视频"}
-          </TeacherButton>
+          <button type="button" className="legacy-point-video-remove" disabled={removing || submitting} onClick={removePointVideo}>
+            {removing ? "移除中..." : "移除"}
+          </button>
         </div>
-      ) : (
-        <div className="legacy-point-video-empty">
-          <div className="legacy-point-video-preview is-empty">
-            <VideoGlyph />
-          </div>
-          <div>
-            <strong>当前点位暂无视频。</strong>
-            <span>添加后，学生端会在处理完成的可播放视频中读取这一条。</span>
-          </div>
-        </div>
-      )}
-      <div className="legacy-point-video-upload">
-        <TeacherForm.Item label="视频标题">
-          <TeacherInput value={videoTitle} onChange={(event) => setVideoTitle(event.target.value)} />
-        </TeacherForm.Item>
+      ) : null}
+      <div className={`legacy-point-video-upload${binding ? "" : " is-empty-state"}`}>
         <div className="legacy-point-video-actions">
           <TeacherUpload
             accept={policy?.allowed_extensions?.join(",") || "video/*"}
             beforeUpload={(file) => {
               setVideoFile(file);
-              if (!videoTitle.trim()) setVideoTitle(uploadTitleFromFilename(file.name));
               return false;
             }}
             maxCount={1}
@@ -1565,14 +1522,14 @@ function PointVideoManager({
             <button type="button" className={`legacy-point-video-picker${videoFile ? " has-file" : ""}`} disabled={submitting || removing}>
               <span className="legacy-point-video-picker-icon">{videoFile ? <FileGlyph /> : <UploadGlyph />}</span>
               <span>
-                <strong>{videoFile ? videoFile.name : "选择视频文件"}</strong>
-                <small>{videoFile ? selectedFileMeta.join(" / ") || "已选择，等待上传" : policyText}</small>
+                <strong>{pickerTitle}</strong>
+                <small>{pickerHelp}</small>
               </span>
             </button>
           </TeacherUpload>
           <div className="legacy-point-video-command-stack">
             <TeacherButton type="primary" htmlType="button" className="primary-button" disabled={!videoFile || submitting || removing} onClick={uploadPointVideo}>
-              {submitting ? "上传中..." : binding ? "上传并替换" : "上传并绑定"}
+              {submitting ? "上传中..." : uploadLabel}
             </TeacherButton>
             {videoFile ? (
               <TeacherButton
