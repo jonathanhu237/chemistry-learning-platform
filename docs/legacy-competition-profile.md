@@ -1,13 +1,13 @@
 # Legacy Competition Profile
 
-The lower-level competition profile is implemented as two separate frontend apps:
+The legacy branch treats the old competition profile as the canonical product line:
 
-- `apps/web-student-old`: legacy student experiment-video learning frontend.
-- `apps/web-teacher-old`: legacy teacher BKT teaching-management frontend.
+- `apps/web-student`: student experiment-video learning frontend.
+- `apps/web-backoffice`: teacher/admin teaching-management backoffice.
 
-The old apps share the same backend, database, catalog, video resources, question bank, assessment sessions, mastery records, and analytics records as the current products. They are not a seed fork and must not introduce old-only runtime ids.
+The two frontends share the same backend, database, catalog, video resources, question bank, assessment sessions, mastery records, and analytics records. They are not a seed fork and must not introduce old-only runtime ids.
 
-The product narrative is intentionally different from the current green modern product. The old profile centers:
+The product narrative centers:
 
 - experiment knowledge navigation;
 - AI-assisted objective question creation;
@@ -17,13 +17,12 @@ The product narrative is intentionally different from the current green modern p
 - smart assessment composition;
 - teacher learning-score review.
 
-The old visible UI uses SYSU red branding and official SYSU logo assets copied into each old app's `public/assets` directory. The source material is the local official asset package at `E:\迅雷下载\sysu-logo-main`, but builds must use repository-managed copies only.
+The visible UI uses SYSU red branding and official SYSU logo assets copied into each frontend's `public/assets` directory. The source material is the local official asset package at `E:\迅雷下载\sysu-logo-main`, but builds must use repository-managed copies only.
 
-Deployment adds optional Compose services:
+Default Compose services:
 
-- `web-student-old`, default endpoint `222.200.189.249:15176`;
-- `web-teacher-old`, default endpoint `127.0.0.1:15177`.
+- `web-student`, default endpoint `127.0.0.1:15176`;
+- `web-backoffice`, default endpoint `127.0.0.1:15177`;
+- `backend`, default endpoint `127.0.0.1:18000`.
 
-Use `python scripts/deploy_compose_stack.py --include-legacy` or `python scripts/validate_compose_stack.py --include-legacy` when the old services should be part of a demo or smoke run. The default current-product Compose path remains valid without old services.
-
-The existing `web-admin` endpoint remains local-only; do not move platform operations workflows into the old teacher product.
+Use `python scripts/deploy_compose_stack.py` or `python scripts/validate_compose_stack.py --build` for the legacy runtime. The standalone token-based operations frontend is not part of this branch.

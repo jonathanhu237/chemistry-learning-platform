@@ -12,16 +12,11 @@ if hasattr(sys.stdout, "reconfigure"):
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SERVICES = [
+    "postgres",
     "backend",
     "web-student",
-    "web-teacher",
-    "web-admin",
-    "postgres",
-    "elasticsearch",
-    "tusd",
-    "video-worker",
+    "web-backoffice",
 ]
-LEGACY_SERVICES = ["web-student-old", "web-teacher-old"]
 
 
 def _run(command: list[str]) -> None:
@@ -39,12 +34,10 @@ def _run(command: list[str]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Deploy the default chemistry platform Docker Compose stack.")
+    parser = argparse.ArgumentParser(description="Deploy the default legacy chemistry platform Docker Compose stack.")
     parser.add_argument("--skip-build", action="store_true", help="Reuse existing images instead of rebuilding.")
     parser.add_argument("--keep-orphans", action="store_true", help="Do not remove obsolete Compose service containers.")
     parser.add_argument("--skip-smoke", action="store_true", help="Skip post-deploy Compose smoke validation.")
-    parser.add_argument("--skip-index-rebuild", action="store_true", help="Skip video-library index rebuild during smoke.")
-    parser.add_argument("--include-legacy", action="store_true", help="Also start and smoke-test the legacy competition frontend services.")
     args = parser.parse_args()
 
     _run(["docker", "compose", "config", "--quiet"])
@@ -55,16 +48,12 @@ def main() -> None:
         up_command.append("--build")
     if not args.keep_orphans:
         up_command.append("--remove-orphans")
-    services = [*DEFAULT_SERVICES, *(LEGACY_SERVICES if args.include_legacy else [])]
+    services = [*DEFAULT_SERVICES]
     up_command.extend(services)
     _run(up_command)
 
     if not args.skip_smoke:
         smoke_command = [sys.executable, "scripts/validate_compose_stack.py", "--skip-up"]
-        if args.skip_index_rebuild:
-            smoke_command.append("--skip-index-rebuild")
-        if args.include_legacy:
-            smoke_command.append("--include-legacy")
         _run(smoke_command)
 
     _run(["docker", "compose", "ps"])

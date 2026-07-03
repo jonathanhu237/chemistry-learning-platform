@@ -4,124 +4,79 @@ export type AuthUser = {
   role: "admin" | "teacher" | "student";
   display_name: string;
   status: string;
-  must_change_password: boolean;
-  password_version: number;
   student_id?: string | null;
   class_id?: string | null;
   class_name?: string | null;
-  preview_mode?: boolean;
-  preview_purpose?: string | null;
-  preview_teacher_user_id?: string | null;
-  preview_class_id?: string | null;
-  preview_student_id?: string | null;
-};
-
-export type StudentPreviewPolicy = {
-  feedback_enabled: boolean;
-  account_mutation_enabled: boolean;
-  assessment_enabled: boolean;
-  assistant_enabled: boolean;
-  analytics_side_effects_enabled: boolean;
-  blocked_routes: string[];
-  message: string;
 };
 
 export type LoginResponse = {
   access_token: string;
   token_type: "bearer";
-  expires_at: string;
   user: AuthUser;
-  preview_policy?: StudentPreviewPolicy;
 };
 
-export type StudentAppFeatureFlags = {
-  ai_assistant_enabled: boolean;
-  feedback_enabled: boolean;
-  student_ai_assistant_enabled: boolean;
-  rag_access_enabled: boolean;
+export type StudentVideo = {
+  media_id: string;
+  title: string;
+  stream_path?: string | null;
+  thumbnail_path?: string | null;
+  duration_seconds?: number | null;
 };
 
-export type StudentAppConfigResponse = {
-  features: StudentAppFeatureFlags;
-  preview_mode?: boolean;
-  preview_policy?: StudentPreviewPolicy | null;
-};
-
-export type PretestQuestionOption = {
-  label?: string;
-  key?: string;
-  value?: string;
-  text?: string;
-  [key: string]: unknown;
-};
-
-export type PublicPretestQuestion = {
+export type HomeVideoFeedItem = {
   id: string;
-  question_type: "single_choice" | "true_false" | "fill_blank";
-  stem: string;
-  options: PretestQuestionOption[];
-  area: string;
-  related_chapter_ids: string[];
-  related_knowledge_point_ids: string[];
+  instance_id?: string;
+  node_id: string;
+  placement_node_id?: string | null;
+  canonical_point_id?: string | null;
+  chapter_id?: string | null;
+  title: string;
+  summary?: string | null;
+  snippet?: string | null;
+  catalog_path?: string[];
+  badges?: string[];
+  target?: StudentVideoLibraryRouteTarget | null;
+  video: StudentVideo & { stream_path?: string | null };
 };
 
-export type PublicPosttestQuestion = {
+export type HomeVideoFeedResponse = {
+  status: "ok" | "empty";
+  message?: string;
+  topic?: string;
+  next_cursor?: string | null;
+  has_more?: boolean;
+  batch_size?: number;
+  pool_size?: number;
+  repeat_mode?: "cycled" | "none";
+  items: HomeVideoFeedItem[];
+};
+
+export type LegacyVideoPointItem = {
   id: string;
-  experiment_id: string;
-  experiment_title: string;
-  question_type: "single_choice" | "true_false" | "fill_blank";
-  stem: string;
-  options: PretestQuestionOption[];
-  related_chapter_ids: string[];
-  related_knowledge_point_ids: string[];
+  node_id: string;
+  chapter_id?: string | null;
+  title: string;
+  summary?: string | null;
+  snippet?: string | null;
+  catalog_path?: string[];
+  media_count?: number;
+  published_media_count?: number;
+  thumbnail_path?: string | null;
+  is_recommended?: boolean;
+  recommended_order?: number | null;
 };
 
-export type StudentPretestResponse = {
-  status: "in_progress" | "completed";
-  stage: 1 | 2 | null;
-  questions: PublicPretestQuestion[];
-  session_id?: string | null;
-  report?: StudentAssessmentReport | null;
-};
-
-export type StudentPretestAnswer = {
-  question_id: string;
-  answer: unknown;
-};
-
-export type StudentLearningArea = {
-  area_id: string;
-  area_name: string;
-  enabled: boolean;
-  parent_codes: string[];
-  experiment_count: number;
-  published_video_count: number;
-  question_count: number;
-};
-
-export type StudentLearningHomeGroupSummary = {
-  parent_code: string;
-  parent_title: string;
-  area_id: string;
-  area_name: string;
-  chapter_ids: string[];
-  experiment_count: number;
-  published_video_count: number;
-  question_count: number;
-  recommended: boolean;
-};
-
-export type StudentLearningHomeResponse = {
-  recommended_area_id: string | null;
-  recommended_parent_code: string | null;
-  areas: StudentLearningArea[];
-  groups: StudentLearningHomeGroupSummary[];
+export type LegacyVideoPointResponse = {
+  status: "ok" | "empty";
+  query: string;
+  total: number;
+  items: LegacyVideoPointItem[];
 };
 
 export type StudentLearningHero = {
-  eyebrow: string;
-  title: string;
-  summary: string;
+  eyebrow?: string;
+  title?: string;
+  summary?: string;
 };
 
 export type StudentLearningElementBadge = {
@@ -131,20 +86,12 @@ export type StudentLearningElementBadge = {
   card_focus?: string | null;
   card_relevance?: string | null;
   card_tags?: string[];
-  relative_atomic_mass?: string | null;
   group?: string | null;
+  group_label?: string | null;
   period?: number | null;
   block?: string | null;
   state_at_20c?: string | null;
-  density?: string | null;
-  rsc_url?: string | null;
-  fact_source?: string | null;
-  state?: string | null;
-  group_label?: string | null;
-  electron_configuration?: string | null;
   common_valence?: string | null;
-  redox_tendency?: string | null;
-  note?: string | null;
 };
 
 export type StudentLearningPropertyCard = {
@@ -154,26 +101,36 @@ export type StudentLearningPropertyCard = {
   description: string;
 };
 
-export type StudentLearningPropertySection = {
-  key: string;
+export type StudentLearningProfileSummary = {
+  profile_id: string;
+  chapter_id: string;
   title: string;
   subtitle: string;
-  summary: string;
-  formula: string;
-  tone: string;
+  family_number: string;
+  family_name: string;
+  element_symbols: string[];
 };
 
-export type StudentLearningReferenceMedia = {
-  id: string;
-  usage: string;
-  asset_type: string;
-  source_url: string;
-  license: string;
-  attribution: string;
-  alt_text: string;
-  local_path?: string | null;
-  element_symbols: string[];
-  property_keys: string[];
+export type StudentLearningProfile = StudentLearningProfileSummary & {
+  hero: StudentLearningHero;
+  default_element_symbol?: string | null;
+  elements: StudentLearningElementBadge[];
+  property_cards: StudentLearningPropertyCard[];
+  family_common_properties?: StudentLearningPropertyCard[];
+  property_sections?: Array<{
+    key: string;
+    title: string;
+    subtitle: string;
+    summary: string;
+    formula: string;
+    tone: string;
+  }>;
+};
+
+export type StudentLearningPageResponse = {
+  recommended_profile_id?: string | null;
+  profiles: StudentLearningProfileSummary[];
+  active_profile?: StudentLearningProfile | null;
 };
 
 export type StudentCatalogNodeKind = "directory" | "point";
@@ -190,7 +147,6 @@ export type StudentCatalogNodeCard = {
   placement_node_id?: string | null;
   canonical_point_id?: string | null;
   canonical_point_title?: string | null;
-  canonical_point_status?: string | null;
   chapter_id: string;
   parent_id?: string | null;
   node_kind: StudentCatalogNodeKind;
@@ -198,14 +154,11 @@ export type StudentCatalogNodeCard = {
   summary: string;
   status: string;
   display_order: number;
-  actions: string[];
+  actions?: string[];
   has_children: boolean;
   has_point_content: boolean;
   media_count: number;
   published_media_count: number;
-  active_placement_count?: number;
-  validation?: Record<string, unknown>;
-  index_state?: Record<string, unknown> | null;
 };
 
 export type StudentCatalogChapterResponse = {
@@ -220,122 +173,7 @@ export type StudentCatalogNodeResponse = {
   children: StudentCatalogNodeCard[];
 };
 
-export type StudentVideoSubtitleTrack = {
-  id: string;
-  kind: "subtitles" | "captions" | string;
-  language_code: string;
-  label: string;
-  is_default?: boolean;
-  stream_path: string;
-};
-
-export type StudentPointVideo = {
-  media_id: string;
-  title: string;
-  mime_type?: string | null;
-  stream_path?: string | null;
-  thumbnail_path?: string | null;
-  subtitle_tracks?: StudentVideoSubtitleTrack[];
-};
-
-export type StudentRelatedPoint = {
-  node_id: string;
-  placement_node_id?: string | null;
-  canonical_point_id?: string | null;
-  title: string;
-  relation_type?: string | null;
-  source_node_id?: string | null;
-};
-
-export type StudentReactionEquation = {
-  row_order: number;
-  raw_text: string;
-  equation_core?: string | null;
-  annotation_text?: string | null;
-  annotation_formulae?: string[];
-  annotation_aliases?: string[];
-  condition_tags?: string[];
-  canonical_display?: string | null;
-  canonical_mhchem?: string | null;
-  validation_status?: "valid" | "warning" | "invalid" | string;
-};
-
-export type StudentPointDetailResponse = {
-  node_id: string;
-  canonical_node_id: string;
-  source_node_id?: string | null;
-  placement_node_id: string;
-  canonical_point_id: string;
-  chapter_id: string;
-  title: string;
-  summary: string;
-  breadcrumbs: StudentCatalogBreadcrumb[];
-  principle_mode: "equation" | "text" | string;
-  principle_equation?: string | null;
-  principle_text?: string | null;
-  reaction_equations?: StudentReactionEquation[];
-  phenomenon_explanation?: string | null;
-  safety_note?: string | null;
-  videos: StudentPointVideo[];
-  has_video: boolean;
-  no_video_reason?: string | null;
-  personal_state: StudentVideoPersonalState;
-  related_points: StudentRelatedPoint[];
-  assessment_context: {
-    point_node_id: string;
-    placement_node_id: string;
-    canonical_point_id: string;
-    chapter_id: string;
-    source_node_id?: string | null;
-    catalog_path: StudentCatalogBreadcrumb[];
-  };
-};
-
-export type CatalogPreviewNodeResponse = {
-  node_kind: StudentCatalogNodeKind;
-  directory?: StudentCatalogNodeResponse | null;
-  point?: StudentPointDetailResponse | null;
-  learning_page?: StudentLearningPageResponse | null;
-};
-
-export type StudentLearningProfileSummary = {
-  profile_id: string;
-  chapter_id: string;
-  title: string;
-  subtitle: string;
-  family_number: string;
-  family_name: string;
-  element_symbols: string[];
-};
-
-export type StudentLearningProfile = {
-  profile_id: string;
-  chapter_id: string;
-  title: string;
-  subtitle: string;
-  family_number: string;
-  family_name: string;
-  hero: StudentLearningHero;
-  default_element_symbol?: string | null;
-  element_symbols: string[];
-  elements: StudentLearningElementBadge[];
-  property_cards: StudentLearningPropertyCard[];
-  family_common_properties?: StudentLearningPropertyCard[];
-  property_sections: StudentLearningPropertySection[];
-  reference_media?: StudentLearningReferenceMedia[];
-};
-
-export type StudentLearningPageResponse = {
-  recommended_profile_id?: string | null;
-  profiles: StudentLearningProfileSummary[];
-  active_profile?: StudentLearningProfile | null;
-};
-
-export type VideoLibraryResultType = "video_point" | "experiment" | "chapter_experiment" | "knowledge_point" | "ai_prompt";
 export type VideoLibraryTargetKind = "point_detail" | "chapter_detail" | "ai_chat";
-export type VideoLibrarySearchStatus = "ok" | "fallback" | "disabled" | "empty" | "error";
-export type VideoLibrarySearchBackend = "local" | "elasticsearch" | "disabled";
-export type VideoLibraryBrowseChipKind = "phenomenon" | "reagent" | "chapter" | "element_family" | "knowledge";
 
 export type StudentVideoLibraryRouteTarget = {
   kind: VideoLibraryTargetKind;
@@ -347,18 +185,13 @@ export type StudentVideoLibraryRouteTarget = {
   profile_id?: string | null;
   chapter_id?: string | null;
   catalog_path?: string[] | null;
-  property_key?: string | null;
-  property_title?: string | null;
   element_symbol?: string | null;
   point_title?: string | null;
-  context_title?: string | null;
-  context_summary?: string | null;
-  prompt?: string | null;
 };
 
 export type StudentVideoLibraryResultItem = {
   id: string;
-  type: VideoLibraryResultType;
+  type: string;
   title: string;
   subtitle: string;
   snippet: string;
@@ -376,239 +209,133 @@ export type StudentVideoLibraryResultGroup = {
   items: StudentVideoLibraryResultItem[];
 };
 
-export type StudentVideoLibraryBrowseChip = {
-  kind: VideoLibraryBrowseChipKind;
-  label: string;
-  query: string;
-  profile_id?: string | null;
-  chapter_id?: string | null;
-  element_symbol?: string | null;
-};
-
-export type StudentVideoLibraryBrowseState = {
-  recommended: StudentVideoLibraryResultItem[];
-  recent: StudentVideoLibraryResultItem[];
-  chips: StudentVideoLibraryBrowseChip[];
-};
-
 export type StudentVideoLibrarySearchResponse = {
   query: string;
-  status: VideoLibrarySearchStatus;
-  backend: VideoLibrarySearchBackend;
+  status: "ok" | "fallback" | "disabled" | "empty" | "error";
+  backend: "local" | "elasticsearch" | "disabled";
   message: string;
   total: number;
   groups: StudentVideoLibraryResultGroup[];
-  browse: StudentVideoLibraryBrowseState;
 };
 
-export type StudentHomeVideoFeedStatus = "ok" | "empty";
-export type StudentHomeVideoFeedReason = "catalog" | "recommended" | "recent" | "weakness";
-export type StudentHomeVideoTopic =
-  | "discover"
-  | "watch_later"
-  | "all"
-  | "color_change"
-  | "precipitation"
-  | "gas_generation"
-  | "layer_extraction"
-  | "fading_bleaching"
-  | "flame_light"
-  | "temperature_change"
-  | "heating"
-  | "test_paper"
-  | "indicator"
-  | "crystallization"
-  | "favorites";
-export type StudentHomeVideoRepeatMode = "cycled" | "none";
-
-export type StudentVideoPersonalState = {
-  watch_later: boolean;
-  watch_later_saved_at?: string | null;
-  favorite: boolean;
-  favorite_saved_at?: string | null;
-};
-
-export type StudentHomeVideoMedia = {
-  media_id: string;
-  title: string;
-  mime_type?: string | null;
-  stream_path: string;
-  thumbnail_path?: string | null;
-  duration_seconds?: number | null;
-  subtitle_tracks?: StudentVideoSubtitleTrack[];
-};
-
-export type StudentHomeVideoFeedItem = {
-  id: string;
-  instance_id: string;
+export type StudentRelatedPoint = {
   node_id: string;
-  placement_node_id: string;
-  canonical_point_id: string;
-  chapter_id: string;
-  title: string;
-  summary: string;
-  snippet: string;
-  catalog_path: string[];
-  badges: string[];
-  video: StudentHomeVideoMedia;
-  target: StudentVideoLibraryRouteTarget;
-  personal_state: StudentVideoPersonalState;
-  reason: StudentHomeVideoFeedReason;
-};
-
-export type StudentHomeVideoFeedResponse = {
-  status: StudentHomeVideoFeedStatus;
-  message: string;
-  topic: StudentHomeVideoTopic | string;
-  next_cursor?: string | null;
-  has_more: boolean;
-  batch_size: number;
-  pool_size: number;
-  repeat_mode: StudentHomeVideoRepeatMode;
-  items: StudentHomeVideoFeedItem[];
-};
-
-export type StudentVideoSaveType = "watch_later" | "favorite";
-
-export type StudentVideoSaveRequest = {
-  placement_node_id: string;
-  media_id: string;
+  placement_node_id?: string | null;
   canonical_point_id?: string | null;
-  source?: string;
-};
-
-export type StudentVideoSaveResponse = {
-  save_type: StudentVideoSaveType;
-  placement_node_id: string;
-  canonical_point_id: string;
-  media_id: string;
-  active: boolean;
-  personal_state: StudentVideoPersonalState;
-};
-
-export type PosttestExperimentSummary = {
-  id: string;
-  code: string;
   title: string;
-  parent_code?: string | null;
-  parent_title?: string | null;
+  relation_type?: string | null;
+  source_node_id?: string | null;
 };
 
-export type StudentPosttestResponse = {
-  status: "in_progress" | "completed";
-  session_id: string;
-  experiments: PosttestExperimentSummary[];
-  questions: PublicPosttestQuestion[];
-};
-
-export type StudentPosttestAnswer = {
-  question_id: string;
-  answer: unknown;
-};
-
-export type StudentPosttestWrongAnswer = {
-  question_id: string;
-  experiment_id: string;
-  experiment_title: string;
-  question_type: string;
-  stem: string;
-  options: PretestQuestionOption[];
-  submitted_answer: unknown;
-  correct_answer: unknown;
-  explanation?: string | null;
-};
-
-export type StudentPosttestMasteryChange = {
-  knowledge_point_id: string;
-  experiment_id?: string | null;
-  experiment_title?: string | null;
-  content?: string | null;
-  before_score: number;
-  after_score: number;
-  delta: number;
-};
-
-export type StudentPosttestReport = {
-  session_id: string;
-  experiments: PosttestExperimentSummary[];
-  correct_count: number;
-  total_count: number;
-  score: number;
-  correct_rate: number;
-  mastery_before_average?: number | null;
-  mastery_after_average?: number | null;
-  mastery_delta?: number | null;
-  mastery_changes: StudentPosttestMasteryChange[];
-  wrong_answers: StudentPosttestWrongAnswer[];
-  next_recommendation: string;
-};
-
-export type StudentPosttestSubmitResponse = {
-  status: "completed";
-  report: StudentPosttestReport;
-};
-
-export type StudentAssessmentReportType = "pretest" | "smart" | "custom" | "point" | "posttest";
-
-export type StudentAssessmentReportGeneratedText = {
-  text: string;
-  source: "ai" | "fallback";
-  mode: string;
-  generated_at?: string | null;
-};
-
-export type StudentAssessmentReportSummary = {
-  id: string;
-  student_id: string;
-  class_id?: string | null;
-  report_type: StudentAssessmentReportType;
-  source_session_id: string;
+export type PointDetail = {
+  node_id: string;
+  canonical_node_id?: string;
+  source_node_id?: string | null;
+  placement_node_id?: string | null;
+  canonical_point_id?: string | null;
   title: string;
+  summary?: string | null;
+  chapter_id?: string | null;
+  breadcrumbs?: StudentCatalogBreadcrumb[];
+  principle_text?: string | null;
+  principle_equation?: string | null;
+  phenomenon_explanation?: string | null;
+  safety_note?: string | null;
+  videos?: StudentVideo[];
+  related_points?: StudentRelatedPoint[];
+  assessment_context?: {
+    point_node_id?: string | null;
+    placement_node_id?: string | null;
+    canonical_point_id?: string | null;
+    chapter_id?: string | null;
+    source_node_id?: string | null;
+    catalog_path?: StudentCatalogBreadcrumb[];
+  } | null;
+};
+
+export type AssessmentReportSummary = {
+  id: string;
+  title: string;
+  report_type?: string;
+  source_session_id?: string;
   score: number;
   correct_count: number;
   total_count: number;
-  correct_rate: number;
-  wrong_count: number;
+  correct_rate?: number;
+  wrong_count?: number;
   completed_at: string;
 };
 
-export type StudentAssessmentReport = StudentAssessmentReportSummary & {
-  summary: StudentAssessmentReportGeneratedText;
-  mistake_explanation: StudentAssessmentReportGeneratedText;
-  prompt_snapshot: Record<string, unknown>;
-  payload: {
-    assessment_mode?: StudentAssessmentReportType | string;
-    strategy?: SmartAssessmentStrategy;
-    composition?: SmartAssessmentCompositionSummary;
-    experiments?: SmartAssessmentExperimentSummary[];
-    questions?: Array<Record<string, unknown>>;
-    wrong_answers?: StudentSmartAssessmentWrongAnswer[];
-    mastery_changes?: StudentSmartAssessmentMasteryChange[];
-    mastery_before_average?: number | null;
-    mastery_after_average?: number | null;
-    mastery_delta?: number | null;
-    next_recommendation?: string;
-    [key: string]: unknown;
-  };
+export type AssessmentReportListResponse = {
+  reports: AssessmentReportSummary[];
 };
 
-export type StudentAssessmentReportListResponse = {
-  reports: StudentAssessmentReportSummary[];
+export type LegacyReportGeneratedText = {
+  text: string;
+  source?: "ai" | "fallback";
+  mode?: string;
+  generated_at?: string | null;
 };
+
+export type LegacyWrongQuestionExplanation = {
+  question_id: string;
+  stem: string;
+  experiment_title?: string;
+  question_type?: string;
+  submitted_answer: string;
+  correct_answer: string;
+  explanation: string;
+  explanation_source?: "stored" | "fallback";
+  options?: string[];
+};
+
+export type LegacyAssessmentReportDetail = AssessmentReportSummary & {
+  ai_summary: LegacyReportGeneratedText;
+  mistake_explanation?: LegacyReportGeneratedText | null;
+  next_steps?: string;
+  covered_experiments?: string[];
+  wrong_questions: LegacyWrongQuestionExplanation[];
+};
+
+export type AssessmentMode = "smart" | "custom" | "point";
+export type QuestionType = "single_choice" | "true_false" | "fill_blank";
 
 export type SmartAssessmentStrategy = {
-  enabled: boolean;
-  question_count: number;
-  untested_ratio_percent: number;
-  weak_tendency_percent: number;
-  max_questions_per_experiment: number;
-  weak_curve: number;
-  weak_max_bonus: number;
+  enabled?: boolean;
+  question_count?: number;
+  untested_ratio_percent?: number;
+  weak_tendency_percent?: number;
+  max_questions_per_experiment?: number;
+  weak_curve?: number;
+  weak_max_bonus?: number;
 };
 
-export type PublicSmartAssessmentQuestion = PublicPosttestQuestion & {
+export type SmartAssessmentCompositionSummary = {
+  total_questions: number;
+  target_question_count?: number;
+  requested_question_count?: number | null;
+  selected_point_count?: number;
+  candidate_point_count?: number;
+  untested_question_count?: number;
+  measured_question_count?: number;
+  custom_question_count?: number;
+  untested_ratio_percent?: number;
+  weak_tendency_percent?: number;
+  max_questions_per_experiment?: number;
+  warnings?: Record<string, unknown>;
+};
+
+export type PublicSmartAssessmentQuestion = {
+  id: string;
+  experiment_id?: string;
+  experiment_title?: string;
   point_node_ids?: string[];
   canonical_point_ids?: string[];
+  question_type: QuestionType;
+  stem: string;
+  options: Array<Record<string, unknown>>;
+  related_chapter_ids?: string[];
+  related_knowledge_point_ids?: string[];
 };
 
 export type SmartAssessmentPointSummary = {
@@ -620,19 +347,24 @@ export type SmartAssessmentPointSummary = {
   mastery_score?: number | null;
   before_score?: number | null;
   after_score?: number | null;
-  evidence_count: number;
-  source: "measured" | "untested" | "custom" | "point";
+  evidence_count?: number;
+  source?: "measured" | "untested" | "custom" | "point";
   draw_tickets?: number | null;
-  question_count: number;
+  question_count?: number;
   reason?: string | null;
 };
 
-export type SmartAssessmentExperimentSummary = PosttestExperimentSummary & {
+export type SmartAssessmentExperimentSummary = {
+  id: string;
+  code?: string;
+  title: string;
+  parent_code?: string | null;
+  parent_title?: string | null;
   mastery_score?: number | null;
-  evidence_count: number;
-  source: "measured" | "untested" | "custom" | "point";
+  evidence_count?: number;
+  source?: "measured" | "untested" | "custom" | "point";
   draw_tickets?: number | null;
-  question_count: number;
+  question_count?: number;
   measured_point_count?: number;
   total_point_count?: number;
   weak_point_count?: number;
@@ -640,80 +372,14 @@ export type SmartAssessmentExperimentSummary = PosttestExperimentSummary & {
   points?: SmartAssessmentPointSummary[];
 };
 
-export type SmartAssessmentCompositionSummary = {
-  total_questions: number;
-  target_question_count: number;
-  requested_question_count?: number | null;
-  selected_point_count?: number;
-  candidate_point_count?: number;
-  untested_question_count: number;
-  measured_question_count: number;
-  custom_question_count?: number;
-  untested_ratio_percent: number;
-  weak_tendency_percent: number;
-  max_questions_per_experiment: number;
-  warnings: Record<string, unknown>;
-};
-
-export type StudentSmartAssessmentResponse = {
+export type SmartAssessmentResponse = {
   status: "in_progress" | "completed";
   session_id: string;
-  assessment_mode?: "smart" | "custom" | "point";
-  strategy: SmartAssessmentStrategy;
-  composition: SmartAssessmentCompositionSummary;
-  experiments: SmartAssessmentExperimentSummary[];
-  questions: PublicSmartAssessmentQuestion[];
-};
-
-export type StudentSmartAssessmentAnswer = StudentPosttestAnswer;
-export type StudentSmartAssessmentWrongAnswer = StudentPosttestWrongAnswer & {
-  point_node_ids?: string[];
-  canonical_point_ids?: string[];
-};
-export type StudentSmartAssessmentMasteryChange = StudentPosttestMasteryChange & {
-  point_node_id?: string | null;
-  point_title?: string | null;
-  canonical_point_id?: string | null;
-};
-
-export type StudentSmartAssessmentReport = {
-  session_id: string;
-  assessment_mode?: "smart" | "custom" | "point";
-  strategy: SmartAssessmentStrategy;
-  composition: SmartAssessmentCompositionSummary;
-  experiments: SmartAssessmentExperimentSummary[];
-  correct_count: number;
-  total_count: number;
-  score: number;
-  correct_rate: number;
-  mastery_before_average?: number | null;
-  mastery_after_average?: number | null;
-  mastery_delta?: number | null;
-  mastery_changes: StudentSmartAssessmentMasteryChange[];
-  wrong_answers: StudentSmartAssessmentWrongAnswer[];
-  next_recommendation: string;
-};
-
-export type StudentSmartAssessmentSubmitResponse = {
-  status: "completed";
-  report: StudentSmartAssessmentReport;
-  assessment_report?: StudentAssessmentReport | null;
-};
-
-export type StudentAssessmentStatusResponse = {
-  has_completed_smart_baseline: boolean;
-  has_open_assessment: boolean;
-  open_session_id?: string | null;
-  open_assessment_mode?: "smart" | "custom" | "point" | null;
-  smart_baseline_prompt_dismissed: boolean;
-};
-
-export type CustomAssessmentOptionsSettings = {
-  enabled: boolean;
-  question_count_options: number[];
-  default_question_count: number;
-  max_question_count: number;
-  max_questions_per_experiment: number;
+  assessment_mode?: AssessmentMode;
+  strategy?: SmartAssessmentStrategy;
+  composition?: SmartAssessmentCompositionSummary;
+  experiments?: SmartAssessmentExperimentSummary[];
+  questions?: PublicSmartAssessmentQuestion[];
 };
 
 export type CustomAssessmentExperimentOption = {
@@ -725,201 +391,98 @@ export type CustomAssessmentExperimentOption = {
   question_count: number;
 };
 
-export type StudentCustomAssessmentOptionsResponse = {
+export type CustomAssessmentOptionsSettings = {
+  enabled: boolean;
+  question_count_options: number[];
+  default_question_count: number;
+  max_question_count?: number;
+  max_questions_per_experiment: number;
+};
+
+export type CustomAssessmentOptionsResponse = {
   settings: CustomAssessmentOptionsSettings;
   experiments: CustomAssessmentExperimentOption[];
 };
 
-export type AgentChatMessage = {
-  role: "user" | "assistant";
-  content: string;
+export type SmartAssessmentAnswer = {
+  question_id: string;
+  answer: unknown;
 };
 
-export type StudentAssistantFinalMetadata = {
-  source_count?: number;
-  conversation_title?: string;
-  suggested_prompts?: string[];
-  sources?: Array<{
-    title?: string | null;
-    section?: string | null;
-    score?: number | null;
-  }>;
-  [key: string]: unknown;
+export type SmartAssessmentWrongAnswer = {
+  question_id: string;
+  experiment_id?: string;
+  experiment_title?: string;
+  point_node_ids?: string[];
+  canonical_point_ids?: string[];
+  question_type?: string;
+  stem: string;
+  options?: Array<Record<string, unknown>>;
+  submitted_answer?: unknown;
+  correct_answer?: unknown;
+  explanation?: string | null;
 };
 
-export type StudentAssistantAskRequest = {
-  question: string;
-  context_type: "learning_home" | "experiment_group" | "experiment_detail" | "learning_profile" | "learning_point";
-  context_title: string;
-  context_summary: string;
-  chapter_id?: string | null;
-  experiment_id?: string | null;
+export type SmartAssessmentMasteryChange = {
+  knowledge_point_id: string;
   point_node_id?: string | null;
-  source_node_id?: string | null;
-  catalog_path?: string[];
-  knowledge_point_ids?: string[];
-  conversation_history?: AgentChatMessage[];
-};
-
-export type StudentAssistantGeneratedResponse = {
-  text: string;
-  source: "ai" | "fallback";
-  mode: string;
-  cached: boolean;
-};
-
-export type StudentFeedbackType = "system_issue" | "course_content" | "experiment_resource" | "ai_answer" | "other";
-
-export type StudentFeedbackSubmit = {
-  feedback_type: StudentFeedbackType;
-  content: string;
-  page_path?: string | null;
-  chapter_id?: string | null;
-  unit_id?: string | null;
-  knowledge_point_id?: string | null;
+  point_title?: string | null;
   experiment_id?: string | null;
-  point_node_id?: string | null;
-  catalog_path?: string[];
-  metadata?: Record<string, unknown>;
-  attachment?: File | null;
+  experiment_title?: string | null;
+  canonical_point_id?: string | null;
+  content?: string | null;
+  before_score: number;
+  after_score: number;
+  delta: number;
 };
 
-export type StudentFeedbackSubmitResponse = {
-  id: string;
-  status: string;
-  attachment_count: number;
+export type SmartAssessmentReport = {
+  session_id: string;
+  assessment_mode?: AssessmentMode;
+  strategy?: SmartAssessmentStrategy;
+  composition?: SmartAssessmentCompositionSummary;
+  experiments?: SmartAssessmentExperimentSummary[];
+  correct_count: number;
+  total_count: number;
+  score: number;
+  correct_rate: number;
+  mastery_before_average?: number | null;
+  mastery_after_average?: number | null;
+  mastery_delta?: number | null;
+  mastery_changes?: SmartAssessmentMasteryChange[];
+  wrong_answers?: SmartAssessmentWrongAnswer[];
+  next_recommendation?: string;
 };
 
-export type StudentAssistantStreamEvent =
-  | { event: "status"; message?: string }
-  | { event: "thinking"; source?: "reasoning_summary" | "agent_trace"; message?: string; phase?: string; sequence?: number }
-  | { event: "delta"; delta?: string }
-  | { event: "replace"; answer?: string }
-  | { event: "final"; response?: StudentAssistantFinalMetadata | unknown }
-  | { event: "error"; message?: string }
-  | { event: string; [key: string]: unknown };
-
-export type StudentFeedbackSubmitRequest = {
-  feedback_type?: string;
-  content: string;
-  chapter_id?: string | null;
-  unit_id?: string | null;
-  knowledge_point_id?: string | null;
-  experiment_id?: string | null;
-  point_node_id?: string | null;
-  catalog_path?: string[];
-  page_path?: string | null;
-  metadata?: Record<string, unknown>;
-  attachment?: File | null;
-};
-
-export type StudentFeedbackItem = {
-  id: string;
-  student_id: string;
-  class_id?: string | null;
-  feedback_type: string;
-  content: string;
-  status: string;
-  chapter_id?: string | null;
-  unit_id?: string | null;
-  knowledge_point_id?: string | null;
-  experiment_id?: string | null;
-  point_node_id?: string | null;
-  catalog_path?: string[];
-  page_path?: string | null;
-  metadata?: Record<string, unknown>;
-  attachment_count?: number;
-  attachments?: Array<{
-    id: string;
-    feedback_id: string;
-    original_file_name?: string | null;
-    mime_type: string;
-    file_size_bytes: number;
-    created_at?: string | null;
-  }>;
-  created_at?: string | null;
-  updated_at?: string | null;
+export type SmartAssessmentSubmitResponse = {
+  status: "completed";
+  report: SmartAssessmentReport;
+  assessment_report?: AssessmentReportSummary | null;
 };
 
 export const apiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
-const tokenKey = "chem_student_token";
-const previewTokenKey = "chem_student_preview_token";
-const previewModeKey = "chem_student_preview_active";
+const tokenKey = "chem_student_old_token";
+let authToken = readStoredToken();
 
-type AuthTokenMode = "normal" | "preview";
-
-function browserStorage(): Storage | null {
+function readStoredToken(): string {
   try {
-    return globalThis.localStorage ?? null;
+    return globalThis.localStorage?.getItem(tokenKey) || "";
   } catch {
-    return null;
+    return "";
   }
 }
-
-function browserSessionStorage(): Storage | null {
-  try {
-    return globalThis.sessionStorage ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function readInitialAuth(): { token: string; mode: AuthTokenMode } {
-  const session = browserSessionStorage();
-  const previewToken = session?.getItem(previewTokenKey) || "";
-  if (previewToken && session?.getItem(previewModeKey) === "true") {
-    return { token: previewToken, mode: "preview" };
-  }
-  return { token: browserStorage()?.getItem(tokenKey) || "", mode: "normal" };
-}
-
-const initialAuth = readInitialAuth();
-let authToken = initialAuth.token;
-let authTokenMode: AuthTokenMode = initialAuth.mode;
 
 export function getAuthToken(): string {
   return authToken;
 }
 
-export function isPreviewAuthSession(): boolean {
-  return authTokenMode === "preview";
-}
-
-export function setAuthToken(token: string, mode: AuthTokenMode = token ? "normal" : authTokenMode): void {
+export function setAuthToken(token: string): void {
   authToken = token;
-  authTokenMode = mode;
-  const storage = browserStorage();
-  const session = browserSessionStorage();
-  if (mode === "preview") {
-    if (token) {
-      session?.setItem(previewTokenKey, token);
-      session?.setItem(previewModeKey, "true");
-    } else {
-      session?.removeItem(previewTokenKey);
-      session?.removeItem(previewModeKey);
-    }
-    return;
-  }
-  session?.removeItem(previewTokenKey);
-  session?.removeItem(previewModeKey);
-  if (token) {
-    storage?.setItem(tokenKey, token);
-  } else {
-    storage?.removeItem(tokenKey);
-  }
-}
-
-export function setPreviewAuthToken(token: string): void {
-  setAuthToken(token, "preview");
-}
-
-export function clearPreviewAuthToken(): void {
-  const session = browserSessionStorage();
-  session?.removeItem(previewTokenKey);
-  session?.removeItem(previewModeKey);
-  if (authTokenMode === "preview") {
-    authToken = browserStorage()?.getItem(tokenKey) || "";
-    authTokenMode = "normal";
+  try {
+    if (token) globalThis.localStorage?.setItem(tokenKey, token);
+    else globalThis.localStorage?.removeItem(tokenKey);
+  } catch {
+    // The in-memory token is enough for tests and restricted browser contexts.
   }
 }
 
@@ -934,34 +497,33 @@ export class ApiError extends Error {
   }
 }
 
-export function errorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
-    if (error.status === 409) {
-      if (typeof error.detail === "string" && error.detail.includes("Pretest question bank")) {
-        return "课前摸底题库暂未配置，请联系教师";
-      }
-      if (typeof error.detail === "string" && error.detail.includes("Posttest question bank")) {
-        return "课后摸底题库暂未配置，请联系教师";
-      }
-      if (typeof error.detail === "string" && error.detail.includes("Smart assessment question bank")) {
-        return "智能组卷题库暂未配置，请联系教师";
-      }
-      if (typeof error.detail === "string" && error.detail.includes("Custom assessment")) {
-        return "自主测评暂不可用，请联系教师";
-      }
-      if (typeof error.detail === "string" && error.detail.includes("No learning experiments")) {
-        return "请先进入至少一个实验详情页学习";
-      }
-      if (typeof error.detail === "string" && error.detail.includes("AI")) {
-        return error.detail;
-      }
-      return "账号或题库配置异常，请联系教师";
-    }
-    if (typeof error.detail === "string") return error.detail;
-    return "请求失败，请稍后重试";
+function apiErrorDetailText(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+  if (detail && typeof detail === "object") {
+    const message = (detail as { message?: unknown }).message;
+    if (typeof message === "string") return message;
   }
-  if (error instanceof Error) return error.message;
-  return "请求失败，请稍后重试";
+  return "";
+}
+
+export function legacyStudentErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    const detail = apiErrorDetailText(error.detail);
+    if (error.status === 401) return "登录状态已失效，请重新登录。";
+    if (error.status === 404) return "暂未找到对应的实验学习内容。";
+    if (error.status === 400) {
+      if (detail.includes("Submitted answers must match")) return "本轮题目状态已变化，请返回评测重新开始。";
+      return "当前提交内容不完整，请检查题目后重试。";
+    }
+    if (error.status === 409) {
+      if (detail.includes("No active assessment session")) return "本轮测评已经提交或已失效，请返回评测重新开始。";
+      if (detail.includes("question bank has changed")) return "题库内容已更新，请返回评测重新开始。";
+      return "本轮测评状态已变化，请返回评测重新开始。";
+    }
+    if (error.status >= 500) return "学习服务暂不可用，请稍后再试。";
+    return "当前操作未完成，请检查学习条件后重试。";
+  }
+  return "当前操作未完成，请稍后再试。";
 }
 
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -969,17 +531,14 @@ async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!(options.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  if (authToken) {
-    headers.set("Authorization", `Bearer ${authToken}`);
-  }
+  if (authToken) headers.set("Authorization", `Bearer ${authToken}`);
   const response = await fetch(`${apiBase}${path}`, { ...options, headers });
   const contentType = response.headers.get("content-type") || "";
   const payload = contentType.includes("application/json") ? await response.json() : await response.text();
-  if (response.status === 401) {
-    setAuthToken("");
-  }
+  if (response.status === 401) setAuthToken("");
   if (!response.ok) {
-    throw new ApiError(response.status, typeof payload === "object" && payload ? payload.detail : payload);
+    const detail = typeof payload === "object" && payload ? (payload as { detail?: unknown }).detail : payload;
+    throw new ApiError(response.status, detail);
   }
   return payload as T;
 }
@@ -988,301 +547,88 @@ function postJson<T>(path: string, body: unknown): Promise<T> {
   return api<T>(path, { method: "POST", body: JSON.stringify(body) });
 }
 
-function appendOptionalFormValue(formData: FormData, key: string, value: unknown): void {
-  const text = String(value || "").trim();
-  if (text) formData.append(key, text);
-}
-
-function parseSseBlock(block: string): StudentAssistantStreamEvent | null {
-  if (!block.trim()) return null;
-  let event = "message";
-  const dataLines: string[] = [];
-  for (const rawLine of block.split("\n")) {
-    const line = rawLine.trimEnd();
-    if (line.startsWith("event:")) {
-      event = line.slice(6).trim();
-    } else if (line.startsWith("data:")) {
-      dataLines.push(line.slice(5).trimStart());
-    }
-  }
-  let payload: Record<string, unknown> = {};
-  if (dataLines.length) {
-    try {
-      const parsed = JSON.parse(dataLines.join("\n"));
-      payload = typeof parsed === "object" && parsed ? parsed : {};
-    } catch {
-      payload = { message: dataLines.join("\n") };
-    }
-  }
-  return { event, ...payload } as StudentAssistantStreamEvent;
-}
-
-export async function streamStudentAssistantAsk(
-  payload: StudentAssistantAskRequest,
-  onEvent: (event: StudentAssistantStreamEvent) => void,
-  options: { signal?: AbortSignal } = {},
-): Promise<void> {
-  const headers = new Headers({ "Content-Type": "application/json" });
-  if (authToken) headers.set("Authorization", `Bearer ${authToken}`);
-  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
-  const response = await fetch(`${apiBase}/api/student/assistant/ask/stream`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-    signal: options.signal,
-  });
-  if (response.status === 401) setAuthToken("");
-  if (!response.ok) {
-    const contentType = response.headers.get("content-type") || "";
-    const errorPayload = contentType.includes("application/json") ? await response.json() : await response.text();
-    throw new ApiError(response.status, typeof errorPayload === "object" && errorPayload ? errorPayload.detail : errorPayload);
-  }
-  if (!response.body) throw new Error("Atom 响应流不可用");
-
-  reader = response.body.getReader();
-  const abortReader = () => {
-    void reader?.cancel().catch(() => undefined);
-  };
-  options.signal?.addEventListener("abort", abortReader, { once: true });
-  try {
-    const decoder = new TextDecoder();
-    let buffer = "";
-    while (true) {
-      if (options.signal?.aborted) {
-        await reader.cancel().catch(() => undefined);
-        break;
-      }
-      const { value, done } = await reader.read();
-      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
-      const blocks = buffer.split("\n\n");
-      buffer = blocks.pop() || "";
-      for (const block of blocks) {
-        const event = parseSseBlock(block);
-        if (event) onEvent(event);
-      }
-      if (done) break;
-    }
-    if (!options.signal?.aborted) {
-      const event = parseSseBlock(buffer);
-      if (event) onEvent(event);
-    }
-  } finally {
-    options.signal?.removeEventListener("abort", abortReader);
-  }
-}
-
-export function isStudentAssistantStreamAbort(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
-}
-
 export function studentLogin(studentId: string, password: string): Promise<LoginResponse> {
-  return postJson<LoginResponse>("/api/auth/student/login", {
-    student_id: studentId,
-    password,
-  });
-}
-
-export function exchangeStudentPreviewTicket(ticket: string): Promise<LoginResponse> {
-  return postJson<LoginResponse>("/api/preview/student-session/exchange", { ticket });
-}
-
-export function changeStudentPassword(newPassword: string, currentPassword?: string): Promise<LoginResponse> {
-  return postJson<LoginResponse>("/api/auth/student/password", {
-    current_password: currentPassword || undefined,
-    new_password: newPassword,
-  });
+  return postJson<LoginResponse>("/api/auth/student/login", { student_id: studentId, password });
 }
 
 export function loadCurrentUser(): Promise<AuthUser> {
   return api<AuthUser>("/api/auth/me");
 }
 
-export function getStudentAppConfig(): Promise<StudentAppConfigResponse> {
-  return api<StudentAppConfigResponse>("/api/student/app-config");
-}
-
-export function startStudentPretest(): Promise<StudentPretestResponse> {
-  return postJson<StudentPretestResponse>("/api/student/pretest/start", {});
-}
-
-export function submitStudentPretest(stage: 1 | 2, answers: StudentPretestAnswer[]): Promise<StudentPretestResponse> {
-  return postJson<StudentPretestResponse>("/api/student/pretest/submit", {
-    stage,
-    answers,
-  });
-}
-
-export function getStudentAssessmentReports(): Promise<StudentAssessmentReportListResponse> {
-  return api<StudentAssessmentReportListResponse>("/api/student/assessment-reports");
-}
-
-export function getStudentAssessmentReport(reportId: string): Promise<StudentAssessmentReport> {
-  return api<StudentAssessmentReport>(`/api/student/assessment-reports/${encodeURIComponent(reportId)}`);
-}
-
-export function getStudentLearningHome(): Promise<StudentLearningHomeResponse> {
-  return api<StudentLearningHomeResponse>("/api/student/learning-home");
-}
-
-export function getStudentHomeVideoFeed(options: number | { limit?: number; topic?: string; cursor?: string | null } = 12): Promise<StudentHomeVideoFeedResponse> {
-  const payload = typeof options === "number" ? { limit: options } : options;
-  const params = new URLSearchParams({ limit: String(payload.limit ?? 12) });
-  if (payload.topic) params.set("topic", payload.topic);
-  if (payload.cursor) params.set("cursor", payload.cursor);
-  return api<StudentHomeVideoFeedResponse>(`/api/student/home-video-feed?${params.toString()}`);
-}
-
-export function saveStudentVideo(saveType: StudentVideoSaveType, payload: StudentVideoSaveRequest): Promise<StudentVideoSaveResponse> {
-  return api<StudentVideoSaveResponse>(`/api/student/video-saves/${encodeURIComponent(saveType)}`, {
-    method: "PUT",
-    body: JSON.stringify(payload),
-  });
-}
-
-export function removeStudentVideoSave(saveType: StudentVideoSaveType, payload: StudentVideoSaveRequest): Promise<StudentVideoSaveResponse> {
-  return api<StudentVideoSaveResponse>(`/api/student/video-saves/${encodeURIComponent(saveType)}`, {
-    method: "DELETE",
-    body: JSON.stringify(payload),
-  });
-}
-
-export function getStudentFavoriteVideoFeed(limit = 12, cursor?: string | null): Promise<StudentHomeVideoFeedResponse> {
-  const params = new URLSearchParams({ limit: String(limit) });
+export function loadHomeVideoFeed(limit = 18, cursor?: string | null): Promise<HomeVideoFeedResponse> {
+  const params = new URLSearchParams({ limit: String(limit), topic: "all" });
   if (cursor) params.set("cursor", cursor);
-  return api<StudentHomeVideoFeedResponse>(`/api/student/video-saves/favorite/feed?${params.toString()}`);
+  return api<HomeVideoFeedResponse>(`/api/student/home-video-feed?${params.toString()}`);
 }
 
-export function getStudentLearningPage(profileId?: string | null): Promise<StudentLearningPageResponse> {
+export function loadLegacyVideoPoints(query = "", limit = 200): Promise<LegacyVideoPointResponse> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (query.trim()) params.set("q", query.trim());
+  return api<LegacyVideoPointResponse>(`/api/student/legacy/video-points?${params.toString()}`);
+}
+
+export function searchVideoLibrary(query: string, limit = 24): Promise<StudentVideoLibrarySearchResponse> {
+  const params = new URLSearchParams({ domain: "experiment_video", limit: String(limit), q: query });
+  return api<StudentVideoLibrarySearchResponse>(`/api/student/video-library/search?${params.toString()}`);
+}
+
+export function loadLearningPage(profileId?: string | null): Promise<StudentLearningPageResponse> {
   const query = profileId ? `?profile_id=${encodeURIComponent(profileId)}` : "";
   return api<StudentLearningPageResponse>(`/api/student/learning-page${query}`);
 }
 
-export function getStudentChapterCatalog(chapterId: string): Promise<StudentCatalogChapterResponse> {
+export function loadChapterCatalog(chapterId: string): Promise<StudentCatalogChapterResponse> {
   return api<StudentCatalogChapterResponse>(`/api/student/chapters/${encodeURIComponent(chapterId)}/catalog`);
 }
 
-export function getStudentCatalogNode(nodeId: string): Promise<StudentCatalogNodeResponse> {
+export function loadCatalogNode(nodeId: string): Promise<StudentCatalogNodeResponse> {
   return api<StudentCatalogNodeResponse>(`/api/student/catalog/nodes/${encodeURIComponent(nodeId)}`);
 }
 
-export function getStudentCatalogPointDetail(nodeId: string): Promise<StudentPointDetailResponse> {
-  return api<StudentPointDetailResponse>(`/api/student/catalog/points/${encodeURIComponent(nodeId)}`);
+export function loadPointDetail(nodeId: string): Promise<PointDetail> {
+  return api<PointDetail>(`/api/student/catalog/points/${encodeURIComponent(nodeId)}`);
 }
 
-export function getPreviewCatalogPointDetail(nodeId: string, previewToken: string): Promise<StudentPointDetailResponse> {
-  const params = new URLSearchParams({ preview_token: previewToken });
-  return api<StudentPointDetailResponse>(`/api/preview/catalog/points/${encodeURIComponent(nodeId)}?${params.toString()}`);
+export function startSmartAssessment(): Promise<SmartAssessmentResponse> {
+  return postJson<SmartAssessmentResponse>("/api/student/smart-assessment/start", {});
 }
 
-export function getPreviewCatalogNode(nodeId: string, previewToken: string): Promise<CatalogPreviewNodeResponse> {
-  const params = new URLSearchParams({ preview_token: previewToken });
-  return api<CatalogPreviewNodeResponse>(`/api/preview/catalog/nodes/${encodeURIComponent(nodeId)}?${params.toString()}`);
-}
-
-export function searchStudentVideoLibrary(query = "", limit = 24): Promise<StudentVideoLibrarySearchResponse> {
-  const params = new URLSearchParams({ domain: "experiment_video", limit: String(limit) });
-  if (query.trim()) params.set("q", query.trim());
-  return api<StudentVideoLibrarySearchResponse>(`/api/student/video-library/search?${params.toString()}`);
-}
-
-export function startStudentPosttest(): Promise<StudentPosttestResponse> {
-  return postJson<StudentPosttestResponse>("/api/student/posttest/start", {});
-}
-
-export function submitStudentPosttest(sessionId: string, answers: StudentPosttestAnswer[]): Promise<StudentPosttestSubmitResponse> {
-  return postJson<StudentPosttestSubmitResponse>("/api/student/posttest/submit", {
-    session_id: sessionId,
-    answers,
-  });
-}
-
-export function startStudentSmartAssessment(): Promise<StudentSmartAssessmentResponse> {
-  return postJson<StudentSmartAssessmentResponse>("/api/student/smart-assessment/start", {});
-}
-
-export function getStudentAssessmentStatus(): Promise<StudentAssessmentStatusResponse> {
-  return api<StudentAssessmentStatusResponse>("/api/student/assessment/status");
-}
-
-export function dismissStudentSmartBaselinePrompt(): Promise<StudentAssessmentStatusResponse> {
-  return postJson<StudentAssessmentStatusResponse>("/api/student/assessment/baseline-prompt-dismiss", {});
-}
-
-export function startStudentPointAssessment(pointNodeId: string): Promise<StudentSmartAssessmentResponse> {
-  return postJson<StudentSmartAssessmentResponse>("/api/student/point-assessment/start", {
+export function startPointAssessment(pointNodeId: string): Promise<SmartAssessmentResponse> {
+  return postJson<SmartAssessmentResponse>("/api/student/point-assessment/start", {
     point_node_id: pointNodeId,
   });
 }
 
-export function getStudentCustomAssessmentOptions(): Promise<StudentCustomAssessmentOptionsResponse> {
-  return api<StudentCustomAssessmentOptionsResponse>("/api/student/custom-assessment/options");
+export function loadCustomAssessmentOptions(): Promise<CustomAssessmentOptionsResponse> {
+  return api<CustomAssessmentOptionsResponse>("/api/student/custom-assessment/options");
 }
 
-export function startStudentCustomAssessment(
-  experimentIds: string[],
-  questionCount: number,
-): Promise<StudentSmartAssessmentResponse> {
-  return postJson<StudentSmartAssessmentResponse>("/api/student/custom-assessment/start", {
+export function startCustomAssessment(experimentIds: string[], questionCount: number): Promise<SmartAssessmentResponse> {
+  return postJson<SmartAssessmentResponse>("/api/student/custom-assessment/start", {
     experiment_ids: experimentIds,
     question_count: questionCount,
   });
 }
 
-export function submitStudentSmartAssessment(
-  sessionId: string,
-  answers: StudentSmartAssessmentAnswer[],
-): Promise<StudentSmartAssessmentSubmitResponse> {
-  return postJson<StudentSmartAssessmentSubmitResponse>("/api/student/smart-assessment/submit", {
+export function submitSmartAssessment(sessionId: string, answers: SmartAssessmentAnswer[]): Promise<SmartAssessmentSubmitResponse> {
+  return postJson<SmartAssessmentSubmitResponse>("/api/student/legacy/smart-assessment/submit", {
     session_id: sessionId,
     answers,
   });
 }
 
-export function generatePosttestAiSummary(sessionId: string): Promise<StudentAssistantGeneratedResponse> {
-  return postJson<StudentAssistantGeneratedResponse>("/api/student/assistant/posttest-summary", {
-    session_id: sessionId,
-  });
+export function loadLegacyAssessmentReports(): Promise<AssessmentReportListResponse> {
+  return api<AssessmentReportListResponse>("/api/student/legacy/reports");
 }
 
-export function explainPosttestMistakes(sessionId: string): Promise<StudentAssistantGeneratedResponse> {
-  return postJson<StudentAssistantGeneratedResponse>("/api/student/assistant/posttest-mistakes", {
-    session_id: sessionId,
-  });
+export function loadLegacyAssessmentReport(reportId: string): Promise<LegacyAssessmentReportDetail> {
+  return api<LegacyAssessmentReportDetail>(`/api/student/legacy/reports/${encodeURIComponent(reportId)}`);
 }
 
-export function submitStudentFeedback(payload: StudentFeedbackSubmitRequest): Promise<StudentFeedbackItem> {
-  const formData = new FormData();
-  formData.append("feedback_type", payload.feedback_type || "other");
-  formData.append("content", payload.content);
-  appendOptionalFormValue(formData, "page_path", payload.page_path);
-  appendOptionalFormValue(formData, "chapter_id", payload.chapter_id);
-  appendOptionalFormValue(formData, "unit_id", payload.unit_id);
-  appendOptionalFormValue(formData, "knowledge_point_id", payload.knowledge_point_id);
-  appendOptionalFormValue(formData, "experiment_id", payload.experiment_id);
-  appendOptionalFormValue(formData, "point_node_id", payload.point_node_id);
-  if (payload.catalog_path?.length) formData.append("catalog_path", JSON.stringify(payload.catalog_path));
-  const metadata = { ...(payload.metadata || {}) };
-  if (payload.catalog_path?.length) metadata.catalog_path = payload.catalog_path;
-  if (payload.point_node_id) metadata.point_node_id = payload.point_node_id;
-  if (Object.keys(metadata).length) formData.append("metadata", JSON.stringify(metadata));
-  if (payload.attachment) formData.append("attachment", payload.attachment);
-  return api<StudentFeedbackItem>("/api/student/feedback", { method: "POST", body: formData });
-}
-
-export function studentMediaUrl(path: string): string {
+export function mediaUrl(path?: string | null): string {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  if (!authToken) return `${apiBase}${path}`;
   const separator = path.includes("?") ? "&" : "?";
   return `${apiBase}${path}${separator}access_token=${encodeURIComponent(authToken)}`;
-}
-
-export function previewMediaUrl(path: string): string {
-  return `${apiBase}${path}`;
-}
-
-export async function logout(): Promise<void> {
-  if (!authToken) return;
-  try {
-    await postJson<{ ok: boolean }>("/api/auth/logout", {});
-  } finally {
-    setAuthToken("");
-  }
 }

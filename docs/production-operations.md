@@ -6,12 +6,10 @@ This document records the operational baseline for turning the admin platform in
 
 Whole-application structural changes are governed by `docs/application-engineering-structure.md` and the OpenSpec change `standardize-application-engineering-structure`.
 
-The current application is treated as three coupled engineering surfaces plus a validation/service graph:
+The legacy branch application is treated as two frontend surfaces plus the backend and validation/service graph:
 
 - student H5 frontend: `apps/web-student`
-- teacher console frontend: `apps/web-teacher`
-- platform operations frontend: `apps/web-admin`
-- optional legacy competition frontends: `apps/web-student-old` and `apps/web-teacher-old`
+- backoffice frontend: `apps/web-backoffice`
 - backend service: `server/app`
 - required Compose and validation scripts: `docker-compose.yml` and `scripts/`
 
@@ -70,11 +68,10 @@ Production deployments must set:
 - `VIDEO_DUPLICATE_DURATION_TOLERANCE_RATIO=0.001`, `VIDEO_DUPLICATE_DURATION_TOLERANCE_FLOOR_SECONDS=0.5`, and `VIDEO_DUPLICATE_DURATION_TOLERANCE_CEILING_SECONDS=2.0` for near-equal duration gating
 - `API_PUBLIC_BASE_URL`
 - `FRONTEND_ALLOWED_ORIGINS`
-- `STUDENT_PREVIEW_APP_BASE_URL` pointing to the student H5 origin used inside teacher device preview if it differs from the default student service origin
+- `STUDENT_PREVIEW_APP_BASE_URL` pointing to the student H5 origin used inside backoffice preview if it differs from the default student service origin
 - `STUDENT_PREVIEW_ALLOWED_ORIGINS` listing the student H5 origins allowed to exchange preview tickets
 - `STUDENT_PREVIEW_TICKET_EXPIRE_MINUTES` and `STUDENT_PREVIEW_SESSION_EXPIRE_MINUTES` for bootstrap ticket and preview student session lifetimes
 - `AUTH_SECRET_KEY` with a long random value
-- `WEB_ADMIN_ACCESS_TOKEN` with a long random value used to open `web-admin`
 - `AGENT_LLM_PROVIDER=disabled` when no LLM provider is configured, or provider credentials/model when enabled
 - `VIDEO_LIBRARY_SEARCH_ENABLED=true` for the student H5 experiment video library search entry
 - `VIDEO_LIBRARY_SEARCH_BACKEND=elasticsearch`; production video-library search requires Elasticsearch with IK analysis
@@ -96,24 +93,14 @@ Compose owns the production-like application graph. Build and start all required
 python scripts/deploy_compose_stack.py
 ```
 
-The deploy script runs `docker compose up -d --build --remove-orphans` for the canonical default services, then performs the Compose smoke validation. This intentionally removes obsolete service containers such as the historical `admin-web` and `student-web` after the product split.
-
-For the lower-level BKT competition demo, include the optional legacy frontends:
-
-```powershell
-python scripts/deploy_compose_stack.py --include-legacy
-```
-
-This adds `web-student-old` and `web-teacher-old` without adding a second backend, database, seed corpus, media store, question bank, mastery table, or analytics import.
+The deploy script runs `docker compose up -d --build --remove-orphans` for the canonical default services, then performs the Compose smoke validation. This intentionally removes obsolete service containers such as historical current-product or `*-old` frontend services.
 
 For routine development after the stack already exists, rebuild and recreate only the service that owns the changed code or configuration:
 
 ```powershell
 docker compose up -d --build backend
-docker compose up -d --build web-teacher
 docker compose up -d --build web-student
-docker compose up -d --build web-admin
-docker compose up -d --build video-worker
+docker compose up -d --build web-backoffice
 ```
 
 Reserve full-stack image rebuilds for initial setup, shared base-image or Compose-topology changes, multi-service dependency changes, release smoke checks, or explicitly requested full validation. Do not run `docker builder prune`, `docker buildx prune`, `docker system prune`, or no-cache rebuilds as routine development startup; use them only as documented recovery for cache corruption or disk pressure after service-scoped restart or rebuild has been tried.
@@ -121,17 +108,11 @@ Reserve full-stack image rebuilds for initial setup, shared base-image or Compos
 Default Compose services:
 
 - `postgres`: pgvector Postgres with `pg_isready` health check.
-- `elasticsearch`: Elasticsearch with the IK analyzer plugin. Compose builds `chemistry-admin-elasticsearch-ik:8.11.3` from Elastic's official `docker.elastic.co/elasticsearch/elasticsearch:8.11.3` image and installs INFINI Labs `analysis-ik` `8.11.3`. It disables security for local development, exposes port `9200`, and health-checks the HTTP endpoint.
 - `backend`: FastAPI API service. It serves `/health` and `/api/*` only.
-- `web-student`: student H5 frontend service at `http://127.0.0.1:5173`, serving SPA routes from its own nginx runtime and proxying `/api/*` to `backend:8000`.
-- `web-teacher`: teacher console service at `http://127.0.0.1:5174`, serving canonical root routes such as `/login`, `/overview`, `/experiments`, and `/videos` from its own nginx runtime and proxying `/api/*` to `backend:8000`.
-- `web-admin`: platform operations service at `http://127.0.0.1:5175`, serving the teacher-account management workbench and proxying `/api/*` to `backend:8000`.
-- `web-student-old`: optional legacy student frontend, default Compose endpoint `http://222.200.189.249:15176`, serving old SPA routes and proxying `/api/*` to `backend:8000`.
-- `web-teacher-old`: optional legacy teacher frontend, default Compose endpoint `http://127.0.0.1:15177`, serving old SPA routes and proxying `/api/*` to `backend:8000`.
-- `tusd`: resumable upload receiver sharing `data/media`.
-- `video-worker`: local video processing worker sharing `data/media`.
+- `web-student`: student frontend service at `http://127.0.0.1:15176`, serving SPA routes from its own nginx runtime and proxying `/api/*` to `backend:8000`.
+- `web-backoffice`: backoffice frontend service at `http://127.0.0.1:15177`, serving management routes from its own nginx runtime and proxying `/api/*` to `backend:8000`.
 
-The backend depends on the PostgreSQL and Elasticsearch health checks. The frontend services depend on backend health. If a production-like run swaps the search image, verify the replacement image provides the `ik_max_word` tokenizer before bootstrapping the `student-video-library` index.
+The backend depends on the PostgreSQL health check. The frontend services depend on backend health. The legacy default Compose stack does not start Elasticsearch; student video-library search uses local fallback unless a deployment explicitly adds an Elasticsearch service and enables it.
 
 ### Video-worker FFmpeg Archive Cache
 
@@ -174,11 +155,9 @@ Student and teacher preview players load subtitles through browser-native `<trac
 
 The Compose Postgres service is available to other containers as `postgres:5432`. Its host binding defaults to `127.0.0.1:15432` to avoid collisions with a developer's local Postgres. Host-side scripts and validation defaults should use `postgresql+psycopg://chemistry:chemistry@127.0.0.1:15432/chemistry_exam`. Override `POSTGRES_HOST_PORT` only when the host port is known to be free.
 
-Frontend host bindings default to `127.0.0.1:5173` for `web-student`, `127.0.0.1:5174` for `web-teacher`, and `127.0.0.1:5175` for `web-admin`. Override `WEB_STUDENT_HOST_PORT`, `WEB_TEACHER_HOST_PORT`, or `WEB_ADMIN_HOST_PORT` only when the host port is already occupied. Rollback for this topology uses git or deployment rollback; do not restore backend SPA fallbacks as a compatibility layer.
+Frontend host bindings default to `127.0.0.1:15176` for `web-student` and `127.0.0.1:15177` for `web-backoffice`. Override `WEB_STUDENT_HOST_PORT` or `WEB_BACKOFFICE_HOST_PORT` only when the host port is already occupied. Rollback for this topology uses git or deployment rollback; do not restore backend SPA fallbacks as a compatibility layer.
 
-Legacy frontend host bindings default to `222.200.189.249:15176` for `web-student-old` and `127.0.0.1:15177` for `web-teacher-old`. Override `WEB_STUDENT_OLD_HOST_BIND`, `WEB_STUDENT_OLD_HOST_PORT`, `WEB_TEACHER_OLD_HOST_BIND`, or `WEB_TEACHER_OLD_HOST_PORT` only for host-port conflicts or demo-network constraints.
-
-Teacher student-device preview loads the real `web-student` app in an iframe owned by `web-teacher`. In production-like deployments, keep `STUDENT_PREVIEW_APP_BASE_URL`, `STUDENT_PREVIEW_ALLOWED_ORIGINS`, and the student frontend `frame-ancestors` policy aligned so only the expected teacher origin can embed the student app.
+Backoffice student-device preview loads the real `web-student` app in an iframe owned by `web-backoffice`. In production-like deployments, keep `STUDENT_PREVIEW_APP_BASE_URL`, `STUDENT_PREVIEW_ALLOWED_ORIGINS`, and the student frontend `frame-ancestors` policy aligned so only the expected backoffice origin can embed the student app.
 
 ## Student Video-Library Search Operations
 
@@ -296,8 +275,8 @@ Run the full local validation chain with frontend dependency installation:
 python scripts/validate_production_readiness.py --install-frontend
 ```
 
-The command checks protected resources, video-library ES/IK readiness, experiment point identity validation, OpenSpec strict validation, backend import smoke, backend tests, `web-admin` typecheck/build, `web-teacher` typecheck/tests/build, `web-student` typecheck/tests/build, and the teacher build chunk report.
-The default OpenSpec target is `prune-seed-to-current-runtime-data`; use `--change <name>` to validate a different active or historical change.
+The command checks protected resources, video-library readiness, experiment point identity validation, OpenSpec strict validation, backend import smoke, backend tests, `web-backoffice` typecheck/tests/build, and `web-student` typecheck/tests/build.
+The default OpenSpec target is `trim-legacy-to-old-runtime`; use `--change <name>` to validate a different active or historical change.
 The backend stage also runs:
 
 ```powershell
@@ -305,7 +284,6 @@ python scripts/validate_backend_architecture.py
 ```
 
 This validates slim import boundaries, deleted compatibility paths, and the canonical route inventory.
-The `web-teacher` frontend stage also runs `npm run build:report` after `npm run build` so large production chunks stay classified by owner.
 
 For backend/resource-only environments:
 
@@ -321,7 +299,7 @@ Run the real Docker Compose application smoke check when deployment wiring chang
 python scripts/validate_production_readiness.py --run-compose-smoke --skip-frontend --skip-backend-tests
 ```
 
-This starts or verifies the required default Compose services, verifies backend and frontend health, verifies both frontend `/api/*` proxies, verifies PostgreSQL reachability, verifies `ik_max_word` through Elasticsearch `_analyze`, applies migrations, rebuilds the video-library index, and runs the ES/IK readiness validator with production fallback disabled.
+This starts or verifies the required default Compose services, verifies backend and frontend health, verifies both frontend `/api/*` proxies, verifies PostgreSQL reachability, and applies migrations.
 
 To also rebuild images as part of the smoke check, run the lower-level command explicitly:
 
@@ -329,10 +307,10 @@ To also rebuild images as part of the smoke check, run the lower-level command e
 python scripts/validate_compose_stack.py --build
 ```
 
-Browser e2e smoke is opt-in because it requires a running backend, a running teacher frontend on the allowed local origin, and a local browser runtime:
+Browser e2e smoke is opt-in because it requires a running backend, a running backoffice frontend on the allowed local origin, and a local browser runtime:
 
 ```powershell
-Set-Location apps/web-teacher
+Set-Location apps/web-backoffice
 npm run dev
 # In another shell, with the Docker backend running:
 npm run e2e:smoke
@@ -341,7 +319,7 @@ Set-Location ..\..
 
 The smoke script defaults to:
 
-- teacher frontend: `http://localhost:5174`
+- backoffice frontend: `http://localhost:5177`
 - backend API: `http://localhost:8000`
 - local admin: `codex_smoke_admin`
 

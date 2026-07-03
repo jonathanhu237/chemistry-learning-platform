@@ -1,3 +1,5 @@
+name: chemistry-legacy
+
 services:
   postgres:
     image: pgvector/pgvector:pg16@sha256:00ba258a66dac104fd5171074a0084462a64a1369d8513f3d0a634e2f24d15bc
@@ -15,65 +17,36 @@ services:
       timeout: 5s
       retries: 20
 
-  elasticsearch:
-    build:
-      context: .
-      dockerfile: server/Dockerfile.elasticsearch-ik
-      args:
-        ELASTICSEARCH_VERSION: "8.11.3"
-        ANALYSIS_IK_VERSION: "8.11.3"
-    image: chemistry-admin-elasticsearch-ik:8.11.3
-    environment:
-      discovery.type: single-node
-      xpack.security.enabled: "false"
-      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
-    ports:
-      - "${ELASTICSEARCH_HOST_BIND:-127.0.0.1}:${ELASTICSEARCH_HOST_PORT:-9200}:9200"
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9200/_cluster/health >/dev/null"]
-      interval: 10s
-      timeout: 5s
-      retries: 20
-
   backend:
-    image: chemistry-admin-backend:4e6da1db8525
+    image: chemistry-legacy-backend:legacy
     build:
       context: .
       dockerfile: server/Dockerfile
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       CHEMISTRY_APP_ENV: development
       DATA_BACKEND: postgres
       DATABASE_URL: postgresql+psycopg://chemistry:chemistry@postgres:5432/chemistry_exam
+      RUN_DB_CHECK_ON_STARTUP: "false"
       MEDIA_ROOT: /app/data/media
-      API_PUBLIC_BASE_URL: http://127.0.0.1:8000
-      FRONTEND_ALLOWED_ORIGINS: ${FRONTEND_ALLOWED_ORIGINS:-http://222.200.189.249:15173,http://localhost:15173,http://127.0.0.1:15173,http://localhost:15174,http://127.0.0.1:15174,http://localhost:15175,http://127.0.0.1:15175,http://222.200.189.249:15176,http://localhost:15176,http://127.0.0.1:15176,http://localhost:15177,http://127.0.0.1:15177}
-      STUDENT_PREVIEW_APP_BASE_URL: ${STUDENT_PREVIEW_APP_BASE_URL:-http://222.200.189.249:15173}
-      STUDENT_PREVIEW_ALLOWED_ORIGINS: ${STUDENT_PREVIEW_ALLOWED_ORIGINS:-}
+      API_PUBLIC_BASE_URL: ${API_PUBLIC_BASE_URL:-http://127.0.0.1:18000}
+      FRONTEND_ALLOWED_ORIGINS: ${FRONTEND_ALLOWED_ORIGINS:-http://127.0.0.1:15176,http://localhost:15176,http://127.0.0.1:15177,http://localhost:15177,http://127.0.0.1:5176,http://localhost:5176,http://127.0.0.1:5177,http://localhost:5177}
+      STUDENT_PREVIEW_APP_BASE_URL: ${STUDENT_PREVIEW_APP_BASE_URL:-http://127.0.0.1:15176}
+      STUDENT_PREVIEW_ALLOWED_ORIGINS: ${STUDENT_PREVIEW_ALLOWED_ORIGINS:-http://127.0.0.1:15176,http://localhost:15176}
       STUDENT_PREVIEW_TICKET_EXPIRE_MINUTES: "10"
       STUDENT_PREVIEW_SESSION_EXPIRE_MINUTES: "240"
       TUS_UPLOAD_DIR: tus
       TUS_PUBLIC_ENDPOINT: http://127.0.0.1:10980/files/
-      CHEMISTRY_RAG_ROOT: /chemistry-rag
-      WEB_ADMIN_ACCESS_TOKEN: ${WEB_ADMIN_ACCESS_TOKEN:-dev-only-web-admin-token-change-me}
-      VIDEO_LIBRARY_SEARCH_ENABLED: "true"
-      VIDEO_LIBRARY_SEARCH_BACKEND: elasticsearch
-      VIDEO_LIBRARY_SEARCH_URL: http://elasticsearch:9200
-      VIDEO_LIBRARY_SEARCH_INDEX: student-video-library
-      VIDEO_LIBRARY_SEARCH_ANALYZER: ik_max_word
-      VIDEO_LIBRARY_SEARCH_LOCAL_FALLBACK: "false"
+      VIDEO_LIBRARY_SEARCH_ENABLED: "false"
+      VIDEO_LIBRARY_SEARCH_LOCAL_FALLBACK: "true"
     ports:
-      - "8000:8000"
+      - "${BACKEND_HOST_BIND:-127.0.0.1}:${BACKEND_HOST_PORT:-18000}:8000"
     volumes:
       - ./data/media:/app/data/media
-      - E:/chemistry-rag:/chemistry-rag:ro
     depends_on:
       postgres:
-        condition: service_healthy
-      elasticsearch:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).read()"]
@@ -82,7 +55,7 @@ services:
       retries: 12
 
   web-student:
-    image: chemistry-admin-web-student:598142c947d7
+    image: chemistry-legacy-web-student:legacy
     build:
       context: .
       dockerfile: server/Dockerfile.frontend
@@ -90,9 +63,9 @@ services:
         APP_DIR: apps/web-student
     environment:
       BACKEND_UPSTREAM: http://backend:8000
-      FRAME_ANCESTORS: "'self' http://127.0.0.1:${WEB_TEACHER_HOST_PORT:-15174} http://localhost:${WEB_TEACHER_HOST_PORT:-15174}"
+      FRAME_ANCESTORS: "'self'"
     ports:
-      - "${WEB_STUDENT_HOST_BIND:-222.200.189.249}:${WEB_STUDENT_HOST_PORT:-15173}:80"
+      - "${WEB_STUDENT_HOST_BIND:-127.0.0.1}:${WEB_STUDENT_HOST_PORT:-15176}:80"
     depends_on:
       backend:
         condition: service_healthy
@@ -102,18 +75,18 @@ services:
       timeout: 5s
       retries: 12
 
-  web-teacher:
-    image: chemistry-admin-web-teacher:d33c08da4d29
+  web-backoffice:
+    image: chemistry-legacy-web-backoffice:legacy
     build:
       context: .
       dockerfile: server/Dockerfile.frontend
       args:
-        APP_DIR: apps/web-teacher
+        APP_DIR: apps/web-backoffice
     environment:
       BACKEND_UPSTREAM: http://backend:8000
       FRAME_ANCESTORS: "'self'"
     ports:
-      - "${WEB_TEACHER_HOST_BIND:-127.0.0.1}:${WEB_TEACHER_HOST_PORT:-15174}:80"
+      - "${WEB_BACKOFFICE_HOST_BIND:-127.0.0.1}:${WEB_BACKOFFICE_HOST_PORT:-15177}:80"
     depends_on:
       backend:
         condition: service_healthy
@@ -122,121 +95,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-
-  web-admin:
-    image: chemistry-admin-web-admin:234baa67124f
-    build:
-      context: .
-      dockerfile: server/Dockerfile.frontend
-      args:
-        APP_DIR: apps/web-admin
-    environment:
-      BACKEND_UPSTREAM: http://backend:8000
-      FRAME_ANCESTORS: "'self'"
-    ports:
-      - "${WEB_ADMIN_HOST_BIND:-127.0.0.1}:${WEB_ADMIN_HOST_PORT:-15175}:80"
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/health >/dev/null"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-
-  web-student-old:
-    image: chemistry-admin-web-student-old:legacy
-    build:
-      context: .
-      dockerfile: server/Dockerfile.frontend
-      args:
-        APP_DIR: apps/web-student-old
-    environment:
-      BACKEND_UPSTREAM: http://backend:8000
-      FRAME_ANCESTORS: "'self'"
-    ports:
-      - "${WEB_STUDENT_OLD_HOST_BIND:-222.200.189.249}:${WEB_STUDENT_OLD_HOST_PORT:-15176}:80"
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/health >/dev/null"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-
-  web-teacher-old:
-    image: chemistry-admin-web-teacher-old:legacy
-    build:
-      context: .
-      dockerfile: server/Dockerfile.frontend
-      args:
-        APP_DIR: apps/web-teacher-old
-    environment:
-      BACKEND_UPSTREAM: http://backend:8000
-      FRAME_ANCESTORS: "'self'"
-    ports:
-      - "${WEB_TEACHER_OLD_HOST_BIND:-127.0.0.1}:${WEB_TEACHER_OLD_HOST_PORT:-15177}:80"
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/health >/dev/null"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-
-  tusd:
-    image: tusproject/tusd:v2@sha256:9c61565fccd2689b052aa78e52d9558f309e98f6320960746f225d2fd73a35e3
-    command:
-      - "-host=0.0.0.0"
-      - "-port=1080"
-      - "-base-path=/files/"
-      - "-upload-dir=/app/data/media/tus"
-      - "-max-size=107374182400"
-    ports:
-      - "10980:1080"
-    volumes:
-      - ./data/media:/app/data/media
-
-  video-worker:
-    image: chemistry-admin-video-worker:6d48e88ec044
-    build:
-      context: .
-      dockerfile: server/Dockerfile.video-worker
-    gpus: all
-    env_file:
-      - .env
-    environment:
-      CHEMISTRY_APP_ENV: development
-      DATA_BACKEND: postgres
-      DATABASE_URL: postgresql+psycopg://chemistry:chemistry@postgres:5432/chemistry_exam
-      MEDIA_ROOT: /app/data/media
-      VIDEO_WORKER_ID: local-video-worker
-      VIDEO_WORKER_POLL_SECONDS: 5
-      VIDEO_LEARNING_MAX_WIDTH: 1280
-      VIDEO_LEARNING_CRF: 24
-      VIDEO_LEARNING_MAX_FPS: 30
-      VIDEO_LEARNING_TRANSCODE_THRESHOLD_MB: 300
-      VIDEO_TRANSCODE_ACCELERATION: auto
-      VIDEO_DUPLICATE_DETECTION_ALGORITHM: vpdq-threatexchange-1.2.16
-      VIDEO_DUPLICATE_DETECTION_COMMAND: python -m server.app.video_similarity vpdq-signature "{input}" "{output}" "{seconds_per_hash}"
-      VIDEO_DUPLICATE_DETECTION_COMPARE_COMMAND: python -m server.app.video_similarity vpdq-compare "{current}" "{candidate}"
-      VIDEO_DUPLICATE_DETECTION_THRESHOLD: 0.95
-      VIDEO_DUPLICATE_DEFAULT_INTERVAL_SECONDS: 3
-      VIDEO_DUPLICATE_MIN_SAMPLES: 12
-      VIDEO_DUPLICATE_MIN_INTERVAL_SECONDS: 0.5
-      VIDEO_DUPLICATE_DURATION_TOLERANCE_RATIO: 0.001
-      VIDEO_DUPLICATE_DURATION_TOLERANCE_FLOOR_SECONDS: 0.5
-      VIDEO_DUPLICATE_DURATION_TOLERANCE_CEILING_SECONDS: 2.0
-      NVIDIA_DRIVER_CAPABILITIES: compute,utility,video
-      NVIDIA_VISIBLE_DEVICES: all
-    volumes:
-      - ./data/media:/app/data/media
-    depends_on:
-      postgres:
-        condition: service_healthy
 
 volumes:
   postgres_data:
-  elasticsearch_data:

@@ -11,15 +11,13 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-WEB_ADMIN_DIR = ROOT / "apps" / "web-admin"
-WEB_TEACHER_DIR = ROOT / "apps" / "web-teacher"
+WEB_BACKOFFICE_DIR = ROOT / "apps" / "web-backoffice"
 WEB_STUDENT_DIR = ROOT / "apps" / "web-student"
 FRONTENDS = [
-    ("web-admin frontend", WEB_ADMIN_DIR, False),
-    ("web-teacher frontend", WEB_TEACHER_DIR, True),
+    ("web-backoffice frontend", WEB_BACKOFFICE_DIR, True),
     ("web-student frontend", WEB_STUDENT_DIR, True),
 ]
-DEFAULT_CHANGE = "prune-seed-to-current-runtime-data"
+DEFAULT_CHANGE = "trim-legacy-to-old-runtime"
 
 
 @dataclass
@@ -198,17 +196,12 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
 
     stages.extend(_frontend_dependencies_stage(args))
     if not args.skip_frontend:
-        stages.append(Stage("web-teacher import boundaries", [_npm(), "run", "validate:boundaries"], cwd=WEB_TEACHER_DIR))
         for name, frontend_dir, has_tests in FRONTENDS:
             stages.append(Stage(f"{name} typecheck", [_npm(), "run", "typecheck"], cwd=frontend_dir))
             if has_tests:
                 stages.append(Stage(f"{name} tests", [_npm(), "test"], cwd=frontend_dir))
             stages.append(Stage(f"{name} build", [_npm(), "run", "build"], cwd=frontend_dir))
-        stages.append(
-            Stage("web-teacher build chunk report", [_npm(), "run", "build:report"], cwd=WEB_TEACHER_DIR)
-        )
     if args.run_e2e:
-        stages.append(Stage("web-teacher e2e smoke", [_npm(), "run", "e2e:smoke"], cwd=WEB_TEACHER_DIR))
         stages.append(
             Stage(
                 "web-student mobile route-stack QA",
@@ -233,12 +226,12 @@ def main() -> None:
     parser.add_argument(
         "--run-e2e",
         action="store_true",
-        help="Run opt-in browser e2e smoke. Requires backend, admin frontend, and student frontend origins to be running.",
+        help="Run opt-in browser e2e smoke. Requires backend and student frontend origins to be running.",
     )
     parser.add_argument(
         "--run-compose-smoke",
         action="store_true",
-        help="Run a Docker Compose smoke check for required Postgres, Elasticsearch/IK, and backend services.",
+        help="Run a Docker Compose smoke check for required Postgres, backend, and frontend services.",
     )
     args = parser.parse_args()
 
