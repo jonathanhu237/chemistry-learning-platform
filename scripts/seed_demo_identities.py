@@ -20,6 +20,21 @@ from server.app.security import hash_password, verify_password
 DEFAULT_SEED_PATH = ROOT / "data" / "seed" / "identity" / "demo_identity_seed_v1.json"
 SEED_TYPE = "demo_identity_seed"
 SEED_VERSION = 1
+LEGACY_SEED_STUDENT_PATTERN = "SEED%"
+LEGACY_SEED_STUDENT_ID_TABLES = (
+    "agent_logs",
+    "experiment_question_attempts",
+    "student_assessment_reports",
+    "student_events",
+    "student_experiment_mastery",
+    "student_experiment_progress",
+    "student_feedback",
+    "student_mastery",
+    "student_point_mastery",
+    "student_posttest_sessions",
+    "student_pretest_sessions",
+    "student_smart_assessment_sessions",
+)
 
 
 def _json_param(value: Any) -> str:
@@ -135,6 +150,43 @@ def _seed_metadata(payload: dict[str, Any], extra: dict[str, Any] | None = None)
     if extra:
         metadata.update(extra)
     return metadata
+
+
+def _prune_legacy_seed_students(session: Any, payload: dict[str, Any]) -> int:
+    students = [item for item in payload.get("students") or [] if isinstance(item, dict)]
+    if any(_normalize_student_id(str(student.get("student_id") or "")).startswith("SEED") for student in students):
+        return 0
+
+    params = {"pattern": LEGACY_SEED_STUDENT_PATTERN, "seed_type": SEED_TYPE}
+    deleted = 0
+    for table_name in LEGACY_SEED_STUDENT_ID_TABLES:
+        result = session.execute(text(f"DELETE FROM {table_name} WHERE student_id LIKE :pattern"), params)
+        deleted += int(result.rowcount or 0)
+    for table_name in ("student_profiles", "roster_entries", "students"):
+        result = session.execute(
+            text(
+                f"""
+                DELETE FROM {table_name}
+                WHERE student_id LIKE :pattern
+                  AND COALESCE(metadata->>'seed_type', '') = :seed_type
+                """
+            ),
+            params,
+        )
+        deleted += int(result.rowcount or 0)
+    result = session.execute(
+        text(
+            """
+            DELETE FROM app_users
+            WHERE username LIKE :pattern
+              AND role = 'student'
+              AND COALESCE(metadata->>'seed_type', '') = :seed_type
+            """
+        ),
+        params,
+    )
+    deleted += int(result.rowcount or 0)
+    return deleted
 
 
 def _upsert_teacher(
@@ -541,6 +593,7 @@ def import_seed(
             class_id=resolved_class_id,
             student_password=resolved_student_password,
         )
+        pruned_legacy_seed_students = _prune_legacy_seed_students(session, payload)
         for index, student in enumerate(students, start=1):
             _upsert_student(
                 session,
@@ -552,7 +605,7 @@ def import_seed(
                 row_number=index,
                 student_password=resolved_student_password,
             )
-    return {**summary, "teacher_user_id": teacher_user_id}
+    return {**summary, "teacher_user_id": teacher_user_id, "pruned_legacy_seed_students": pruned_legacy_seed_students}
 
 
 def validate_database(payload: dict[str, Any], *, teacher_username: str | None = None, class_id: str | None = None) -> dict[str, Any]:
