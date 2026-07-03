@@ -22,8 +22,8 @@
   },
   "class": {
     "id": "seed-class-2026",
-    "class_name": "演示班级",
-    "description": "生产种子演示班级",
+    "class_name": "26级本科 1 班",
+    "description": "2026 级本科无机化学实验教学班",
     "status": "active",
     "class_purpose": "instructional",
     "system_managed": false,
@@ -50,10 +50,10 @@
   },
   "students": [
     {
-      "student_id": "SEED001",
-      "username": "SEED001",
-      "student_name": "演示学生01",
-      "display_name": "演示学生01",
+      "student_id": "26320001",
+      "username": "26320001",
+      "student_name": "张三",
+      "display_name": "张三",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -66,10 +66,10 @@
       }
     },
     {
-      "student_id": "SEED002",
-      "username": "SEED002",
-      "student_name": "演示学生02",
-      "display_name": "演示学生02",
+      "student_id": "26320002",
+      "username": "26320002",
+      "student_name": "李四",
+      "display_name": "李四",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -82,10 +82,10 @@
       }
     },
     {
-      "student_id": "SEED003",
-      "username": "SEED003",
-      "student_name": "演示学生03",
-      "display_name": "演示学生03",
+      "student_id": "26320003",
+      "username": "26320003",
+      "student_name": "王五",
+      "display_name": "王五",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -98,10 +98,10 @@
       }
     },
     {
-      "student_id": "SEED004",
-      "username": "SEED004",
-      "student_name": "演示学生04",
-      "display_name": "演示学生04",
+      "student_id": "26320004",
+      "username": "26320004",
+      "student_name": "赵六",
+      "display_name": "赵六",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -114,10 +114,10 @@
       }
     },
     {
-      "student_id": "SEED005",
-      "username": "SEED005",
-      "student_name": "演示学生05",
-      "display_name": "演示学生05",
+      "student_id": "26320005",
+      "username": "26320005",
+      "student_name": "陈晨",
+      "display_name": "陈晨",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -130,10 +130,10 @@
       }
     },
     {
-      "student_id": "SEED006",
-      "username": "SEED006",
-      "student_name": "演示学生06",
-      "display_name": "演示学生06",
+      "student_id": "26320006",
+      "username": "26320006",
+      "student_name": "刘洋",
+      "display_name": "刘洋",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -146,10 +146,10 @@
       }
     },
     {
-      "student_id": "SEED007",
-      "username": "SEED007",
-      "student_name": "演示学生07",
-      "display_name": "演示学生07",
+      "student_id": "26320007",
+      "username": "26320007",
+      "student_name": "王芳",
+      "display_name": "王芳",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -162,10 +162,10 @@
       }
     },
     {
-      "student_id": "SEED008",
-      "username": "SEED008",
-      "student_name": "演示学生08",
-      "display_name": "演示学生08",
+      "student_id": "26320008",
+      "username": "26320008",
+      "student_name": "李娜",
+      "display_name": "李娜",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -178,10 +178,10 @@
       }
     },
     {
-      "student_id": "SEED009",
-      "username": "SEED009",
-      "student_name": "演示学生09",
-      "display_name": "演示学生09",
+      "student_id": "26320009",
+      "username": "26320009",
+      "student_name": "张伟",
+      "display_name": "张伟",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -194,10 +194,10 @@
       }
     },
     {
-      "student_id": "SEED010",
-      "username": "SEED010",
-      "student_name": "演示学生10",
-      "display_name": "演示学生10",
+      "student_id": "26320010",
+      "username": "26320010",
+      "student_name": "刘强",
+      "display_name": "刘强",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -210,10 +210,10 @@
       }
     },
     {
-      "student_id": "SEED011",
-      "username": "SEED011",
-      "student_name": "演示学生11",
-      "display_name": "演示学生11",
+      "student_id": "26320011",
+      "username": "26320011",
+      "student_name": "陈静",
+      "display_name": "陈静",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -226,10 +226,10 @@
       }
     },
     {
-      "student_id": "SEED012",
-      "username": "SEED012",
-      "student_name": "演示学生12",
-      "display_name": "演示学生12",
+      "student_id": "26320012",
+      "username": "26320012",
+      "student_name": "杨帆",
+      "display_name": "杨帆",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -242,10 +242,10 @@
       }
     },
     {
-      "student_id": "SEED013",
-      "username": "SEED013",
-      "student_name": "演示学生13",
-      "display_name": "演示学生13",
+      "student_id": "26320013",
+      "username": "26320013",
+      "student_name": "黄磊",
+      "display_name": "黄磊",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -258,10 +258,10 @@
       }
     },
     {
-      "student_id": "SEED014",
-      "username": "SEED014",
-      "student_name": "演示学生14",
-      "display_name": "演示学生14",
+      "student_id": "26320014",
+      "username": "26320014",
+      "student_name": "周敏",
+      "display_name": "周敏",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -274,10 +274,10 @@
       }
     },
     {
-      "student_id": "SEED015",
-      "username": "SEED015",
-      "student_name": "演示学生15",
-      "display_name": "演示学生15",
+      "student_id": "26320015",
+      "username": "26320015",
+      "student_name": "吴昊",
+      "display_name": "吴昊",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -290,10 +290,10 @@
       }
     },
     {
-      "student_id": "SEED016",
-      "username": "SEED016",
-      "student_name": "演示学生16",
-      "display_name": "演示学生16",
+      "student_id": "26320016",
+      "username": "26320016",
+      "student_name": "徐婷",
+      "display_name": "徐婷",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -306,10 +306,10 @@
       }
     },
     {
-      "student_id": "SEED017",
-      "username": "SEED017",
-      "student_name": "演示学生17",
-      "display_name": "演示学生17",
+      "student_id": "26320017",
+      "username": "26320017",
+      "student_name": "何欣",
+      "display_name": "何欣",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -322,10 +322,10 @@
       }
     },
     {
-      "student_id": "SEED018",
-      "username": "SEED018",
-      "student_name": "演示学生18",
-      "display_name": "演示学生18",
+      "student_id": "26320018",
+      "username": "26320018",
+      "student_name": "郑宇",
+      "display_name": "郑宇",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -338,10 +338,10 @@
       }
     },
     {
-      "student_id": "SEED019",
-      "username": "SEED019",
-      "student_name": "演示学生19",
-      "display_name": "演示学生19",
+      "student_id": "26320019",
+      "username": "26320019",
+      "student_name": "马超",
+      "display_name": "马超",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -354,10 +354,10 @@
       }
     },
     {
-      "student_id": "SEED020",
-      "username": "SEED020",
-      "student_name": "演示学生20",
-      "display_name": "演示学生20",
+      "student_id": "26320020",
+      "username": "26320020",
+      "student_name": "朱琳",
+      "display_name": "朱琳",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -370,10 +370,10 @@
       }
     },
     {
-      "student_id": "SEED021",
-      "username": "SEED021",
-      "student_name": "演示学生21",
-      "display_name": "演示学生21",
+      "student_id": "26320021",
+      "username": "26320021",
+      "student_name": "胡悦",
+      "display_name": "胡悦",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -386,10 +386,10 @@
       }
     },
     {
-      "student_id": "SEED022",
-      "username": "SEED022",
-      "student_name": "演示学生22",
-      "display_name": "演示学生22",
+      "student_id": "26320022",
+      "username": "26320022",
+      "student_name": "林浩",
+      "display_name": "林浩",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -402,10 +402,10 @@
       }
     },
     {
-      "student_id": "SEED023",
-      "username": "SEED023",
-      "student_name": "演示学生23",
-      "display_name": "演示学生23",
+      "student_id": "26320023",
+      "username": "26320023",
+      "student_name": "郭阳",
+      "display_name": "郭阳",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -418,10 +418,10 @@
       }
     },
     {
-      "student_id": "SEED024",
-      "username": "SEED024",
-      "student_name": "演示学生24",
-      "display_name": "演示学生24",
+      "student_id": "26320024",
+      "username": "26320024",
+      "student_name": "罗洁",
+      "display_name": "罗洁",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -434,10 +434,10 @@
       }
     },
     {
-      "student_id": "SEED025",
-      "username": "SEED025",
-      "student_name": "演示学生25",
-      "display_name": "演示学生25",
+      "student_id": "26320025",
+      "username": "26320025",
+      "student_name": "梁辰",
+      "display_name": "梁辰",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -450,10 +450,10 @@
       }
     },
     {
-      "student_id": "SEED026",
-      "username": "SEED026",
-      "student_name": "演示学生26",
-      "display_name": "演示学生26",
+      "student_id": "26320026",
+      "username": "26320026",
+      "student_name": "宋佳",
+      "display_name": "宋佳",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -466,10 +466,10 @@
       }
     },
     {
-      "student_id": "SEED027",
-      "username": "SEED027",
-      "student_name": "演示学生27",
-      "display_name": "演示学生27",
+      "student_id": "26320027",
+      "username": "26320027",
+      "student_name": "唐宁",
+      "display_name": "唐宁",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -482,10 +482,10 @@
       }
     },
     {
-      "student_id": "SEED028",
-      "username": "SEED028",
-      "student_name": "演示学生28",
-      "display_name": "演示学生28",
+      "student_id": "26320028",
+      "username": "26320028",
+      "student_name": "邓凯",
+      "display_name": "邓凯",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -498,10 +498,10 @@
       }
     },
     {
-      "student_id": "SEED029",
-      "username": "SEED029",
-      "student_name": "演示学生29",
-      "display_name": "演示学生29",
+      "student_id": "26320029",
+      "username": "26320029",
+      "student_name": "许诺",
+      "display_name": "许诺",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",
@@ -514,10 +514,10 @@
       }
     },
     {
-      "student_id": "SEED030",
-      "username": "SEED030",
-      "student_name": "演示学生30",
-      "display_name": "演示学生30",
+      "student_id": "26320030",
+      "username": "26320030",
+      "student_name": "高远",
+      "display_name": "高远",
       "status": "active",
       "must_change_password": false,
       "account_purpose": "standard",

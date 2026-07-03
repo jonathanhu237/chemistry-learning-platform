@@ -22,7 +22,10 @@ def test_demo_identity_seed_payload_has_expected_demo_roster() -> None:
     assert result["summary"] == {"teacher": 1, "classes": 1, "students": 30}
     assert payload["teacher"]["username"] == "teacher"
     assert payload["class"]["id"] == "seed-class-2026"
-    assert {student["student_id"] for student in payload["students"]} == {f"SEED{index:03d}" for index in range(1, 31)}
+    assert payload["class"]["class_name"] == "26级本科 1 班"
+    assert {student["student_id"] for student in payload["students"]} == {str(26320000 + index) for index in range(1, 31)}
+    assert payload["students"][0]["student_name"] == "张三"
+    assert payload["students"][1]["student_name"] == "李四"
 
 
 def test_video_seed_payload_covers_all_points_with_one_binding_per_canonical_point() -> None:

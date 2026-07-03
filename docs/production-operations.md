@@ -316,7 +316,7 @@ python scripts/validate_legacy_e2e.py --build
 The script discovers the actual Compose host ports, imports the production seed baseline with external Elasticsearch import skipped, and runs Playwright through `e2e/`. Use `--skip-seed-bootstrap` only when the target database is already seeded and you want a faster local rerun. Defaults are:
 
 - teacher account: `teacher / 123456`
-- student account: `SEED001 / 123456`
+- student account: `26320001 / 123456`
 - browser project: Playwright Chromium, or `PLAYWRIGHT_BROWSER_CHANNEL=chrome` to use local Chrome
 
 It covers the student login plus learning/video/assessment/report journeys, the teacher login plus canonical workbench pages, and API boundaries proving student tokens cannot access `/api/teacher/*`, teacher tokens cannot access `/api/student/*`, and retired `/api/admin/*` and `/api/web-admin/*` routes are not available.

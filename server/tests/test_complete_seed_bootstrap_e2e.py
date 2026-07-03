@@ -94,7 +94,7 @@ def test_complete_seed_bootstrap_restores_blank_database_and_login(tmp_path) -> 
                 (
                     "from server.app.auth import authenticate_user;"
                     "assert authenticate_user('teacher', '123456');"
-                    "assert authenticate_user('SEED001', '123456')"
+                    "assert authenticate_user('26320001', '123456')"
                 ),
             ],
             env=env,

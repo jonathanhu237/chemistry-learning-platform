@@ -35,7 +35,7 @@ Current restore order:
 python scripts/bootstrap_production_seed.py
 ```
 
-The bootstrap command creates or updates the demo teacher account as `teacher / 123456`, creates `seed-class-2026`, creates 30 active student accounts `SEED001` through `SEED030` with default password `123456`, restores seed videos into `MEDIA_ROOT`, imports precomputed RAG evidence/questions, and finishes with complete seed validation.
+The bootstrap command creates or updates the demo teacher account as `teacher / 123456`, creates `seed-class-2026` as `26级本科 1 班`, creates 30 active student accounts `26320001` through `26320030` with default password `123456`, restores seed videos into `MEDIA_ROOT`, imports precomputed RAG evidence/questions, and finishes with complete seed validation.
 
 Recommended blank-server flow:
 

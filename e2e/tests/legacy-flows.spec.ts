@@ -5,7 +5,7 @@ const studentUrl = stripTrailingSlash(process.env.LEGACY_E2E_STUDENT_URL || "htt
 const backendUrl = stripTrailingSlash(process.env.LEGACY_E2E_BACKEND_URL || "http://127.0.0.1:18000");
 const teacherUsername = process.env.LEGACY_E2E_TEACHER_USERNAME || "teacher";
 const teacherPassword = process.env.LEGACY_E2E_TEACHER_PASSWORD || "123456";
-const studentId = process.env.LEGACY_E2E_STUDENT_ID || "SEED001";
+const studentId = process.env.LEGACY_E2E_STUDENT_ID || "26320001";
 const studentPassword = process.env.LEGACY_E2E_STUDENT_PASSWORD || "123456";
 
 function stripTrailingSlash(value: string): string {

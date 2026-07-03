@@ -243,8 +243,8 @@
       "source_path": "demo seed manifest",
       "required": true,
       "kind": "json",
-      "size_bytes": 15889,
-      "sha256": "cb63619485c152bc9305cfe828900a938c85ec13033e945f46ed4d3edc23f932",
+      "size_bytes": 15487,
+      "sha256": "674a2a2052cf0913d91d7875571c5e60b4aec7470865e8a7983415137474257f",
       "count": {
         "teachers": 1,
         "classes": 1,
