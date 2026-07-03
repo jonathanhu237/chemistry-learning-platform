@@ -807,14 +807,14 @@ describe("LegacyTeacherApp", () => {
     const userMenuButton = screen.getByRole("button", { name: /王老师/ });
     fireEvent.click(userMenuButton);
     const userMenu = await screen.findByRole("menu");
-    expect(within(userMenu).getAllByRole("menuitem").map((item) => item.textContent?.trim())).toEqual(["设置", "AI 配置", "登出"]);
+    expect(within(userMenu).getAllByRole("menuitem").map((item) => item.textContent?.trim())).toEqual(["登出"]);
     expect(screen.queryByRole("button", { name: "退出登录" })).toBeNull();
 
     const nav = screen.getByRole("navigation", { name: "后台导航" });
     const navLabels = within(nav)
       .getAllByRole("button")
       .map((button) => String(button.textContent).trim());
-    expect(navLabels).toEqual(["实验管理", "班级管理", "AI 出题", "学情分析", "评价报告"]);
+    expect(navLabels).toEqual(["实验管理", "班级管理", "AI 出题", "学情分析", "评价报告", "设置"]);
     expect(within(nav).queryByRole("button", { name: "视频资源" })).toBeNull();
     expect(within(nav).queryByRole("button", { name: "题库资源" })).toBeNull();
     expect(within(nav).getByRole("button", { name: "班级管理" })).toBeTruthy();
@@ -902,15 +902,14 @@ describe("LegacyTeacherApp", () => {
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 
-  it("lets a teacher manage settings from the account menu", async () => {
+  it("lets a teacher manage settings from the sidebar", async () => {
     const fetchMock = installTeacherFetchMock();
     vi.stubGlobal("fetch", fetchMock);
 
     render(<LegacyTeacherApp />);
 
     await screen.findByRole("navigation", { name: "当前位置" });
-    fireEvent.click(screen.getByRole("button", { name: /王老师/ }));
-    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "设置" }));
+    fireEvent.click(screen.getByTestId("teacher-nav-settings"));
 
     const sidebar = await screen.findByTestId("teacher-settings-sidebar");
     expect(within(sidebar).getByText("teacher")).toBeTruthy();
@@ -954,10 +953,10 @@ describe("LegacyTeacherApp", () => {
     render(<LegacyTeacherApp />);
 
     await screen.findByRole("navigation", { name: "当前位置" });
-    fireEvent.click(screen.getByRole("button", { name: /王老师/ }));
-    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "AI 配置" }));
+    fireEvent.click(screen.getByTestId("teacher-nav-settings"));
 
-    const sidebar = await screen.findByTestId("teacher-ai-config-sidebar");
+    const settingsSidebar = await screen.findByTestId("teacher-settings-sidebar");
+    const sidebar = await within(settingsSidebar).findByTestId("teacher-ai-config-settings");
     expect(screen.queryByRole("heading", { name: "AI 模型配置" })).toBeNull();
     expect(await within(sidebar).findByDisplayValue("https://api.deepseek.com")).toBeTruthy();
     expect(within(sidebar).getByDisplayValue("deepseek-v4-flash")).toBeTruthy();

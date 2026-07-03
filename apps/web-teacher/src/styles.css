@@ -3276,6 +3276,23 @@ p {
   grid-template-columns: 1fr;
 }
 
+.legacy-settings-ai-section {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--legacy-line);
+  background: #fff;
+  padding: 14px;
+}
+
+.legacy-settings-ai-section .legacy-ai-config-sidebar-body {
+  min-height: auto;
+}
+
+.legacy-settings-ai-section .legacy-ai-config-provider-card,
+.legacy-settings-ai-section .legacy-ai-config-form {
+  border-color: var(--legacy-line);
+}
+
 .legacy-delete-dialog-body {
   display: grid;
   gap: 8px;

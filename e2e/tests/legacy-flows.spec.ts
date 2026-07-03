@@ -120,9 +120,10 @@ test.describe("legacy teacher/student browser flows", () => {
     await expect(page.getByTestId("teacher-page-experiments")).toBeVisible();
     await expect(page).toHaveURL(/\/experiments$/);
 
-    await page.locator(".legacy-user-menu-button").click();
-    await page.getByRole("menuitem", { name: "AI 配置" }).click();
-    const aiConfigSidebar = page.getByTestId("teacher-ai-config-sidebar");
+    await page.getByTestId("teacher-nav-settings").click();
+    const settingsSidebar = page.getByTestId("teacher-settings-sidebar");
+    await expect(settingsSidebar).toBeVisible();
+    const aiConfigSidebar = page.getByTestId("teacher-ai-config-settings");
     await expect(aiConfigSidebar).toBeVisible();
     await expect(page.getByRole("heading", { name: "AI 模型配置" })).toHaveCount(0);
     await expect(aiConfigSidebar.getByLabel("模型名称", { exact: true })).toBeVisible();
@@ -132,8 +133,7 @@ test.describe("legacy teacher/student browser flows", () => {
   test("teacher can open settings and validate password changes", async ({ page }) => {
     await loginTeacher(page);
 
-    await page.locator(".legacy-user-menu-button").click();
-    await page.getByRole("menuitem", { name: "设置" }).click();
+    await page.getByTestId("teacher-nav-settings").click();
     const sidebar = page.getByTestId("teacher-settings-sidebar");
     await expect(sidebar).toBeVisible();
     await expect(sidebar.getByText(teacherUsername)).toBeVisible();

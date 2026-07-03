@@ -179,7 +179,6 @@ function LegacyTeacherAppContent() {
   const [checkingSession, setCheckingSession] = useState(Boolean(getAuthToken()));
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [aiConfigOpen, setAiConfigOpen] = useState(false);
 
   useEffect(() => {
     if (!getAuthToken()) return;
@@ -205,8 +204,8 @@ function LegacyTeacherAppContent() {
   }, [path]);
 
   useEffect(() => {
-    if (!path.startsWith("/ai-config")) return;
-    setAiConfigOpen(true);
+    if (!path.startsWith("/ai-config") && !path.startsWith("/settings")) return;
+    setSettingsOpen(true);
     navigate("/experiments");
   }, [path]);
 
@@ -245,6 +244,9 @@ function LegacyTeacherAppContent() {
           {navItems.map((item) => (
             <NavButton key={item.key} active={activeRoute === item.key} label={item.label} path={item.path} testId={`teacher-nav-${item.key}`} />
           ))}
+          <TeacherButton className={settingsOpen ? "active" : ""} data-testid="teacher-nav-settings" onClick={() => setSettingsOpen(true)}>
+            设置
+          </TeacherButton>
         </nav>
       </TeacherSidebar>
       <TeacherMain>
@@ -267,26 +269,6 @@ function LegacyTeacherAppContent() {
             </button>
             {userMenuOpen ? (
               <div className="legacy-user-menu-panel" role="menu">
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setSettingsOpen(true);
-                    setUserMenuOpen(false);
-                  }}
-                >
-                  设置
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setAiConfigOpen(true);
-                    setUserMenuOpen(false);
-                  }}
-                >
-                  AI 配置
-                </button>
                 <button type="button" role="menuitem" onClick={logout}>
                   登出
                 </button>
@@ -295,7 +277,6 @@ function LegacyTeacherAppContent() {
           </div>
         </TeacherHeader>
         <SettingsSidebar user={user} open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-        <AIConfigurationSidebar open={aiConfigOpen} onClose={() => setAiConfigOpen(false)} />
         <TeacherContent>
           {activeRoute === "questions" ? (
             <QuestionsPage />
@@ -495,7 +476,7 @@ function SettingsSidebar({ user, open, onClose }: { user: User; open: boolean; o
       open={open}
       onClose={onClose}
       placement="right"
-      width="min(420px, calc(100vw - 24px))"
+      width="min(560px, calc(100vw - 24px))"
       maskClosable={!busy}
       keyboard={!busy}
       destroyOnHidden
@@ -618,6 +599,8 @@ function SettingsSidebar({ user, open, onClose }: { user: User; open: boolean; o
             </TeacherButton>
           </div>
         </form>
+
+        <AIConfigurationSettingsSection active={open} />
       </section>
     </TeacherDrawer>
   );
@@ -1504,9 +1487,9 @@ function PointVideoManager({
   );
 }
 
-function AIConfigurationSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+function AIConfigurationSettingsSection({ active }: { active: boolean }) {
   const [reloadKey, setReloadKey] = useState(0);
-  const state = useAsyncData<AIConfigurationResponse | null>(() => (open ? getAIConfiguration() : Promise.resolve(null)), [reloadKey, open]);
+  const state = useAsyncData<AIConfigurationResponse | null>(() => (active ? getAIConfiguration() : Promise.resolve(null)), [reloadKey, active]);
   const [baseUrl, setBaseUrl] = useState(deepSeekDefaultBaseUrl);
   const [model, setModel] = useState(deepSeekDefaultModel);
   const [apiKey, setApiKey] = useState("");
@@ -1584,18 +1567,12 @@ function AIConfigurationSidebar({ open, onClose }: { open: boolean; onClose: () 
   const configuredKey = state.data?.api_key_configured ? state.data.api_key_fingerprint || "已保存" : "未保存";
 
   return (
-    <TeacherDrawer
-      className="legacy-ai-config-sidebar"
-      title="AI 模型配置"
-      open={open}
-      onClose={onClose}
-      placement="right"
-      width="min(520px, calc(100vw - 24px))"
-      maskClosable={!saving}
-      keyboard={!saving}
-      destroyOnHidden
-    >
-      <section className="legacy-ai-config-sidebar-body" data-testid="teacher-ai-config-sidebar" aria-label="AI 配置">
+    <section className="legacy-ai-config-sidebar legacy-settings-ai-section" data-testid="teacher-ai-config-settings" aria-label="AI 配置">
+      <div className="legacy-profile-form-head">
+        <strong>AI 配置</strong>
+        <span>配置 AI 出题和 AI 报告使用的大语言模型。</span>
+      </div>
+      <div className="legacy-ai-config-sidebar-body">
         {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
         {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
         <StateBlock loading={state.loading && !state.data} error={state.error}>
@@ -1691,8 +1668,8 @@ function AIConfigurationSidebar({ open, onClose }: { open: boolean; onClose: () 
             </div>
           </form>
         </StateBlock>
-      </section>
-    </TeacherDrawer>
+      </div>
+    </section>
   );
 }
 
