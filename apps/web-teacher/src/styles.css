@@ -1244,6 +1244,13 @@ p {
   white-space: nowrap;
 }
 
+.legacy-question-bank-list .legacy-question-revoke-button {
+  grid-column: 1 / -1;
+  min-height: 30px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
 .legacy-error.compact,
 .legacy-notice.compact,
 .legacy-empty.compact {

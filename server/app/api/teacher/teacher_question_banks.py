@@ -25,6 +25,7 @@ from server.app.domains.questions.bank import (
     process_question_bank_evidence_refresh_jobs,
     publish_question,
     refresh_catalog_question_bank_evidence,
+    revoke_question_to_draft,
     update_question,
 )
 
@@ -168,6 +169,14 @@ async def teacher_disable_question(
     user: AuthUser = Depends(require_teacher_user),
 ) -> dict[str, Any]:
     return disable_question(question_id=question_id, user=user)
+
+
+@router.post("/question-banks/questions/{question_id}/revoke-to-draft")
+async def teacher_revoke_question_to_draft(
+    question_id: str = Path(min_length=1),
+    user: AuthUser = Depends(require_teacher_user),
+) -> dict[str, Any]:
+    return revoke_question_to_draft(question_id=question_id, user=user)
 
 
 @router.post("/question-banks/import")

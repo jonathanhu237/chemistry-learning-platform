@@ -1698,6 +1698,115 @@ def update_question(
     return dict(row)
 
 
+def revoke_question_to_draft(
+    *,
+    question_id: str,
+    user: Any,
+) -> dict[str, Any]:
+    with db_session() as session:
+        current = (
+            session.execute(text("SELECT * FROM experiment_questions WHERE id = CAST(:id AS uuid)"), {"id": question_id})
+            .mappings()
+            .first()
+        )
+        if not current:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Question not found")
+        if current["status"] != "published":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only published questions can be revoked to draft")
+        metadata = dict(current["metadata"] or {})
+        metadata.update(
+            {
+                "revoked_from_question_id": str(current["id"]),
+                "revoked_at": datetime.now(timezone.utc).isoformat(),
+                "revoked_by": str(user.id),
+            }
+        )
+        payload = {
+            "question_type": current["question_type"],
+            "stem": current["stem"],
+            "options": current["options"] or [],
+            "answer": current["answer"] or {},
+            "explanation": current["explanation"],
+            "difficulty": current["difficulty"] or "basic",
+            "related_chapter_ids": list(current["related_chapter_ids"] or []),
+            "related_knowledge_point_ids": list(current["related_knowledge_point_ids"] or []),
+            "source_chunk_ids": list(current["source_chunk_ids"] or []),
+            "source_refs": list(current["source_refs"] or []),
+            "primary_point_node_ids": list(current["primary_point_node_ids"] or []),
+            "primary_canonical_point_ids": list(current["primary_canonical_point_ids"] or []),
+            "source_placement_node_ids": list(current["source_placement_node_ids"] or []),
+            "metadata": metadata,
+            "status": "draft",
+        }
+        normalized, errors = _validate_question_payload(payload)
+        draft_payload = normalized or payload
+        generation_id = str(
+            session.execute(
+                text(
+                    """
+                    INSERT INTO experiment_question_generations (
+                      experiment_id, prompt, question_types, difficulty, requested_count,
+                      provider, model, mode, rag_sources, warning, status, created_by, metadata
+                    )
+                    VALUES (
+                      :experiment_id, :prompt, :question_types, :difficulty, 1,
+                      'manual', '', 'revoke_to_draft', CAST(:rag_sources AS jsonb),
+                      '', 'draft', CAST(:created_by AS uuid), CAST(:metadata AS jsonb)
+                    )
+                    RETURNING id
+                    """
+                ),
+                {
+                    "experiment_id": current["experiment_id"],
+                    "prompt": f"撤销正式题到待审：{current['stem']}",
+                    "question_types": [current["question_type"]],
+                    "difficulty": current["difficulty"] or "basic",
+                    "rag_sources": _json_array(current["source_refs"] or []),
+                    "created_by": user.id,
+                    "metadata": _json({"revoked_from_question_id": str(current["id"])}),
+                },
+            ).scalar_one()
+        )
+        draft = (
+            session.execute(
+                text(
+                    """
+                    INSERT INTO experiment_question_drafts (
+                      generation_id, experiment_id, payload, validation_errors, status
+                    )
+                    VALUES (
+                      CAST(:generation_id AS uuid), :experiment_id,
+                      CAST(:payload AS jsonb), CAST(:errors AS jsonb), 'draft'
+                    )
+                    RETURNING *
+                    """
+                ),
+                {
+                    "generation_id": generation_id,
+                    "experiment_id": current["experiment_id"],
+                    "payload": _json(draft_payload),
+                    "errors": _json_array(errors),
+                },
+            )
+            .mappings()
+            .one()
+        )
+        session.execute(
+            text(
+                """
+                UPDATE experiment_questions
+                SET status = 'draft',
+                    published_by = NULL,
+                    published_at = NULL,
+                    updated_at = now()
+                WHERE id = CAST(:id AS uuid)
+                """
+            ),
+            {"id": question_id},
+        )
+    return dict(draft)
+
+
 def publish_question(
     *,
     question_id: str,

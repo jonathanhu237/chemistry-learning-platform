@@ -669,6 +669,18 @@ function installTeacherFetchMock() {
       return jsonResponse({ items: [publishedQuestion], total: 1 });
     }
 
+    if (path === "/api/teacher/question-banks/questions/question-ch13-1/revoke-to-draft" && method === "POST") {
+      return jsonResponse({
+        ...draftQuestion,
+        id: "draft-from-question-1",
+        payload: {
+          ...publishedQuestion,
+          metadata: { revoked_from_question_id: "question-ch13-1" },
+          status: "draft",
+        },
+      });
+    }
+
     if (path === "/api/teacher/question-banks/legacy-point-generate" && method === "POST") {
       return jsonResponse({
         generation_id: "gen-ch13-2",
@@ -1163,10 +1175,12 @@ describe("LegacyTeacherApp", () => {
     expect(await screen.findByRole("heading", { name: "命题工作区" })).toBeTruthy();
     expect(await screen.findByText("新制氯水中的 HClO 具有强氧化性。")).toBeTruthy();
     expect(await screen.findByText("氯水使湿润有色布条褪色，最关键的微粒是什么？")).toBeTruthy();
-    expect(screen.getByText("本轮入库")).toBeTruthy();
-    expect(screen.getByText("审核通过后，题目会显示在这里。")).toBeTruthy();
-    expect(screen.queryByText("为什么干燥有色布条放入氯气中不明显褪色？")).toBeNull();
+    expect(screen.getByText("正式题库")).toBeTruthy();
+    expect(await screen.findByText("为什么干燥有色布条放入氯气中不明显褪色？")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "退回修改" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "撤销到待审" }));
+    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/questions/question-ch13-1/revoke-to-draft"));
 
     fireEvent.click(screen.getByRole("button", { name: "修改" }));
     fireEvent.change(screen.getByLabelText("题干"), { target: { value: "修改后的氯水漂白性题干？" } });
@@ -1209,7 +1223,8 @@ describe("LegacyTeacherApp", () => {
 
     const paths = requestPaths(fetchMock);
     expect(paths).toContain("/api/teacher/question-banks/drafts?point_node_id=point-ch13-bleach&canonical_point_id=canon-bleach");
-    expect(paths.some((path) => path.startsWith("/api/teacher/question-banks/questions"))).toBe(false);
+    expect(paths.some((path) => path.startsWith("/api/teacher/question-banks/questions?") && path.includes("status_filter=published"))).toBe(true);
+    expect(paths).toContain("/api/teacher/question-banks/questions/question-ch13-1/revoke-to-draft");
     expect(paths.some((path) => path.startsWith("/api/teacher/question-banks/drafts/draft-ch13-1/reject"))).toBe(false);
     expect(paths).toContain("/api/teacher/question-banks/drafts/draft-ch13-1/publish");
     expectNoForbiddenGenerationFlows(fetchMock);

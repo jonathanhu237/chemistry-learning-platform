@@ -23,6 +23,7 @@ import {
   legacyTeacherErrorMessage,
   listTeacherAccounts,
   listCatalogQuestionBank,
+  listQuestionBankQuestions,
   listQuestionDrafts,
   listTeacherClasses,
   listTeacherClassStudents,
@@ -30,6 +31,7 @@ import {
   loadCurrentUser,
   publishQuestionDraft,
   resetGlobalAssessmentReportPrompts,
+  revokeQuestionToDraft,
   saveCatalogPointContent,
   setAuthToken,
   teacherLogin,
@@ -1625,18 +1627,23 @@ function QuestionsPage() {
     selectedPoint?.node_id,
     reloadKey,
   ]);
+  const questionsState = useAsyncData(() => {
+    if (!selectedPoint) return Promise.resolve({ items: [], total: 0 });
+    const params = new URLSearchParams({ limit: "200", point_node_id: selectedPoint.node_id, status_filter: "published" });
+    if (selectedPoint.canonical_point_id) params.set("canonical_point_id", selectedPoint.canonical_point_id);
+    return listQuestionBankQuestions(params);
+  }, [selectedPoint?.node_id, reloadKey]);
   const [questionTypes, setQuestionTypes] = useState<ObjectiveQuestionType[]>(["single_choice"]);
   const [count, setCount] = useState(1);
   const [prompt, setPrompt] = useState("");
   const [actionError, setActionError] = useState("");
   const [generating, setGenerating] = useState(false);
-  const [sessionPublishedQuestions, setSessionPublishedQuestions] = useState<Question[]>([]);
+  const [revokingQuestionId, setRevokingQuestionId] = useState("");
 
   useEffect(() => {
     if (selectedPoint) {
       setPrompt(`请围绕“${selectedPoint.title}”生成 1 道课堂测评题，依据点位原理、现象和安全资料命题。`);
       setActionError("");
-      setSessionPublishedQuestions([]);
     }
   }, [selectedPoint?.node_id]);
 
@@ -1676,8 +1683,7 @@ function QuestionsPage() {
   const publishDraft = async (draftId: string) => {
     setActionError("");
     try {
-      const publishedQuestion = await publishQuestionDraft(draftId);
-      setSessionPublishedQuestions((current) => [publishedQuestion, ...current.filter((question) => question.id !== publishedQuestion.id)]);
+      await publishQuestionDraft(draftId);
       setReloadKey((value) => value + 1);
     } catch (caught) {
       setActionError(legacyTeacherErrorMessage(caught));
@@ -1692,6 +1698,19 @@ function QuestionsPage() {
     } catch (caught) {
       setActionError(legacyTeacherErrorMessage(caught));
       throw caught;
+    }
+  };
+
+  const revokeQuestion = async (questionId: string) => {
+    setActionError("");
+    setRevokingQuestionId(questionId);
+    try {
+      await revokeQuestionToDraft(questionId);
+      setReloadKey((value) => value + 1);
+    } catch (caught) {
+      setActionError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setRevokingQuestionId("");
     }
   };
   const workbenchMetrics = [
@@ -1818,23 +1837,25 @@ function QuestionsPage() {
                 )}
               </StateBlock>
             </section>
-            <section className="legacy-question-review-panel legacy-question-bank-panel" aria-label="本轮入库">
+            <section className="legacy-question-review-panel legacy-question-bank-panel" aria-label="正式题库">
               <div className="legacy-question-review-head">
                 <div>
                   <span className="legacy-section-kicker">04</span>
-                  <strong>本轮入库</strong>
+                  <strong>正式题库</strong>
                 </div>
-                <span>{sessionPublishedQuestions.length} 题</span>
+                <span>{questionsState.loading ? "读取中" : `${questionsState.data?.total || 0} 题`}</span>
               </div>
-              {sessionPublishedQuestions.length ? (
-                <div className="legacy-question-bank-list">
-                  {sessionPublishedQuestions.slice(0, 10).map((question) => (
-                    <QuestionRow key={question.id} question={question} />
-                  ))}
-                </div>
-              ) : (
-                <TeacherEmptyState message="审核通过后，题目会显示在这里。" compact />
-              )}
+              <StateBlock loading={questionsState.loading && !questionsState.data} error={questionsState.error}>
+                {(questionsState.data?.items || []).length ? (
+                  <div className="legacy-question-bank-list">
+                    {(questionsState.data?.items || []).slice(0, 10).map((question) => (
+                      <QuestionRow key={question.id} question={question} onRevoke={revokeQuestion} revokeDisabled={revokingQuestionId === question.id} />
+                    ))}
+                  </div>
+                ) : (
+                  <TeacherEmptyState message="当前点位暂无已审核题。" compact />
+                )}
+              </StateBlock>
             </section>
           </div>
         </TeacherCard>
@@ -2031,7 +2052,15 @@ function DraftReviewCard({
   );
 }
 
-function QuestionRow({ question }: { question: Question }) {
+function QuestionRow({
+  question,
+  onRevoke,
+  revokeDisabled = false,
+}: {
+  question: Question;
+  onRevoke?: (questionId: string) => void;
+  revokeDisabled?: boolean;
+}) {
   return (
     <article className="legacy-resource-row">
       <div>
@@ -2044,6 +2073,11 @@ function QuestionRow({ question }: { question: Question }) {
       <div className="legacy-row-stats">
         <span>{catalogContentStatusLabel(question.status, "未知")}</span>
         <span>{answerSummary(question.answer)}</span>
+        {onRevoke ? (
+          <TeacherButton className="legacy-secondary-button legacy-question-revoke-button" disabled={revokeDisabled} onClick={() => onRevoke(question.id)}>
+            {revokeDisabled ? "撤销中..." : "撤销到待审"}
+          </TeacherButton>
+        ) : null}
       </div>
     </article>
   );

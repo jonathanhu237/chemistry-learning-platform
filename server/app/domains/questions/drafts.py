@@ -12,6 +12,7 @@ from server.app.domains.questions.bank import (
     _json,
     _json_array,
     _validate_question_payload,
+    normalize_question_point_identity,
 )
 from server.app.domains.questions.duplicate_risk import attach_duplicate_risk_for_payload
 from server.app.domains.questions.generation import question_payload_has_catalog_evidence_lineage
@@ -154,20 +155,82 @@ def publish_question_draft(
             owner_kind="draft",
             owner_id=draft_id,
         )
-        if not question_payload_has_catalog_evidence_lineage(payload):
+        metadata = dict(payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {})
+        revoked_from_question_id = str(metadata.get("revoked_from_question_id") or "").strip()
+        if not revoked_from_question_id and not question_payload_has_catalog_evidence_lineage(payload):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"errors": ["catalog-node evidence lineage is required before publication"]},
             )
         payload["status"] = "published"
-        inserted = _insert_question(
-            session,
-            experiment_id=draft["experiment_id"],
-            payload=payload,
-            bank_kind="generated",
-            actor_user_id=user.id,
-            generation_id=str(draft["generation_id"]),
-        )
+        if revoked_from_question_id:
+            normalized, errors = _validate_question_payload(payload)
+            if errors or normalized is None:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"errors": errors})
+            normalized = normalize_question_point_identity(session, normalized)
+            row = (
+                session.execute(
+                    text(
+                        """
+                        UPDATE experiment_questions
+                        SET generation_id = CAST(:generation_id AS uuid),
+                            question_type = :question_type,
+                            stem = :stem,
+                            options = CAST(:options AS jsonb),
+                            answer = CAST(:answer AS jsonb),
+                            explanation = :explanation,
+                            difficulty = :difficulty,
+                            related_chapter_ids = :related_chapter_ids,
+                            related_knowledge_point_ids = :related_knowledge_point_ids,
+                            source_chunk_ids = :source_chunk_ids,
+                            source_refs = CAST(:source_refs AS jsonb),
+                            primary_point_node_ids = :primary_point_node_ids,
+                            primary_canonical_point_ids = :primary_canonical_point_ids,
+                            source_placement_node_ids = :source_placement_node_ids,
+                            metadata = CAST(:metadata AS jsonb),
+                            status = 'published',
+                            published_by = CAST(:actor AS uuid),
+                            published_at = now(),
+                            updated_at = now()
+                        WHERE id = CAST(:id AS uuid)
+                        RETURNING *
+                        """
+                    ),
+                    {
+                        "id": revoked_from_question_id,
+                        "generation_id": str(draft["generation_id"]),
+                        "question_type": normalized["question_type"],
+                        "stem": normalized["stem"],
+                        "options": _json_array(normalized["options"]),
+                        "answer": _json(normalized["answer"]),
+                        "explanation": normalized["explanation"],
+                        "difficulty": normalized["difficulty"],
+                        "related_chapter_ids": normalized["related_chapter_ids"],
+                        "related_knowledge_point_ids": normalized["related_knowledge_point_ids"],
+                        "source_chunk_ids": normalized["source_chunk_ids"],
+                        "source_refs": _json_array(normalized["source_refs"]),
+                        "primary_point_node_ids": normalized["primary_point_node_ids"],
+                        "primary_canonical_point_ids": normalized["primary_canonical_point_ids"],
+                        "source_placement_node_ids": normalized["source_placement_node_ids"],
+                        "metadata": _json(normalized["metadata"]),
+                        "actor": user.id,
+                    },
+                )
+                .mappings()
+                .first()
+            )
+            if not row:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Question not found")
+            inserted = dict(row)
+        else:
+            inserted = _insert_question(
+                session,
+                experiment_id=draft["experiment_id"],
+                payload=payload,
+                bank_kind="generated",
+                actor_user_id=user.id,
+                generation_id=str(draft["generation_id"]),
+            )
         session.execute(
             text(
                 """

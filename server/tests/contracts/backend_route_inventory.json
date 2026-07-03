@@ -1126,6 +1126,12 @@
     },
     {
       "method": "POST",
+      "path": "/api/teacher/question-banks/questions/{question_id}/revoke-to-draft",
+      "name": "teacher_revoke_question_to_draft",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
       "path": "/api/teacher/question-banks/workbench-candidates/{candidate_id}/publish",
       "name": "teacher_publish_question_workbench_candidate",
       "owner": "teacher-api"

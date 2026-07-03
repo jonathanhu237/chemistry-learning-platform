@@ -806,6 +806,10 @@ export function listQuestionBankQuestions(params: URLSearchParams): Promise<ApiL
   return api<ApiList<Question>>(`/api/teacher/question-banks/questions?${params.toString()}`);
 }
 
+export function revokeQuestionToDraft(questionId: string): Promise<QuestionDraft> {
+  return postJson<QuestionDraft>(`/api/teacher/question-banks/questions/${encodeURIComponent(questionId)}/revoke-to-draft`, {});
+}
+
 export function listQuestionDrafts(params: { pointNodeId?: string; canonicalPointId?: string; experimentId?: string }): Promise<ApiList<QuestionDraft>> {
   const search = new URLSearchParams();
   if (params.pointNodeId) search.set("point_node_id", params.pointNodeId);
