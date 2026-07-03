@@ -340,45 +340,6 @@ const smartAssessmentStrategy = {
   weak_max_bonus: 9,
 };
 
-const smartAssessmentPreview = {
-  strategy: smartAssessmentStrategy,
-  source: "system_default",
-  has_override: false,
-  class_student_count: 2,
-  candidate_point_count: 8,
-  measured_point_count: 5,
-  untested_point_count: 3,
-  target_question_count: 10,
-  untested_target_count: 2,
-  measured_target_count: 8,
-  experiments: [
-    {
-      id: "exp-ch13-bleach",
-      title: "氯水漂白性实验",
-      candidate_point_count: 3,
-      untested_point_count: 1,
-      measured_point_count: 2,
-      average_mastery_score: 72,
-      estimated_draw_tickets: 5.4,
-      estimated_question_count: 2,
-    },
-    {
-      id: "exp-ch13-kbr",
-      title: "氯水 + KBr + CCl4",
-      candidate_point_count: 5,
-      untested_point_count: 2,
-      measured_point_count: 3,
-      average_mastery_score: 58,
-      estimated_draw_tickets: 8.2,
-      estimated_question_count: 2,
-    },
-  ],
-  warnings: {
-    untested_pool_underfilled: false,
-    measured_pool_empty: true,
-  },
-};
-
 function analyticsDashboard() {
   return {
     class_id: "class-1",
@@ -797,10 +758,6 @@ function installTeacherFetchMock() {
       });
     }
 
-    if (path === "/api/teacher/classes/class-1/smart-assessment-preview") {
-      return jsonResponse(smartAssessmentPreview);
-    }
-
     if (/^\/api\/teacher\/classes\/[^/]+\/registration-settings$/.test(path)) {
       if (method === "PUT") {
         const body = JSON.parse(String(init?.body || "{}"));
@@ -1151,13 +1108,10 @@ describe("LegacyTeacherApp", () => {
     const page = await screen.findByTestId("teacher-page-paper");
     const workbench = await within(page).findByTestId("teacher-paper-management");
     expect(within(workbench).getByText("智能组卷策略")).toBeTruthy();
-    expect(within(workbench).getByText("当前班级预估")).toBeTruthy();
-    expect(within(workbench).getByText("氯水漂白性实验")).toBeTruthy();
-    expect(within(workbench).getByText("未测目标 2 题")).toBeTruthy();
-    expect(within(workbench).getByText("第 1 / 1 页 · 共 2 个实验")).toBeTruthy();
     expect(await within(workbench).findByText("当前班级继承默认策略")).toBeTruthy();
-    expect(within(workbench).queryByText("暂无已测点位，会优先覆盖未测点位")).toBeNull();
-    expect(within(workbench).queryByText("measured_pool_empty")).toBeNull();
+    expect(within(workbench).queryByText("当前班级预估")).toBeNull();
+    expect(within(workbench).queryByText("氯水漂白性实验")).toBeNull();
+    expect(within(workbench).queryByText("未测目标 2 题")).toBeNull();
     expect(within(workbench).queryByText("启用")).toBeNull();
 
     fireEvent.change(within(workbench).getByLabelText("每次题量数值"), { target: { value: "15" } });
@@ -1177,6 +1131,7 @@ describe("LegacyTeacherApp", () => {
       untested_ratio_percent: 30,
       max_questions_per_experiment: 2,
     });
+    expect(requestPaths(fetchMock)).not.toContain("/api/teacher/classes/class-1/smart-assessment-preview");
   });
 
   it("configures the DeepSeek model used by AI generation features", async () => {

@@ -17,7 +17,6 @@ import {
   getAuthToken,
   getCatalogNode,
   getTeacherClassRegistrationSettings,
-  getTeacherClassSmartAssessmentPreview,
   getTeacherClassSmartAssessmentStrategy,
   getTeacherMediaUploadPolicy,
   getGlobalAssessmentReportPrompts,
@@ -57,7 +56,6 @@ import {
   type CatalogQuestionBankResponse,
   type Question,
   type QuestionDraft,
-  type SmartAssessmentClassPreviewResponse,
   type SmartAssessmentSettings,
   type SmartAssessmentStrategyResponse,
   type TeacherMediaUploadPolicy,
@@ -659,22 +657,9 @@ const smartAssessmentDefaults: SmartAssessmentSettings = {
   weak_curve: 2,
   weak_max_bonus: 9,
 };
-const PAPER_PREVIEW_PAGE_SIZE = 5;
-
-const smartAssessmentWarningLabels: Record<string, string> = {
-  no_candidate_points: "题库暂无可用于测评的点位题",
-  underfilled_by_candidate_points: "候选点位少于目标题数",
-  untested_pool_underfilled: "未测点位不足，会回填已测点位",
-  experiment_cap_underfilled: "单实验题数上限可能导致题量不足",
-};
 
 function normalizeSmartAssessmentSettings(value?: Partial<SmartAssessmentSettings> | null): SmartAssessmentSettings {
   return { ...smartAssessmentDefaults, ...(value || {}), enabled: true };
-}
-
-function smartAssessmentTickets(settings: SmartAssessmentSettings, mastery: number): number {
-  const weakness = Math.max(0, Math.min(1, (100 - mastery) / 100));
-  return 1 + (settings.weak_tendency_percent / 100) * settings.weak_max_bonus * Math.pow(weakness, settings.weak_curve);
 }
 
 function PaperManagementPage() {
@@ -686,38 +671,17 @@ function PaperManagementPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<SmartAssessmentSettings>(smartAssessmentDefaults);
-  const [previewPage, setPreviewPage] = useState(1);
   const selectedClass = classes.find((item) => item.id === selectedClassId) || classes[0] || null;
   const effectiveClassId = selectedClass?.id || "";
   const strategyState = useAsyncData<SmartAssessmentStrategyResponse | null>(
     () => (effectiveClassId ? getTeacherClassSmartAssessmentStrategy(effectiveClassId) : Promise.resolve(null)),
     [effectiveClassId, reloadKey],
   );
-  const previewState = useAsyncData<SmartAssessmentClassPreviewResponse | null>(
-    () => (effectiveClassId ? getTeacherClassSmartAssessmentPreview(effectiveClassId) : Promise.resolve(null)),
-    [effectiveClassId, reloadKey],
-  );
   const strategy = strategyState.data;
-  const preview = previewState.data;
-  const previewWarnings = Object.entries(preview?.warnings || {})
-    .filter(([key, active]) => Boolean(active) && key !== "measured_pool_empty")
-    .map(([key]) => smartAssessmentWarningLabels[key] || key);
-  const previewExperiments = preview?.experiments || [];
-  const previewPageCount = Math.max(1, Math.ceil(previewExperiments.length / PAPER_PREVIEW_PAGE_SIZE));
-  const clampedPreviewPage = Math.min(previewPage, previewPageCount);
-  const pagedPreviewExperiments = previewExperiments.slice((clampedPreviewPage - 1) * PAPER_PREVIEW_PAGE_SIZE, clampedPreviewPage * PAPER_PREVIEW_PAGE_SIZE);
 
   useEffect(() => {
     if (!selectedClassId && classes[0]?.id) setSelectedClassId(classes[0].id);
   }, [classes, selectedClassId]);
-
-  useEffect(() => {
-    setPreviewPage(1);
-  }, [effectiveClassId, previewExperiments.length]);
-
-  useEffect(() => {
-    if (previewPage > previewPageCount) setPreviewPage(previewPageCount);
-  }, [previewPage, previewPageCount]);
 
   useEffect(() => {
     if (strategy?.strategy) setSettings(normalizeSmartAssessmentSettings(strategy.strategy));
@@ -789,22 +753,6 @@ function PaperManagementPage() {
                   ))}
                 </select>
               </label>
-              <div className="legacy-paper-summary-strip" aria-label="组卷概览">
-                {[
-                  { label: "班级学生", value: preview?.class_student_count ?? selectedClass?.student_count ?? 0, unit: "人" },
-                  { label: "候选点位", value: preview?.candidate_point_count ?? 0, unit: "个" },
-                  { label: "未测点位", value: preview?.untested_point_count ?? 0, unit: "个" },
-                  { label: "组卷题量", value: settings.question_count, unit: "题" },
-                ].map((item) => (
-                  <article key={item.label}>
-                    <span>{item.label}</span>
-                    <strong>
-                      {item.value}
-                      <small>{item.unit}</small>
-                    </strong>
-                  </article>
-                ))}
-              </div>
             </TeacherCard>
 
             <form className="legacy-paper-board-form" onSubmit={submit}>
@@ -824,138 +772,72 @@ function PaperManagementPage() {
                   </div>
                 </header>
 
-                <div className="legacy-paper-board-grid">
-                  <section className="legacy-paper-section" aria-label="策略参数">
-                    <h3>策略参数</h3>
-                    <table className="legacy-paper-settings-table">
-                      <thead>
-                        <tr>
-                          <th scope="col">参数</th>
-                          <th scope="col">当前值</th>
-                          <th scope="col">调整</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <PaperNumberField
-                          label="每次题量"
-                          value={settings.question_count}
-                          min={1}
-                          max={50}
-                          unit="题"
-                          onChange={(value) => setSetting("question_count", value)}
-                        />
-                        <PaperNumberField
-                          label="未测点位比例"
-                          value={settings.untested_ratio_percent}
-                          min={0}
-                          max={100}
-                          step={5}
-                          unit="%"
-                          onChange={(value) => setSetting("untested_ratio_percent", value)}
-                        />
-                        <PaperNumberField
-                          label="薄弱点位倾向"
-                          value={settings.weak_tendency_percent}
-                          min={0}
-                          max={100}
-                          step={5}
-                          unit="%"
-                          onChange={(value) => setSetting("weak_tendency_percent", value)}
-                        />
-                        <PaperNumberField
-                          label="单实验最多题数"
-                          value={settings.max_questions_per_experiment}
-                          min={1}
-                          max={10}
-                          unit="题"
-                          onChange={(value) => setSetting("max_questions_per_experiment", value)}
-                        />
-                        <PaperNumberField
-                          label="薄弱曲线"
-                          value={settings.weak_curve}
-                          min={0.5}
-                          max={4}
-                          step={0.5}
-                          unit=""
-                          onChange={(value) => setSetting("weak_curve", value)}
-                        />
-                        <PaperNumberField
-                          label="薄弱加权上限"
-                          value={settings.weak_max_bonus}
-                          min={1}
-                          max={20}
-                          step={1}
-                          unit="倍"
-                          onChange={(value) => setSetting("weak_max_bonus", value)}
-                        />
-                      </tbody>
-                    </table>
-                  </section>
-
-                  <section className="legacy-paper-section" aria-label="当前班级预估">
-                    <div className="legacy-paper-section-head">
-                      <h3>当前班级预估</h3>
-                    </div>
-                    <StateBlock loading={previewState.loading && !previewState.data} error={previewState.error}>
-                      {preview ? (
-                        <div className="legacy-paper-preview">
-                          <div className="legacy-paper-targets">
-                            <span>未测目标 {preview.untested_target_count} 题</span>
-                            <span>薄弱目标 {preview.measured_target_count} 题</span>
-                          </div>
-                          <div className="legacy-paper-preview-split">
-                            <PaperWeakCurve settings={settings} />
-                            <div className="legacy-paper-preview-table-wrap">
-                              {previewExperiments.length ? (
-                                <>
-                                  <table className="legacy-paper-preview-table">
-                                    <thead>
-                                      <tr>
-                                        <th scope="col">实验</th>
-                                        <th scope="col">预估</th>
-                                        <th scope="col">点位</th>
-                                        <th scope="col">掌握</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {pagedPreviewExperiments.map((item) => (
-                                        <PaperPreviewRow key={item.id} item={item} />
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                  <div className="legacy-class-pagination legacy-paper-preview-pagination" aria-label="预估分页">
-                                    <span>
-                                      第 {clampedPreviewPage} / {previewPageCount} 页 · 共 {previewExperiments.length} 个实验
-                                    </span>
-                                    <div>
-                                      <button type="button" disabled={clampedPreviewPage <= 1} onClick={() => setPreviewPage((value) => Math.max(1, value - 1))}>
-                                        上一页
-                                      </button>
-                                      <button type="button" disabled={clampedPreviewPage >= previewPageCount} onClick={() => setPreviewPage((value) => Math.min(previewPageCount, value + 1))}>
-                                        下一页
-                                      </button>
-                                    </div>
-                                  </div>
-                                </>
-                              ) : (
-                                <TeacherEmptyState message="当前班级暂无可预估的组卷点位。" compact />
-                              )}
-                            </div>
-                          </div>
-                          {previewWarnings.length ? (
-                            <div className="legacy-paper-warnings">
-                              {previewWarnings.map((item) => (
-                                <span key={item}>{item}</span>
-                              ))}
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : (
-                        <TeacherEmptyState message="请选择班级查看组卷预估。" compact />
-                      )}
-                    </StateBlock>
-                  </section>
-                </div>
+                <section className="legacy-paper-section" aria-label="策略参数">
+                  <h3>策略参数</h3>
+                  <table className="legacy-paper-settings-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">参数</th>
+                        <th scope="col">当前值</th>
+                        <th scope="col">调整</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <PaperNumberField
+                        label="每次题量"
+                        value={settings.question_count}
+                        min={1}
+                        max={50}
+                        unit="题"
+                        onChange={(value) => setSetting("question_count", value)}
+                      />
+                      <PaperNumberField
+                        label="未测点位比例"
+                        value={settings.untested_ratio_percent}
+                        min={0}
+                        max={100}
+                        step={5}
+                        unit="%"
+                        onChange={(value) => setSetting("untested_ratio_percent", value)}
+                      />
+                      <PaperNumberField
+                        label="薄弱点位倾向"
+                        value={settings.weak_tendency_percent}
+                        min={0}
+                        max={100}
+                        step={5}
+                        unit="%"
+                        onChange={(value) => setSetting("weak_tendency_percent", value)}
+                      />
+                      <PaperNumberField
+                        label="单实验最多题数"
+                        value={settings.max_questions_per_experiment}
+                        min={1}
+                        max={10}
+                        unit="题"
+                        onChange={(value) => setSetting("max_questions_per_experiment", value)}
+                      />
+                      <PaperNumberField
+                        label="薄弱曲线"
+                        value={settings.weak_curve}
+                        min={0.5}
+                        max={4}
+                        step={0.5}
+                        unit=""
+                        onChange={(value) => setSetting("weak_curve", value)}
+                      />
+                      <PaperNumberField
+                        label="薄弱加权上限"
+                        value={settings.weak_max_bonus}
+                        min={1}
+                        max={20}
+                        step={1}
+                        unit="倍"
+                        onChange={(value) => setSetting("weak_max_bonus", value)}
+                      />
+                    </tbody>
+                  </table>
+                </section>
               </TeacherCard>
             </form>
           </div>
@@ -998,48 +880,6 @@ function PaperNumberField({
           <input aria-label={`${label}数值`} type="number" min={min} max={max} step={step} value={value} onChange={(event) => update(Number(event.target.value))} />
         </div>
       </td>
-    </tr>
-  );
-}
-
-function PaperWeakCurve({ settings }: { settings: SmartAssessmentSettings }) {
-  const marks = [0, 25, 50, 75, 100];
-  const max = Math.max(...marks.map((mastery) => smartAssessmentTickets(settings, mastery)));
-  return (
-    <table className="legacy-paper-mini-table" aria-label="薄弱权重曲线">
-      <thead>
-        <tr>
-          <th scope="col">掌握度</th>
-          <th scope="col">权重</th>
-        </tr>
-      </thead>
-      <tbody>
-        {marks.map((mastery) => {
-          const tickets = smartAssessmentTickets(settings, mastery);
-          return (
-            <tr key={mastery}>
-              <th scope="row">{mastery} 分</th>
-              <td>
-                <b style={{ width: `${Math.max(8, (tickets / max) * 100)}%` }} />
-                <span>{tickets.toFixed(1)} 票</span>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
-}
-
-function PaperPreviewRow({ item }: { item: SmartAssessmentClassPreviewResponse["experiments"][number] }) {
-  return (
-    <tr>
-      <th scope="row">{item.title}</th>
-      <td>{item.estimated_question_count.toFixed(1)} 题</td>
-      <td>
-        未测 {item.untested_point_count} / 已测 {item.measured_point_count}
-      </td>
-      <td>{item.average_mastery_score === null || item.average_mastery_score === undefined ? "-" : scoreLabel(item.average_mastery_score)}</td>
     </tr>
   );
 }
