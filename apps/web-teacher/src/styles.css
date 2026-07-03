@@ -223,15 +223,27 @@ p {
   min-width: 0;
 }
 
+.legacy-breadcrumb span,
+.legacy-breadcrumb strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .legacy-breadcrumb span {
   color: var(--legacy-muted);
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1;
 }
 
 .legacy-breadcrumb li:first-child span {
   color: var(--legacy-sysu-red);
+}
+
+.legacy-breadcrumb strong {
+  color: var(--legacy-ink);
 }
 
 .legacy-breadcrumb-separator {
@@ -251,16 +263,6 @@ p {
   border-top: 1.5px solid #9f8d88;
   border-right: 1.5px solid #9f8d88;
   transform: translateY(-50%) rotate(45deg);
-}
-
-.legacy-breadcrumb strong {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--legacy-ink);
-  font-size: 16px;
-  line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .legacy-user-menu {
