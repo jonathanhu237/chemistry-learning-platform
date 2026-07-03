@@ -127,6 +127,8 @@ npm test
 npm run build
 ```
 
+Teacher UI primitives are backed by Ant Design through `apps/web-teacher/src/ui/TeacherUI.tsx`; see `docs/teacher-ui-component-library.md` before adding new teacher-page controls or broad primitive CSS.
+
 Run backend tests:
 
 ```powershell

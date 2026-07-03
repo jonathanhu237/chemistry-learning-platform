@@ -39,6 +39,26 @@ import {
   type TeacherStudentSummary,
   type User,
 } from "./api";
+import {
+  TeacherAlert,
+  TeacherButton,
+  TeacherCard,
+  TeacherContent,
+  TeacherEmptyState,
+  TeacherForm,
+  TeacherHeader,
+  TeacherInput,
+  TeacherLoadingState,
+  TeacherMain,
+  TeacherMetricGrid,
+  TeacherModal,
+  TeacherPage,
+  TeacherShell,
+  TeacherSidebar,
+  TeacherSwitch,
+  TeacherTooltip,
+  TeacherUiProvider,
+} from "./ui/TeacherUI";
 
 const logoSrc = `${import.meta.env.BASE_URL}assets/sysu-lockup-red.svg`;
 const forbiddenPathSegments = [
@@ -105,6 +125,14 @@ function routeFromPath(path: string): RouteKey {
 }
 
 export function LegacyTeacherApp() {
+  return (
+    <TeacherUiProvider>
+      <LegacyTeacherAppContent />
+    </TeacherUiProvider>
+  );
+}
+
+function LegacyTeacherAppContent() {
   const path = usePath();
   const [user, setUser] = useState<User | null>(null);
   const [checkingSession, setCheckingSession] = useState(Boolean(getAuthToken()));
@@ -158,8 +186,8 @@ export function LegacyTeacherApp() {
   };
 
   return (
-    <div className="legacy-teacher-shell" data-testid="teacher-shell">
-      <aside className="legacy-sidebar">
+    <TeacherShell testId="teacher-shell">
+      <TeacherSidebar>
         <img src={logoSrc} alt="实验平台标识" className="legacy-sidebar-logo" />
         <strong>无机化学实验教学后台</strong>
         <nav aria-label="后台导航">
@@ -167,9 +195,9 @@ export function LegacyTeacherApp() {
             <NavButton key={item.key} active={activeRoute === item.key} label={item.label} path={item.path} testId={`teacher-nav-${item.key}`} />
           ))}
         </nav>
-      </aside>
-      <div className="legacy-teacher-main">
-        <header className="legacy-teacher-header">
+      </TeacherSidebar>
+      <TeacherMain>
+        <TeacherHeader>
           <nav className="legacy-breadcrumb" aria-label="当前位置">
             <span>后台工作台</span>
             <span aria-hidden="true">&gt;</span>
@@ -194,41 +222,40 @@ export function LegacyTeacherApp() {
               </div>
             ) : null}
           </div>
-        </header>
-        {activeRoute === "questions" ? (
-          <QuestionsPage />
-        ) : activeRoute === "analytics" ? (
-          <AnalyticsPage />
-        ) : activeRoute === "reports" ? (
-          <ReportsPage />
-        ) : (
-          <ExperimentsPage />
-        )}
-      </div>
-    </div>
+        </TeacherHeader>
+        <TeacherContent>
+          {activeRoute === "questions" ? (
+            <QuestionsPage />
+          ) : activeRoute === "analytics" ? (
+            <AnalyticsPage />
+          ) : activeRoute === "reports" ? (
+            <ReportsPage />
+          ) : (
+            <ExperimentsPage />
+          )}
+        </TeacherContent>
+      </TeacherMain>
+    </TeacherShell>
   );
 }
 
 function NavButton({ active, label, path, testId }: { active: boolean; label: string; path: string; testId: string }) {
   return (
-    <button className={active ? "active" : ""} data-testid={testId} onClick={() => navigate(path)}>
+    <TeacherButton className={active ? "active" : ""} data-testid={testId} onClick={() => navigate(path)}>
       {label}
-    </button>
+    </TeacherButton>
   );
 }
 
 function LoginScreen({ onLogin }: { onLogin: (user: User) => void }) {
-  const [username, setUsername] = useState("teacher");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
+  const submit = async (values: { username: string; password: string }) => {
     setSubmitting(true);
     setError("");
     try {
-      const response = await teacherLogin(username, password);
+      const response = await teacherLogin(values.username, values.password);
       if (response.user.role !== "teacher") {
         throw new Error("该账号不能进入后台。");
       }
@@ -248,20 +275,18 @@ function LoginScreen({ onLogin }: { onLogin: (user: User) => void }) {
         <span className="eyebrow">Teacher</span>
         <h1>无机化学实验教学后台</h1>
         <p>管理实验目录与点位资料，基于点位内容出题，并查看学生学习与报告生成结果。</p>
-        <form data-testid="teacher-login-form" onSubmit={submit}>
-          <label>
-            账号
-            <input name="username" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" />
-          </label>
-          <label>
-            密码
-            <input name="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" />
-          </label>
-          {error ? <div className="legacy-error">{error}</div> : null}
-          <button className="primary-button" disabled={submitting}>
+        <TeacherForm data-testid="teacher-login-form" className="legacy-teacher-login-form" layout="vertical" initialValues={{ username: "teacher" }} onFinish={submit}>
+          <TeacherForm.Item label="账号" name="username" rules={[{ required: true, message: "请输入账号。" }]}>
+            <TeacherInput name="username" autoComplete="username" />
+          </TeacherForm.Item>
+          <TeacherForm.Item label="密码" name="password" rules={[{ required: true, message: "请输入密码。" }]}>
+            <TeacherInput.Password name="password" autoComplete="current-password" />
+          </TeacherForm.Item>
+          {error ? <TeacherAlert className="legacy-error" type="error" message={error} /> : null}
+          <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={submitting}>
             {submitting ? "登录中..." : "进入后台"}
-          </button>
-        </form>
+          </TeacherButton>
+        </TeacherForm>
       </section>
     </div>
   );
@@ -310,7 +335,7 @@ function PageFrame({
   children: ReactNode;
 }) {
   return (
-    <main className="legacy-teacher-page" data-testid={testId}>
+    <TeacherPage testId={testId}>
       {showHeader ? (
         <section className="legacy-page-head">
           {eyebrow ? <span className="eyebrow">{eyebrow}</span> : null}
@@ -319,31 +344,26 @@ function PageFrame({
         </section>
       ) : null}
       {children}
-    </main>
+    </TeacherPage>
   );
 }
 
 function StateBlock({ loading, error, children }: { loading: boolean; error: string; children: ReactNode }) {
-  if (loading) return <div className="legacy-empty">正在读取数据...</div>;
-  if (error) return <div className="legacy-error">{error}</div>;
+  if (loading) return <TeacherLoadingState />;
+  if (error) return <ErrorBlock>{error}</ErrorBlock>;
   return <>{children}</>;
 }
 
 function MetricGrid({ metrics }: { metrics: Array<{ label: string; value: ReactNode; unit?: string; description?: string }> }) {
-  return (
-    <div className="legacy-metric-grid">
-      {metrics.map((metric) => (
-        <div className="legacy-metric" key={metric.label}>
-          <span>{metric.label}</span>
-          <strong>
-            {metric.value}
-            {metric.unit ? <em>{metric.unit}</em> : null}
-          </strong>
-          {metric.description ? <small>{metric.description}</small> : null}
-        </div>
-      ))}
-    </div>
-  );
+  return <TeacherMetricGrid metrics={metrics} />;
+}
+
+function NoticeBlock({ children }: { children: ReactNode }) {
+  return <TeacherAlert className="legacy-notice" type="success" message={children} />;
+}
+
+function ErrorBlock({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
+  return <TeacherAlert className={`legacy-error${compact ? " compact" : ""}`} type="error" message={children} />;
 }
 
 function useCatalogBank(chapterId: string, reloadKey: number) {
@@ -481,11 +501,11 @@ function ExperimentsPage() {
 
   return (
     <PageFrame title="实验管理" showHeader={false} testId="teacher-page-experiments">
-      <StateBlock loading={catalog.loading} error={catalog.error}>
-        {notice ? <div className="legacy-notice">{notice}</div> : null}
-        {actionError ? <div className="legacy-error">{actionError}</div> : null}
+      <StateBlock loading={catalog.loading && !catalog.data} error={catalog.error}>
+        {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
+        {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
         <div className="legacy-management-grid">
-          <section className="legacy-table-card">
+          <TeacherCard className="legacy-table-card">
             <header>
               <h2>章节目录与点位</h2>
               <span>目录 {directoryNodes.length} · 点位 {pointNodes.length}</span>
@@ -540,13 +560,13 @@ function ExperimentsPage() {
               onNotice={setNotice}
               onError={setActionError}
             />
-          </section>
-          <section className="legacy-table-card">
+          </TeacherCard>
+          <TeacherCard className="legacy-table-card">
             <header>
               <h2>节点编辑</h2>
               {detail ? <NodeVisibilityControl node={detail.node} disabled={visibilitySubmitting} onToggle={toggleNodeVisibility} /> : null}
             </header>
-            <StateBlock loading={detailState.loading} error={detailState.error}>
+            <StateBlock loading={detailState.loading && !detailState.data} error={detailState.error}>
               {detail ? (
                 <NodeEditor
                   detail={detail}
@@ -557,10 +577,10 @@ function ExperimentsPage() {
                   onError={setActionError}
                 />
               ) : (
-                <div className="legacy-empty compact">请选择一个目录或点位。</div>
+                <TeacherEmptyState message="请选择一个目录或点位。" compact />
               )}
             </StateBlock>
-          </section>
+          </TeacherCard>
         </div>
       </StateBlock>
     </PageFrame>
@@ -583,7 +603,7 @@ function CatalogFileTree({
   onContextMenu: (event: ReactMouseEvent, node?: CatalogQuestionBankNode) => void;
 }) {
   const tree = useMemo(() => buildCatalogFileTree(nodes), [nodes]);
-  if (!tree.length) return <div className="legacy-empty compact" onContextMenu={(event) => onContextMenu(event)}>当前章节暂无目录或点位。</div>;
+  if (!tree.length) return <div onContextMenu={(event) => onContextMenu(event)}><TeacherEmptyState message="当前章节暂无目录或点位。" compact /></div>;
   return (
     <div className="legacy-file-tree" role="tree" aria-label="章节目录与点位" onContextMenu={(event) => onContextMenu(event)}>
       {tree.map((node) => (
@@ -727,9 +747,9 @@ function CreateNodeDialog({
 
   if (!request) return null;
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!chapterId || !title.trim()) {
+  const submit = async (values: { title: string }) => {
+    const nextTitle = values.title.trim();
+    if (!chapterId || !nextTitle) {
       onError("请先选择章节并填写名称。");
       return;
     }
@@ -741,7 +761,7 @@ function CreateNodeDialog({
         chapter_id: chapterId,
         parent_id: request.parentId || null,
         node_kind: request.kind,
-        title: title.trim(),
+        title: nextTitle,
       });
       onNotice(request.kind === "point" ? "已新增点位。" : "已新增目录。");
       onCreated(request.parentId);
@@ -754,33 +774,34 @@ function CreateNodeDialog({
   };
 
   return (
-    <div className="legacy-create-dialog-backdrop" role="presentation" onMouseDown={onClose}>
-      <section className="legacy-create-dialog" role="dialog" aria-modal="true" aria-labelledby="legacy-create-dialog-title" onMouseDown={(event) => event.stopPropagation()}>
-        <header>
-          <div>
-            <h2 id="legacy-create-dialog-title">{request.kind === "directory" ? "新增目录" : "新增点位"}</h2>
-            <span>位置：{request.parentTitle}</span>
-          </div>
-          <button type="button" className="text-button" onClick={onClose}>
-            关闭
-          </button>
-        </header>
-        <form onSubmit={submit}>
-          <label>
-            名称
-            <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={request.kind === "directory" ? "输入目录名称" : "输入实验点位名称"} autoFocus />
-          </label>
-          <div className="legacy-create-dialog-actions">
-            <button type="button" className="legacy-secondary-button" onClick={onClose}>
-              取消
-            </button>
-            <button className="primary-button" disabled={submitting}>
-              {submitting ? "创建中..." : request.kind === "directory" ? "创建目录" : "创建点位"}
-            </button>
-          </div>
-        </form>
-      </section>
-    </div>
+    <TeacherModal
+      open
+      className="legacy-create-dialog"
+      title={request.kind === "directory" ? "新增目录" : "新增点位"}
+      onCancel={onClose}
+      footer={null}
+      maskClosable={!submitting}
+    >
+      <span className="legacy-create-dialog-location">位置：{request.parentTitle}</span>
+      <TeacherForm className="legacy-create-dialog-form" layout="vertical" initialValues={{ title }} onFinish={submit}>
+        <TeacherForm.Item label="名称" name="title" rules={[{ required: true, message: "请输入名称。" }]}>
+          <TeacherInput
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder={request.kind === "directory" ? "输入目录名称" : "输入实验点位名称"}
+            autoFocus
+          />
+        </TeacherForm.Item>
+        <div className="legacy-create-dialog-actions">
+          <TeacherButton type="default" className="legacy-secondary-button" onClick={onClose}>
+            取消
+          </TeacherButton>
+          <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={submitting}>
+            {submitting ? "创建中..." : request.kind === "directory" ? "创建目录" : "创建点位"}
+          </TeacherButton>
+        </div>
+      </TeacherForm>
+    </TeacherModal>
   );
 }
 
@@ -790,24 +811,21 @@ function NodeVisibilityControl({ node, disabled, onToggle }: { node: CatalogQues
 
   return (
     <div className="legacy-header-visibility">
-      <button
-        type="button"
+      <TeacherSwitch
         className={`legacy-enable-switch${nodeEnabled ? " is-on" : ""}`}
-        role="switch"
-        aria-checked={nodeEnabled}
+        checked={nodeEnabled}
         aria-label="学生端可见"
         disabled={disabled}
-        onClick={() => onToggle(node)}
-      >
-        <span className="legacy-enable-switch-track" aria-hidden="true">
-          <span className="legacy-enable-switch-knob" />
-        </span>
-        <strong>{nodeEnabled ? "已启用" : "未启用"}</strong>
-      </button>
+        checkedChildren="已启用"
+        unCheckedChildren="未启用"
+        onChange={() => onToggle(node)}
+      />
       <span className="legacy-help-tooltip">
-        <button type="button" className="legacy-help-dot" aria-label="学生端展示说明" aria-describedby={helpId}>
-          ?
-        </button>
+        <TeacherTooltip title="关闭后，该节点及下级不会展示给学生。">
+          <button type="button" className="legacy-help-dot" aria-label="学生端展示说明" aria-describedby={helpId}>
+            ?
+          </button>
+        </TeacherTooltip>
         <span id={helpId} className="legacy-help-bubble" role="tooltip">
           关闭后，该节点及下级不会展示给学生。
         </span>
@@ -832,8 +850,7 @@ function NodeEditor({ detail, onSaved, onError }: { detail: CatalogNodeDetail; o
     setSafety(content?.safety_note || "");
   }, [node.node_id, node.title, content]);
 
-  const save = async (event: FormEvent) => {
-    event.preventDefault();
+  const save = async () => {
     if (!title.trim()) {
       onError("请填写节点名称。");
       return;
@@ -862,33 +879,29 @@ function NodeEditor({ detail, onSaved, onError }: { detail: CatalogNodeDetail; o
   };
 
   return (
-    <form className="legacy-editor-form" onSubmit={save}>
-      <label>
-        名称
-        <input value={title} onChange={(event) => setTitle(event.target.value)} />
-      </label>
+    <TeacherForm className="legacy-editor-form" layout="vertical" onFinish={save}>
+      <TeacherForm.Item label="名称">
+        <TeacherInput value={title} onChange={(event) => setTitle(event.target.value)} />
+      </TeacherForm.Item>
       {node.node_kind === "point" ? (
         <div className="legacy-point-content-fields">
-          <label>
-            原理
-            <textarea value={principle} onChange={(event) => setPrinciple(event.target.value)} rows={3} />
-          </label>
-          <label>
-            现象
-            <textarea value={phenomenon} onChange={(event) => setPhenomenon(event.target.value)} rows={3} />
-          </label>
-          <label>
-            安全
-            <textarea value={safety} onChange={(event) => setSafety(event.target.value)} rows={3} />
-          </label>
+          <TeacherForm.Item label="原理">
+            <TeacherInput.TextArea value={principle} onChange={(event) => setPrinciple(event.target.value)} rows={3} />
+          </TeacherForm.Item>
+          <TeacherForm.Item label="现象">
+            <TeacherInput.TextArea value={phenomenon} onChange={(event) => setPhenomenon(event.target.value)} rows={3} />
+          </TeacherForm.Item>
+          <TeacherForm.Item label="安全">
+            <TeacherInput.TextArea value={safety} onChange={(event) => setSafety(event.target.value)} rows={3} />
+          </TeacherForm.Item>
         </div>
       ) : null}
       <div className="legacy-editor-actions">
-        <button className="primary-button" disabled={submitting}>
+        <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={submitting}>
           {submitting ? "保存中..." : "保存"}
-        </button>
+        </TeacherButton>
       </div>
-    </form>
+    </TeacherForm>
   );
 }
 
@@ -994,7 +1007,7 @@ function QuestionsPage() {
       description="选择一个实验点位，把原理、现象、安全三段式资料连同教师要求交给 LLM 生成待审题；不调用检索增强流程。"
       testId="teacher-page-questions"
     >
-      <StateBlock loading={catalog.loading} error={catalog.error}>
+      <StateBlock loading={catalog.loading && !catalog.data} error={catalog.error}>
         <MetricGrid
           metrics={[
             { label: "题目总数", value: Number(catalog.data?.totals.question_count || 0), unit: "题" },
@@ -1003,9 +1016,9 @@ function QuestionsPage() {
             { label: "点位", value: points.length, unit: "项" },
           ]}
         />
-        {notice ? <div className="legacy-notice">{notice}</div> : null}
-        {actionError ? <div className="legacy-error">{actionError}</div> : null}
-        <section className="legacy-table-card legacy-question-demo">
+        {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
+        {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
+        <TeacherCard className="legacy-table-card legacy-question-demo">
           <header>
             <h2>命题工作区</h2>
             <span>点位资料来源</span>
@@ -1058,18 +1071,18 @@ function QuestionsPage() {
               </div>
               <label className="legacy-textarea-label">
                 教师要求
-                <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={5} />
+                <TeacherInput.TextArea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={5} />
               </label>
-              <button className="primary-button" disabled={generating || !selectedPoint}>
+              <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={generating || !selectedPoint}>
                 {generating ? "生成中..." : "生成待审题"}
-              </button>
+              </TeacherButton>
             </form>
             <section className="legacy-question-review-panel">
               <div className="legacy-question-review-head">
                 <strong>待审题</strong>
                 <span>{draftsState.loading ? "读取中" : `${draftsState.data?.items.length || 0} 条`}</span>
               </div>
-              <StateBlock loading={draftsState.loading} error={draftsState.error}>
+              <StateBlock loading={draftsState.loading && !draftsState.data} error={draftsState.error}>
                 {draftsState.data?.items.length ? (
                   <div className="legacy-question-candidate-list">
                     {draftsState.data.items.slice(0, 5).map((draft) => (
@@ -1077,32 +1090,32 @@ function QuestionsPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="legacy-empty compact">暂无待审题。</div>
+                  <TeacherEmptyState message="暂无待审题。" compact />
                 )}
               </StateBlock>
             </section>
           </div>
-        </section>
-        <section className="legacy-table-card">
+        </TeacherCard>
+        <TeacherCard className="legacy-table-card">
           <header>
             <h2>正式题库</h2>
             <span>{questionsState.data?.total || 0} 题</span>
           </header>
-          <StateBlock loading={questionsState.loading} error={questionsState.error}>
+          <StateBlock loading={questionsState.loading && !questionsState.data} error={questionsState.error}>
             <div className="legacy-resource-list">
               {(questionsState.data?.items || []).slice(0, 12).map((question) => (
                 <QuestionRow key={question.id} question={question} />
               ))}
             </div>
           </StateBlock>
-        </section>
+        </TeacherCard>
       </StateBlock>
     </PageFrame>
   );
 }
 
 function PointContentSummary({ detail, loading }: { detail: CatalogNodeDetail | null; loading: boolean }) {
-  if (loading) return <div className="legacy-empty compact">正在读取点位资料...</div>;
+  if (loading) return <TeacherLoadingState message="正在读取点位资料..." />;
   const content = detail?.point_content;
   return (
     <div className="legacy-question-selected">
@@ -1150,12 +1163,12 @@ function DraftReviewCard({ draft, onReview }: { draft: QuestionDraft; onReview: 
       </dl>
       {validationErrors.length ? <div className="legacy-error compact">{validationErrors.join("；")}</div> : null}
       <div className="legacy-question-card-actions">
-        <button className="legacy-secondary-button" disabled={draft.status !== "draft"} onClick={() => onReview(draft.id, "publish")}>
+        <TeacherButton className="legacy-secondary-button" disabled={draft.status !== "draft"} onClick={() => onReview(draft.id, "publish")}>
           通过入库
-        </button>
-        <button className="legacy-secondary-button" disabled={draft.status !== "draft"} onClick={() => onReview(draft.id, "reject")}>
+        </TeacherButton>
+        <TeacherButton className="legacy-secondary-button" disabled={draft.status !== "draft"} onClick={() => onReview(draft.id, "reject")}>
           退回修改
-        </button>
+        </TeacherButton>
       </div>
     </article>
   );
@@ -1243,8 +1256,8 @@ function AnalyticsPage() {
       description="按班级展示每个学生的参与、得分、掌握度证据和薄弱点位，数据来自新版学情接口。"
       testId="teacher-page-analytics"
     >
-      <StateBlock loading={classState.loading} error={classState.error}>
-        <section className="legacy-card">
+      <StateBlock loading={classState.loading && !classState.data} error={classState.error}>
+        <TeacherCard className="legacy-card">
           <label className="legacy-select-label">
             当前班级
             <select value={selectedClassId} onChange={(event) => setSelectedClassId(event.target.value)}>
@@ -1255,8 +1268,8 @@ function AnalyticsPage() {
               ))}
             </select>
           </label>
-        </section>
-        <StateBlock loading={dashboardState.loading} error={dashboardState.error}>
+        </TeacherCard>
+        <StateBlock loading={dashboardState.loading && !dashboardState.data} error={dashboardState.error}>
           {dashboard ? (
             <>
               <MetricGrid
@@ -1267,7 +1280,7 @@ function AnalyticsPage() {
                   { label: "完成率", value: dashboard.metrics.completion_rate, unit: "%" },
                 ]}
               />
-              <section className="legacy-table-card">
+              <TeacherCard className="legacy-table-card">
                 <header>
                   <h2>学生掌握矩阵</h2>
                   <span>{rows.length} 名学生</span>
@@ -1296,16 +1309,16 @@ function AnalyticsPage() {
                     </button>
                   ))}
                 </div>
-              </section>
-              <section className="legacy-table-card">
+              </TeacherCard>
+              <TeacherCard className="legacy-table-card">
                 <header>
                   <h2>学生报告摘要</h2>
                   <span>{selectedStudentId || "未选择学生"}</span>
                 </header>
-                <StateBlock loading={reportState.loading} error={reportState.error}>
-                  {reportState.data ? <StudentReportPanel report={reportState.data} /> : <div className="legacy-empty compact">请选择学生。</div>}
+                <StateBlock loading={reportState.loading && !reportState.data} error={reportState.error}>
+                  {reportState.data ? <StudentReportPanel report={reportState.data} /> : <TeacherEmptyState message="请选择学生。" compact />}
                 </StateBlock>
-              </section>
+              </TeacherCard>
             </>
           ) : null}
         </StateBlock>
@@ -1427,11 +1440,11 @@ function ReportsPage() {
       description="维护测评报告生成 Prompt，并查看学生提交测评后生成的学习总结与错题讲解。"
       testId="teacher-page-reports"
     >
-      {notice ? <div className="legacy-notice">{notice}</div> : null}
-      {actionError ? <div className="legacy-error">{actionError}</div> : null}
-      <StateBlock loading={promptState.loading || classState.loading} error={promptState.error || classState.error}>
+      {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
+      {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
+      <StateBlock loading={(promptState.loading && !promptState.data) || (classState.loading && !classState.data)} error={promptState.error || classState.error}>
         <div className="legacy-management-grid">
-          <section className="legacy-table-card">
+          <TeacherCard className="legacy-table-card">
             <header>
               <h2>报告生成 Prompt</h2>
               <span>{promptState.data?.source === "global" ? "全局设置" : "班级设置"}</span>
@@ -1451,23 +1464,23 @@ function ReportsPage() {
             <form className="legacy-report-prompt-form" onSubmit={savePrompts}>
               <label className="legacy-textarea-label">
                 报告总结 Prompt
-                <textarea value={summaryPrompt} onChange={(event) => setSummaryPrompt(event.target.value)} rows={7} />
+                <TeacherInput.TextArea value={summaryPrompt} onChange={(event) => setSummaryPrompt(event.target.value)} rows={7} />
               </label>
               <label className="legacy-textarea-label">
                 错题讲解 Prompt
-                <textarea value={mistakePrompt} onChange={(event) => setMistakePrompt(event.target.value)} rows={7} />
+                <TeacherInput.TextArea value={mistakePrompt} onChange={(event) => setMistakePrompt(event.target.value)} rows={7} />
               </label>
               <div className="legacy-editor-actions">
-                <button className="primary-button" disabled={saving}>
+                <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={saving}>
                   {saving ? "保存中..." : "保存 Prompt"}
-                </button>
-                <button type="button" className="legacy-secondary-button" disabled={saving} onClick={resetPrompts}>
+                </TeacherButton>
+                <TeacherButton type="default" className="legacy-secondary-button" disabled={saving} onClick={resetPrompts}>
                   恢复默认
-                </button>
+                </TeacherButton>
               </div>
             </form>
-          </section>
-          <section className="legacy-table-card">
+          </TeacherCard>
+          <TeacherCard className="legacy-table-card">
             <header>
               <h2>学生报告</h2>
               <span>{reports.length} 份</span>
@@ -1494,7 +1507,7 @@ function ReportsPage() {
                 </select>
               </label>
             </div>
-            <StateBlock loading={studentsState.loading || reportsState.loading} error={studentsState.error || reportsState.error}>
+            <StateBlock loading={(studentsState.loading && !studentsState.data) || (reportsState.loading && !reportsState.data)} error={studentsState.error || reportsState.error}>
               <div className="legacy-report-list">
                 {reports.map((report) => (
                   <button
@@ -1508,7 +1521,7 @@ function ReportsPage() {
                   </button>
                 ))}
               </div>
-              <StateBlock loading={reportDetailState.loading} error={reportDetailState.error}>
+              <StateBlock loading={reportDetailState.loading && !reportDetailState.data} error={reportDetailState.error}>
                 {reportDetailState.data ? (
                   <article className="legacy-report-detail">
                     <h2>{reportDetailState.data.title}</h2>
@@ -1518,11 +1531,11 @@ function ReportsPage() {
                     <p>{reportDetailState.data.mistake_explanation.text}</p>
                   </article>
                 ) : (
-                  <div className="legacy-empty compact">当前学生暂无报告。</div>
+                  <TeacherEmptyState message="当前学生暂无报告。" compact />
                 )}
               </StateBlock>
             </StateBlock>
-          </section>
+          </TeacherCard>
         </div>
       </StateBlock>
     </PageFrame>

@@ -67,7 +67,14 @@ p {
 .legacy-teacher-shell {
   display: grid;
   grid-template-columns: 252px minmax(0, 1fr);
+  width: 100%;
   min-height: 100vh;
+}
+
+.ant-layout.ant-layout-has-sider.legacy-teacher-shell {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  width: 100%;
 }
 
 .legacy-sidebar {
@@ -103,6 +110,11 @@ p {
   gap: 8px;
 }
 
+.legacy-sidebar nav .teacher-ui-button {
+  justify-content: flex-start;
+  width: 100%;
+}
+
 .legacy-sidebar nav button,
 .legacy-module-card,
 .primary-button {
@@ -124,8 +136,34 @@ p {
   color: var(--legacy-sysu-red);
 }
 
+.legacy-sidebar nav .teacher-ui-button.ant-btn:hover,
+.legacy-sidebar nav .teacher-ui-button.ant-btn:focus {
+  border-color: rgba(255, 255, 255, 0.42) !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #fff !important;
+}
+
+.legacy-sidebar nav .teacher-ui-button.ant-btn.active,
+.legacy-sidebar nav .teacher-ui-button.ant-btn.active:hover,
+.legacy-sidebar nav .teacher-ui-button.ant-btn.active:focus {
+  border-color: rgba(255, 255, 255, 0.26) !important;
+  background: #fff !important;
+  color: var(--legacy-sysu-red) !important;
+}
+
 .legacy-teacher-main {
   min-width: 0;
+}
+
+.ant-layout.legacy-teacher-main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+}
+
+.ant-layout.ant-layout-has-sider.legacy-teacher-shell > .ant-layout.legacy-teacher-main {
+  width: 100%;
 }
 
 .legacy-teacher-header {
@@ -140,6 +178,11 @@ p {
   border-bottom: 1px solid var(--legacy-line);
   background: rgba(255, 253, 251, 0.97);
   box-shadow: 0 2px 10px rgba(75, 0, 2, 0.08);
+}
+
+.ant-layout-header.legacy-teacher-header {
+  height: auto;
+  line-height: normal;
 }
 
 .eyebrow {
@@ -229,6 +272,16 @@ p {
   padding: 28px;
 }
 
+.teacher-ui-content {
+  width: 100%;
+  min-width: 0;
+}
+
+.ant-layout-content.teacher-ui-content {
+  width: 100%;
+  min-width: 0;
+}
+
 .legacy-page-head,
 .legacy-card,
 .legacy-table-card,
@@ -302,6 +355,21 @@ p {
 .legacy-table-card {
   margin-bottom: 18px;
   padding: 18px;
+}
+
+.teacher-ui-card.legacy-card,
+.teacher-ui-card.legacy-table-card,
+.teacher-ui-card.legacy-metric {
+  padding: 0;
+}
+
+.teacher-ui-card.legacy-card > .ant-card-body,
+.teacher-ui-card.legacy-table-card > .ant-card-body {
+  padding: 18px;
+}
+
+.teacher-ui-card.legacy-metric > .ant-card-body {
+  padding: 15px;
 }
 
 .legacy-flow {
@@ -537,7 +605,7 @@ p {
 
 .legacy-question-demo-grid {
   display: grid;
-  grid-template-columns: minmax(260px, 0.72fr) minmax(360px, 1fr) minmax(360px, 1fr);
+  grid-template-columns: minmax(220px, 0.72fr) minmax(300px, 1fr) minmax(280px, 0.9fr);
   align-items: start;
   gap: 14px;
 }
@@ -755,6 +823,11 @@ p {
 }
 
 .legacy-management-grid > .legacy-table-card {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.legacy-management-grid > .teacher-ui-card.legacy-table-card {
   min-width: 0;
   margin-bottom: 0;
 }
@@ -1662,6 +1735,17 @@ p {
   padding: 16px;
 }
 
+.teacher-ui-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.teacher-ui-empty .ant-empty {
+  margin: 0;
+}
+
 .legacy-empty {
   color: var(--legacy-muted);
   text-align: center;
@@ -1678,6 +1762,17 @@ p {
   border-color: #efaaa5;
   background: #fff4f3;
   color: var(--legacy-sysu-red);
+  font-weight: 800;
+}
+
+.teacher-ui-alert.legacy-notice,
+.teacher-ui-alert.legacy-error {
+  align-items: flex-start;
+}
+
+.teacher-ui-alert.legacy-notice .ant-alert-message,
+.teacher-ui-alert.legacy-error .ant-alert-message {
+  color: inherit;
   font-weight: 800;
 }
 
@@ -1719,12 +1814,90 @@ p {
   font-weight: 900;
 }
 
+.legacy-teacher-login .ant-form-item,
+.legacy-editor-form .ant-form-item,
+.legacy-create-dialog .ant-form-item {
+  margin-bottom: 0;
+}
+
+.legacy-teacher-login .ant-form-item-label > label,
+.legacy-editor-form .ant-form-item-label > label,
+.legacy-create-dialog .ant-form-item-label > label {
+  color: var(--legacy-sysu-red);
+  font-weight: 900;
+}
+
+.primary-button.ant-btn {
+  min-height: 44px;
+  color: #fff;
+}
+
+.legacy-secondary-button.ant-btn {
+  display: inline-flex;
+  grid-column: auto;
+  align-items: center;
+  justify-content: center;
+  color: var(--legacy-sysu-red);
+}
+
+.legacy-enable-switch.ant-switch {
+  min-width: 88px;
+  min-height: 30px;
+  height: 30px;
+  border: 1px solid #d7b8b2;
+  background: #d8c6c0;
+  padding: 0;
+}
+
+.legacy-enable-switch.ant-switch.ant-switch-checked,
+.legacy-enable-switch.ant-switch.is-on {
+  border-color: var(--legacy-sysu-red);
+  background: var(--legacy-sysu-red);
+}
+
+.legacy-enable-switch.ant-switch .ant-switch-inner {
+  color: #fff;
+  font-weight: 900;
+}
+
+.legacy-create-dialog.ant-modal {
+  width: min(480px, 100%) !important;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.legacy-create-dialog .ant-modal-content {
+  border: 1px solid #d7b8b2;
+  border-top: 5px solid var(--legacy-sysu-red);
+  border-radius: 4px;
+  box-shadow: 0 24px 60px rgba(75, 0, 2, 0.2);
+  padding: 18px;
+}
+
+.legacy-create-dialog .ant-modal-header {
+  border-bottom: 1px solid var(--legacy-line);
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+}
+
+.legacy-create-dialog .ant-modal-title {
+  color: var(--legacy-ink);
+  font-size: 22px;
+  font-weight: 900;
+}
+
 @media (max-width: 1180px) {
   body {
     min-width: 960px;
   }
 
   .legacy-teacher-shell {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .ant-layout.ant-layout-has-sider.legacy-teacher-shell {
     grid-template-columns: 220px minmax(0, 1fr);
   }
 
@@ -1749,6 +1922,10 @@ p {
   }
 
   .legacy-report-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .legacy-question-demo-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
