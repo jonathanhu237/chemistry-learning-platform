@@ -725,8 +725,81 @@ function scoreLabel(value?: number | string | null, fallback = "-"): string {
   return `${Number.isInteger(score) ? score.toFixed(0) : score.toFixed(1)} 分`;
 }
 
+type AnalyticsFamilyColumn = {
+  id: string;
+  title: string;
+  sourceIds: string[];
+  experiment_count?: number;
+};
+
+const elementFamilyTitleByChapter: Record<string, string> = {
+  CH13: "卤族元素",
+  CH14: "氧族元素",
+  CH15: "氮族元素",
+  CH16: "碳族元素",
+  CH17: "硼族元素",
+  CH18: "碱金属和碱土金属",
+  CH19: "铜锌副族元素",
+  CH20: "d 区过渡金属元素",
+  CH21: "镧系和锕系元素",
+  CH22: "氢和稀有气体",
+};
+const DEFAULT_ANALYTICS_SCORE = 50;
+
+function chapterIdFromText(value?: string | null): string {
+  const textValue = String(value || "");
+  const chapterCode = textValue.match(/\bCH\s*(\d{2})\b/i);
+  if (chapterCode) return `CH${chapterCode[1]}`;
+  const chapterNumber = textValue.match(/第\s*(\d{1,2})\s*章/);
+  if (chapterNumber) return `CH${String(Number(chapterNumber[1])).padStart(2, "0")}`;
+  return "";
+}
+
+function analyticsFamilyTitle(value?: string | null): string {
+  const textValue = String(value || "").trim();
+  const chapterId = chapterIdFromText(textValue);
+  if (chapterId && elementFamilyTitleByChapter[chapterId]) return elementFamilyTitleByChapter[chapterId];
+  return textValue.replace(/^第\s*\d+\s*章\s*/, "").replace(/^CH\d{2}\s*[-_—:：]?\s*/i, "").trim() || textValue;
+}
+
+function analyticsFamilyColumns(
+  items: Array<{ id: string; code?: string; title: string; experiment_count?: number }>,
+): AnalyticsFamilyColumn[] {
+  const columns = new Map<string, AnalyticsFamilyColumn>();
+  items.forEach((item) => {
+    const chapterId = chapterIdFromText(item.id) || chapterIdFromText(item.code) || chapterIdFromText(item.title);
+    const columnId = chapterId || item.id;
+    const column = columns.get(columnId) || {
+      id: columnId,
+      title: chapterId ? elementFamilyTitleByChapter[chapterId] || analyticsFamilyTitle(item.title) : analyticsFamilyTitle(item.title),
+      sourceIds: [],
+      experiment_count: 0,
+    };
+    if (!column.sourceIds.includes(item.id)) column.sourceIds.push(item.id);
+    column.experiment_count = Number(column.experiment_count || 0) + Number(item.experiment_count || 0);
+    columns.set(columnId, column);
+  });
+  return Array.from(columns.values());
+}
+
 function analyticsScoreCell(row: AnalyticsDashboard["matrix"][number], columnId: string): AnalyticsScoreCell | null {
   return row.experiment_groups?.[columnId] || row.experiments?.[columnId] || null;
+}
+
+function analyticsScoreCellForColumn(row: AnalyticsDashboard["matrix"][number], column: AnalyticsFamilyColumn): AnalyticsScoreCell | null {
+  const cells = column.sourceIds.map((sourceId) => analyticsScoreCell(row, sourceId)).filter((cell): cell is AnalyticsScoreCell => Boolean(cell));
+  if (!cells.length) return null;
+  if (cells.length === 1) return cells[0];
+  const scores = cells.map((cell) => normalizedScore(cell.score ?? cell.mastery_score)).filter((score): score is number => score !== null);
+  const score = scores.length ? Math.round((scores.reduce((sum, value) => sum + value, 0) / scores.length) * 10) / 10 : DEFAULT_ANALYTICS_SCORE;
+  return {
+    status: cells.some((cell) => cell.status === "needs_attention") ? "needs_attention" : cells.every((cell) => cell.status === "completed") ? "completed" : "in_progress",
+    mastery_score: score,
+    score,
+    evidence_count: cells.reduce((sum, cell) => sum + Number(cell.evidence_count || 0), 0),
+    attempt_count: cells.reduce((sum, cell) => sum + Number(cell.attempt_count || 0), 0),
+    points: cells.flatMap((cell) => cell.points || []),
+  };
 }
 
 function useCatalogBank(chapterId: string, reloadKey: number) {
@@ -2530,7 +2603,8 @@ function AnalyticsPage() {
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const dashboard = dashboardState.data;
   const rows = dashboard?.matrix || [];
-  const columns = (dashboard?.experiment_groups?.length ? dashboard.experiment_groups : dashboard?.experiments || []).slice(0, 8);
+  const rawColumns = dashboard?.experiment_groups?.length ? dashboard.experiment_groups : dashboard?.experiments || [];
+  const columns = useMemo(() => analyticsFamilyColumns(rawColumns), [rawColumns]);
   const [selectedFamilyId, setSelectedFamilyId] = useState("");
 
   useEffect(() => {
@@ -2547,7 +2621,7 @@ function AnalyticsPage() {
   );
   const selectedStudent = rows.find((row) => row.student_id === selectedStudentId) || rows[0] || null;
   const selectedFamily = columns.find((item) => item.id === selectedFamilyId) || columns[0] || null;
-  const selectedFamilyCell = selectedStudent && selectedFamily ? analyticsScoreCell(selectedStudent, selectedFamily.id) : null;
+  const selectedFamilyCell = selectedStudent && selectedFamily ? analyticsScoreCellForColumn(selectedStudent, selectedFamily) : null;
   const selectedPointScores = selectedFamilyCell?.points || [];
   const familyGridStyle = useMemo<CSSProperties>(() => {
     const familyTracks = columns.length ? ` repeat(${columns.length}, minmax(118px, 1fr))` : "";
@@ -2609,7 +2683,7 @@ function AnalyticsPage() {
                       </button>
                       <span className="legacy-family-average-cell">{scoreLabel(student.average_score)}</span>
                       {columns.map((item) => {
-                        const state = analyticsScoreCell(student, item.id);
+                        const state = analyticsScoreCellForColumn(student, item);
                         const selected = student.student_id === selectedStudentId && item.id === selectedFamilyId;
                         return (
                           <button

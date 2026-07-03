@@ -344,8 +344,8 @@ function analyticsDashboard() {
     },
     experiments: [],
     experiment_groups: [
-      { id: "group-halogen", code: "CH13", title: "CH13 卤素实验", experiment_count: 2 },
-      { id: "group-oxygen", code: "CH14", title: "CH14 氧族元素", experiment_count: 1 },
+      { id: "CAT-CH13-f99cb352", code: "CAT-CH13-f99cb352", title: "CAT-CH13-f99cb352", experiment_count: 2 },
+      { id: "CAT-CH14-b62492d6", code: "CAT-CH14-b62492d6", title: "CAT-CH14-b62492d6", experiment_count: 1 },
     ],
     matrix: [
       {
@@ -355,7 +355,7 @@ function analyticsDashboard() {
         average_score: 88,
         experiments: {},
         experiment_groups: {
-          "group-halogen": {
+          "CAT-CH13-f99cb352": {
             status: "completed",
             mastery_score: 88,
             score: 88,
@@ -366,7 +366,7 @@ function analyticsDashboard() {
               { point_node_id: "point-ch13-kbr", point_title: "氯水 + KBr + CCl4", experiment_id: "exp-ch13-kbr", experiment_title: "溴碘置换", mastery_score: 84, score: 84, evidence_count: 2 },
             ],
           },
-          "group-oxygen": {
+          "CAT-CH14-b62492d6": {
             status: "completed",
             mastery_score: 82,
             score: 82,
@@ -385,7 +385,7 @@ function analyticsDashboard() {
         average_score: 76,
         experiments: {},
         experiment_groups: {
-          "group-halogen": {
+          "CAT-CH13-f99cb352": {
             status: "learning",
             mastery_score: 70,
             score: 70,
@@ -396,7 +396,7 @@ function analyticsDashboard() {
               { point_node_id: "point-ch13-iodide", point_title: "碘离子检验", experiment_id: "exp-ch13-iodide", experiment_title: "溴碘置换", mastery_score: 62, score: 62, evidence_count: 1 },
             ],
           },
-          "group-oxygen": {
+          "CAT-CH14-b62492d6": {
             status: "needs_attention",
             mastery_score: 58,
             score: 58,
@@ -1323,15 +1323,16 @@ describe("LegacyTeacherApp", () => {
     expect(await screen.findByRole("heading", { name: "各族元素得分" })).toBeTruthy();
     expect(await screen.findByText("张三")).toBeTruthy();
     expect(screen.getByText("李四")).toBeTruthy();
-    expect(screen.getByText("CH13 卤素实验")).toBeTruthy();
-    expect(screen.getByText("CH14 氧族元素")).toBeTruthy();
+    expect(screen.getByText("卤族元素")).toBeTruthy();
+    expect(screen.getByText("氧族元素")).toBeTruthy();
+    expect(screen.queryByText("CAT-CH13-f99cb352")).toBeNull();
     expect(await screen.findByRole("heading", { name: "点位得分明细" })).toBeTruthy();
     expect(screen.getByText("氯水漂白性实验")).toBeTruthy();
     expect(screen.getByText("92 分")).toBeTruthy();
     expect(await screen.findByText("张三已经掌握 CH13 氯水漂白的核心证据。")).toBeTruthy();
     expect(screen.getByText("碘离子检验 · 错误率 40%")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "李四 CH13 卤素实验 70 分" }));
+    fireEvent.click(screen.getByRole("button", { name: "李四 卤族元素 70 分" }));
     expect(await screen.findByText("62 分")).toBeTruthy();
     expect(screen.getAllByText("碘离子检验").length).toBeGreaterThan(0);
     expect(await screen.findByText("李四已经掌握 CH13 氯水漂白的核心证据。")).toBeTruthy();

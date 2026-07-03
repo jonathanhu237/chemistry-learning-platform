@@ -14,6 +14,19 @@ from server.app.domains.preview.student_device_preview import TEACHER_PREVIEW_AC
 from server.app.infrastructure.database import db_session
 from server.app.mastery import DEFAULT_EXPERIMENT_MASTERY_SCORE
 
+ELEMENT_FAMILY_TITLE_BY_CHAPTER = {
+    "CH13": "卤族元素",
+    "CH14": "氧族元素",
+    "CH15": "氮族元素",
+    "CH16": "碳族元素",
+    "CH17": "硼族元素",
+    "CH18": "碱金属和碱土金属",
+    "CH19": "铜锌副族元素",
+    "CH20": "d 区过渡金属元素",
+    "CH21": "镧系和锕系元素",
+    "CH22": "氢和稀有气体",
+}
+
 
 @dataclass(frozen=True)
 class CsvExport:
@@ -72,13 +85,45 @@ def _cached_ai_response(value: Any) -> dict[str, Any] | None:
 
 def _clean_experiment_group_title(value: Any) -> str:
     title = str(value or "").strip()
+    chapter_id = _chapter_id_from_text(title)
+    if chapter_id and chapter_id in ELEMENT_FAMILY_TITLE_BY_CHAPTER:
+        return ELEMENT_FAMILY_TITLE_BY_CHAPTER[chapter_id]
     title = re.sub(r"^实验\s*\d+\s*-\s*\d+\s*", "", title).strip()
     title = re.sub(r"^（[^）]+）\s*", "", title).strip()
+    title = re.sub(r"^第\s*\d+\s*章\s*", "", title).strip()
+    title = re.sub(r"^CH\d{2}\s*[-_—:：]?\s*", "", title, flags=re.IGNORECASE).strip()
     return title
+
+
+def _chapter_id_from_text(value: Any) -> str:
+    text_value = str(value or "").strip()
+    match = re.search(r"\bCH\s*([0-9]{2})\b", text_value, flags=re.IGNORECASE)
+    if match:
+        return f"CH{match.group(1)}"
+    match = re.search(r"第\s*([0-9]{1,2})\s*章", text_value)
+    if match:
+        return f"CH{int(match.group(1)):02d}"
+    return ""
+
+
+def _primary_chapter_binding(experiment: dict[str, Any]) -> dict[str, Any] | None:
+    bindings = experiment.get("chapter_bindings") or []
+    if not isinstance(bindings, list):
+        return None
+    for binding in bindings:
+        if isinstance(binding, dict) and str(binding.get("chapter_id") or "").strip():
+            return binding
+    return None
 
 
 def _experiment_group_info(experiment: dict[str, Any]) -> dict[str, str]:
     metadata = _metadata(experiment)
+    chapter_binding = _primary_chapter_binding(experiment)
+    if chapter_binding:
+        chapter_id = str(chapter_binding.get("chapter_id") or "").strip()
+        chapter_title = _clean_experiment_group_title(chapter_binding.get("chapter_title"))
+        title = chapter_title or ELEMENT_FAMILY_TITLE_BY_CHAPTER.get(chapter_id) or chapter_id
+        return {"id": chapter_id, "code": chapter_id, "title": title, "raw_title": str(chapter_binding.get("chapter_title") or "")}
     parent_code = str(metadata.get("parent_code") or "").strip()
     raw_title = (
         metadata.get("parent_title")
@@ -87,6 +132,9 @@ def _experiment_group_info(experiment: dict[str, Any]) -> dict[str, str]:
         or metadata.get("module_title")
         or ""
     )
+    chapter_id = _chapter_id_from_text(parent_code) or _chapter_id_from_text(raw_title)
+    if chapter_id and chapter_id in ELEMENT_FAMILY_TITLE_BY_CHAPTER:
+        return {"id": chapter_id, "code": chapter_id, "title": ELEMENT_FAMILY_TITLE_BY_CHAPTER[chapter_id], "raw_title": str(raw_title or parent_code)}
     title = _clean_experiment_group_title(raw_title)
     if not title:
         title = parent_code or str(experiment.get("code") or experiment.get("id") or "未分组")
