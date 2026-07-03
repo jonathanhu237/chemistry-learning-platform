@@ -221,15 +221,33 @@ button:hover {
   color: var(--ink);
 }
 
-.actions {
-  display: flex;
-  gap: 10px;
-  white-space: nowrap;
+.topbar-copy {
+  min-width: 0;
 }
 
-.actions button {
-  padding: 8px 12px;
+.topbar-tools {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  margin-left: 20px;
+}
+
+.pdf-export-button {
+  min-height: 38px;
+  padding: 8px 14px;
+  color: var(--bg-surface);
+  background: var(--ink);
+  border-color: var(--ink);
+  border-radius: var(--radius-md);
   font-size: 13px;
+  font-weight: 700;
+}
+
+.pdf-export-button:hover {
+  color: var(--bg-surface);
+  background: var(--teal);
+  border-color: var(--teal);
 }
 
 /* ===== Stage & Slide Base ===== */
@@ -270,6 +288,69 @@ button:hover {
 
 .export-shell .slide {
   box-shadow: none;
+}
+
+.print-shell {
+  width: 1280px;
+  margin: 0 auto;
+  background: #FFFFFF;
+}
+
+.print-page {
+  width: 1280px;
+  height: 720px;
+  overflow: hidden;
+  background: var(--bg-slide);
+  break-after: page;
+  page-break-after: always;
+}
+
+.print-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+.print-page .slide {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+@page {
+  size: 13.333333in 7.5in;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    width: 1280px;
+    min-width: 0;
+    margin: 0;
+    background: #FFFFFF;
+  }
+
+  .print-shell {
+    width: 1280px;
+    margin: 0;
+  }
+
+  .print-page {
+    width: 1280px;
+    height: 720px;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .print-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .print-page .slide {
+    border-radius: 0;
+    box-shadow: none;
+  }
 }
 
 /* ---- Base Slide ---- */
@@ -3128,14 +3209,6 @@ button:focus-visible {
   font-family: var(--sans);
   font-size: 25px;
   line-height: 1.2;
-}
-
-.actions button {
-  min-height: 38px;
-  padding: 8px 14px;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 700;
 }
 
 .stage-wrap {

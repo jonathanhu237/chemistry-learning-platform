@@ -5,8 +5,6 @@ import "katex/dist/katex.min.css";
 import "../styles.css";
 import { DECK_META as initialMeta, DECK_SLIDES as initialSlides } from "../slides.js";
 
-const STORAGE_KEY = "chemistry-review-slides-v5";
-
 function TeX({ expression, block = false }) {
   const html = katex.renderToString(expression, {
     displayMode: block,
@@ -23,22 +21,18 @@ function TeX({ expression, block = false }) {
 
 function App() {
   const searchParams = new URLSearchParams(window.location.search);
+  const printMode = searchParams.get("print") === "1";
+  const autoPrint = printMode && searchParams.get("auto") !== "0";
   const exportOnly = searchParams.get("export") === "1";
   const exportScale = exportOnly ? normalizedExportScale(searchParams.get("scale")) : 1;
   const [meta, setMeta] = useState(initialMeta);
-  const [sourceSlides, setSourceSlides] = useState(initialSlides);
-  const [slides, setSlides] = useState(() => exportOnly ? clone(initialSlides) : loadSlides(initialSlides));
+  const [slides, setSlides] = useState(initialSlides);
   const [current, setCurrent] = useState(() => initialSlideIndex(initialSlides));
   const [overview, setOverview] = useState(false);
   const stageWrapRef = useRef(null);
   const stageShellRef = useRef(null);
   const stageRef = useRef(null);
   const slide = slides[current] || slides[0];
-
-  useEffect(() => {
-    if (exportOnly) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(slides));
-  }, [exportOnly, slides]);
 
   useEffect(() => {
     const resize = () => scaleStage(stageWrapRef.current, stageShellRef.current, stageRef.current, overview);
@@ -51,29 +45,58 @@ function App() {
     if (!import.meta.hot) return undefined;
     const dispose = import.meta.hot.accept("../slides.js", (module) => {
       setMeta(module.DECK_META);
-      setSourceSlides(module.DECK_SLIDES);
-      setSlides(clone(module.DECK_SLIDES));
-      localStorage.removeItem(STORAGE_KEY);
+      setSlides(module.DECK_SLIDES);
       setCurrent((value) => Math.min(value, module.DECK_SLIDES.length - 1));
     });
     return dispose;
   }, []);
 
-  function resetLocal() {
-    localStorage.removeItem(STORAGE_KEY);
-    setSlides(clone(sourceSlides));
-    setCurrent(0);
-    setOverview(false);
+  useEffect(() => {
+    if (!autoPrint) return undefined;
+    let cancelled = false;
+    const printWhenReady = async () => {
+      if (document.fonts?.ready) await document.fonts.ready;
+      await Promise.all(Array.from(document.images).map((image) => {
+        if (image.complete) return Promise.resolve();
+        return new Promise((resolve) => {
+          image.addEventListener("load", resolve, { once: true });
+          image.addEventListener("error", resolve, { once: true });
+        });
+      }));
+      if (cancelled) return;
+      window.setTimeout(() => window.print(), 250);
+    };
+    printWhenReady();
+    return () => {
+      cancelled = true;
+    };
+  }, [autoPrint, slides]);
+
+  function openPdfExport() {
+    const url = new URL(window.location.href);
+    url.searchParams.set("print", "1");
+    url.searchParams.delete("auto");
+    url.searchParams.delete("export");
+    url.searchParams.delete("scale");
+    url.searchParams.delete("n");
+    const opened = window.open(url.toString(), "_blank");
+    if (opened) {
+      opened.opener = null;
+      return;
+    }
+    window.location.href = url.toString();
   }
 
-  function exportJson() {
-    const blob = new Blob([JSON.stringify({ meta, slides }, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "slides.review.json";
-    link.click();
-    URL.revokeObjectURL(url);
+  if (printMode) {
+    return (
+      <main className="print-shell" aria-label="PDF 导出画布">
+        {slides.map((item) => (
+          <section className="print-page" key={item.no} aria-label={`第 ${item.no} 页`}>
+            <SlideView slide={item} total={slides.length} />
+          </section>
+        ))}
+      </main>
+    );
   }
 
   if (exportOnly) {
@@ -126,13 +149,14 @@ function App() {
 
       <section className="workspace">
         <header className="topbar">
-          <div>
+          <div className="topbar-copy">
             <p className="eyebrow">{slide.section}</p>
             <h2>{slide.title}</h2>
           </div>
-          <div className="actions">
-            <button type="button" onClick={exportJson}>导出 JSON</button>
-            <button type="button" onClick={resetLocal}>重置修改</button>
+          <div className="topbar-tools">
+            <button className="pdf-export-button" type="button" onClick={openPdfExport} title="导出 PDF">
+              导出 PDF
+            </button>
           </div>
         </header>
 
@@ -961,17 +985,6 @@ function initialSlideIndex(list) {
   return idx >= 0 ? idx : Math.min(Math.max(no - 1, 0), list.length - 1);
 }
 
-function loadSlides(fallback) {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) return clone(fallback);
-  try {
-    const parsed = JSON.parse(saved);
-    return Array.isArray(parsed) && parsed.length === fallback.length ? parsed : clone(fallback);
-  } catch {
-    return clone(fallback);
-  }
-}
-
 function scaleStage(wrapper, shell, stage, overview) {
   if (!wrapper || !shell || !stage || overview) return;
   const bounds = wrapper.getBoundingClientRect();
@@ -990,10 +1003,6 @@ function normalizedExportScale(raw) {
   const value = Number(raw || 1);
   if (!Number.isFinite(value)) return 1;
   return Math.min(Math.max(value, 1), 4);
-}
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
 }
 
 createRoot(document.getElementById("root")).render(<App />);
