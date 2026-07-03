@@ -1800,7 +1800,7 @@ function QuestionsPage() {
               </fieldset>
               <label className="legacy-textarea-label">
                 教师要求
-                <TeacherInput.TextArea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={5} />
+                <TeacherInput.TextArea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={3} />
               </label>
             </form>
             <section className="legacy-question-review-panel" aria-label="待审队列">
@@ -1823,20 +1823,27 @@ function QuestionsPage() {
                 )}
               </StateBlock>
             </section>
+            <section className="legacy-question-review-panel legacy-question-bank-panel" aria-label="正式题库">
+              <div className="legacy-question-review-head">
+                <div>
+                  <span className="legacy-section-kicker">04</span>
+                  <strong>正式题库</strong>
+                </div>
+                <span>{questionsState.loading ? "读取中" : `${questionsState.data?.total || 0} 题`}</span>
+              </div>
+              <StateBlock loading={questionsState.loading && !questionsState.data} error={questionsState.error}>
+                {(questionsState.data?.items || []).length ? (
+                  <div className="legacy-question-bank-list">
+                    {(questionsState.data?.items || []).slice(0, 10).map((question) => (
+                      <QuestionRow key={question.id} question={question} />
+                    ))}
+                  </div>
+                ) : (
+                  <TeacherEmptyState message="当前点位暂无正式题。" compact />
+                )}
+              </StateBlock>
+            </section>
           </div>
-        </TeacherCard>
-        <TeacherCard className="legacy-table-card">
-          <header>
-            <h2>正式题库</h2>
-            <span>{questionsState.data?.total || 0} 题</span>
-          </header>
-          <StateBlock loading={questionsState.loading && !questionsState.data} error={questionsState.error}>
-            <div className="legacy-resource-list">
-              {(questionsState.data?.items || []).slice(0, 12).map((question) => (
-                <QuestionRow key={question.id} question={question} />
-              ))}
-            </div>
-          </StateBlock>
         </TeacherCard>
       </StateBlock>
     </PageFrame>
