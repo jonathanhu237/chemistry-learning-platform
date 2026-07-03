@@ -1464,9 +1464,20 @@ p {
   gap: 8px;
 }
 
-.legacy-class-toolbar .legacy-secondary-button {
-  min-height: 34px;
-  padding: 5px 12px;
+.legacy-class-toolbar .teacher-ui-button.ant-btn,
+.legacy-class-toolbar .primary-button.compact.ant-btn,
+.legacy-class-toolbar .legacy-secondary-button.ant-btn {
+  min-width: 74px;
+  min-height: 38px;
+  height: 38px;
+  padding: 0 12px;
+  box-shadow: none;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.legacy-class-toolbar .teacher-ui-button.ant-btn > span {
+  line-height: 1;
 }
 
 .legacy-class-compact-list {
@@ -1746,14 +1757,16 @@ p {
 
 .legacy-ai-config-sidebar-actions {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   border-top: 1px solid var(--legacy-line);
   padding-top: 12px;
 }
 
-.legacy-ai-config-sidebar-actions .ant-btn {
-  min-height: 42px;
+.legacy-ai-config-sidebar-actions .teacher-ui-button.ant-btn {
+  min-height: 44px;
+  height: 44px;
+  box-shadow: none;
 }
 
 @media (max-width: 520px) {
@@ -2275,6 +2288,15 @@ p {
 
 .legacy-editor-actions .primary-button {
   min-width: 128px;
+}
+
+.legacy-editor-actions .teacher-ui-button.ant-btn,
+.legacy-create-dialog-actions .teacher-ui-button.ant-btn {
+  min-height: 44px;
+  height: 44px;
+  padding: 0 18px;
+  box-shadow: none;
+  line-height: 1;
 }
 
 .legacy-enable-control {
@@ -3780,8 +3802,16 @@ p {
   gap: 8px;
 }
 
-.legacy-paper-board-actions .ant-btn {
-  min-height: 36px;
+.legacy-paper-board-actions .ant-btn,
+.legacy-paper-board-actions .primary-button.compact.ant-btn,
+.legacy-paper-board-actions .legacy-secondary-button.ant-btn {
+  min-width: 74px;
+  min-height: 38px;
+  height: 38px;
+  padding: 0 12px;
+  box-shadow: none;
+  font-size: 12px;
+  line-height: 1;
 }
 
 .legacy-paper-enable {
