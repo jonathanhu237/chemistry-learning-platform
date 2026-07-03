@@ -1060,7 +1060,8 @@ describe("LegacyTeacherApp", () => {
     fireEvent.change(within(settings).getByLabelText("确认新密码"), { target: { value: "new-password-123" } });
     fireEvent.click(within(settings).getByRole("button", { name: "保存密码" }));
 
-    expect(await within(settings).findByText("个人密码已更新。")).toBeTruthy();
+    await waitFor(() => expect(fetchMock.mock.calls.some((call) => requestUrl(call[0]).pathname === "/api/auth/password")).toBe(true));
+    expect(within(settings).queryByText("个人密码已更新。")).toBeNull();
     const passwordRequest = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/auth/password");
     expect(passwordRequest).toBeTruthy();
     expect(passwordRequest?.[1]?.method).toBe("POST");
@@ -1070,7 +1071,14 @@ describe("LegacyTeacherApp", () => {
     });
 
     fireEvent.click(within(accountManagement).getByRole("button", { name: "启用" }));
-    expect(await within(accountManagement).findByText("李老师已启用。")).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          (call) => requestUrl(call[0]).pathname === "/api/teacher/accounts/teachers/teacher-2" && String(call[1]?.method || "GET").toUpperCase() === "PATCH",
+        ),
+      ).toBe(true),
+    );
+    expect(within(accountManagement).queryByText("李老师已启用。")).toBeNull();
     const statusRequest = fetchMock.mock.calls.find(
       (call) => requestUrl(call[0]).pathname === "/api/teacher/accounts/teachers/teacher-2" && String(call[1]?.method || "GET").toUpperCase() === "PATCH",
     );
@@ -1082,7 +1090,14 @@ describe("LegacyTeacherApp", () => {
     fireEvent.change(within(settings).getByLabelText("初始密码"), { target: { value: "teacher-pass-123" } });
     fireEvent.click(within(settings).getByRole("button", { name: "新增账号" }));
 
-    expect(await within(settings).findByText("已新增后台账号。")).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          (call) => requestUrl(call[0]).pathname === "/api/teacher/accounts/teachers" && String(call[1]?.method || "GET").toUpperCase() === "POST",
+        ),
+      ).toBe(true),
+    );
+    expect(within(settings).queryByText("已新增后台账号。")).toBeNull();
     const teacherRequest = fetchMock.mock.calls.find(
       (call) => requestUrl(call[0]).pathname === "/api/teacher/accounts/teachers" && String(call[1]?.method || "GET").toUpperCase() === "POST",
     );
@@ -1118,7 +1133,16 @@ describe("LegacyTeacherApp", () => {
     fireEvent.change(within(workbench).getByLabelText("未测点位比例数值"), { target: { value: "30" } });
     fireEvent.click(within(workbench).getByRole("button", { name: "保存策略" }));
 
-    expect(await within(page).findByText("智能组卷策略已保存。")).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          (call) =>
+            requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/smart-assessment-strategy" &&
+            String(call[1]?.method || "GET").toUpperCase() === "PUT",
+        ),
+      ).toBe(true),
+    );
+    expect(within(page).queryByText("智能组卷策略已保存。")).toBeNull();
     const saveRequest = fetchMock.mock.calls.find(
       (call) =>
         requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/smart-assessment-strategy" &&
@@ -1158,7 +1182,14 @@ describe("LegacyTeacherApp", () => {
     fireEvent.change(within(sidebar).getByLabelText("API 密钥"), { target: { value: "sk-test-from-ui" } });
     fireEvent.click(within(sidebar).getByRole("button", { name: "保存配置" }));
 
-    expect(await within(sidebar).findByText("AI 模型配置已保存。")).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          (call) => requestUrl(call[0]).pathname === "/api/teacher/ai-configuration" && String(call[1]?.method || "GET").toUpperCase() === "PUT",
+        ),
+      ).toBe(true),
+    );
+    expect(within(sidebar).queryByText("AI 模型配置已保存。")).toBeNull();
     const updateCall = fetchMock.mock.calls.find(
       (call) => requestUrl(call[0]).pathname === "/api/teacher/ai-configuration" && String(call[1]?.method || "GET").toUpperCase() === "PUT",
     );
@@ -1222,7 +1253,7 @@ describe("LegacyTeacherApp", () => {
       title: "碘离子检验",
       metadata: { source: "teacher_point_editor" },
     });
-    expect(await screen.findByText("已保存节点资料。")).toBeTruthy();
+    expect(screen.queryByText("已保存节点资料。")).toBeNull();
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 
@@ -1244,7 +1275,7 @@ describe("LegacyTeacherApp", () => {
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/catalog/media-bindings/binding-ch13-bleach/delete"));
-    expect(await screen.findByText("已保存节点资料。")).toBeTruthy();
+    expect(screen.queryByText("已保存节点资料。")).toBeNull();
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 
@@ -1266,7 +1297,7 @@ describe("LegacyTeacherApp", () => {
     const pointDeleteCall = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/teacher/catalog/nodes/point-ch13-iodide/status");
     expect(pointDeleteCall).toBeTruthy();
     expect(JSON.parse(String(pointDeleteCall?.[1]?.body))).toEqual({ action: "archive", include_subtree: true });
-    expect(await screen.findByText("已删除点位。")).toBeTruthy();
+    expect(screen.queryByText("已删除点位。")).toBeNull();
 
     const refreshedTree = await screen.findByRole("tree", { name: "章节目录与点位" });
     const displacementItem = await within(refreshedTree).findByRole("treeitem", { name: "溴碘置换" });
@@ -1280,7 +1311,7 @@ describe("LegacyTeacherApp", () => {
     const directoryDeleteCall = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/teacher/catalog/nodes/dir-ch13-displacement/status");
     expect(directoryDeleteCall).toBeTruthy();
     expect(JSON.parse(String(directoryDeleteCall?.[1]?.body))).toEqual({ action: "archive", include_subtree: true });
-    expect(await screen.findByText("已删除目录及其下级内容。")).toBeTruthy();
+    expect(screen.queryByText("已删除目录及其下级内容。")).toBeNull();
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 
@@ -1377,7 +1408,14 @@ describe("LegacyTeacherApp", () => {
     expect(within(importDialog).getByText("students.csv")).toBeTruthy();
     fireEvent.click(within(importDialog).getByRole("button", { name: "导入名单" }));
 
-    expect(await screen.findByText("导入完成：2 条有效。")).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/roster/import" && String(call[1]?.method || "GET").toUpperCase() === "POST",
+        ),
+      ).toBe(true),
+    );
+    expect(screen.queryByText("导入完成：2 条有效。")).toBeNull();
     const settingsCall = fetchMock.mock.calls.find(
       (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/registration-settings" && String(call[1]?.method || "GET").toUpperCase() === "PUT",
     );
@@ -1402,7 +1440,14 @@ describe("LegacyTeacherApp", () => {
     expect(studentSubmitButton).toBeTruthy();
     fireEvent.click(studentSubmitButton as HTMLElement);
 
-    expect(await screen.findByText("已添加学生。")).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/students" && String(call[1]?.method || "GET").toUpperCase() === "POST",
+        ),
+      ).toBe(true),
+    );
+    expect(screen.queryByText("已添加学生。")).toBeNull();
     const createStudentCall = fetchMock.mock.calls.find(
       (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/students" && String(call[1]?.method || "GET").toUpperCase() === "POST",
     );
@@ -1419,7 +1464,14 @@ describe("LegacyTeacherApp", () => {
     expect(screen.queryByLabelText("备注")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "创建班级" }));
 
-    expect(await screen.findByText("已创建班级。")).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          (call) => requestUrl(call[0]).pathname === "/api/teacher/classes" && String(call[1]?.method || "GET").toUpperCase() === "POST",
+        ),
+      ).toBe(true),
+    );
+    expect(screen.queryByText("已创建班级。")).toBeNull();
     const createClassCall = fetchMock.mock.calls.find(
       (call) => requestUrl(call[0]).pathname === "/api/teacher/classes" && String(call[1]?.method || "GET").toUpperCase() === "POST",
     );
@@ -1438,7 +1490,14 @@ describe("LegacyTeacherApp", () => {
     expect(within(editDialog).getByDisplayValue("2026001")).toBeTruthy();
     fireEvent.change(within(editDialog).getByLabelText("姓名"), { target: { value: "张三丰" } });
     fireEvent.click(within(editDialog).getByRole("button", { name: "保存" }));
-    expect(await screen.findByText("已更新学生姓名。")).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/students/2026001" && String(call[1]?.method || "GET").toUpperCase() === "PATCH",
+        ),
+      ).toBe(true),
+    );
+    expect(screen.queryByText("已更新学生姓名。")).toBeNull();
     const editStudentCall = fetchMock.mock.calls.find(
       (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/students/2026001" && String(call[1]?.method || "GET").toUpperCase() === "PATCH",
     );
@@ -1455,7 +1514,16 @@ describe("LegacyTeacherApp", () => {
     const passwordDialog = await screen.findByRole("dialog", { name: "重置密码" });
     fireEvent.change(within(passwordDialog).getByLabelText("新密码"), { target: { value: "newpass123" } });
     fireEvent.click(within(passwordDialog).getByRole("button", { name: "重置密码" }));
-    expect(await screen.findByText("已重置 张三 的密码。")).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          (call) =>
+            requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/students/2026001/reset-password" &&
+            String(call[1]?.method || "GET").toUpperCase() === "POST",
+        ),
+      ).toBe(true),
+    );
+    expect(screen.queryByText("已重置 张三 的密码。")).toBeNull();
     const resetPasswordCall = fetchMock.mock.calls.find(
       (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/students/2026001/reset-password" && String(call[1]?.method || "GET").toUpperCase() === "POST",
     );
@@ -1472,7 +1540,17 @@ describe("LegacyTeacherApp", () => {
     const fetchMock = await renderClassPage();
 
     await clickFirstRosterAction("停用");
-    expect(await screen.findByText("已停用学生账号。")).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          (call) =>
+            requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/students/2026001" &&
+            String(call[1]?.method || "GET").toUpperCase() === "PATCH" &&
+            String(call[1]?.body || "").includes("disabled"),
+        ),
+      ).toBe(true),
+    );
+    expect(screen.queryByText("已停用学生账号。")).toBeNull();
     const disableStudentCall = fetchMock.mock.calls.find(
       (call) =>
         requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/students/2026001" &&
@@ -1492,7 +1570,14 @@ describe("LegacyTeacherApp", () => {
     const deleteDialog = await screen.findByRole("dialog", { name: "删除学生" });
     expect(within(deleteDialog).getByText("删除后该学生账号将无法登录，名单中也不再展示该学生。")).toBeTruthy();
     fireEvent.click(within(deleteDialog).getByRole("button", { name: "确认删除" }));
-    expect(await screen.findByText("已删除学生账号。")).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/students/2026001" && String(call[1]?.method || "GET").toUpperCase() === "DELETE",
+        ),
+      ).toBe(true),
+    );
+    expect(screen.queryByText("已删除学生账号。")).toBeNull();
     const deleteStudentCall = fetchMock.mock.calls.find(
       (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/students/2026001" && String(call[1]?.method || "GET").toUpperCase() === "DELETE",
     );
@@ -1557,7 +1642,14 @@ describe("LegacyTeacherApp", () => {
     expect(screen.getByText("错题集中在溴碘置换顺序，需要回看 KBr 与 CCl4 的分层颜色。")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "保存 Prompt" }));
-    expect(await screen.findByText("报告生成 Prompt 已保存。")).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          (call) => requestUrl(call[0]).pathname === "/api/teacher/assessment-report-prompts" && String(call[1]?.method || "GET").toUpperCase() === "PUT",
+        ),
+      ).toBe(true),
+    );
+    expect(screen.queryByText("报告生成 Prompt 已保存。")).toBeNull();
 
     const paths = requestPaths(fetchMock);
     expect(paths).toContain("/api/teacher/assessment-report-prompts");

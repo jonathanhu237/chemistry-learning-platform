@@ -950,8 +950,8 @@ function MetricGrid({ metrics }: { metrics: Array<{ label: string; value: ReactN
   return <TeacherMetricGrid metrics={metrics} />;
 }
 
-function NoticeBlock({ children }: { children: ReactNode }) {
-  return <TeacherAlert className="legacy-notice" type="success" message={children} />;
+function NoticeBlock(_props: { children: ReactNode }) {
+  return null;
 }
 
 function ErrorBlock({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
