@@ -6,7 +6,7 @@ from typing import Any
 from server.app.domains.catalog_tree import search_documents, teacher_search
 
 
-def test_teacher_search_mapping_uses_separate_admin_index_contract() -> None:
+def test_teacher_search_mapping_uses_separate_teacher_index_contract() -> None:
     mapping = teacher_search.teacher_catalog_search_index_mapping(analyzer="ik_max_word")
 
     assert mapping["mappings"]["_meta"]["mapping_version"] == teacher_search.TEACHER_CATALOG_SEARCH_INDEX_MAPPING_VERSION

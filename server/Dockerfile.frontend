@@ -4,7 +4,6 @@ ARG APP_DIR
 WORKDIR /app
 
 COPY ${APP_DIR}/package.json ${APP_DIR}/package-lock.json ./
-COPY ${APP_DIR}/scripts ./scripts
 RUN npm ci
 
 COPY ${APP_DIR}/ ./

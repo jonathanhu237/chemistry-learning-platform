@@ -177,7 +177,7 @@ docker compose run --rm -e VIDEO_WORKER_BACKFILL=1 video-worker
 Retry a failed asset from the admin UI or call:
 
 ```http
-POST /api/admin/media/assets/{asset_id}/retry-processing
+POST /api/teacher/media/assets/{asset_id}/retry-processing
 ```
 
 ## Rollback

@@ -98,7 +98,7 @@ def _asset_entries(paths: Any, *, kind: str, caption: str | None) -> list[dict[s
 def _asset_url(path: Any) -> str | None:
     if not path:
         return None
-    return f"/api/admin/rag-assets?path={quote(str(path), safe='')}"
+    return f"/api/teacher/rag-assets?path={quote(str(path), safe='')}"
 
 
 def _asset_markdown(asset: dict[str, Any], caption: str | None = None) -> str | None:

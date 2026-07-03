@@ -13,25 +13,23 @@ from server.app.domains.errors import DomainHTTPException
 from server.app.infrastructure.settings import get_settings
 from server.app.infrastructure.database import check_database_connection
 from server.app.repositories import get_repositories
-from server.app.api.admin.admin_analytics import router as admin_analytics_router
-from server.app.api.admin.admin_catalog_tree import router as admin_catalog_tree_router
-from server.app.api.admin.admin_classes import router as admin_classes_router
-from server.app.api.admin.admin_curriculum_review import router as admin_curriculum_review_router
-from server.app.api.admin.admin_experiments import router as admin_experiments_router
-from server.app.api.admin.admin_feedback import router as admin_feedback_router
-from server.app.api.admin.admin_learning_assistant import router as admin_learning_assistant_router
-from server.app.api.admin.admin_learning_resources import router as admin_learning_resources_router
-from server.app.api.admin.admin_legacy import router as admin_legacy_router
-from server.app.api.admin.admin_media import router as admin_media_router
-from server.app.api.admin.admin_platform import router as admin_platform_router
-from server.app.api.admin.admin_question_banks import router as admin_question_banks_router
-from server.app.api.admin.admin_question_drafts import router as admin_question_drafts_router
-from server.app.api.admin.admin_question_generation import router as admin_question_generation_router
-from server.app.api.admin.admin_question_workbench import router as admin_question_workbench_router
-from server.app.api.admin.admin_point_aware_questions import router as admin_point_aware_questions_router
-from server.app.api.admin.admin_student_preview import router as admin_student_preview_router
-from server.app.api.web_admin.student_preview import router as web_admin_student_preview_router
-from server.app.api.web_admin.teacher_accounts import router as web_admin_teacher_accounts_router
+from server.app.api.teacher.teacher_analytics import router as teacher_analytics_router
+from server.app.api.teacher.teacher_catalog_tree import router as teacher_catalog_tree_router
+from server.app.api.teacher.teacher_classes import router as teacher_classes_router
+from server.app.api.teacher.teacher_curriculum_review import router as teacher_curriculum_review_router
+from server.app.api.teacher.teacher_experiments import router as teacher_experiments_router
+from server.app.api.teacher.teacher_feedback import router as teacher_feedback_router
+from server.app.api.teacher.teacher_learning_assistant import router as teacher_learning_assistant_router
+from server.app.api.teacher.teacher_learning_resources import router as teacher_learning_resources_router
+from server.app.api.teacher.teacher_legacy import router as teacher_legacy_router
+from server.app.api.teacher.teacher_media import router as teacher_media_router
+from server.app.api.teacher.teacher_platform import router as teacher_platform_router
+from server.app.api.teacher.teacher_question_banks import router as teacher_question_banks_router
+from server.app.api.teacher.teacher_question_drafts import router as teacher_question_drafts_router
+from server.app.api.teacher.teacher_question_generation import router as teacher_question_generation_router
+from server.app.api.teacher.teacher_question_workbench import router as teacher_question_workbench_router
+from server.app.api.teacher.teacher_point_aware_questions import router as teacher_point_aware_questions_router
+from server.app.api.teacher.teacher_student_preview import router as teacher_student_preview_router
 from server.app.api.student.student_catalog import router as student_catalog_router
 from server.app.api.preview.catalog_preview import router as catalog_preview_router
 from server.app.api.preview.student_session import router as student_preview_session_router
@@ -69,7 +67,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title="SYSU Chemistry Admin Service", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="SYSU Chemistry Teacher Service", version="0.1.0", lifespan=lifespan)
 app.add_exception_handler(DomainHTTPException, domain_http_exception_handler)
 app.add_middleware(
     CORSMiddleware,
@@ -80,25 +78,23 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
-app.include_router(admin_analytics_router)
-app.include_router(admin_catalog_tree_router)
-app.include_router(admin_classes_router)
-app.include_router(admin_curriculum_review_router)
-app.include_router(admin_experiments_router)
-app.include_router(admin_feedback_router)
-app.include_router(admin_learning_assistant_router)
-app.include_router(admin_learning_resources_router)
-app.include_router(admin_legacy_router)
-app.include_router(admin_media_router)
-app.include_router(admin_platform_router)
-app.include_router(admin_question_banks_router)
-app.include_router(admin_question_drafts_router)
-app.include_router(admin_question_generation_router)
-app.include_router(admin_question_workbench_router)
-app.include_router(admin_point_aware_questions_router)
-app.include_router(admin_student_preview_router)
-app.include_router(web_admin_teacher_accounts_router)
-app.include_router(web_admin_student_preview_router)
+app.include_router(teacher_analytics_router)
+app.include_router(teacher_catalog_tree_router)
+app.include_router(teacher_classes_router)
+app.include_router(teacher_curriculum_review_router)
+app.include_router(teacher_experiments_router)
+app.include_router(teacher_feedback_router)
+app.include_router(teacher_learning_assistant_router)
+app.include_router(teacher_learning_resources_router)
+app.include_router(teacher_legacy_router)
+app.include_router(teacher_media_router)
+app.include_router(teacher_platform_router)
+app.include_router(teacher_question_banks_router)
+app.include_router(teacher_question_drafts_router)
+app.include_router(teacher_question_generation_router)
+app.include_router(teacher_question_workbench_router)
+app.include_router(teacher_point_aware_questions_router)
+app.include_router(teacher_student_preview_router)
 app.include_router(student_catalog_router)
 app.include_router(catalog_preview_router)
 app.include_router(student_preview_session_router)

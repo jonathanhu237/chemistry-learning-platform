@@ -11,7 +11,7 @@ from sqlalchemy import text
 
 from server.app.canonical_evidence import load_evidence_source_refs
 from server.app.infrastructure.database import db_session
-from server.app.experiment_admin_schemas import (
+from server.app.experiment_teacher_schemas import (
     QuestionBankAssistantRequest,
     QuestionRequest,
     QuestionUpdateRequest,

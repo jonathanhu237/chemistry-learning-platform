@@ -66,7 +66,7 @@ def test_agent_module_is_compatibility_shim() -> None:
 
 def test_runtime_consumer_import_boundaries() -> None:
     checked_paths = [
-        ROOT / "app" / "api" / "admin" / "admin_learning_assistant.py",
+        ROOT / "app" / "api" / "teacher" / "teacher_learning_assistant.py",
         ROOT / "app" / "domains" / "assessments" / "reports.py",
         ROOT / "app" / "domains" / "assistant" / "student_assistant.py",
     ]

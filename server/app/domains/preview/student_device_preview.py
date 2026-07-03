@@ -144,7 +144,7 @@ def _load_teacher_user(teacher_id: str) -> PreviewAuthUser:
                     SELECT id, username, role, display_name, status, must_change_password, password_version
                     FROM app_users
                     WHERE id = CAST(:teacher_id AS uuid)
-                      AND role IN ('admin', 'teacher')
+                      AND role = 'teacher'
                       AND status = 'active'
                     """
                 ),

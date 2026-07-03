@@ -152,7 +152,7 @@ def test_catalog_node_card_exposes_point_video_readiness_as_binary() -> None:
 def test_chapter_tree_summary_counts_statuses_and_video_readiness() -> None:
     nodes_source = (CATALOG_DIR / "nodes.py").read_text(encoding="utf-8")
     facade_source = (CATALOG_DIR / "tree.py").read_text(encoding="utf-8")
-    router_source = (SERVER_DIR / "app" / "api" / "admin" / "admin_catalog_tree.py").read_text(encoding="utf-8")
+    router_source = (SERVER_DIR / "app" / "api" / "teacher" / "teacher_catalog_tree.py").read_text(encoding="utf-8")
 
     assert "def chapter_tree_summary" in nodes_source
     assert '"point_status_counts"' in nodes_source

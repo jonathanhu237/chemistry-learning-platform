@@ -8,7 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
-from server.app.domains.platform.roles import PLATFORM_ADMIN_ROLE, TEACHER_CONSOLE_ROLES, is_teacher_console_role
+from server.app.domains.platform.roles import TEACHER_ROLE, is_teacher_role
 from server.app.infrastructure.database import db_session
 from server.app.security import AuthError, create_access_token, hash_password, verify_password, decode_access_token
 
@@ -616,15 +616,9 @@ def require_roles(*roles: str) -> Callable[[AuthUser], AuthUser]:
     return dependency
 
 
-async def require_platform_admin(user: AuthUser = Depends(get_current_user)) -> AuthUser:
-    if user.role != PLATFORM_ADMIN_ROLE:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Platform admin account required")
-    return user
-
-
-async def require_teacher_console_user(user: AuthUser = Depends(get_current_user)) -> AuthUser:
-    if not is_teacher_console_role(user.role):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teacher console account required")
+async def require_teacher_user(user: AuthUser = Depends(get_current_user)) -> AuthUser:
+    if not is_teacher_role(user.role):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teacher account required")
     return user
 
 

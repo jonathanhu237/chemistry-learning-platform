@@ -5,6 +5,7 @@ import inspect
 import pytest
 
 from server.app.auth import AuthUser
+from server.app.app_runtime.main import app
 from server.app.domains.analytics import read_models
 from server.app.api.student import student_platform
 from server.app.domains.roster import classes as roster_classes
@@ -39,13 +40,9 @@ def _preview_user() -> AuthUser:
 
 
 def test_student_preview_routes_are_registered() -> None:
-    assert_route("/api/admin/student-preview/session", "POST")
+    assert_route("/api/teacher/student-preview/session", "POST")
     assert_route("/api/preview/student-session/exchange", "POST")
-    assert_route("/api/web-admin/student-preview/classes", "GET")
-    assert_route("/api/web-admin/student-preview/classes/{teacher_user_id}/ensure", "POST")
-    assert_route("/api/web-admin/student-preview/classes/{teacher_user_id}/reset", "POST")
-    assert_route("/api/web-admin/student-preview/classes/{teacher_user_id}/disable", "POST")
-    assert_route("/api/web-admin/student-preview/classes/{teacher_user_id}/restore", "POST")
+    assert not any(path.startswith("/api/web-admin") for path in app.openapi()["paths"])
 
 
 def test_preview_constants_keep_separate_purposes() -> None:

@@ -5,13 +5,13 @@ This legacy branch keeps the old competition product line as the canonical runti
 It contains:
 
 - student web frontend in `apps/web-student`
-- teacher/admin backoffice frontend in `apps/web-backoffice`
+- teacher web frontend in `apps/web-teacher`
 - shared FastAPI backend in `server`
 - database migrations in `server/migrations`
 - bootstrap/import/validation scripts in `scripts`
 - protected seed data under `data/seed`
 
-The legacy branch no longer ships standalone `web-admin`, current `web-teacher`, or current `web-student` frontend packages. Backoffice login uses normal username/password accounts; the canonical roles are `admin`, `teacher`, and `student`.
+The legacy branch ships exactly two browser products: `web-teacher` and `web-student`. Teacher login uses normal username/password accounts; the canonical roles are `teacher` and `student`.
 
 ## Local Development
 
@@ -28,7 +28,7 @@ Install frontend dependencies:
 ```powershell
 Set-Location apps/web-student
 npm install
-Set-Location ../web-backoffice
+Set-Location ../web-teacher
 npm install
 ```
 
@@ -45,14 +45,14 @@ Set-Location apps/web-student
 npm run dev
 ```
 
-Run the backoffice frontend:
+Run the teacher frontend:
 
 ```powershell
-Set-Location apps/web-backoffice
+Set-Location apps/web-teacher
 npm run dev
 ```
 
-The student dev server defaults to `http://127.0.0.1:5176/`, and the backoffice dev server defaults to `http://127.0.0.1:5177/`. Both proxy `/api` to the backend.
+The student dev server defaults to `http://127.0.0.1:5176/`, and the teacher dev server defaults to `http://127.0.0.1:5177/`. Both proxy `/api` to the backend.
 
 ## Docker Compose
 
@@ -68,20 +68,20 @@ Start the default legacy runtime:
 python scripts/deploy_compose_stack.py
 ```
 
-The default Compose graph starts `postgres`, `backend`, `web-student`, and `web-backoffice`. It does not start the removed current-product frontend services and does not expose a standalone token-based operations console.
+The default Compose graph starts `postgres`, `backend`, `web-student`, and `web-teacher`. It does not start the removed current-product frontend services and does not expose a standalone token-based operations console.
 
 Default local endpoints:
 
 - backend API: `http://127.0.0.1:18000`
 - student frontend: `http://127.0.0.1:15176`
-- backoffice frontend: `http://127.0.0.1:15177`
+- teacher frontend: `http://127.0.0.1:15177`
 
 For routine development after the stack exists, rebuild only the service that owns your change:
 
 ```powershell
 docker compose up -d --build backend
 docker compose up -d --build web-student
-docker compose up -d --build web-backoffice
+docker compose up -d --build web-teacher
 ```
 
 ## Bootstrap
@@ -92,10 +92,10 @@ Apply migrations:
 python scripts/apply_migrations.py
 ```
 
-Create or update an admin/teacher account:
+Create or update a teacher account:
 
 ```powershell
-python scripts/bootstrap_admin.py --username admin
+python scripts/bootstrap_teacher.py --username teacher
 ```
 
 Import formal data and canonical evidence when needed:
@@ -121,7 +121,7 @@ Set-Location apps/web-student
 npm run typecheck
 npm test
 npm run build
-Set-Location ../web-backoffice
+Set-Location ../web-teacher
 npm run typecheck
 npm test
 npm run build
@@ -136,7 +136,7 @@ python -m pytest server/tests -q
 Validate the active OpenSpec change:
 
 ```powershell
-openspec validate trim-legacy-to-old-runtime --strict
+openspec validate collapse-legacy-to-teacher-student --strict
 ```
 
 Run the Compose smoke check when deployment wiring changes:

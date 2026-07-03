@@ -11,7 +11,7 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
-def test_admin_entrypoint_exposes_student_login_only() -> None:
+def test_teacher_entrypoint_exposes_student_login_only() -> None:
     paths = app.openapi()["paths"]
 
     assert "/api/auth/student/login" in paths
@@ -27,7 +27,7 @@ def test_student_initial_password_change_does_not_require_current_password() -> 
     assert payload.new_password == "new-pass-123"
 
 
-def test_admin_password_change_still_requires_current_password() -> None:
+def test_teacher_password_change_still_requires_current_password() -> None:
     with pytest.raises(ValidationError):
         PasswordChangeRequest(new_password="new-pass-123")
 

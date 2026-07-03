@@ -236,14 +236,14 @@ def _install_report_creation_fakes(monkeypatch: pytest.MonkeyPatch, session: _Fa
 def test_assessment_report_routes_are_registered() -> None:
     assert_route("/api/student/assessment-reports", "GET")
     assert_route("/api/student/assessment-reports/{report_id}", "GET")
-    assert_route("/api/admin/assessment-report-prompts", "GET")
-    assert_route("/api/admin/assessment-report-prompts", "PUT")
-    assert_route("/api/admin/assessment-report-prompts", "DELETE")
-    assert_route("/api/admin/classes/{class_id}/assessment-report-prompts", "GET")
-    assert_route("/api/admin/classes/{class_id}/assessment-report-prompts", "PUT")
-    assert_route("/api/admin/classes/{class_id}/assessment-report-prompts", "DELETE")
-    assert_route("/api/admin/classes/{class_id}/students/{student_id}/assessment-reports", "GET")
-    assert_route("/api/admin/classes/{class_id}/students/{student_id}/assessment-reports/{report_id}", "GET")
+    assert_route("/api/teacher/assessment-report-prompts", "GET")
+    assert_route("/api/teacher/assessment-report-prompts", "PUT")
+    assert_route("/api/teacher/assessment-report-prompts", "DELETE")
+    assert_route("/api/teacher/classes/{class_id}/assessment-report-prompts", "GET")
+    assert_route("/api/teacher/classes/{class_id}/assessment-report-prompts", "PUT")
+    assert_route("/api/teacher/classes/{class_id}/assessment-report-prompts", "DELETE")
+    assert_route("/api/teacher/classes/{class_id}/students/{student_id}/assessment-reports", "GET")
+    assert_route("/api/teacher/classes/{class_id}/students/{student_id}/assessment-reports/{report_id}", "GET")
 
 
 @pytest.mark.anyio
@@ -300,7 +300,7 @@ async def test_assessment_report_ai_generation_uses_direct_chat(monkeypatch: pyt
 
     monkeypatch.setattr(reports_module, "_ai_ready", lambda: True)
     monkeypatch.setattr(reports_module, "effective_ai_settings", lambda _settings: SimpleNamespace(agent_llm_model="qwen-max"))
-    monkeypatch.setattr(reports_module, "_async_openai_client", lambda _settings, *, timeout: _FakeClient())
+    monkeypatch.setattr(reports_module, "openai_chat_client", lambda _settings, *, timeout: _FakeClient())
 
     generated = await reports_module._generate_with_ai(
         user=_user(),
@@ -331,7 +331,7 @@ async def test_assessment_report_ai_generation_times_out_to_fallback(monkeypatch
 
     monkeypatch.setattr(reports_module, "_ai_ready", lambda: True)
     monkeypatch.setattr(reports_module, "effective_ai_settings", lambda _settings: SimpleNamespace(agent_llm_model="qwen-max"))
-    monkeypatch.setattr(reports_module, "_async_openai_client", lambda _settings, *, timeout: _SlowClient())
+    monkeypatch.setattr(reports_module, "openai_chat_client", lambda _settings, *, timeout: _SlowClient())
     monkeypatch.setattr(reports_module, "ASSESSMENT_REPORT_AI_TIMEOUT_SECONDS", 0.01)
 
     generated = await reports_module._generate_with_ai(

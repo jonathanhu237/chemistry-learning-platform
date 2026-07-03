@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from server.app.api.admin import admin_media
+from server.app.api.teacher import teacher_media
 from server.app.domains.media import assets as media_assets
 from server.app.domains.media import files as media_files
 
@@ -18,10 +18,10 @@ def _settings(tmp_path, *, max_media_upload_mb: int = 1):
     )
 
 
-def test_admin_media_upload_policy_reports_effective_limit(monkeypatch, tmp_path):
+def test_teacher_media_upload_policy_reports_effective_limit(monkeypatch, tmp_path):
     monkeypatch.setattr(media_files, "get_settings", lambda: _settings(tmp_path, max_media_upload_mb=8192))
 
-    result = asyncio.run(admin_media.admin_media_upload_policy(user=SimpleNamespace(id="teacher-1")))
+    result = asyncio.run(teacher_media.teacher_media_upload_policy(user=SimpleNamespace(id="teacher-1")))
 
     assert result["max_media_upload_mb"] == 8192
     assert result["max_media_upload_bytes"] == 8192 * 1024 * 1024

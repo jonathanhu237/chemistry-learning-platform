@@ -93,7 +93,7 @@ def test_complete_seed_bootstrap_restores_blank_database_and_login(tmp_path) -> 
                 "-c",
                 (
                     "from server.app.auth import authenticate_user;"
-                    "assert authenticate_user('admin', '123456');"
+                    "assert authenticate_user('teacher', '123456');"
                     "assert authenticate_user('SEED001', '123456')"
                 ),
             ],

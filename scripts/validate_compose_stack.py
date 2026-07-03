@@ -14,8 +14,8 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED_SERVICES = {"backend", "postgres", "web-backoffice", "web-student"}
-RETIRED_SERVICES = {"bge-rag", "web-admin", "web-teacher", "web-student-old", "web-teacher-old"}
+REQUIRED_SERVICES = {"backend", "postgres", "web-teacher", "web-student"}
+RETIRED_SERVICES = {"bge-rag", "web-admin", "web-backoffice", "web-student-old", "web-teacher-old"}
 
 
 def _run(command: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -116,18 +116,18 @@ def main() -> None:
 
     backend_url = "http://" + _compose_port("backend", 8000)
     web_student_url = "http://" + _compose_port("web-student", 80)
-    web_backoffice_url = "http://" + _compose_port("web-backoffice", 80)
+    web_teacher_url = "http://" + _compose_port("web-teacher", 80)
 
     _run(["docker", "compose", "exec", "-T", "postgres", "pg_isready", "-U", "chemistry", "-d", "chemistry_exam"])
     _wait_status(f"{backend_url}/health", label="backend", expected={200})
     _wait_status(f"{web_student_url}/health", label="web-student frontend health", expected={200})
-    _wait_status(f"{web_backoffice_url}/health", label="web-backoffice frontend health", expected={200})
+    _wait_status(f"{web_teacher_url}/health", label="web-teacher frontend health", expected={200})
     _wait_status(f"{web_student_url}/", label="web-student frontend root", expected={200})
-    _wait_status(f"{web_backoffice_url}/login", label="web-backoffice login", expected={200})
+    _wait_status(f"{web_teacher_url}/login", label="web-teacher login", expected={200})
     _wait_status(f"{web_student_url}/api/auth/me", label="web-student API proxy", expected={401})
     _wait_status(f"{web_student_url}/assessment", label="web-student deep route", expected={200})
-    _wait_status(f"{web_backoffice_url}/api/auth/me", label="web-backoffice API proxy", expected={401})
-    _wait_status(f"{web_backoffice_url}/scores", label="web-backoffice deep route", expected={200})
+    _wait_status(f"{web_teacher_url}/api/auth/me", label="web-teacher API proxy", expected={401})
+    _wait_status(f"{web_teacher_url}/scores", label="web-teacher deep route", expected={200})
 
     _run(["docker", "compose", "exec", "-T", "backend", "python", "scripts/apply_migrations.py"])
     print("Compose stack smoke: ok")

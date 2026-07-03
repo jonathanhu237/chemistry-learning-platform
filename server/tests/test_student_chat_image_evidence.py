@@ -96,7 +96,7 @@ def test_figure_evidence_items_only_reference_existing_image_assets():
     with_asset = agent_module._figure_evidence_items(context, [])
     assert with_asset[0]["asset_count"] == 1
     assert with_asset[0]["asset_files"][0]["markdown"].startswith("![")
-    assert "/api/admin/rag-assets?path=" in with_asset[0]["asset_files"][0]["markdown"]
+    assert "/api/teacher/rag-assets?path=" in with_asset[0]["asset_files"][0]["markdown"]
 
     context.sources = [
         RagSource(

@@ -5,7 +5,7 @@ from typing import Any
 from fastapi.testclient import TestClient
 
 from server.app.app_runtime.main import app
-from server.app.api.admin import admin_legacy
+from server.app.api.teacher import teacher_legacy
 from server.app.auth import AuthUser, get_current_user
 from server.tests.route_helpers import assert_route
 
@@ -23,13 +23,13 @@ def _teacher_user() -> AuthUser:
 
 def test_teacher_legacy_demo_routes_are_registered_and_get_only() -> None:
     routes = [
-        "/api/admin/legacy/teacher-demo/overview",
-        "/api/admin/legacy/teacher-demo/video-resources",
-        "/api/admin/legacy/teacher-demo/question-resources",
-        "/api/admin/legacy/teacher-demo/classes",
-        "/api/admin/legacy/teacher-demo/classes/{class_id}/analytics",
-        "/api/admin/legacy/teacher-demo/classes/{class_id}/weak-points",
-        "/api/admin/legacy/teacher-demo/evaluation-system",
+        "/api/teacher/legacy/teacher-demo/overview",
+        "/api/teacher/legacy/teacher-demo/video-resources",
+        "/api/teacher/legacy/teacher-demo/question-resources",
+        "/api/teacher/legacy/teacher-demo/classes",
+        "/api/teacher/legacy/teacher-demo/classes/{class_id}/analytics",
+        "/api/teacher/legacy/teacher-demo/classes/{class_id}/weak-points",
+        "/api/teacher/legacy/teacher-demo/evaluation-system",
     ]
     for route in routes:
         assert_route(route, "GET")
@@ -37,7 +37,7 @@ def test_teacher_legacy_demo_routes_are_registered_and_get_only() -> None:
     teacher_demo_paths = {
         path: methods
         for path, methods in app.openapi()["paths"].items()
-        if path.startswith("/api/admin/legacy/teacher-demo")
+        if path.startswith("/api/teacher/legacy/teacher-demo")
     }
     assert set(teacher_demo_paths) == set(routes)
     assert {method for methods in teacher_demo_paths.values() for method in methods} == {"get"}
@@ -45,14 +45,14 @@ def test_teacher_legacy_demo_routes_are_registered_and_get_only() -> None:
 
 def test_teacher_legacy_demo_requires_teacher_session() -> None:
     with TestClient(app) as client:
-        response = client.get("/api/admin/legacy/teacher-demo/overview")
+        response = client.get("/api/teacher/legacy/teacher-demo/overview")
 
     assert response.status_code in {401, 403}
 
 
 def test_teacher_legacy_demo_payloads_are_old_facing_and_read_only(monkeypatch) -> None:
     monkeypatch.setattr(
-        admin_legacy,
+        teacher_legacy,
         "teacher_legacy_overview",
         lambda _user: {
             "metrics": [{"key": "video_points", "label": "实验视频点位", "value": 2, "unit": "个", "description": "点位"}],
@@ -61,7 +61,7 @@ def test_teacher_legacy_demo_payloads_are_old_facing_and_read_only(monkeypatch) 
         },
     )
     monkeypatch.setattr(
-        admin_legacy,
+        teacher_legacy,
         "teacher_legacy_video_resources",
         lambda q="": {
             "total": 1,
@@ -84,7 +84,7 @@ def test_teacher_legacy_demo_payloads_are_old_facing_and_read_only(monkeypatch) 
         },
     )
     monkeypatch.setattr(
-        admin_legacy,
+        teacher_legacy,
         "teacher_legacy_question_resources",
         lambda: {
             "total": 1,
@@ -112,7 +112,7 @@ def test_teacher_legacy_demo_payloads_are_old_facing_and_read_only(monkeypatch) 
         },
     )
     monkeypatch.setattr(
-        admin_legacy,
+        teacher_legacy,
         "teacher_legacy_classes",
         lambda _user: {
             "classes": [
@@ -131,7 +131,7 @@ def test_teacher_legacy_demo_payloads_are_old_facing_and_read_only(monkeypatch) 
         },
     )
     monkeypatch.setattr(
-        admin_legacy,
+        teacher_legacy,
         "teacher_legacy_class_analytics",
         lambda class_id, user: {
             "class_id": class_id,
@@ -150,7 +150,7 @@ def test_teacher_legacy_demo_payloads_are_old_facing_and_read_only(monkeypatch) 
         },
     )
     monkeypatch.setattr(
-        admin_legacy,
+        teacher_legacy,
         "teacher_legacy_class_weak_points",
         lambda class_id, user: {
             "items": [],
@@ -172,7 +172,7 @@ def test_teacher_legacy_demo_payloads_are_old_facing_and_read_only(monkeypatch) 
         },
     )
     monkeypatch.setattr(
-        admin_legacy,
+        teacher_legacy,
         "teacher_legacy_evaluation_system",
         lambda: {
             "evaluated_objects": ["实验点位掌握度"],
@@ -187,13 +187,13 @@ def test_teacher_legacy_demo_payloads_are_old_facing_and_read_only(monkeypatch) 
     try:
         with TestClient(app) as client:
             payloads: list[dict[str, Any]] = [
-                client.get("/api/admin/legacy/teacher-demo/overview").json(),
-                client.get("/api/admin/legacy/teacher-demo/video-resources").json(),
-                client.get("/api/admin/legacy/teacher-demo/question-resources").json(),
-                client.get("/api/admin/legacy/teacher-demo/classes").json(),
-                client.get("/api/admin/legacy/teacher-demo/classes/class-1/analytics").json(),
-                client.get("/api/admin/legacy/teacher-demo/classes/class-1/weak-points").json(),
-                client.get("/api/admin/legacy/teacher-demo/evaluation-system").json(),
+                client.get("/api/teacher/legacy/teacher-demo/overview").json(),
+                client.get("/api/teacher/legacy/teacher-demo/video-resources").json(),
+                client.get("/api/teacher/legacy/teacher-demo/question-resources").json(),
+                client.get("/api/teacher/legacy/teacher-demo/classes").json(),
+                client.get("/api/teacher/legacy/teacher-demo/classes/class-1/analytics").json(),
+                client.get("/api/teacher/legacy/teacher-demo/classes/class-1/weak-points").json(),
+                client.get("/api/teacher/legacy/teacher-demo/evaluation-system").json(),
             ]
     finally:
         app.dependency_overrides.clear()
@@ -206,7 +206,7 @@ def test_teacher_legacy_demo_payloads_are_old_facing_and_read_only(monkeypatch) 
 
 
 def test_mainline_teacher_write_routes_remain_outside_legacy_demo_namespace() -> None:
-    assert_route("/api/admin/question-banks/workbench-sessions", "POST")
-    assert_route("/api/admin/question-banks/questions", "POST")
-    assert_route("/api/admin/classes/{class_id}/smart-assessment-strategy", "PUT")
-    assert_route("/api/admin/legacy/video-points/{node_id}/recommendation", "PUT")
+    assert_route("/api/teacher/question-banks/workbench-sessions", "POST")
+    assert_route("/api/teacher/question-banks/questions", "POST")
+    assert_route("/api/teacher/classes/{class_id}/smart-assessment-strategy", "PUT")
+    assert_route("/api/teacher/legacy/video-points/{node_id}/recommendation", "PUT")

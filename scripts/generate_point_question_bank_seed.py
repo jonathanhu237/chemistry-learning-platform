@@ -25,7 +25,7 @@ from server.app.domains.questions.bank import (  # noqa: E402
 from server.app.domains.questions.drafts import publish_question_draft  # noqa: E402
 from server.app.domains.questions.generation import generate_question_drafts  # noqa: E402
 from server.app.domains.questions.workbench import _ensure_question_workbench_rag_ready, _load_workbench_evidence_package  # noqa: E402
-from server.app.experiment_admin_schemas import GenerationRequest  # noqa: E402
+from server.app.experiment_teacher_schemas import GenerationRequest  # noqa: E402
 from server.app.infrastructure.database import apply_migrations, db_session  # noqa: E402
 from scripts.seed_current_question_bank import DEFAULT_SEED_PATH, export_seed, validate_seed_payload, write_seed  # noqa: E402
 

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-PLATFORM_ADMIN_ROLE = "platform_admin"
-TEACHER_CONSOLE_ROLES = frozenset({"admin", "teacher"})
+TEACHER_ROLE = "teacher"
+STUDENT_ROLE = "student"
 
 
-def is_teacher_console_role(role: str) -> bool:
-    return role in TEACHER_CONSOLE_ROLES
+def is_teacher_role(role: str) -> bool:
+    return role == TEACHER_ROLE

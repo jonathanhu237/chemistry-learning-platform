@@ -11,10 +11,10 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-WEB_BACKOFFICE_DIR = ROOT / "apps" / "web-backoffice"
+WEB_TEACHER_DIR = ROOT / "apps" / "web-teacher"
 WEB_STUDENT_DIR = ROOT / "apps" / "web-student"
 FRONTENDS = [
-    ("web-backoffice frontend", WEB_BACKOFFICE_DIR, True),
+    ("web-teacher frontend", WEB_TEACHER_DIR, True),
     ("web-student frontend", WEB_STUDENT_DIR, True),
 ]
 DEFAULT_CHANGE = "trim-legacy-to-old-runtime"
@@ -181,7 +181,7 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
         )
     stages.append(
         Stage(
-            "admin app import smoke",
+            "teacher app import smoke",
             [sys.executable, "-c", "import server.app.app_runtime.main as m; print(m.app.title)"],
         )
     )
@@ -215,7 +215,7 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Run the production-readiness validation chain for the admin platform."
+        description="Run the production-readiness validation chain for the legacy teacher/student platform."
     )
     parser.add_argument("--change", default=DEFAULT_CHANGE, help="OpenSpec change to validate.")
     parser.add_argument("--install-frontend", action="store_true", help="Run npm ci before frontend checks.")

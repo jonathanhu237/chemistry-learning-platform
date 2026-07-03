@@ -80,7 +80,6 @@ class Settings:
     video_duplicate_detection_min_interval_seconds: float = 0.5
     auth_secret_key: str = "dev-only-secret"
     access_token_expire_minutes: int = 720
-    web_admin_access_token: str = ""
     student_preview_app_base_url: str = "http://222.200.189.249:15173"
     student_preview_allowed_origins: tuple[str, ...] = (
         "http://222.200.189.249:15173",
@@ -161,12 +160,6 @@ class Settings:
                 errors.append("API_PUBLIC_BASE_URL is required in production")
             if not _getenv("AUTH_SECRET_KEY") or self.auth_secret_key in {"", "dev-only-secret", "dev-only-change-me"}:
                 errors.append("AUTH_SECRET_KEY must be set to a non-development value in production")
-            if (
-                not _getenv("WEB_ADMIN_ACCESS_TOKEN")
-                or len(self.web_admin_access_token) < 32
-                or self.web_admin_access_token.startswith("dev-only-")
-            ):
-                errors.append("WEB_ADMIN_ACCESS_TOKEN must be set to a long non-development value in production")
             if not _getenv("AGENT_LLM_PROVIDER"):
                 errors.append("AGENT_LLM_PROVIDER must be explicit in production, use disabled when no LLM is configured")
             if self.agent_llm_provider and self.agent_llm_provider != "disabled":
@@ -273,7 +266,6 @@ def get_settings() -> Settings:
         ),
         auth_secret_key=_getenv("AUTH_SECRET_KEY", Settings.auth_secret_key),
         access_token_expire_minutes=_get_int("ACCESS_TOKEN_EXPIRE_MINUTES", Settings.access_token_expire_minutes),
-        web_admin_access_token=_getenv("WEB_ADMIN_ACCESS_TOKEN", Settings.web_admin_access_token),
         student_preview_app_base_url=student_preview_app_base_url,
         student_preview_allowed_origins=tuple(student_preview_allowed_origins),
         student_preview_ticket_expire_minutes=_get_int(

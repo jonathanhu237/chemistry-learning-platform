@@ -52,6 +52,12 @@ class AgentRuntime:
             yield item
 
 
+def openai_chat_client(settings: Settings, *, timeout: float):
+    from server.app.domains.assistant.providers import async_openai_client
+
+    return async_openai_client(settings, timeout=timeout)
+
+
 _DEFAULT_RUNTIME = AgentRuntime()
 
 

@@ -62,8 +62,8 @@ The canonical inventory currently contains 132 entries:
 
 Removed aliases:
 
-- `POST /api/admin/media/bindings/{binding_id}/delete` -> use `DELETE /api/admin/media/bindings/{binding_id}`
-- `POST /api/admin/media/bindings/{binding_id}/archive` -> use `DELETE /api/admin/media/bindings/{binding_id}`
+- `POST /api/teacher/media/bindings/{binding_id}/delete` -> use `DELETE /api/teacher/media/bindings/{binding_id}`
+- `POST /api/teacher/media/bindings/{binding_id}/archive` -> use `DELETE /api/teacher/media/bindings/{binding_id}`
 
 ## Domain Owner Map
 

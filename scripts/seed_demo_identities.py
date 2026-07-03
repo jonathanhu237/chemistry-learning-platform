@@ -85,8 +85,8 @@ def _validate_payload(payload: dict[str, Any]) -> list[str]:
     students = payload.get("students") or []
     if not str(teacher.get("username") or "").strip():
         errors.append("teacher.username is required")
-    if teacher.get("role") not in {"admin", "teacher"}:
-        errors.append("teacher.role must be admin or teacher for class ownership")
+    if (teacher.get("role") or "teacher") != "teacher":
+        errors.append("teacher.role must be teacher")
     if not str(klass.get("id") or "").strip():
         errors.append("class.id is required")
     if not str(klass.get("class_name") or "").strip():
@@ -176,7 +176,7 @@ def _upsert_teacher(
         ),
         {
             "username": username,
-            "role": teacher.get("role") or "admin",
+            "role": teacher.get("role") or "teacher",
             "display_name": display_name or teacher.get("display_name") or username,
             "password_hash": password_hash,
             "password_changed": password_changed,
@@ -570,7 +570,7 @@ def validate_database(payload: dict[str, Any], *, teacher_username: str | None =
                   EXISTS (
                     SELECT 1 FROM app_users
                     WHERE username = :teacher_username
-                      AND role IN ('admin', 'teacher')
+                      AND role = 'teacher'
                       AND status = 'active'
                   ) AS teacher_ready,
                   EXISTS (

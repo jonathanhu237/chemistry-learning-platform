@@ -75,18 +75,18 @@ services:
       timeout: 5s
       retries: 12
 
-  web-backoffice:
-    image: chemistry-legacy-web-backoffice:legacy
+  web-teacher:
+    image: chemistry-legacy-web-teacher:legacy
     build:
       context: .
       dockerfile: server/Dockerfile.frontend
       args:
-        APP_DIR: apps/web-backoffice
+        APP_DIR: apps/web-teacher
     environment:
       BACKEND_UPSTREAM: http://backend:8000
       FRAME_ANCESTORS: "'self'"
     ports:
-      - "${WEB_BACKOFFICE_HOST_BIND:-127.0.0.1}:${WEB_BACKOFFICE_HOST_PORT:-15177}:80"
+      - "${WEB_TEACHER_HOST_BIND:-127.0.0.1}:${WEB_TEACHER_HOST_PORT:-15177}:80"
     depends_on:
       backend:
         condition: service_healthy

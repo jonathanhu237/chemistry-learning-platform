@@ -96,8 +96,8 @@ def test_student_legacy_video_points_route_is_registered() -> None:
     assert_route("/api/student/legacy/reports", "GET")
     assert_route("/api/student/legacy/reports/{report_id}", "GET")
     assert_route("/api/student/legacy/smart-assessment/submit", "POST")
-    assert_route("/api/admin/legacy/video-points", "GET")
-    assert_route("/api/admin/legacy/video-points/{node_id}/recommendation", "PUT")
+    assert_route("/api/teacher/legacy/video-points", "GET")
+    assert_route("/api/teacher/legacy/video-points/{node_id}/recommendation", "PUT")
 
 
 def test_legacy_video_point_query_uses_point_content_primary_key() -> None:

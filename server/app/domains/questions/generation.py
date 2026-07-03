@@ -12,7 +12,7 @@ from server.app.domains.catalog_tree.ai_context import build_static_evidence_pay
 from server.app.domains.catalog_tree.jobs import _catalog_point_context as build_catalog_point_context
 from server.app.infrastructure.settings import get_settings
 from server.app.infrastructure.database import db_session
-from server.app.experiment_admin_schemas import GenerationRequest
+from server.app.experiment_teacher_schemas import GenerationRequest
 from server.app.domains.platform.settings import effective_ai_settings
 from server.app.domains.catalog.experiments import _ensure_experiment
 from server.app.domains.questions.bank import _json, _json_array, _validate_question_payload

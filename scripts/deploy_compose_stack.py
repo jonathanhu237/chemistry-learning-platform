@@ -15,7 +15,7 @@ DEFAULT_SERVICES = [
     "postgres",
     "backend",
     "web-student",
-    "web-backoffice",
+    "web-teacher",
 ]
 
 

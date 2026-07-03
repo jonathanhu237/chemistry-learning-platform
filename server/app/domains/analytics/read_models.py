@@ -9,7 +9,7 @@ from typing import Any
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
 from sqlalchemy import text
 
-from server.app.domains.platform.roles import is_teacher_console_role
+from server.app.domains.platform.roles import is_teacher_role
 from server.app.domains.preview.student_device_preview import TEACHER_PREVIEW_ACCOUNT_PURPOSE, TEACHER_PREVIEW_CLASS_PURPOSE
 from server.app.infrastructure.database import db_session
 from server.app.mastery import DEFAULT_EXPERIMENT_MASTERY_SCORE
@@ -125,7 +125,7 @@ def _build_experiment_groups(experiments: list[dict[str, Any]]) -> list[dict[str
 
 
 def _teacher_can_access_class(user: Any, class_id: str) -> bool:
-    if is_teacher_console_role(user.role):
+    if is_teacher_role(user.role):
         return True
     with db_session() as session:
         row = session.execute(

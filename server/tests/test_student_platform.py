@@ -48,7 +48,7 @@ def test_student_platform_routes_are_registered() -> None:
     assert_route("/api/student/feedback", "POST")
 
 
-def test_student_app_config_combines_admin_switches(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_student_app_config_combines_teacher_switches(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(student_platform, "get_learning_behavior_settings", lambda: _learning_settings(ai_enabled=False))
     monkeypatch.setattr(
         student_platform,

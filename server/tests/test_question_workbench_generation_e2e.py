@@ -331,6 +331,18 @@ def question_workbench_generation_e2e(monkeypatch: pytest.MonkeyPatch) -> Questi
         ),
     )
     monkeypatch.setattr(question_workbench_service, "effective_ai_settings", lambda settings: settings)
+    monkeypatch.setattr(question_workbench_service, "effective_textbook_rag_settings", lambda: {"enabled": True})
+    monkeypatch.setattr(
+        question_workbench_service,
+        "_textbook_rag_runtime_status",
+        lambda settings, *, rag_enabled: {
+            "enabled": True,
+            "status": "healthy",
+            "message": "External textbook RAG is healthy.",
+            "models": {},
+            "diagnostics": {"index_exists": True},
+        },
+    )
     monkeypatch.setattr(question_workbench_service, "_try_openai_point_aware_suggestions", lambda **kwargs: [])
     monkeypatch.setattr(
         question_workbench_service,
@@ -380,7 +392,7 @@ def test_question_workbench_generates_draft_from_prebound_catalog_evidence(
 ) -> None:
     fixture = question_workbench_generation_e2e
     session_response = fixture.client.post(
-        "/api/admin/question-banks/workbench-sessions",
+        "/api/teacher/question-banks/workbench-sessions",
         json={
             "mode": "create",
             "experiment_id": "ignored-when-point-node-is-selected",
@@ -396,7 +408,7 @@ def test_question_workbench_generates_draft_from_prebound_catalog_evidence(
     assert session_payload["context_snapshot"]["source_refs"][0]["chunk_id"] == fixture.chunk_id
 
     message_response = fixture.client.post(
-        f"/api/admin/question-banks/workbench-sessions/{session_id}/messages",
+        f"/api/teacher/question-banks/workbench-sessions/{session_id}/messages",
         json={
             "prompt": "围绕 FeCl3 比较 Br- 与 I- 还原性出一道单选题。",
             "question_types": ["single_choice"],

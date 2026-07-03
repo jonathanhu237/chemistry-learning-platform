@@ -46,7 +46,7 @@ def test_backend_runtime_keeps_health_and_api_routes() -> None:
 
     assert ("GET", "/health") in routes
     assert ("POST", "/api/auth/login") in routes
-    assert ("GET", "/api/admin/classes") in routes
+    assert ("GET", "/api/teacher/classes") in routes
     assert ("GET", "/api/student/app-config") in routes
     assert ("GET", "/api/student/assessment-reports") in routes
     assert ("GET", "/api/student/assessment-reports/{report_id}") in routes

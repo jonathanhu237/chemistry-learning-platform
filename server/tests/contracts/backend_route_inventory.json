@@ -1,996 +1,90 @@
 {
-  "description": "Canonical FastAPI route inventory after experiment-catalog-tree-point-architecture; catalog node ids own point authoring and student navigation.",
+  "description": "Canonical FastAPI route inventory for the legacy teacher/student runtime. Teacher browser APIs live under /api/teacher; /api/admin and /api/web-admin are retired.",
   "runtime_entrypoint": "server.app.app_runtime.main:app",
   "routes": [
-    {
-      "method": "GET",
-      "path": "/api/admin/ai-configuration",
-      "name": "admin_get_ai_configuration",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/ai-configuration",
-      "name": "admin_update_ai_configuration",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/analytics/classes/{class_id}/dashboard",
-      "name": "admin_class_dashboard",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/analytics/classes/{class_id}/export",
-      "name": "admin_export_class_report",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/analytics/classes/{class_id}/students/{student_id}",
-      "name": "admin_student_report",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/analytics/classes/{class_id}/weak-points",
-      "name": "admin_class_weak_points",
-      "owner": "admin-api"
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/assessment-report-prompts",
-      "name": "admin_reset_assessment_report_prompts",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/assessment-report-prompts",
-      "name": "admin_get_assessment_report_prompts",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/assessment-report-prompts",
-      "name": "admin_update_assessment_report_prompts",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/catalog/chapters/{chapter_id}/roots",
-      "name": "admin_catalog_chapter_roots",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/catalog/chapters/{chapter_id}/summary",
-      "name": "admin_catalog_chapter_summary",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/catalog/equations/assist",
-      "name": "admin_catalog_assist_equations",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/catalog/equations/preview",
-      "name": "admin_catalog_preview_equations",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/catalog/media-bindings/{binding_id}/{action}",
-      "name": "admin_catalog_media_binding_status",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/catalog/nodes",
-      "name": "admin_catalog_create_node",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/catalog/nodes/reorder",
-      "name": "admin_catalog_reorder_nodes",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/catalog/nodes/{node_id}",
-      "name": "admin_catalog_node_detail",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/catalog/nodes/{node_id}",
-      "name": "admin_catalog_update_node",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/catalog/nodes/{node_id}/ai-context",
-      "name": "admin_catalog_point_ai_context",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/catalog/nodes/{node_id}/children",
-      "name": "admin_catalog_node_children",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/catalog/nodes/{node_id}/copy",
-      "name": "admin_catalog_copy_node",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/catalog/nodes/{node_id}/job-state",
-      "name": "admin_catalog_point_job_state",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/catalog/nodes/{node_id}/jobs/{action}",
-      "name": "admin_catalog_trigger_point_job",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/catalog/nodes/{node_id}/media-bindings",
-      "name": "admin_catalog_bind_media",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/catalog/nodes/{node_id}/move",
-      "name": "admin_catalog_move_node",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/catalog/nodes/{node_id}/point-content",
-      "name": "admin_catalog_save_point_content",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/catalog/nodes/{node_id}/point-content/publication",
-      "name": "admin_catalog_point_content_publication",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/catalog/nodes/{node_id}/preview-token",
-      "name": "admin_catalog_node_preview_token",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/catalog/nodes/{node_id}/rag-probe",
-      "name": "admin_catalog_point_rag_probe",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/catalog/nodes/{node_id}/related-links",
-      "name": "admin_catalog_replace_related_links",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/catalog/nodes/{node_id}/status",
-      "name": "admin_catalog_node_status",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/catalog/nodes/{node_id}/validation",
-      "name": "admin_catalog_validate_node",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/catalog/search",
-      "name": "admin_catalog_search",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/classes",
-      "name": "admin_list_classes",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/classes",
-      "name": "admin_create_class",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/classes/{class_id}",
-      "name": "admin_get_class",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/classes/{class_id}",
-      "name": "admin_update_class",
-      "owner": "admin-api"
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/classes/{class_id}/assessment-report-prompts",
-      "name": "admin_clear_class_assessment_report_prompts",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/classes/{class_id}/assessment-report-prompts",
-      "name": "admin_get_class_assessment_report_prompts",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/classes/{class_id}/assessment-report-prompts",
-      "name": "admin_update_class_assessment_report_prompts",
-      "owner": "admin-api"
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/classes/{class_id}/custom-assessment-settings",
-      "name": "admin_clear_class_custom_assessment_settings",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/classes/{class_id}/custom-assessment-settings",
-      "name": "admin_get_class_custom_assessment_settings",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/classes/{class_id}/custom-assessment-settings",
-      "name": "admin_update_class_custom_assessment_settings",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/classes/{class_id}/registration-settings",
-      "name": "admin_get_class_registration_settings",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/classes/{class_id}/registration-settings",
-      "name": "admin_update_class_registration_settings",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/classes/{class_id}/roster/import",
-      "name": "admin_import_roster",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/classes/{class_id}/roster/preview",
-      "name": "admin_preview_roster_import",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/classes/{class_id}/smart-assessment-preview",
-      "name": "admin_get_class_smart_assessment_preview",
-      "owner": "admin-api"
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/classes/{class_id}/smart-assessment-strategy",
-      "name": "admin_clear_class_smart_assessment_strategy",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/classes/{class_id}/smart-assessment-strategy",
-      "name": "admin_get_class_smart_assessment_strategy",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/classes/{class_id}/smart-assessment-strategy",
-      "name": "admin_update_class_smart_assessment_strategy",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/classes/{class_id}/students",
-      "name": "admin_list_roster_students",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/classes/{class_id}/students",
-      "name": "admin_create_roster_student",
-      "owner": "admin-api"
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/classes/{class_id}/students/{student_id}",
-      "name": "admin_disable_roster_student",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/classes/{class_id}/students/{student_id}",
-      "name": "admin_update_roster_student",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/classes/{class_id}/students/{student_id}/assessment-reports",
-      "name": "admin_list_student_assessment_reports",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/classes/{class_id}/students/{student_id}/assessment-reports/{report_id}",
-      "name": "admin_get_student_assessment_report",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/classes/{class_id}/students/{student_id}/reset-password",
-      "name": "admin_reset_student_password",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/classes/{class_id}/teachers",
-      "name": "admin_assign_teacher_to_class",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/curriculum/versions",
-      "name": "admin_list_curriculum_versions",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/curriculum/versions",
-      "name": "admin_create_curriculum_version",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/curriculum/versions/{version_id}",
-      "name": "admin_get_curriculum_version",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/curriculum/versions/{version_id}/archive",
-      "name": "admin_archive_curriculum_version",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/curriculum/versions/{version_id}/publish",
-      "name": "admin_publish_curriculum_version",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/experiment-knowledge-framework/overview",
-      "name": "admin_experiment_knowledge_framework_overview",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/experiment-videos",
-      "name": "admin_list_experiment_videos",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/experiments",
-      "name": "admin_list_experiments",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/experiments/{experiment_id}",
-      "name": "admin_get_experiment",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/feedback",
-      "name": "admin_list_feedback",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/feedback/summary",
-      "name": "admin_feedback_summary",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/feedback/{feedback_id}",
-      "name": "admin_get_feedback",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/feedback/{feedback_id}",
-      "name": "admin_update_feedback",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/feedback/{feedback_id}/attachments/{attachment_id}",
-      "name": "admin_get_feedback_attachment",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/learning-assistant/ask",
-      "name": "admin_test_learning_assistant",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/learning-assistant/ask/stream",
-      "name": "admin_stream_learning_assistant",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/learning-assistant/runtime",
-      "name": "admin_get_learning_assistant_runtime",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/learning-resources/overview",
-      "name": "admin_learning_resources_overview",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/legacy/teacher-demo/classes",
-      "name": "admin_legacy_teacher_demo_classes",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/legacy/teacher-demo/classes/{class_id}/analytics",
-      "name": "admin_legacy_teacher_demo_class_analytics",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/legacy/teacher-demo/classes/{class_id}/weak-points",
-      "name": "admin_legacy_teacher_demo_class_weak_points",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/legacy/teacher-demo/evaluation-system",
-      "name": "admin_legacy_teacher_demo_evaluation_system",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/legacy/teacher-demo/overview",
-      "name": "admin_legacy_teacher_demo_overview",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/legacy/teacher-demo/question-resources",
-      "name": "admin_legacy_teacher_demo_question_resources",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/legacy/teacher-demo/video-resources",
-      "name": "admin_legacy_teacher_demo_video_resources",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/legacy/video-points",
-      "name": "admin_legacy_video_points",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/legacy/video-points/{node_id}/recommendation",
-      "name": "admin_set_legacy_video_point_recommendation",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/media/assets",
-      "name": "admin_list_media_assets",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/media/assets",
-      "name": "admin_upload_media_asset",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/media/assets/complete-upload",
-      "name": "admin_complete_resumable_media_upload",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/media/assets/precheck",
-      "name": "admin_precheck_media_asset",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/media/assets/processing",
-      "name": "admin_media_processing_status",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/media/assets/{asset_id}/archive",
-      "name": "admin_archive_media_asset",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/media/assets/{asset_id}/archive-plan",
-      "name": "admin_media_asset_archive_plan",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/media/assets/{asset_id}/delete",
-      "name": "admin_delete_media_asset",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/media/assets/{asset_id}/delete-plan",
-      "name": "admin_media_asset_delete_plan",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/media/assets/{asset_id}/file",
-      "name": "admin_get_media_asset_file",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/media/assets/{asset_id}/replace",
-      "name": "admin_replace_media_asset",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/media/assets/{asset_id}/retry-processing",
-      "name": "admin_retry_media_asset_processing",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/media/assets/{asset_id}/stream",
-      "name": "admin_stream_media_asset_file",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/media/assets/{asset_id}/subtitle-tracks",
-      "name": "admin_list_media_subtitle_tracks",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/media/assets/{asset_id}/subtitle-tracks",
-      "name": "admin_create_media_subtitle_track",
-      "owner": "admin-api"
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/media/assets/{asset_id}/subtitle-tracks/{track_id}",
-      "name": "admin_delete_media_subtitle_track",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/media/assets/{asset_id}/subtitle-tracks/{track_id}",
-      "name": "admin_update_media_subtitle_track",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/media/assets/{asset_id}/subtitle-tracks/{track_id}/retry",
-      "name": "admin_retry_media_subtitle_track",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/media/assets/{asset_id}/subtitle-tracks/{track_id}/stream",
-      "name": "admin_stream_media_subtitle_track",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/media/assets/{asset_id}/thumbnail",
-      "name": "admin_get_media_asset_thumbnail",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/media/assets/{asset_id}/thumbnail-stream",
-      "name": "admin_stream_media_asset_thumbnail",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/media/bindings",
-      "name": "admin_create_media_binding",
-      "owner": "admin-api"
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/admin/media/bindings/{binding_id}",
-      "name": "admin_delete_media_binding",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/media/bindings/{binding_id}/publish",
-      "name": "admin_publish_media_binding",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/media/bindings/{binding_id}/unpublish",
-      "name": "admin_unpublish_media_binding",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/media/duplicate-candidates/{candidate_id}",
-      "name": "admin_decide_media_duplicate_candidate",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/media/upload-policy",
-      "name": "admin_media_upload_policy",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/platform-settings",
-      "name": "admin_get_platform_settings",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/platform-settings",
-      "name": "admin_update_platform_settings",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/question-banks",
-      "name": "admin_list_question_banks",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/assistant/preview",
-      "name": "admin_question_bank_assistant_preview",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/question-banks/catalog",
-      "name": "admin_list_catalog_question_bank",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/catalog/evidence-refresh",
-      "name": "admin_refresh_catalog_question_bank_evidence",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/question-banks/chapter-questions",
-      "name": "admin_list_chapter_questions",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/question-banks/chapters",
-      "name": "admin_list_question_bank_chapters",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/question-banks/drafts",
-      "name": "admin_list_question_drafts",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/question-banks/drafts/{draft_id}",
-      "name": "admin_update_question_draft",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/drafts/{draft_id}/publish",
-      "name": "admin_publish_question_draft",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/drafts/{draft_id}/reject",
-      "name": "admin_reject_question_draft",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/question-banks/export",
-      "name": "admin_export_question_bank",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/generate",
-      "name": "admin_generate_questions",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/legacy-point-generate",
-      "name": "admin_generate_legacy_point_questions",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/import",
-      "name": "admin_import_question_bank",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/point-aware-suggestions",
-      "name": "admin_create_point_aware_suggestions",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/question-banks/questions",
-      "name": "admin_list_questions",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/questions",
-      "name": "admin_create_question",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/admin/question-banks/questions/{question_id}",
-      "name": "admin_update_question",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/questions/{question_id}/disable",
-      "name": "admin_disable_question",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/questions/{question_id}/publish",
-      "name": "admin_publish_question",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/workbench-candidates/{candidate_id}/publish",
-      "name": "admin_publish_question_workbench_candidate",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/workbench-candidates/{candidate_id}/reject",
-      "name": "admin_reject_question_workbench_candidate",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/workbench-sessions",
-      "name": "admin_create_question_workbench_session",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/question-banks/workbench-sessions/{session_id}",
-      "name": "admin_get_question_workbench_session",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/workbench-sessions/{session_id}/evidence-cache/clear",
-      "name": "admin_clear_question_workbench_evidence_cache",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/workbench-sessions/{session_id}/messages",
-      "name": "admin_send_question_workbench_message",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/question-banks/workbench-sessions/{session_id}/messages/stream",
-      "name": "admin_stream_question_workbench_message",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/rag-assets",
-      "name": "admin_rag_asset",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/registration-settings",
-      "name": "admin_get_registration_settings",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/registration-settings",
-      "name": "admin_update_registration_settings",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/review/items",
-      "name": "admin_list_review_items",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/review/items/{item_id}",
-      "name": "admin_get_review_item",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/review/items/{item_id}/actions",
-      "name": "admin_apply_review_action",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/student-preview/session",
-      "name": "admin_create_student_preview_session",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/video-library/index/diagnostics",
-      "name": "admin_video_library_index_diagnostics",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/video-library/search/diagnostics",
-      "name": "admin_video_library_search_diagnostics",
-      "owner": "admin-api"
-    },
     {
       "method": "POST",
       "path": "/api/auth/login",
       "name": "login",
-      "owner": "runtime"
+      "owner": "auth-api"
     },
     {
       "method": "POST",
       "path": "/api/auth/logout",
       "name": "logout",
-      "owner": "runtime"
+      "owner": "auth-api"
     },
     {
       "method": "GET",
       "path": "/api/auth/me",
       "name": "me",
-      "owner": "runtime"
+      "owner": "auth-api"
     },
     {
       "method": "POST",
       "path": "/api/auth/password",
       "name": "change_password",
-      "owner": "runtime"
+      "owner": "auth-api"
     },
     {
       "method": "POST",
       "path": "/api/auth/student/login",
       "name": "student_login",
-      "owner": "runtime"
+      "owner": "auth-api"
     },
     {
       "method": "POST",
       "path": "/api/auth/student/password",
       "name": "change_student_password",
-      "owner": "runtime"
+      "owner": "auth-api"
     },
     {
       "method": "GET",
       "path": "/api/chapters",
       "name": "api_chapters",
-      "owner": "runtime"
+      "owner": "shared-api"
     },
     {
       "method": "POST",
       "path": "/api/experiment-questions/submit",
       "name": "submit_experiment_questions",
-      "owner": "student-api"
+      "owner": "shared-api"
     },
     {
       "method": "GET",
       "path": "/api/preview/catalog/nodes/{node_id}",
       "name": "preview_catalog_node_route",
-      "owner": "student-api"
+      "owner": "preview-api"
     },
     {
       "method": "GET",
       "path": "/api/preview/catalog/points/{node_id}",
       "name": "preview_catalog_point_detail_route",
-      "owner": "student-api"
+      "owner": "preview-api"
     },
     {
       "method": "GET",
       "path": "/api/preview/media/assets/{asset_id}/stream",
       "name": "preview_media_stream",
-      "owner": "student-api"
+      "owner": "preview-api"
     },
     {
       "method": "GET",
       "path": "/api/preview/media/assets/{asset_id}/subtitle-tracks/{track_id}/stream",
       "name": "preview_media_subtitle_stream",
-      "owner": "student-api"
+      "owner": "preview-api"
     },
     {
       "method": "GET",
       "path": "/api/preview/media/assets/{asset_id}/thumbnail",
       "name": "preview_media_thumbnail",
-      "owner": "student-api"
+      "owner": "preview-api"
     },
     {
       "method": "POST",
       "path": "/api/preview/student-session/exchange",
       "name": "exchange_student_preview_session",
-      "owner": "student-api"
+      "owner": "preview-api"
     },
     {
       "method": "GET",
@@ -1204,81 +298,909 @@
     },
     {
       "method": "GET",
-      "path": "/api/web-admin/session",
-      "name": "web_admin_session",
-      "owner": "web-admin-api"
+      "path": "/api/teacher/ai-configuration",
+      "name": "teacher_get_ai_configuration",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/teacher/ai-configuration",
+      "name": "teacher_update_ai_configuration",
+      "owner": "teacher-api"
     },
     {
       "method": "GET",
-      "path": "/api/web-admin/student-preview/classes",
-      "name": "web_admin_list_student_preview_classes",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/disable",
-      "name": "web_admin_disable_student_preview",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/ensure",
-      "name": "web_admin_ensure_student_preview",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/reset",
-      "name": "web_admin_reset_student_preview",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/restore",
-      "name": "web_admin_restore_student_preview",
-      "owner": "web-admin-api"
+      "path": "/api/teacher/analytics/classes/{class_id}/dashboard",
+      "name": "teacher_class_dashboard",
+      "owner": "teacher-api"
     },
     {
       "method": "GET",
-      "path": "/api/web-admin/teacher-accounts",
-      "name": "web_admin_list_teacher_accounts",
-      "owner": "web-admin-api"
+      "path": "/api/teacher/analytics/classes/{class_id}/export",
+      "name": "teacher_export_class_report",
+      "owner": "teacher-api"
     },
     {
-      "method": "POST",
-      "path": "/api/web-admin/teacher-accounts",
-      "name": "web_admin_create_teacher_account",
-      "owner": "web-admin-api"
+      "method": "GET",
+      "path": "/api/teacher/analytics/classes/{class_id}/students/{student_id}",
+      "name": "teacher_student_report",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/analytics/classes/{class_id}/weak-points",
+      "name": "teacher_class_weak_points",
+      "owner": "teacher-api"
     },
     {
       "method": "DELETE",
-      "path": "/api/web-admin/teacher-accounts/{account_id}",
-      "name": "web_admin_delete_teacher_account",
-      "owner": "web-admin-api"
+      "path": "/api/teacher/assessment-report-prompts",
+      "name": "teacher_reset_assessment_report_prompts",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/assessment-report-prompts",
+      "name": "teacher_get_assessment_report_prompts",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/teacher/assessment-report-prompts",
+      "name": "teacher_update_assessment_report_prompts",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/catalog/chapters/{chapter_id}/roots",
+      "name": "teacher_catalog_chapter_roots",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/catalog/chapters/{chapter_id}/summary",
+      "name": "teacher_catalog_chapter_summary",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/catalog/equations/assist",
+      "name": "teacher_catalog_assist_equations",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/catalog/equations/preview",
+      "name": "teacher_catalog_preview_equations",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/catalog/media-bindings/{binding_id}/{action}",
+      "name": "teacher_catalog_media_binding_status",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/catalog/nodes",
+      "name": "teacher_catalog_create_node",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/catalog/nodes/reorder",
+      "name": "teacher_catalog_reorder_nodes",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/catalog/nodes/{node_id}",
+      "name": "teacher_catalog_node_detail",
+      "owner": "teacher-api"
     },
     {
       "method": "PATCH",
-      "path": "/api/web-admin/teacher-accounts/{account_id}",
-      "name": "web_admin_patch_teacher_account",
-      "owner": "web-admin-api"
+      "path": "/api/teacher/catalog/nodes/{node_id}",
+      "name": "teacher_catalog_update_node",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/catalog/nodes/{node_id}/ai-context",
+      "name": "teacher_catalog_point_ai_context",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/catalog/nodes/{node_id}/children",
+      "name": "teacher_catalog_node_children",
+      "owner": "teacher-api"
     },
     {
       "method": "POST",
-      "path": "/api/web-admin/teacher-accounts/{account_id}/disable",
-      "name": "web_admin_disable_teacher_account",
-      "owner": "web-admin-api"
+      "path": "/api/teacher/catalog/nodes/{node_id}/copy",
+      "name": "teacher_catalog_copy_node",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/catalog/nodes/{node_id}/job-state",
+      "name": "teacher_catalog_point_job_state",
+      "owner": "teacher-api"
     },
     {
       "method": "POST",
-      "path": "/api/web-admin/teacher-accounts/{account_id}/enable",
-      "name": "web_admin_enable_teacher_account",
-      "owner": "web-admin-api"
+      "path": "/api/teacher/catalog/nodes/{node_id}/jobs/{action}",
+      "name": "teacher_catalog_trigger_point_job",
+      "owner": "teacher-api"
     },
     {
       "method": "POST",
-      "path": "/api/web-admin/teacher-accounts/{account_id}/reset-password",
-      "name": "web_admin_reset_teacher_account_password",
-      "owner": "web-admin-api"
+      "path": "/api/teacher/catalog/nodes/{node_id}/media-bindings",
+      "name": "teacher_catalog_bind_media",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/catalog/nodes/{node_id}/move",
+      "name": "teacher_catalog_move_node",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/teacher/catalog/nodes/{node_id}/point-content",
+      "name": "teacher_catalog_save_point_content",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/catalog/nodes/{node_id}/point-content/publication",
+      "name": "teacher_catalog_point_content_publication",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/catalog/nodes/{node_id}/preview-token",
+      "name": "teacher_catalog_node_preview_token",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/catalog/nodes/{node_id}/rag-probe",
+      "name": "teacher_catalog_point_rag_probe",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/teacher/catalog/nodes/{node_id}/related-links",
+      "name": "teacher_catalog_replace_related_links",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/catalog/nodes/{node_id}/status",
+      "name": "teacher_catalog_node_status",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/catalog/nodes/{node_id}/validation",
+      "name": "teacher_catalog_validate_node",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/catalog/search",
+      "name": "teacher_catalog_search",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/classes",
+      "name": "teacher_list_classes",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/classes",
+      "name": "teacher_create_class",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/classes/{class_id}",
+      "name": "teacher_get_class",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/teacher/classes/{class_id}",
+      "name": "teacher_update_class",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/teacher/classes/{class_id}/assessment-report-prompts",
+      "name": "teacher_clear_class_assessment_report_prompts",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/classes/{class_id}/assessment-report-prompts",
+      "name": "teacher_get_class_assessment_report_prompts",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/teacher/classes/{class_id}/assessment-report-prompts",
+      "name": "teacher_update_class_assessment_report_prompts",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/teacher/classes/{class_id}/custom-assessment-settings",
+      "name": "teacher_clear_class_custom_assessment_settings",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/classes/{class_id}/custom-assessment-settings",
+      "name": "teacher_get_class_custom_assessment_settings",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/teacher/classes/{class_id}/custom-assessment-settings",
+      "name": "teacher_update_class_custom_assessment_settings",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/classes/{class_id}/registration-settings",
+      "name": "teacher_get_class_registration_settings",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/teacher/classes/{class_id}/registration-settings",
+      "name": "teacher_update_class_registration_settings",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/classes/{class_id}/roster/import",
+      "name": "teacher_import_roster",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/classes/{class_id}/roster/preview",
+      "name": "teacher_preview_roster_import",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/classes/{class_id}/smart-assessment-preview",
+      "name": "teacher_get_class_smart_assessment_preview",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/teacher/classes/{class_id}/smart-assessment-strategy",
+      "name": "teacher_clear_class_smart_assessment_strategy",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/classes/{class_id}/smart-assessment-strategy",
+      "name": "teacher_get_class_smart_assessment_strategy",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/teacher/classes/{class_id}/smart-assessment-strategy",
+      "name": "teacher_update_class_smart_assessment_strategy",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/classes/{class_id}/students",
+      "name": "teacher_list_roster_students",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/classes/{class_id}/students",
+      "name": "teacher_create_roster_student",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/teacher/classes/{class_id}/students/{student_id}",
+      "name": "teacher_disable_roster_student",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/teacher/classes/{class_id}/students/{student_id}",
+      "name": "teacher_update_roster_student",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/classes/{class_id}/students/{student_id}/assessment-reports",
+      "name": "teacher_list_student_assessment_reports",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/classes/{class_id}/students/{student_id}/assessment-reports/{report_id}",
+      "name": "teacher_get_student_assessment_report",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/classes/{class_id}/students/{student_id}/reset-password",
+      "name": "teacher_reset_student_password",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/classes/{class_id}/teachers",
+      "name": "teacher_assign_teacher_to_class",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/curriculum/versions",
+      "name": "teacher_list_curriculum_versions",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/curriculum/versions",
+      "name": "teacher_create_curriculum_version",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/curriculum/versions/{version_id}",
+      "name": "teacher_get_curriculum_version",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/curriculum/versions/{version_id}/archive",
+      "name": "teacher_archive_curriculum_version",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/curriculum/versions/{version_id}/publish",
+      "name": "teacher_publish_curriculum_version",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/experiment-knowledge-framework/overview",
+      "name": "teacher_experiment_knowledge_framework_overview",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/experiment-videos",
+      "name": "teacher_list_experiment_videos",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/experiments",
+      "name": "teacher_list_experiments",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/experiments/{experiment_id}",
+      "name": "teacher_get_experiment",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/feedback",
+      "name": "teacher_list_feedback",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/feedback/summary",
+      "name": "teacher_feedback_summary",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/feedback/{feedback_id}",
+      "name": "teacher_get_feedback",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/teacher/feedback/{feedback_id}",
+      "name": "teacher_update_feedback",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/feedback/{feedback_id}/attachments/{attachment_id}",
+      "name": "teacher_get_feedback_attachment",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/learning-assistant/ask",
+      "name": "teacher_test_learning_assistant",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/learning-assistant/ask/stream",
+      "name": "teacher_stream_learning_assistant",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/learning-assistant/runtime",
+      "name": "teacher_get_learning_assistant_runtime",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/learning-resources/overview",
+      "name": "teacher_learning_resources_overview",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/legacy/teacher-demo/classes",
+      "name": "teacher_legacy_teacher_demo_classes",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/legacy/teacher-demo/classes/{class_id}/analytics",
+      "name": "teacher_legacy_teacher_demo_class_analytics",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/legacy/teacher-demo/classes/{class_id}/weak-points",
+      "name": "teacher_legacy_teacher_demo_class_weak_points",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/legacy/teacher-demo/evaluation-system",
+      "name": "teacher_legacy_teacher_demo_evaluation_system",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/legacy/teacher-demo/overview",
+      "name": "teacher_legacy_teacher_demo_overview",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/legacy/teacher-demo/question-resources",
+      "name": "teacher_legacy_teacher_demo_question_resources",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/legacy/teacher-demo/video-resources",
+      "name": "teacher_legacy_teacher_demo_video_resources",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/legacy/video-points",
+      "name": "teacher_legacy_video_points",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/teacher/legacy/video-points/{node_id}/recommendation",
+      "name": "teacher_set_legacy_video_point_recommendation",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/media/assets",
+      "name": "teacher_list_media_assets",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/media/assets",
+      "name": "teacher_upload_media_asset",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/media/assets/complete-upload",
+      "name": "teacher_complete_resumable_media_upload",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/media/assets/precheck",
+      "name": "teacher_precheck_media_asset",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/media/assets/processing",
+      "name": "teacher_media_processing_status",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/media/assets/{asset_id}/archive",
+      "name": "teacher_archive_media_asset",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/media/assets/{asset_id}/archive-plan",
+      "name": "teacher_media_asset_archive_plan",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/media/assets/{asset_id}/delete",
+      "name": "teacher_delete_media_asset",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/media/assets/{asset_id}/delete-plan",
+      "name": "teacher_media_asset_delete_plan",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/media/assets/{asset_id}/file",
+      "name": "teacher_get_media_asset_file",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/media/assets/{asset_id}/replace",
+      "name": "teacher_replace_media_asset",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/media/assets/{asset_id}/retry-processing",
+      "name": "teacher_retry_media_asset_processing",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/media/assets/{asset_id}/stream",
+      "name": "teacher_stream_media_asset_file",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/media/assets/{asset_id}/subtitle-tracks",
+      "name": "teacher_list_media_subtitle_tracks",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/media/assets/{asset_id}/subtitle-tracks",
+      "name": "teacher_create_media_subtitle_track",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/teacher/media/assets/{asset_id}/subtitle-tracks/{track_id}",
+      "name": "teacher_delete_media_subtitle_track",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/teacher/media/assets/{asset_id}/subtitle-tracks/{track_id}",
+      "name": "teacher_update_media_subtitle_track",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/media/assets/{asset_id}/subtitle-tracks/{track_id}/retry",
+      "name": "teacher_retry_media_subtitle_track",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/media/assets/{asset_id}/subtitle-tracks/{track_id}/stream",
+      "name": "teacher_stream_media_subtitle_track",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/media/assets/{asset_id}/thumbnail",
+      "name": "teacher_get_media_asset_thumbnail",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/media/assets/{asset_id}/thumbnail-stream",
+      "name": "teacher_stream_media_asset_thumbnail",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/media/bindings",
+      "name": "teacher_create_media_binding",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/teacher/media/bindings/{binding_id}",
+      "name": "teacher_delete_media_binding",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/media/bindings/{binding_id}/publish",
+      "name": "teacher_publish_media_binding",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/media/bindings/{binding_id}/unpublish",
+      "name": "teacher_unpublish_media_binding",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/teacher/media/duplicate-candidates/{candidate_id}",
+      "name": "teacher_decide_media_duplicate_candidate",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/media/upload-policy",
+      "name": "teacher_media_upload_policy",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/platform-settings",
+      "name": "teacher_get_platform_settings",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/teacher/platform-settings",
+      "name": "teacher_update_platform_settings",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/question-banks",
+      "name": "teacher_list_question_banks",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/assistant/preview",
+      "name": "teacher_question_bank_assistant_preview",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/question-banks/catalog",
+      "name": "teacher_list_catalog_question_bank",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/catalog/evidence-refresh",
+      "name": "teacher_refresh_catalog_question_bank_evidence",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/question-banks/chapter-questions",
+      "name": "teacher_list_chapter_questions",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/question-banks/chapters",
+      "name": "teacher_list_question_bank_chapters",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/question-banks/drafts",
+      "name": "teacher_list_question_drafts",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/teacher/question-banks/drafts/{draft_id}",
+      "name": "teacher_update_question_draft",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/drafts/{draft_id}/publish",
+      "name": "teacher_publish_question_draft",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/drafts/{draft_id}/reject",
+      "name": "teacher_reject_question_draft",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/question-banks/export",
+      "name": "teacher_export_question_bank",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/generate",
+      "name": "teacher_generate_questions",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/import",
+      "name": "teacher_import_question_bank",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/legacy-point-generate",
+      "name": "teacher_generate_legacy_point_questions",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/point-aware-suggestions",
+      "name": "teacher_create_point_aware_suggestions",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/question-banks/questions",
+      "name": "teacher_list_questions",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/questions",
+      "name": "teacher_create_question",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/teacher/question-banks/questions/{question_id}",
+      "name": "teacher_update_question",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/questions/{question_id}/disable",
+      "name": "teacher_disable_question",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/questions/{question_id}/publish",
+      "name": "teacher_publish_question",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/workbench-candidates/{candidate_id}/publish",
+      "name": "teacher_publish_question_workbench_candidate",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/workbench-candidates/{candidate_id}/reject",
+      "name": "teacher_reject_question_workbench_candidate",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/workbench-sessions",
+      "name": "teacher_create_question_workbench_session",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/question-banks/workbench-sessions/{session_id}",
+      "name": "teacher_get_question_workbench_session",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/workbench-sessions/{session_id}/evidence-cache/clear",
+      "name": "teacher_clear_question_workbench_evidence_cache",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/workbench-sessions/{session_id}/messages",
+      "name": "teacher_send_question_workbench_message",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/question-banks/workbench-sessions/{session_id}/messages/stream",
+      "name": "teacher_stream_question_workbench_message",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/rag-assets",
+      "name": "teacher_rag_asset",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/registration-settings",
+      "name": "teacher_get_registration_settings",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/teacher/registration-settings",
+      "name": "teacher_update_registration_settings",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/review/items",
+      "name": "teacher_list_review_items",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/review/items/{item_id}",
+      "name": "teacher_get_review_item",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/review/items/{item_id}/actions",
+      "name": "teacher_apply_review_action",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/teacher/student-preview/session",
+      "name": "teacher_create_student_preview_session",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/video-library/index/diagnostics",
+      "name": "teacher_video_library_index_diagnostics",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/teacher/video-library/search/diagnostics",
+      "name": "teacher_video_library_search_diagnostics",
+      "owner": "teacher-api"
     },
     {
       "method": "GET",
@@ -1313,58 +1235,988 @@
   ],
   "removed_aliases": [
     {
-      "method": "POST",
-      "path": "/api/admin/media/bindings/{binding_id}/delete",
-      "replacement": "DELETE /api/admin/media/bindings/{binding_id}",
-      "reason": "Deprecated POST compatibility alias removed by backend slim refactor."
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/media/bindings/{binding_id}/archive",
-      "replacement": "DELETE /api/admin/media/bindings/{binding_id}",
-      "reason": "Deprecated archive compatibility alias removed by backend slim refactor."
-    },
-    {
       "method": "GET",
-      "path": "/api/admin/experiments/{experiment_id}/video-points",
-      "replacement": "Use GET /api/admin/catalog/nodes/{node_id} and catalog search.",
-      "reason": "Removed by experiment catalog tree point architecture refactor; stable catalog node ids are authoritative."
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/experiments/{experiment_id}/video-points/{point_key}/resources",
-      "replacement": "Use POST /api/admin/catalog/nodes/{node_id}/media-bindings.",
-      "reason": "Removed by experiment catalog tree point architecture refactor; stable catalog node ids are authoritative."
+      "path": "/api/admin/ai-configuration",
+      "replacement": "Use GET /api/teacher/ai-configuration.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
     },
     {
       "method": "PUT",
-      "path": "/api/admin/experiments/{experiment_id}/video-points/{point_key}/content",
-      "replacement": "Use PUT /api/admin/catalog/nodes/{node_id}/point-content.",
-      "reason": "Removed by experiment catalog tree point architecture refactor; stable catalog node ids are authoritative."
+      "path": "/api/admin/ai-configuration",
+      "replacement": "Use PUT /api/teacher/ai-configuration.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
     },
     {
-      "method": "POST",
-      "path": "/api/admin/experiments/{experiment_id}/video-points/{point_key}/publication",
-      "replacement": "Use POST /api/admin/catalog/nodes/{node_id}/point-content/publication.",
-      "reason": "Removed by experiment catalog tree point architecture refactor; stable catalog node ids are authoritative."
+      "method": "GET",
+      "path": "/api/admin/analytics/classes/{class_id}/dashboard",
+      "replacement": "Use GET /api/teacher/analytics/classes/{class_id}/dashboard.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/classes/{class_id}/export",
+      "replacement": "Use GET /api/teacher/analytics/classes/{class_id}/export.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/classes/{class_id}/students/{student_id}",
+      "replacement": "Use GET /api/teacher/analytics/classes/{class_id}/students/{student_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/analytics/classes/{class_id}/weak-points",
+      "replacement": "Use GET /api/teacher/analytics/classes/{class_id}/weak-points.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/assessment-report-prompts",
+      "replacement": "Use DELETE /api/teacher/assessment-report-prompts.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/assessment-report-prompts",
+      "replacement": "Use GET /api/teacher/assessment-report-prompts.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
     },
     {
       "method": "PUT",
-      "path": "/api/admin/experiments/{experiment_id}/video-points/{point_key}/related-links",
-      "replacement": "Use PUT /api/admin/catalog/nodes/{node_id}/related-links.",
-      "reason": "Removed by experiment catalog tree point architecture refactor; stable catalog node ids are authoritative."
+      "path": "/api/admin/assessment-report-prompts",
+      "replacement": "Use PUT /api/teacher/assessment-report-prompts.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
     },
     {
       "method": "GET",
-      "path": "/api/student/experiment-groups/{parent_code}",
-      "replacement": "Use GET /api/student/chapters/{chapter_id}/catalog and catalog node routes.",
-      "reason": "Removed by experiment catalog tree point architecture refactor; stable catalog node ids are authoritative."
+      "path": "/api/admin/catalog/chapters/{chapter_id}/roots",
+      "replacement": "Use GET /api/teacher/catalog/chapters/{chapter_id}/roots.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
     },
     {
       "method": "GET",
-      "path": "/api/student/experiments/{experiment_id}",
-      "replacement": "Use GET /api/student/catalog/points/{node_id}.",
-      "reason": "Removed by experiment catalog tree point architecture refactor; stable catalog node ids are authoritative."
+      "path": "/api/admin/catalog/chapters/{chapter_id}/summary",
+      "replacement": "Use GET /api/teacher/catalog/chapters/{chapter_id}/summary.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/equations/assist",
+      "replacement": "Use POST /api/teacher/catalog/equations/assist.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/equations/preview",
+      "replacement": "Use POST /api/teacher/catalog/equations/preview.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/media-bindings/{binding_id}/{action}",
+      "replacement": "Use POST /api/teacher/catalog/media-bindings/{binding_id}/{action}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes",
+      "replacement": "Use POST /api/teacher/catalog/nodes.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/reorder",
+      "replacement": "Use POST /api/teacher/catalog/nodes/reorder.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/nodes/{node_id}",
+      "replacement": "Use GET /api/teacher/catalog/nodes/{node_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/catalog/nodes/{node_id}",
+      "replacement": "Use PATCH /api/teacher/catalog/nodes/{node_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/nodes/{node_id}/ai-context",
+      "replacement": "Use GET /api/teacher/catalog/nodes/{node_id}/ai-context.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/nodes/{node_id}/children",
+      "replacement": "Use GET /api/teacher/catalog/nodes/{node_id}/children.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/copy",
+      "replacement": "Use POST /api/teacher/catalog/nodes/{node_id}/copy.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/nodes/{node_id}/job-state",
+      "replacement": "Use GET /api/teacher/catalog/nodes/{node_id}/job-state.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/jobs/{action}",
+      "replacement": "Use POST /api/teacher/catalog/nodes/{node_id}/jobs/{action}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/media-bindings",
+      "replacement": "Use POST /api/teacher/catalog/nodes/{node_id}/media-bindings.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/move",
+      "replacement": "Use POST /api/teacher/catalog/nodes/{node_id}/move.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/catalog/nodes/{node_id}/point-content",
+      "replacement": "Use PUT /api/teacher/catalog/nodes/{node_id}/point-content.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/point-content/publication",
+      "replacement": "Use POST /api/teacher/catalog/nodes/{node_id}/point-content/publication.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/preview-token",
+      "replacement": "Use POST /api/teacher/catalog/nodes/{node_id}/preview-token.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/rag-probe",
+      "replacement": "Use POST /api/teacher/catalog/nodes/{node_id}/rag-probe.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/catalog/nodes/{node_id}/related-links",
+      "replacement": "Use PUT /api/teacher/catalog/nodes/{node_id}/related-links.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/catalog/nodes/{node_id}/status",
+      "replacement": "Use POST /api/teacher/catalog/nodes/{node_id}/status.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/nodes/{node_id}/validation",
+      "replacement": "Use GET /api/teacher/catalog/nodes/{node_id}/validation.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/search",
+      "replacement": "Use GET /api/teacher/catalog/search.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/classes",
+      "replacement": "Use GET /api/teacher/classes.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/classes",
+      "replacement": "Use POST /api/teacher/classes.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/classes/{class_id}",
+      "replacement": "Use GET /api/teacher/classes/{class_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/classes/{class_id}",
+      "replacement": "Use PATCH /api/teacher/classes/{class_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/classes/{class_id}/assessment-report-prompts",
+      "replacement": "Use DELETE /api/teacher/classes/{class_id}/assessment-report-prompts.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/classes/{class_id}/assessment-report-prompts",
+      "replacement": "Use GET /api/teacher/classes/{class_id}/assessment-report-prompts.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/classes/{class_id}/assessment-report-prompts",
+      "replacement": "Use PUT /api/teacher/classes/{class_id}/assessment-report-prompts.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/classes/{class_id}/custom-assessment-settings",
+      "replacement": "Use DELETE /api/teacher/classes/{class_id}/custom-assessment-settings.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/classes/{class_id}/custom-assessment-settings",
+      "replacement": "Use GET /api/teacher/classes/{class_id}/custom-assessment-settings.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/classes/{class_id}/custom-assessment-settings",
+      "replacement": "Use PUT /api/teacher/classes/{class_id}/custom-assessment-settings.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/classes/{class_id}/registration-settings",
+      "replacement": "Use GET /api/teacher/classes/{class_id}/registration-settings.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/classes/{class_id}/registration-settings",
+      "replacement": "Use PUT /api/teacher/classes/{class_id}/registration-settings.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/classes/{class_id}/roster/import",
+      "replacement": "Use POST /api/teacher/classes/{class_id}/roster/import.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/classes/{class_id}/roster/preview",
+      "replacement": "Use POST /api/teacher/classes/{class_id}/roster/preview.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/classes/{class_id}/smart-assessment-preview",
+      "replacement": "Use GET /api/teacher/classes/{class_id}/smart-assessment-preview.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/classes/{class_id}/smart-assessment-strategy",
+      "replacement": "Use DELETE /api/teacher/classes/{class_id}/smart-assessment-strategy.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/classes/{class_id}/smart-assessment-strategy",
+      "replacement": "Use GET /api/teacher/classes/{class_id}/smart-assessment-strategy.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/classes/{class_id}/smart-assessment-strategy",
+      "replacement": "Use PUT /api/teacher/classes/{class_id}/smart-assessment-strategy.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/classes/{class_id}/students",
+      "replacement": "Use GET /api/teacher/classes/{class_id}/students.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/classes/{class_id}/students",
+      "replacement": "Use POST /api/teacher/classes/{class_id}/students.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/classes/{class_id}/students/{student_id}",
+      "replacement": "Use DELETE /api/teacher/classes/{class_id}/students/{student_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/classes/{class_id}/students/{student_id}",
+      "replacement": "Use PATCH /api/teacher/classes/{class_id}/students/{student_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/classes/{class_id}/students/{student_id}/assessment-reports",
+      "replacement": "Use GET /api/teacher/classes/{class_id}/students/{student_id}/assessment-reports.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/classes/{class_id}/students/{student_id}/assessment-reports/{report_id}",
+      "replacement": "Use GET /api/teacher/classes/{class_id}/students/{student_id}/assessment-reports/{report_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/classes/{class_id}/students/{student_id}/reset-password",
+      "replacement": "Use POST /api/teacher/classes/{class_id}/students/{student_id}/reset-password.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/classes/{class_id}/teachers",
+      "replacement": "Use POST /api/teacher/classes/{class_id}/teachers.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/curriculum/versions",
+      "replacement": "Use GET /api/teacher/curriculum/versions.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/curriculum/versions",
+      "replacement": "Use POST /api/teacher/curriculum/versions.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/curriculum/versions/{version_id}",
+      "replacement": "Use GET /api/teacher/curriculum/versions/{version_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/curriculum/versions/{version_id}/archive",
+      "replacement": "Use POST /api/teacher/curriculum/versions/{version_id}/archive.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/curriculum/versions/{version_id}/publish",
+      "replacement": "Use POST /api/teacher/curriculum/versions/{version_id}/publish.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/experiment-knowledge-framework/overview",
+      "replacement": "Use GET /api/teacher/experiment-knowledge-framework/overview.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/experiment-videos",
+      "replacement": "Use GET /api/teacher/experiment-videos.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/experiments",
+      "replacement": "Use GET /api/teacher/experiments.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/experiments/{experiment_id}",
+      "replacement": "Use GET /api/teacher/experiments/{experiment_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/feedback",
+      "replacement": "Use GET /api/teacher/feedback.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/feedback/summary",
+      "replacement": "Use GET /api/teacher/feedback/summary.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/feedback/{feedback_id}",
+      "replacement": "Use GET /api/teacher/feedback/{feedback_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/feedback/{feedback_id}",
+      "replacement": "Use PATCH /api/teacher/feedback/{feedback_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/feedback/{feedback_id}/attachments/{attachment_id}",
+      "replacement": "Use GET /api/teacher/feedback/{feedback_id}/attachments/{attachment_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/learning-assistant/ask",
+      "replacement": "Use POST /api/teacher/learning-assistant/ask.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/learning-assistant/ask/stream",
+      "replacement": "Use POST /api/teacher/learning-assistant/ask/stream.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/learning-assistant/runtime",
+      "replacement": "Use GET /api/teacher/learning-assistant/runtime.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/learning-resources/overview",
+      "replacement": "Use GET /api/teacher/learning-resources/overview.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/legacy/teacher-demo/classes",
+      "replacement": "Use GET /api/teacher/legacy/teacher-demo/classes.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/legacy/teacher-demo/classes/{class_id}/analytics",
+      "replacement": "Use GET /api/teacher/legacy/teacher-demo/classes/{class_id}/analytics.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/legacy/teacher-demo/classes/{class_id}/weak-points",
+      "replacement": "Use GET /api/teacher/legacy/teacher-demo/classes/{class_id}/weak-points.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/legacy/teacher-demo/evaluation-system",
+      "replacement": "Use GET /api/teacher/legacy/teacher-demo/evaluation-system.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/legacy/teacher-demo/overview",
+      "replacement": "Use GET /api/teacher/legacy/teacher-demo/overview.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/legacy/teacher-demo/question-resources",
+      "replacement": "Use GET /api/teacher/legacy/teacher-demo/question-resources.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/legacy/teacher-demo/video-resources",
+      "replacement": "Use GET /api/teacher/legacy/teacher-demo/video-resources.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/legacy/video-points",
+      "replacement": "Use GET /api/teacher/legacy/video-points.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/legacy/video-points/{node_id}/recommendation",
+      "replacement": "Use PUT /api/teacher/legacy/video-points/{node_id}/recommendation.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/media/assets",
+      "replacement": "Use GET /api/teacher/media/assets.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/media/assets",
+      "replacement": "Use POST /api/teacher/media/assets.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/media/assets/complete-upload",
+      "replacement": "Use POST /api/teacher/media/assets/complete-upload.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/media/assets/precheck",
+      "replacement": "Use POST /api/teacher/media/assets/precheck.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/media/assets/processing",
+      "replacement": "Use GET /api/teacher/media/assets/processing.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/media/assets/{asset_id}/archive",
+      "replacement": "Use POST /api/teacher/media/assets/{asset_id}/archive.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/media/assets/{asset_id}/archive-plan",
+      "replacement": "Use GET /api/teacher/media/assets/{asset_id}/archive-plan.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/media/assets/{asset_id}/delete",
+      "replacement": "Use POST /api/teacher/media/assets/{asset_id}/delete.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/media/assets/{asset_id}/delete-plan",
+      "replacement": "Use GET /api/teacher/media/assets/{asset_id}/delete-plan.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/media/assets/{asset_id}/file",
+      "replacement": "Use GET /api/teacher/media/assets/{asset_id}/file.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/media/assets/{asset_id}/replace",
+      "replacement": "Use POST /api/teacher/media/assets/{asset_id}/replace.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/media/assets/{asset_id}/retry-processing",
+      "replacement": "Use POST /api/teacher/media/assets/{asset_id}/retry-processing.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/media/assets/{asset_id}/stream",
+      "replacement": "Use GET /api/teacher/media/assets/{asset_id}/stream.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/media/assets/{asset_id}/subtitle-tracks",
+      "replacement": "Use GET /api/teacher/media/assets/{asset_id}/subtitle-tracks.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/media/assets/{asset_id}/subtitle-tracks",
+      "replacement": "Use POST /api/teacher/media/assets/{asset_id}/subtitle-tracks.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/media/assets/{asset_id}/subtitle-tracks/{track_id}",
+      "replacement": "Use DELETE /api/teacher/media/assets/{asset_id}/subtitle-tracks/{track_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/media/assets/{asset_id}/subtitle-tracks/{track_id}",
+      "replacement": "Use PATCH /api/teacher/media/assets/{asset_id}/subtitle-tracks/{track_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/media/assets/{asset_id}/subtitle-tracks/{track_id}/retry",
+      "replacement": "Use POST /api/teacher/media/assets/{asset_id}/subtitle-tracks/{track_id}/retry.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/media/assets/{asset_id}/subtitle-tracks/{track_id}/stream",
+      "replacement": "Use GET /api/teacher/media/assets/{asset_id}/subtitle-tracks/{track_id}/stream.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/media/assets/{asset_id}/thumbnail",
+      "replacement": "Use GET /api/teacher/media/assets/{asset_id}/thumbnail.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/media/assets/{asset_id}/thumbnail-stream",
+      "replacement": "Use GET /api/teacher/media/assets/{asset_id}/thumbnail-stream.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/media/bindings",
+      "replacement": "Use POST /api/teacher/media/bindings.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/media/bindings/{binding_id}",
+      "replacement": "Use DELETE /api/teacher/media/bindings/{binding_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/media/bindings/{binding_id}/publish",
+      "replacement": "Use POST /api/teacher/media/bindings/{binding_id}/publish.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/media/bindings/{binding_id}/unpublish",
+      "replacement": "Use POST /api/teacher/media/bindings/{binding_id}/unpublish.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/media/duplicate-candidates/{candidate_id}",
+      "replacement": "Use PATCH /api/teacher/media/duplicate-candidates/{candidate_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/media/upload-policy",
+      "replacement": "Use GET /api/teacher/media/upload-policy.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/platform-settings",
+      "replacement": "Use GET /api/teacher/platform-settings.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/platform-settings",
+      "replacement": "Use PUT /api/teacher/platform-settings.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/question-banks",
+      "replacement": "Use GET /api/teacher/question-banks.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/assistant/preview",
+      "replacement": "Use POST /api/teacher/question-banks/assistant/preview.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/question-banks/catalog",
+      "replacement": "Use GET /api/teacher/question-banks/catalog.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/catalog/evidence-refresh",
+      "replacement": "Use POST /api/teacher/question-banks/catalog/evidence-refresh.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/question-banks/chapter-questions",
+      "replacement": "Use GET /api/teacher/question-banks/chapter-questions.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/question-banks/chapters",
+      "replacement": "Use GET /api/teacher/question-banks/chapters.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/question-banks/drafts",
+      "replacement": "Use GET /api/teacher/question-banks/drafts.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/question-banks/drafts/{draft_id}",
+      "replacement": "Use PATCH /api/teacher/question-banks/drafts/{draft_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/drafts/{draft_id}/publish",
+      "replacement": "Use POST /api/teacher/question-banks/drafts/{draft_id}/publish.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/drafts/{draft_id}/reject",
+      "replacement": "Use POST /api/teacher/question-banks/drafts/{draft_id}/reject.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/question-banks/export",
+      "replacement": "Use GET /api/teacher/question-banks/export.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/generate",
+      "replacement": "Use POST /api/teacher/question-banks/generate.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/import",
+      "replacement": "Use POST /api/teacher/question-banks/import.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/legacy-point-generate",
+      "replacement": "Use POST /api/teacher/question-banks/legacy-point-generate.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/point-aware-suggestions",
+      "replacement": "Use POST /api/teacher/question-banks/point-aware-suggestions.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/question-banks/questions",
+      "replacement": "Use GET /api/teacher/question-banks/questions.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/questions",
+      "replacement": "Use POST /api/teacher/question-banks/questions.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/question-banks/questions/{question_id}",
+      "replacement": "Use PATCH /api/teacher/question-banks/questions/{question_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/questions/{question_id}/disable",
+      "replacement": "Use POST /api/teacher/question-banks/questions/{question_id}/disable.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/questions/{question_id}/publish",
+      "replacement": "Use POST /api/teacher/question-banks/questions/{question_id}/publish.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/workbench-candidates/{candidate_id}/publish",
+      "replacement": "Use POST /api/teacher/question-banks/workbench-candidates/{candidate_id}/publish.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/workbench-candidates/{candidate_id}/reject",
+      "replacement": "Use POST /api/teacher/question-banks/workbench-candidates/{candidate_id}/reject.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/workbench-sessions",
+      "replacement": "Use POST /api/teacher/question-banks/workbench-sessions.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/question-banks/workbench-sessions/{session_id}",
+      "replacement": "Use GET /api/teacher/question-banks/workbench-sessions/{session_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/workbench-sessions/{session_id}/evidence-cache/clear",
+      "replacement": "Use POST /api/teacher/question-banks/workbench-sessions/{session_id}/evidence-cache/clear.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/workbench-sessions/{session_id}/messages",
+      "replacement": "Use POST /api/teacher/question-banks/workbench-sessions/{session_id}/messages.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/workbench-sessions/{session_id}/messages/stream",
+      "replacement": "Use POST /api/teacher/question-banks/workbench-sessions/{session_id}/messages/stream.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/rag-assets",
+      "replacement": "Use GET /api/teacher/rag-assets.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/registration-settings",
+      "replacement": "Use GET /api/teacher/registration-settings.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/registration-settings",
+      "replacement": "Use PUT /api/teacher/registration-settings.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/review/items",
+      "replacement": "Use GET /api/teacher/review/items.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/review/items/{item_id}",
+      "replacement": "Use GET /api/teacher/review/items/{item_id}.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/review/items/{item_id}/actions",
+      "replacement": "Use POST /api/teacher/review/items/{item_id}/actions.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/student-preview/session",
+      "replacement": "Use POST /api/teacher/student-preview/session.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/video-library/index/diagnostics",
+      "replacement": "Use GET /api/teacher/video-library/index/diagnostics.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/video-library/search/diagnostics",
+      "replacement": "Use GET /api/teacher/video-library/search/diagnostics.",
+      "reason": "Teacher APIs are canonical under /api/teacher; /api/admin compatibility is retired."
+    },
+    {
+      "method": "GET",
+      "path": "/api/web-admin/session",
+      "replacement": "Use scripts/bootstrap_teacher.py for teacher accounts; use /api/teacher/student-preview/session for teacher-owned preview sessions.",
+      "reason": "Token-based web-admin operations are retired from the legacy runtime."
+    },
+    {
+      "method": "GET",
+      "path": "/api/web-admin/student-preview/classes",
+      "replacement": "Use scripts/bootstrap_teacher.py for teacher accounts; use /api/teacher/student-preview/session for teacher-owned preview sessions.",
+      "reason": "Token-based web-admin operations are retired from the legacy runtime."
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/disable",
+      "replacement": "Use scripts/bootstrap_teacher.py for teacher accounts; use /api/teacher/student-preview/session for teacher-owned preview sessions.",
+      "reason": "Token-based web-admin operations are retired from the legacy runtime."
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/ensure",
+      "replacement": "Use scripts/bootstrap_teacher.py for teacher accounts; use /api/teacher/student-preview/session for teacher-owned preview sessions.",
+      "reason": "Token-based web-admin operations are retired from the legacy runtime."
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/reset",
+      "replacement": "Use scripts/bootstrap_teacher.py for teacher accounts; use /api/teacher/student-preview/session for teacher-owned preview sessions.",
+      "reason": "Token-based web-admin operations are retired from the legacy runtime."
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/restore",
+      "replacement": "Use scripts/bootstrap_teacher.py for teacher accounts; use /api/teacher/student-preview/session for teacher-owned preview sessions.",
+      "reason": "Token-based web-admin operations are retired from the legacy runtime."
+    },
+    {
+      "method": "GET",
+      "path": "/api/web-admin/teacher-accounts",
+      "replacement": "Use scripts/bootstrap_teacher.py for teacher accounts; use /api/teacher/student-preview/session for teacher-owned preview sessions.",
+      "reason": "Token-based web-admin operations are retired from the legacy runtime."
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/teacher-accounts",
+      "replacement": "Use scripts/bootstrap_teacher.py for teacher accounts; use /api/teacher/student-preview/session for teacher-owned preview sessions.",
+      "reason": "Token-based web-admin operations are retired from the legacy runtime."
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/web-admin/teacher-accounts/{account_id}",
+      "replacement": "Use scripts/bootstrap_teacher.py for teacher accounts; use /api/teacher/student-preview/session for teacher-owned preview sessions.",
+      "reason": "Token-based web-admin operations are retired from the legacy runtime."
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/web-admin/teacher-accounts/{account_id}",
+      "replacement": "Use scripts/bootstrap_teacher.py for teacher accounts; use /api/teacher/student-preview/session for teacher-owned preview sessions.",
+      "reason": "Token-based web-admin operations are retired from the legacy runtime."
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/teacher-accounts/{account_id}/disable",
+      "replacement": "Use scripts/bootstrap_teacher.py for teacher accounts; use /api/teacher/student-preview/session for teacher-owned preview sessions.",
+      "reason": "Token-based web-admin operations are retired from the legacy runtime."
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/teacher-accounts/{account_id}/enable",
+      "replacement": "Use scripts/bootstrap_teacher.py for teacher accounts; use /api/teacher/student-preview/session for teacher-owned preview sessions.",
+      "reason": "Token-based web-admin operations are retired from the legacy runtime."
+    },
+    {
+      "method": "POST",
+      "path": "/api/web-admin/teacher-accounts/{account_id}/reset-password",
+      "replacement": "Use scripts/bootstrap_teacher.py for teacher accounts; use /api/teacher/student-preview/session for teacher-owned preview sessions.",
+      "reason": "Token-based web-admin operations are retired from the legacy runtime."
     }
   ]
 }

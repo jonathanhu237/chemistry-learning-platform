@@ -8,7 +8,7 @@ from typing import Any
 
 from sqlalchemy import text
 
-from server.app.domains.assistant.providers import async_openai_client as _async_openai_client
+from server.app.domains.assistant.runtime_facade import openai_chat_client
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
 from server.app.domains.platform.settings import (
     _load_setting_value,
@@ -176,7 +176,7 @@ def get_global_report_prompt_settings(user: Any | None = None) -> AssessmentRepo
         source="global",
         has_override=False,
         supported_variables=list(SUPPORTED_PROMPT_VARIABLES),
-        can_edit=bool(user and str(getattr(user, "role", "")) == "admin"),
+        can_edit=bool(user and str(getattr(user, "role", "")) == "teacher"),
     )
 
 
@@ -184,8 +184,8 @@ def save_global_report_prompt_settings(
     payload: AssessmentReportPromptSettingsUpdate,
     user: Any,
 ) -> AssessmentReportPromptSettingsResponse:
-    if str(getattr(user, "role", "")) != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only administrators can edit global report prompts")
+    if str(getattr(user, "role", "")) != "teacher":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only teacher accounts can edit global report prompts")
     _validate_prompt_settings(payload)
     saved = _save_setting_value(
         REPORT_PROMPT_SETTINGS_KEY,
@@ -202,8 +202,8 @@ def save_global_report_prompt_settings(
 
 
 def reset_global_report_prompt_settings(user: Any) -> AssessmentReportPromptSettingsResponse:
-    if str(getattr(user, "role", "")) != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only administrators can edit global report prompts")
+    if str(getattr(user, "role", "")) != "teacher":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only teacher accounts can edit global report prompts")
     saved = _save_setting_value(REPORT_PROMPT_SETTINGS_KEY, _model_dump(default_report_prompt_settings()), user.id)
     return AssessmentReportPromptSettingsResponse(
         settings=_settings_from_value(saved),
@@ -392,7 +392,7 @@ async def _generate_with_ai(
     if not _ai_ready():
         return _generated_text(fallback_text, mode="local_fallback")
     settings = effective_ai_settings(get_settings())
-    client = _async_openai_client(settings, timeout=ASSESSMENT_REPORT_AI_TIMEOUT_SECONDS)
+    client = openai_chat_client(settings, timeout=ASSESSMENT_REPORT_AI_TIMEOUT_SECONDS)
     user_payload = json.dumps(
         {
             "task": prompt,

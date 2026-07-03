@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from server.app.api.admin.admin_catalog_tree import admin_catalog_assist_equations, admin_catalog_preview_equations
+from server.app.api.teacher.teacher_catalog_tree import teacher_catalog_assist_equations, teacher_catalog_preview_equations
 from server.app.auth import AuthUser
 from server.app.catalog_tree_schemas import CatalogEquationAssistRequest, CatalogEquationPreviewRequest
 from server.app.domains.catalog_tree.common import content_publication_errors
@@ -280,7 +280,7 @@ def test_rag_queries_include_annotation_terms_without_core_participant_pollution
 
 def test_preview_route_prefers_multiline_text_without_local_parser_blocking() -> None:
     response = asyncio.run(
-        admin_catalog_preview_equations(
+        teacher_catalog_preview_equations(
             CatalogEquationPreviewRequest(
                 multiline_text="H2 + O2 = H2O\nnot a reaction",
                 equations=[{"raw_text": "Cl2 = Cl2"}],
@@ -298,7 +298,7 @@ def test_preview_route_prefers_multiline_text_without_local_parser_blocking() ->
 
 def test_preview_route_round_trips_inline_annotation_fields() -> None:
     response = asyncio.run(
-        admin_catalog_preview_equations(
+        teacher_catalog_preview_equations(
             CatalogEquationPreviewRequest(
                 multiline_text="Mn^2+ + ClO- + 2OH- -> MnO2 + Cl- + H2O // note: NaClO solution provides OH-",
             ),
@@ -356,13 +356,13 @@ def test_assist_route_returns_drafts_or_unavailable_without_saving(monkeypatch) 
         lambda payload, normalized_rows: ([], "AI 未配置，无法校对。"),
     )
     draft_response = asyncio.run(
-        admin_catalog_assist_equations(
+        teacher_catalog_assist_equations(
             CatalogEquationAssistRequest(mode="suggest", multiline_text="H2 + O2 = H2O", point_title="氢气燃烧"),
             user=_teacher_user(),
         )
     )
     unavailable_response = asyncio.run(
-        admin_catalog_assist_equations(
+        teacher_catalog_assist_equations(
             CatalogEquationAssistRequest(mode="generate", multiline_text="", point_title="氢气燃烧"),
             user=_teacher_user(),
         )
@@ -387,7 +387,7 @@ def test_assist_route_prefers_ai_candidates_after_input_preview(monkeypatch) -> 
     monkeypatch.setattr("server.app.domains.catalog_tree.equations._try_ai_equation_drafts", fake_ai)
 
     response = asyncio.run(
-        admin_catalog_assist_equations(
+        teacher_catalog_assist_equations(
             CatalogEquationAssistRequest(mode="suggest", multiline_text="H2 + O2 = H2O", point_title="氢气燃烧"),
             user=_teacher_user(),
         )

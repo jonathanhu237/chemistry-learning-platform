@@ -3,11 +3,11 @@
   "version": 1,
   "seed_version": "demo-identity-v1",
   "generated_at": "2026-06-26T16:51:26.632823+00:00",
-  "description": "Default teacher-console account, one active class, and seeded student roster/accounts for blank-server demos. Demo passwords can be overridden through CLI or environment variables.",
+  "description": "Default teacher account, one active class, and seeded student roster/accounts for blank-server demos. Demo passwords can be overridden through CLI or environment variables.",
   "teacher": {
-    "username": "admin",
-    "display_name": "系统管理员",
-    "role": "admin",
+    "username": "teacher",
+    "display_name": "教师管理员",
+    "role": "teacher",
     "status": "active",
     "must_change_password": false,
     "password": {

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from server.app.experiment_admin_schemas import ExperimentQuestionSubmitRequest
+from server.app.experiment_teacher_schemas import ExperimentQuestionSubmitRequest
 from server.app.domains.assessments.student_experiment import submit_experiment_question_attempt
 
 

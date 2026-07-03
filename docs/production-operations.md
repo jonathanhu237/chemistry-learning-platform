@@ -9,7 +9,7 @@ Whole-application structural changes are governed by `docs/application-engineeri
 The legacy branch application is treated as two frontend surfaces plus the backend and validation/service graph:
 
 - student H5 frontend: `apps/web-student`
-- backoffice frontend: `apps/web-backoffice`
+- backoffice frontend: `apps/web-teacher`
 - backend service: `server/app`
 - required Compose and validation scripts: `docker-compose.yml` and `scripts/`
 
@@ -31,11 +31,11 @@ Destructive cleanup must run only after this validation passes. The cleanup scri
 
 Historical migrations are append-only. Do not rename or renumber existing files, including the two historical `010_*.sql` files. They have already become part of the migration identity recorded in `schema_migrations`.
 
-This productionization baseline now includes migrations through `022_platform_admin_role.sql`. New migrations after this baseline must use the next unambiguous prefix:
+This productionization baseline now includes migrations through `041_collapse_teacher_student_roles.sql`. New migrations after this baseline must use the next unambiguous prefix:
 
 ```text
-023_<short_description>.sql
-024_<short_description>.sql
+042_<short_description>.sql
+043_<short_description>.sql
 ...
 ```
 
@@ -100,7 +100,7 @@ For routine development after the stack already exists, rebuild and recreate onl
 ```powershell
 docker compose up -d --build backend
 docker compose up -d --build web-student
-docker compose up -d --build web-backoffice
+docker compose up -d --build web-teacher
 ```
 
 Reserve full-stack image rebuilds for initial setup, shared base-image or Compose-topology changes, multi-service dependency changes, release smoke checks, or explicitly requested full validation. Do not run `docker builder prune`, `docker buildx prune`, `docker system prune`, or no-cache rebuilds as routine development startup; use them only as documented recovery for cache corruption or disk pressure after service-scoped restart or rebuild has been tried.
@@ -110,7 +110,7 @@ Default Compose services:
 - `postgres`: pgvector Postgres with `pg_isready` health check.
 - `backend`: FastAPI API service. It serves `/health` and `/api/*` only.
 - `web-student`: student frontend service at `http://127.0.0.1:15176`, serving SPA routes from its own nginx runtime and proxying `/api/*` to `backend:8000`.
-- `web-backoffice`: backoffice frontend service at `http://127.0.0.1:15177`, serving management routes from its own nginx runtime and proxying `/api/*` to `backend:8000`.
+- `web-teacher`: backoffice frontend service at `http://127.0.0.1:15177`, serving management routes from its own nginx runtime and proxying `/api/*` to `backend:8000`.
 
 The backend depends on the PostgreSQL health check. The frontend services depend on backend health. The legacy default Compose stack does not start Elasticsearch; student video-library search uses local fallback unless a deployment explicitly adds an Elasticsearch service and enables it.
 
@@ -155,9 +155,9 @@ Student and teacher preview players load subtitles through browser-native `<trac
 
 The Compose Postgres service is available to other containers as `postgres:5432`. Its host binding defaults to `127.0.0.1:15432` to avoid collisions with a developer's local Postgres. Host-side scripts and validation defaults should use `postgresql+psycopg://chemistry:chemistry@127.0.0.1:15432/chemistry_exam`. Override `POSTGRES_HOST_PORT` only when the host port is known to be free.
 
-Frontend host bindings default to `127.0.0.1:15176` for `web-student` and `127.0.0.1:15177` for `web-backoffice`. Override `WEB_STUDENT_HOST_PORT` or `WEB_BACKOFFICE_HOST_PORT` only when the host port is already occupied. Rollback for this topology uses git or deployment rollback; do not restore backend SPA fallbacks as a compatibility layer.
+Frontend host bindings default to `127.0.0.1:15176` for `web-student` and `127.0.0.1:15177` for `web-teacher`. Override `WEB_STUDENT_HOST_PORT` or `WEB_TEACHER_HOST_PORT` only when the host port is already occupied. Rollback for this topology uses git or deployment rollback; do not restore backend SPA fallbacks as a compatibility layer.
 
-Backoffice student-device preview loads the real `web-student` app in an iframe owned by `web-backoffice`. In production-like deployments, keep `STUDENT_PREVIEW_APP_BASE_URL`, `STUDENT_PREVIEW_ALLOWED_ORIGINS`, and the student frontend `frame-ancestors` policy aligned so only the expected backoffice origin can embed the student app.
+Backoffice student-device preview loads the real `web-student` app in an iframe owned by `web-teacher`. In production-like deployments, keep `STUDENT_PREVIEW_APP_BASE_URL`, `STUDENT_PREVIEW_ALLOWED_ORIGINS`, and the student frontend `frame-ancestors` policy aligned so only the expected backoffice origin can embed the student app.
 
 ## Student Video-Library Search Operations
 
@@ -201,7 +201,7 @@ The validator checks the mapping version, generated document purity, and indexed
 Inspect admin-facing index state through the backend:
 
 ```powershell
-Invoke-RestMethod http://localhost:8000/api/admin/video-library/index/diagnostics -Headers @{ Authorization = "Bearer <token>" }
+Invoke-RestMethod http://localhost:8000/api/teacher/video-library/index/diagnostics -Headers @{ Authorization = "Bearer <token>" }
 ```
 
 The chemistry search seed files live under `data/seed/search/`:
@@ -275,7 +275,7 @@ Run the full local validation chain with frontend dependency installation:
 python scripts/validate_production_readiness.py --install-frontend
 ```
 
-The command checks protected resources, video-library readiness, experiment point identity validation, OpenSpec strict validation, backend import smoke, backend tests, `web-backoffice` typecheck/tests/build, and `web-student` typecheck/tests/build.
+The command checks protected resources, video-library readiness, experiment point identity validation, OpenSpec strict validation, backend import smoke, backend tests, `web-teacher` typecheck/tests/build, and `web-student` typecheck/tests/build.
 The default OpenSpec target is `trim-legacy-to-old-runtime`; use `--change <name>` to validate a different active or historical change.
 The backend stage also runs:
 
@@ -310,7 +310,7 @@ python scripts/validate_compose_stack.py --build
 Browser e2e smoke is opt-in because it requires a running backend, a running backoffice frontend on the allowed local origin, and a local browser runtime:
 
 ```powershell
-Set-Location apps/web-backoffice
+Set-Location apps/web-teacher
 npm run dev
 # In another shell, with the Docker backend running:
 npm run e2e:smoke
@@ -340,14 +340,14 @@ docker compose up -d --build backend
 Invoke-RestMethod http://localhost:8000/health
 ```
 
-For textbook RAG readiness, check `/api/admin/learning-assistant/runtime` or the teacher AI settings page. Healthy status requires the external Elasticsearch index, embedding provider, rerank provider, and index metadata to match the configured model and dimension.
+For textbook RAG readiness, check `/api/teacher/learning-assistant/runtime` or the teacher AI settings page. Healthy status requires the external Elasticsearch index, embedding provider, rerank provider, and index metadata to match the configured model and dimension.
 
 Run representative authenticated API checks:
 
 ```powershell
 # Log in with a local-only admin account, then reuse the bearer token.
-Invoke-RestMethod http://localhost:8000/api/admin/media/assets?limit=3 -Headers @{ Authorization = "Bearer <token>" }
-Invoke-RestMethod http://localhost:8000/api/admin/learning-assistant/ask -Method Post -Headers @{ Authorization = "Bearer <token>" } -ContentType "application/json" -Body '{"question":"Explain a representative experiment point.","allow_rag_lookup":false}'
+Invoke-RestMethod http://localhost:8000/api/teacher/media/assets?limit=3 -Headers @{ Authorization = "Bearer <token>" }
+Invoke-RestMethod http://localhost:8000/api/teacher/learning-assistant/ask -Method Post -Headers @{ Authorization = "Bearer <token>" } -ContentType "application/json" -Body '{"question":"Explain a representative experiment point.","allow_rag_lookup":false}'
 ```
 
 Browser-smoke the main admin paths after the frontend service or dev server is running:
@@ -358,11 +358,11 @@ Browser-smoke the main admin paths after the frontend service or dev server is r
 - `/question-banks`
 - `/analytics`
 
-## Local Smoke Admin Account
+## Local Smoke Teacher Account
 
-Temporary admin accounts created for smoke testing, such as `codex_smoke_admin`, are local-only developer database state. They are not seed data, are not protected resources, and must not be shipped or documented with shared passwords.
+Temporary teacher accounts created for smoke testing, such as `codex_smoke_teacher`, are local-only developer database state. They are not seed data, are not protected resources, and must not be shipped or documented with shared passwords.
 
-Production environments should create named administrator accounts through the deployment bootstrap or identity-management process, then rotate or remove any smoke-only credentials before real users are admitted. For local test databases, recreate a smoke admin with `scripts/bootstrap_admin.py` and a local password manager entry when needed.
+Production environments should create named teacher accounts through the deployment bootstrap or identity-management process, then rotate or remove any smoke-only credentials before real users are admitted. For local test databases, recreate a smoke teacher with `scripts/bootstrap_teacher.py` and a local password manager entry when needed.
 
 ## Restore From Declared Resources
 

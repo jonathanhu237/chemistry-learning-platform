@@ -11,7 +11,7 @@ from sqlalchemy import text
 from server.app.domains.catalog_tree.equations import list_reaction_equations, reaction_principle_text
 from server.app.infrastructure.settings import get_settings
 from server.app.infrastructure.database import db_session
-from server.app.experiment_admin_schemas import (
+from server.app.experiment_teacher_schemas import (
     PointAwareSuggestionRequest,
     WorkbenchMessageRequest,
     WorkbenchSessionRequest,

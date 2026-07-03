@@ -6,7 +6,7 @@ from server.app.domains.errors import DomainHTTPException as HTTPException, doma
 from sqlalchemy import text
 
 from server.app.infrastructure.database import db_session
-from server.app.experiment_admin_schemas import DraftUpdateRequest
+from server.app.experiment_teacher_schemas import DraftUpdateRequest
 from server.app.domains.questions.bank import (
     _insert_question,
     _json,

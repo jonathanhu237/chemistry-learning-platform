@@ -60,7 +60,7 @@ WORKER_FORBIDDEN_IMPORTS = (
 API_FORBIDDEN_IMPORTS = ("server.app.workers",)
 CATALOG_LIVE_PATHS = [
     APP_ROOT / "catalog_tree_schemas.py",
-    APP_ROOT / "api" / "admin" / "admin_catalog_tree.py",
+    APP_ROOT / "api" / "teacher" / "teacher_catalog_tree.py",
     APP_ROOT / "api" / "student" / "student_catalog.py",
     APP_ROOT / "domains" / "catalog_tree",
     APP_ROOT / "domains" / "video_library",

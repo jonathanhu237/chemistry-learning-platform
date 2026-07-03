@@ -11,7 +11,7 @@ Protected current resources:
 - `experiment_catalog/full_point_content_seed.json`: authoritative current catalog point-content seed with 393 published point descriptions and structured reaction equations.
 - `experiment_catalog/point_textbook_evidence_seed.json.zip`: current catalog-node textbook evidence state and bindings for all 393 active point placements, keyed by catalog node/canonical point identities.
 - `question_banks/current_catalog_node_question_bank_seed_v1.json.zip`: current published generated question-bank baseline with 52 catalog-root banks and 1,785 real published point questions, five per canonical point.
-- `identity/demo_identity_seed_v1.json`: default demo teacher-console account, one active class, and 30 active student roster/accounts. Defaults are demo credentials only and can be overridden at bootstrap time.
+- `identity/demo_identity_seed_v1.json`: default demo teacher account, one active class, and 30 active student roster/accounts. Defaults are demo credentials only and can be overridden at bootstrap time.
 - `media/video_inventory_v1.json`: checksummed inventory for the reviewed experiment videos and generated placeholder video.
 - `media/experiment_video_seed_v1.json`: media asset and point-video binding seed. Four real videos cover five point placements; one generated placeholder video covers the remaining 388 point placements.
 - `media/experiment-videos-new-v1/**`: protected media seed package restored into `MEDIA_ROOT/seed/experiment-videos-new-v1/**`.
@@ -35,14 +35,14 @@ Current restore order:
 python scripts/bootstrap_production_seed.py
 ```
 
-The bootstrap command creates or updates the demo teacher-console account as `admin / 123456`, creates `seed-class-2026`, creates 30 active student accounts `SEED001` through `SEED030` with default password `123456`, restores seed videos into `MEDIA_ROOT`, imports precomputed RAG evidence/questions, and finishes with complete seed validation.
+The bootstrap command creates or updates the demo teacher account as `teacher / 123456`, creates `seed-class-2026`, creates 30 active student accounts `SEED001` through `SEED030` with default password `123456`, restores seed videos into `MEDIA_ROOT`, imports precomputed RAG evidence/questions, and finishes with complete seed validation.
 
 Recommended blank-server flow:
 
 ```bash
 cp .env.example .env
 # Edit .env with deployment-only secrets and URLs:
-# - DATABASE_URL, MEDIA_ROOT, API_PUBLIC_BASE_URL, AUTH_SECRET_KEY, WEB_ADMIN_ACCESS_TOKEN
+# - DATABASE_URL, MEDIA_ROOT, API_PUBLIC_BASE_URL, AUTH_SECRET_KEY
 # - AGENT_LLM_API_KEY for DeepSeek and AGENT_LLM_MODEL, for example deepseek-chat
 # - TEXTBOOK_RAG_EMBEDDING_API_KEY / TEXTBOOK_RAG_RERANK_API_KEY for Alibaba Cloud Model Studio
 # - TEXTBOOK_RAG_ELASTICSEARCH_URL and search Elasticsearch URLs
@@ -109,7 +109,7 @@ Manual runtime configuration after seed import:
 - AI question generation: configure provider, base URL, API key, and model name through environment/platform settings, for example `AGENT_LLM_PROVIDER`, `AGENT_LLM_BASE_URL`, `AGENT_LLM_API_KEY`, and `AGENT_LLM_MODEL`.
 - Textbook RAG refresh/generation: configure `TEXTBOOK_RAG_ELASTICSEARCH_URL`, `TEXTBOOK_RAG_ELASTICSEARCH_INDEX`, Qwen embedding base URL/API key/model, and Qwen rerank base URL/API key/model. Seed restore does not call these APIs.
 - Search: configure teacher catalog and student video-library search backends/URLs if Elasticsearch search is required in the deployment.
-- Deployment URLs and secrets: configure `DATABASE_URL`, `MEDIA_ROOT`, `API_PUBLIC_BASE_URL`, `AUTH_SECRET_KEY`, and `WEB_ADMIN_ACCESS_TOKEN` outside seed files.
+- Deployment URLs and secrets: configure `DATABASE_URL`, `MEDIA_ROOT`, `API_PUBLIC_BASE_URL`, and `AUTH_SECRET_KEY` outside seed files.
 
 Adding later video seed versions:
 

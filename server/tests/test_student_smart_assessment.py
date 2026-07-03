@@ -73,13 +73,13 @@ def test_student_smart_assessment_routes_are_registered() -> None:
     assert_route("/api/student/smart-assessment/submit", "POST")
     assert_route("/api/student/custom-assessment/options", "GET")
     assert_route("/api/student/custom-assessment/start", "POST")
-    assert_route("/api/admin/classes/{class_id}/smart-assessment-strategy", "GET")
-    assert_route("/api/admin/classes/{class_id}/smart-assessment-strategy", "PUT")
-    assert_route("/api/admin/classes/{class_id}/smart-assessment-strategy", "DELETE")
-    assert_route("/api/admin/classes/{class_id}/smart-assessment-preview", "GET")
-    assert_route("/api/admin/classes/{class_id}/custom-assessment-settings", "GET")
-    assert_route("/api/admin/classes/{class_id}/custom-assessment-settings", "PUT")
-    assert_route("/api/admin/classes/{class_id}/custom-assessment-settings", "DELETE")
+    assert_route("/api/teacher/classes/{class_id}/smart-assessment-strategy", "GET")
+    assert_route("/api/teacher/classes/{class_id}/smart-assessment-strategy", "PUT")
+    assert_route("/api/teacher/classes/{class_id}/smart-assessment-strategy", "DELETE")
+    assert_route("/api/teacher/classes/{class_id}/smart-assessment-preview", "GET")
+    assert_route("/api/teacher/classes/{class_id}/custom-assessment-settings", "GET")
+    assert_route("/api/teacher/classes/{class_id}/custom-assessment-settings", "PUT")
+    assert_route("/api/teacher/classes/{class_id}/custom-assessment-settings", "DELETE")
 
 
 def test_public_smart_assessment_question_does_not_expose_answer_or_explanation() -> None:

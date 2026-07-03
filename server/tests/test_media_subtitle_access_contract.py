@@ -10,8 +10,8 @@ def _source(relative_path: str) -> str:
     return (ROOT / relative_path).read_text(encoding="utf-8")
 
 
-def test_admin_subtitle_routes_require_teacher_console_auth() -> None:
-    source = _source("app/api/admin/admin_media.py")
+def test_teacher_subtitle_routes_require_teacher_console_auth() -> None:
+    source = _source("app/api/teacher/teacher_media.py")
     protected_routes = [
         'router.get("/media/assets/{asset_id}/subtitle-tracks")',
         'router.post("/media/assets/{asset_id}/subtitle-tracks")',
@@ -22,14 +22,14 @@ def test_admin_subtitle_routes_require_teacher_console_auth() -> None:
 
     for marker in protected_routes:
         block = source[source.index(marker) : source.index(marker) + 900]
-        assert "Depends(require_teacher_console_user)" in block
+        assert "Depends(require_teacher_user)" in block
 
     stream_block = source[
         source.index('router.get("/media/assets/{asset_id}/subtitle-tracks/{track_id}/stream"') :
         source.index('router.get("/media/assets/{asset_id}/subtitle-tracks/{track_id}/stream"') + 900
     ]
     assert "get_user_from_access_token(access_token)" in stream_block
-    assert "is_teacher_console_role(user.role)" in stream_block
+    assert "is_teacher_role(user.role)" in stream_block
     assert "subtitle_track_file(asset_id, track_id)" in stream_block
     assert "FileResponse(path, media_type=media_type, filename=filename)" in stream_block
 

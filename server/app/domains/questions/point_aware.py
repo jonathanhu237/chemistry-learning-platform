@@ -10,7 +10,7 @@ from sqlalchemy import text
 
 from server.app.infrastructure.settings import get_settings
 from server.app.infrastructure.database import db_session
-from server.app.experiment_admin_schemas import PointAwareSuggestionRequest
+from server.app.experiment_teacher_schemas import PointAwareSuggestionRequest
 from server.app.domains.platform.settings import effective_ai_settings
 from server.app.domains.catalog.experiments import (
     _ensure_experiment,

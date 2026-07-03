@@ -287,7 +287,7 @@ def test_copy_directory_to_itself_is_rejected_and_creates_no_nodes(catalog_copy_
     before_canonicals = _canonical_count(catalog_copy_e2e.test_id)
 
     response = catalog_copy_e2e.client.post(
-        f"/api/admin/catalog/nodes/{catalog_copy_e2e.source_dir_id}/copy",
+        f"/api/teacher/catalog/nodes/{catalog_copy_e2e.source_dir_id}/copy",
         json={"parent_id": catalog_copy_e2e.source_dir_id, "title": "Should Not Exist"},
     )
 
@@ -302,7 +302,7 @@ def test_copy_directory_to_own_descendant_is_rejected_and_creates_no_nodes(catal
     before_canonicals = _canonical_count(catalog_copy_e2e.test_id)
 
     response = catalog_copy_e2e.client.post(
-        f"/api/admin/catalog/nodes/{catalog_copy_e2e.source_dir_id}/copy",
+        f"/api/teacher/catalog/nodes/{catalog_copy_e2e.source_dir_id}/copy",
         json={"parent_id": catalog_copy_e2e.child_dir_id, "title": "Should Not Exist"},
     )
 
@@ -318,7 +318,7 @@ def test_reference_point_to_same_directory_rejects_duplicate_canonical_and_rolls
     before_orders = _sibling_orders(catalog_copy_e2e.source_dir_id)
 
     response = catalog_copy_e2e.client.post(
-        f"/api/admin/catalog/nodes/{catalog_copy_e2e.source_point_id}/copy",
+        f"/api/teacher/catalog/nodes/{catalog_copy_e2e.source_point_id}/copy",
         json={"parent_id": catalog_copy_e2e.source_dir_id, "title": "Duplicate Reference"},
     )
 
@@ -334,7 +334,7 @@ def test_reference_point_to_different_directory_reuses_canonical_without_copying
     before_canonical_content = _content_rows_for_canonical(catalog_copy_e2e.canonical_point_id)
 
     response = catalog_copy_e2e.client.post(
-        f"/api/admin/catalog/nodes/{catalog_copy_e2e.source_point_id}/copy",
+        f"/api/teacher/catalog/nodes/{catalog_copy_e2e.source_point_id}/copy",
         json={"parent_id": catalog_copy_e2e.target_dir_id, "title": "Referenced Point"},
     )
 
@@ -356,7 +356,7 @@ def test_copy_directory_to_other_directory_reuses_descendant_point_identity(cata
     before_canonical_content = _content_rows_for_canonical(catalog_copy_e2e.canonical_point_id)
 
     response = catalog_copy_e2e.client.post(
-        f"/api/admin/catalog/nodes/{catalog_copy_e2e.source_dir_id}/copy",
+        f"/api/teacher/catalog/nodes/{catalog_copy_e2e.source_dir_id}/copy",
         json={"parent_id": catalog_copy_e2e.target_dir_id, "title": "Copied Directory"},
     )
 

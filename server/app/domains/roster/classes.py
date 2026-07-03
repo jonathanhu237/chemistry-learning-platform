@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
-from server.app.domains.platform.roles import is_teacher_console_role
+from server.app.domains.platform.roles import is_teacher_role
 from server.app.domains.preview.student_device_preview import TEACHER_PREVIEW_ACCOUNT_PURPOSE, TEACHER_PREVIEW_CLASS_PURPOSE
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -215,7 +215,7 @@ def _sync_disabled_student_account(session: Any, class_id: str, student_id: str)
 
 
 def _teacher_can_access_class(user: Any, class_id: str) -> bool:
-    if is_teacher_console_role(user.role):
+    if is_teacher_role(user.role):
         return True
     with db_session() as session:
         row = (
@@ -274,7 +274,7 @@ def _load_class_name(class_id: str) -> str:
 
 
 def list_classes(user: Any) -> list[ClassResponse]:
-    if is_teacher_console_role(user.role):
+    if is_teacher_role(user.role):
         sql = """
             SELECT c.id, c.class_name, c.description, c.status,
                    COUNT(re.id) FILTER (
@@ -600,7 +600,7 @@ def assign_teacher_to_class(payload: TeacherClassAssignRequest, class_id: str) -
     with db_session() as session:
         teacher = (
             session.execute(
-                text("SELECT id FROM app_users WHERE id = CAST(:id AS uuid) AND role IN ('admin', 'teacher')"),
+                text("SELECT id FROM app_users WHERE id = CAST(:id AS uuid) AND role = 'teacher'"),
                 {"id": payload.teacher_user_id},
             )
             .mappings()

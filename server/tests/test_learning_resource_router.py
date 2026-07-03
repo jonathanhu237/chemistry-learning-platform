@@ -5,11 +5,11 @@ from server.tests.route_helpers import assert_route
 
 
 def test_learning_resource_overview_route_is_registered_once() -> None:
-    assert_route("/api/admin/learning-resources/overview", "GET")
+    assert_route("/api/teacher/learning-resources/overview", "GET")
 
 
 def test_experiment_knowledge_framework_overview_route_is_registered_once() -> None:
-    assert_route("/api/admin/experiment-knowledge-framework/overview", "GET")
+    assert_route("/api/teacher/experiment-knowledge-framework/overview", "GET")
 
 
 def test_learning_resource_overview_groups_ch22_under_hydrogen_and_p_contexts() -> None:

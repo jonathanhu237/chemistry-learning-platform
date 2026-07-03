@@ -111,21 +111,21 @@ The backend admin surface no longer uses `server/app/admin.py` or `server/app/ex
 
 | Lines | Endpoint Group | Paths | Target Router |
 | --- | --- | --- | --- |
-| 642-901 | Experiments and experiment media bindings | `/api/admin/experiments*`, `/api/admin/experiment-videos` | `server/app/routers/admin_experiments.py` |
-| 2002-2027 | Learning resource overview/framework | `/api/admin/learning-resources/overview`, `/api/admin/experiment-knowledge-framework/overview` | `server/app/routers/admin_learning_resources.py` |
-| 2041-2456 | Question bank CRUD/import/export | `/api/admin/question-banks*` excluding workbench/generation | `server/app/routers/admin_question_banks.py` |
+| 642-901 | Experiments and experiment media bindings | `/api/teacher/experiments*`, `/api/teacher/experiment-videos` | `server/app/routers/admin_experiments.py` |
+| 2002-2027 | Learning resource overview/framework | `/api/teacher/learning-resources/overview`, `/api/teacher/experiment-knowledge-framework/overview` | `server/app/routers/admin_learning_resources.py` |
+| 2041-2456 | Question bank CRUD/import/export | `/api/teacher/question-banks*` excluding workbench/generation | `server/app/routers/admin_question_banks.py` |
 | Split | AI generation helpers | generation source loading and local/OpenAI draft helpers | `server/app/services/question_generation_service.py` |
-| Split | Point-aware suggestion endpoint and helpers | `/api/admin/question-banks/point-aware-suggestions` | `server/app/routers/admin_point_aware_questions.py` plus `server/app/services/point_aware_question_service.py` |
-| Split | Question workbench sessions, turns, candidates | `/api/admin/question-banks/workbench-*` | `server/app/routers/admin_question_workbench.py` plus `server/app/services/question_workbench_service.py` |
-| Split | Legacy draft generation endpoints | `/api/admin/question-banks/generate`, `/drafts*` | `server/app/routers/admin_question_generation.py`, `server/app/routers/admin_question_drafts.py` |
+| Split | Point-aware suggestion endpoint and helpers | `/api/teacher/question-banks/point-aware-suggestions` | `server/app/routers/admin_point_aware_questions.py` plus `server/app/services/point_aware_question_service.py` |
+| Split | Question workbench sessions, turns, candidates | `/api/teacher/question-banks/workbench-*` | `server/app/routers/admin_question_workbench.py` plus `server/app/services/question_workbench_service.py` |
+| Split | Legacy draft generation endpoints | `/api/teacher/question-banks/generate`, `/drafts*` | `server/app/routers/admin_question_generation.py`, `server/app/routers/admin_question_drafts.py` |
 | 4615 | Student submit API | `/api/experiment-questions/submit` | `server/app/routers/student_experiment_questions.py` |
-| 4832-5177 | Class analytics | `/api/admin/analytics/classes/*` | `server/app/routers/admin_analytics.py` |
-| Split | Platform settings and AI configuration | `/api/admin/platform-settings`, `/api/admin/ai-configuration` | `server/app/routers/admin_platform.py` |
-| Split | Learning assistant admin and RAG assets | `/api/admin/learning-assistant/*`, `/api/admin/rag-assets` | `server/app/routers/admin_learning_assistant.py` |
-| Split | Feedback management | `/api/admin/feedback*` | `server/app/routers/admin_feedback.py` plus `server/app/services/feedback_service.py` |
-| Split | Classes, registration, roster, students | `/api/admin/classes*`, `/api/admin/registration-settings` | `server/app/routers/admin_classes.py` plus `server/app/services/class_roster_service.py` |
-| Split | Curriculum versions and review items | `/api/admin/curriculum/versions*`, `/api/admin/review/items*` | `server/app/routers/admin_curriculum_review.py` |
-| Split | Media assets, processing, duplicates, bindings | `/api/admin/media/*` | `server/app/routers/admin_media.py` plus `server/app/media.py` |
+| 4832-5177 | Class analytics | `/api/teacher/analytics/classes/*` | `server/app/routers/admin_analytics.py` |
+| Split | Platform settings and AI configuration | `/api/teacher/platform-settings`, `/api/teacher/ai-configuration` | `server/app/routers/admin_platform.py` |
+| Split | Learning assistant admin and RAG assets | `/api/teacher/learning-assistant/*`, `/api/teacher/rag-assets` | `server/app/routers/admin_learning_assistant.py` |
+| Split | Feedback management | `/api/teacher/feedback*` | `server/app/routers/admin_feedback.py` plus `server/app/services/feedback_service.py` |
+| Split | Classes, registration, roster, students | `/api/teacher/classes*`, `/api/teacher/registration-settings` | `server/app/routers/admin_classes.py` plus `server/app/services/class_roster_service.py` |
+| Split | Curriculum versions and review items | `/api/teacher/curriculum/versions*`, `/api/teacher/review/items*` | `server/app/routers/admin_curriculum_review.py` |
+| Split | Media assets, processing, duplicates, bindings | `/api/teacher/media/*` | `server/app/routers/admin_media.py` plus `server/app/media.py` |
 
 Current extraction status:
 
@@ -136,8 +136,8 @@ Current extraction status:
 - Done: question-bank CRUD/import/export -> `server/app/routers/admin_question_banks.py`, `server/app/services/question_bank_service.py`.
 - Done: question draft list/update/publish/reject -> `server/app/routers/admin_question_drafts.py`, `server/app/services/question_draft_service.py`.
 - Done: shared question generation helpers -> `server/app/services/question_generation_service.py`.
-- Done: question generation `/api/admin/question-banks/generate` -> `server/app/routers/admin_question_generation.py`, `server/app/services/question_generation_service.py`.
-- Done: point-aware suggestions `/api/admin/question-banks/point-aware-suggestions` -> `server/app/routers/admin_point_aware_questions.py`, `server/app/services/point_aware_question_service.py`.
+- Done: question generation `/api/teacher/question-banks/generate` -> `server/app/routers/admin_question_generation.py`, `server/app/services/question_generation_service.py`.
+- Done: point-aware suggestions `/api/teacher/question-banks/point-aware-suggestions` -> `server/app/routers/admin_point_aware_questions.py`, `server/app/services/point_aware_question_service.py`.
 - Done: question workbench sessions/candidates -> `server/app/routers/admin_question_workbench.py`, `server/app/services/question_workbench_service.py`.
 - Done: platform settings and AI configuration -> `server/app/routers/admin_platform.py`.
 - Done: learning assistant runtime/debug endpoints and RAG asset file serving -> `server/app/routers/admin_learning_assistant.py`.
@@ -147,7 +147,7 @@ Current extraction status:
 - Done: media assets/uploads/processing/duplicates/file serving/bindings -> `server/app/routers/admin_media.py`, `server/app/media.py`.
 - Done: `server/app/admin.py` and the old empty `server/app/experiment_admin.py` compatibility stub have been removed.
 
-Pydantic request models for the experiment/question-bank/workbench family remain centralized in `server/app/experiment_admin_schemas.py`. Newer admin domains keep models closer to their owning router or service:
+Pydantic request models for the experiment/question-bank/workbench family remain centralized in `server/app/experiment_teacher_schemas.py`. Newer teacher domains keep models closer to their owning router or service:
 
 - `server/app/services/class_roster_service.py`: class, registration, roster, and student request/response models.
 - `server/app/routers/admin_media.py`: media request models.

@@ -20,7 +20,7 @@ def test_demo_identity_seed_payload_has_expected_demo_roster() -> None:
 
     assert result["ok"] is True
     assert result["summary"] == {"teacher": 1, "classes": 1, "students": 30}
-    assert payload["teacher"]["username"] == "admin"
+    assert payload["teacher"]["username"] == "teacher"
     assert payload["class"]["id"] == "seed-class-2026"
     assert {student["student_id"] for student in payload["students"]} == {f"SEED{index:03d}" for index in range(1, 31)}
 
