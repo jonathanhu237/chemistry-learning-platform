@@ -64,7 +64,6 @@ import {
   TeacherButton,
   TeacherCard,
   TeacherContent,
-  TeacherDrawer,
   TeacherEmptyState,
   TeacherForm,
   TeacherHeader,
@@ -98,7 +97,7 @@ const forbiddenPathSegments = [
   "/import",
 ];
 
-type RouteKey = "experiments" | "classes" | "questions" | "analytics" | "reports";
+type RouteKey = "experiments" | "classes" | "questions" | "analytics" | "reports" | "settings";
 type ObjectiveQuestionType = Question["question_type"];
 
 const navItems: Array<{ key: RouteKey; label: string; path: string }> = [
@@ -107,6 +106,7 @@ const navItems: Array<{ key: RouteKey; label: string; path: string }> = [
   { key: "questions", label: "AI 出题", path: "/questions" },
   { key: "analytics", label: "学情分析", path: "/analytics" },
   { key: "reports", label: "评价报告", path: "/reports" },
+  { key: "settings", label: "设置", path: "/settings" },
 ];
 
 const objectiveQuestionTypeOptions: Array<{ value: ObjectiveQuestionType; label: string }> = [
@@ -162,6 +162,7 @@ function routeFromPath(path: string): RouteKey {
   if (path.startsWith("/questions")) return "questions";
   if (path.startsWith("/analytics")) return "analytics";
   if (path.startsWith("/reports")) return "reports";
+  if (path.startsWith("/settings")) return "settings";
   return "experiments";
 }
 
@@ -178,7 +179,6 @@ function LegacyTeacherAppContent() {
   const [user, setUser] = useState<User | null>(null);
   const [checkingSession, setCheckingSession] = useState(Boolean(getAuthToken()));
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     if (!getAuthToken()) return;
@@ -204,9 +204,8 @@ function LegacyTeacherAppContent() {
   }, [path]);
 
   useEffect(() => {
-    if (!path.startsWith("/ai-config") && !path.startsWith("/settings")) return;
-    setSettingsOpen(true);
-    navigate("/experiments");
+    if (!path.startsWith("/ai-config")) return;
+    navigate("/settings");
   }, [path]);
 
   useEffect(() => {
@@ -244,9 +243,6 @@ function LegacyTeacherAppContent() {
           {navItems.map((item) => (
             <NavButton key={item.key} active={activeRoute === item.key} label={item.label} path={item.path} testId={`teacher-nav-${item.key}`} />
           ))}
-          <TeacherButton className={settingsOpen ? "active" : ""} data-testid="teacher-nav-settings" onClick={() => setSettingsOpen(true)}>
-            设置
-          </TeacherButton>
         </nav>
       </TeacherSidebar>
       <TeacherMain>
@@ -276,7 +272,6 @@ function LegacyTeacherAppContent() {
             ) : null}
           </div>
         </TeacherHeader>
-        <SettingsSidebar user={user} open={settingsOpen} onClose={() => setSettingsOpen(false)} />
         <TeacherContent>
           {activeRoute === "questions" ? (
             <QuestionsPage />
@@ -286,6 +281,8 @@ function LegacyTeacherAppContent() {
             <AnalyticsPage />
           ) : activeRoute === "reports" ? (
             <ReportsPage />
+          ) : activeRoute === "settings" ? (
+            <SettingsPage user={user} />
           ) : (
             <ExperimentsPage />
           )}
@@ -365,7 +362,7 @@ function userRoleLabel(role: User["role"]): string {
   return role === "teacher" ? "教师" : "学生";
 }
 
-function SettingsSidebar({ user, open, onClose }: { user: User; open: boolean; onClose: () => void }) {
+function SettingsPage({ user }: { user: User }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -379,23 +376,6 @@ function SettingsSidebar({ user, open, onClose }: { user: User; open: boolean; o
   const [teacherNotice, setTeacherNotice] = useState("");
   const [teacherError, setTeacherError] = useState("");
   const [creatingTeacher, setCreatingTeacher] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setPasswordNotice("");
-    setPasswordError("");
-    setSaving(false);
-    setTeacherUsername("");
-    setTeacherDisplayName("");
-    setTeacherPassword("");
-    setTeacherMustChangePassword(true);
-    setTeacherNotice("");
-    setTeacherError("");
-    setCreatingTeacher(false);
-  }, [open]);
 
   const submitPassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -467,142 +447,132 @@ function SettingsSidebar({ user, open, onClose }: { user: User; open: boolean; o
     }
   };
 
-  const busy = saving || creatingTeacher;
-
   return (
-    <TeacherDrawer
-      className="legacy-profile-sidebar legacy-settings-sidebar"
-      title="设置"
-      open={open}
-      onClose={onClose}
-      placement="right"
-      width="min(560px, calc(100vw - 24px))"
-      maskClosable={!busy}
-      keyboard={!busy}
-      destroyOnHidden
-    >
-      <section className="legacy-profile-sidebar-body legacy-settings-sidebar-body" data-testid="teacher-settings-sidebar" aria-label="设置">
-        <div className="legacy-profile-account-card" aria-label="当前账号">
-          <div className="legacy-profile-avatar" aria-hidden="true">
-            {(user.display_name || user.username).slice(0, 1).toUpperCase()}
+    <PageFrame title="设置" showHeader={false} testId="teacher-page-settings">
+      <section className="legacy-settings-page-grid" data-testid="teacher-settings-page" aria-label="设置">
+        <div className="legacy-settings-account-column">
+          <div className="legacy-profile-account-card" aria-label="当前账号">
+            <div className="legacy-profile-avatar" aria-hidden="true">
+              {(user.display_name || user.username).slice(0, 1).toUpperCase()}
+            </div>
+            <div>
+              <span>当前账号</span>
+              <strong>{user.display_name || user.username}</strong>
+              <small>{user.username}</small>
+            </div>
           </div>
-          <div>
-            <span>当前账号</span>
-            <strong>{user.display_name || user.username}</strong>
-            <small>{user.username}</small>
-          </div>
+
+          <dl className="legacy-profile-meta-list">
+            <div>
+              <dt>身份</dt>
+              <dd>{userRoleLabel(user.role)}</dd>
+            </div>
+            <div>
+              <dt>账号类型</dt>
+              <dd>后台账号</dd>
+            </div>
+          </dl>
         </div>
 
-        <dl className="legacy-profile-meta-list">
-          <div>
-            <dt>身份</dt>
-            <dd>{userRoleLabel(user.role)}</dd>
-          </div>
-          <div>
-            <dt>账号类型</dt>
-            <dd>后台账号</dd>
-          </div>
-        </dl>
+        <div className="legacy-settings-security-column">
+          <form className="legacy-profile-password-form" onSubmit={submitPassword}>
+            <div className="legacy-profile-form-head">
+              <strong>修改密码</strong>
+              <span>保存后请使用新密码登录。</span>
+            </div>
+            <label>
+              当前密码
+              <TeacherInput.Password
+                aria-label="当前密码"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+              />
+            </label>
+            <label>
+              新密码
+              <TeacherInput.Password
+                aria-label="新密码"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+              />
+            </label>
+            <label>
+              确认新密码
+              <TeacherInput.Password
+                aria-label="确认新密码"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+              />
+            </label>
+            {passwordNotice ? <NoticeBlock>{passwordNotice}</NoticeBlock> : null}
+            {passwordError ? <ErrorBlock compact>{passwordError}</ErrorBlock> : null}
+            <div className="legacy-profile-sidebar-actions legacy-settings-single-action">
+              <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={saving}>
+                {saving ? "保存中..." : "保存密码"}
+              </TeacherButton>
+            </div>
+          </form>
 
-        <form className="legacy-profile-password-form" onSubmit={submitPassword}>
-          <div className="legacy-profile-form-head">
-            <strong>修改密码</strong>
-            <span>保存后请使用新密码登录。</span>
-          </div>
-          <label>
-            当前密码
-            <TeacherInput.Password
-              aria-label="当前密码"
-              autoComplete="current-password"
-              autoFocus={open}
-              value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)}
-            />
-          </label>
-          <label>
-            新密码
-            <TeacherInput.Password
-              aria-label="新密码"
-              autoComplete="new-password"
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-            />
-          </label>
-          <label>
-            确认新密码
-            <TeacherInput.Password
-              aria-label="确认新密码"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-            />
-          </label>
-          {passwordNotice ? <NoticeBlock>{passwordNotice}</NoticeBlock> : null}
-          {passwordError ? <ErrorBlock compact>{passwordError}</ErrorBlock> : null}
-          <div className="legacy-profile-sidebar-actions">
-            <TeacherButton type="default" className="legacy-secondary-button" onClick={onClose} disabled={busy}>
-              取消
-            </TeacherButton>
-            <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={saving}>
-              {saving ? "保存中..." : "保存密码"}
-            </TeacherButton>
-          </div>
-        </form>
+          <form className="legacy-profile-password-form legacy-settings-teacher-form" onSubmit={submitTeacher}>
+            <div className="legacy-profile-form-head">
+              <strong>添加教师账号</strong>
+              <span>新老师可使用初始密码进入后台。</span>
+            </div>
+            <label>
+              教师账号
+              <TeacherInput
+                aria-label="教师账号"
+                autoComplete="username"
+                value={teacherUsername}
+                onChange={(event) => setTeacherUsername(event.target.value)}
+                placeholder="例如 teacher2"
+              />
+            </label>
+            <label>
+              教师姓名
+              <TeacherInput
+                aria-label="教师姓名"
+                autoComplete="name"
+                value={teacherDisplayName}
+                onChange={(event) => setTeacherDisplayName(event.target.value)}
+                placeholder="例如 李老师"
+              />
+            </label>
+            <label>
+              初始密码
+              <TeacherInput.Password
+                aria-label="初始密码"
+                autoComplete="new-password"
+                value={teacherPassword}
+                onChange={(event) => setTeacherPassword(event.target.value)}
+              />
+            </label>
+            <label className="legacy-settings-switch-row">
+              <TeacherSwitch
+                aria-label="首次登录必须修改密码"
+                checked={teacherMustChangePassword}
+                onChange={(checked) => setTeacherMustChangePassword(checked)}
+              />
+              <span>首次登录必须修改密码</span>
+            </label>
+            {teacherNotice ? <NoticeBlock>{teacherNotice}</NoticeBlock> : null}
+            {teacherError ? <ErrorBlock compact>{teacherError}</ErrorBlock> : null}
+            <div className="legacy-profile-sidebar-actions legacy-settings-single-action">
+              <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={creatingTeacher}>
+                {creatingTeacher ? "添加中..." : "添加教师"}
+              </TeacherButton>
+            </div>
+          </form>
+        </div>
 
-        <form className="legacy-profile-password-form legacy-settings-teacher-form" onSubmit={submitTeacher}>
-          <div className="legacy-profile-form-head">
-            <strong>添加教师账号</strong>
-            <span>新老师可使用初始密码进入后台。</span>
-          </div>
-          <label>
-            教师账号
-            <TeacherInput
-              aria-label="教师账号"
-              autoComplete="username"
-              value={teacherUsername}
-              onChange={(event) => setTeacherUsername(event.target.value)}
-              placeholder="例如 teacher2"
-            />
-          </label>
-          <label>
-            教师姓名
-            <TeacherInput
-              aria-label="教师姓名"
-              autoComplete="name"
-              value={teacherDisplayName}
-              onChange={(event) => setTeacherDisplayName(event.target.value)}
-              placeholder="例如 李老师"
-            />
-          </label>
-          <label>
-            初始密码
-            <TeacherInput.Password
-              aria-label="初始密码"
-              autoComplete="new-password"
-              value={teacherPassword}
-              onChange={(event) => setTeacherPassword(event.target.value)}
-            />
-          </label>
-          <label className="legacy-settings-switch-row">
-            <TeacherSwitch
-              aria-label="首次登录必须修改密码"
-              checked={teacherMustChangePassword}
-              onChange={(checked) => setTeacherMustChangePassword(checked)}
-            />
-            <span>首次登录必须修改密码</span>
-          </label>
-          {teacherNotice ? <NoticeBlock>{teacherNotice}</NoticeBlock> : null}
-          {teacherError ? <ErrorBlock compact>{teacherError}</ErrorBlock> : null}
-          <div className="legacy-profile-sidebar-actions legacy-settings-single-action">
-            <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={creatingTeacher}>
-              {creatingTeacher ? "添加中..." : "添加教师"}
-            </TeacherButton>
-          </div>
-        </form>
-
-        <AIConfigurationSettingsSection active={open} />
+        <div className="legacy-settings-ai-column">
+          <AIConfigurationSettingsSection active />
+        </div>
       </section>
-    </TeacherDrawer>
+    </PageFrame>
   );
 }
 

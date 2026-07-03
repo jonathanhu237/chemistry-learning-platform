@@ -3108,6 +3108,22 @@ p {
   gap: 14px;
 }
 
+.legacy-settings-page-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(320px, 0.92fr) minmax(420px, 1.36fr);
+  align-items: start;
+  gap: 14px;
+}
+
+.legacy-settings-account-column,
+.legacy-settings-security-column,
+.legacy-settings-ai-column {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 12px;
+}
+
 .legacy-profile-account-card {
   display: grid;
   grid-template-columns: 54px minmax(0, 1fr);
@@ -3393,6 +3409,7 @@ p {
   .legacy-management-grid,
   .legacy-class-management-grid,
   .legacy-class-dashboard-grid,
+  .legacy-settings-page-grid,
   .legacy-inline-form.two-column {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -121,8 +121,9 @@ test.describe("legacy teacher/student browser flows", () => {
     await expect(page).toHaveURL(/\/experiments$/);
 
     await page.getByTestId("teacher-nav-settings").click();
-    const settingsSidebar = page.getByTestId("teacher-settings-sidebar");
-    await expect(settingsSidebar).toBeVisible();
+    await expect(page).toHaveURL(/\/settings$/);
+    await expect(page.getByTestId("teacher-page-settings")).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "设置" })).toHaveCount(0);
     const aiConfigSidebar = page.getByTestId("teacher-ai-config-settings");
     await expect(aiConfigSidebar).toBeVisible();
     await expect(page.getByRole("heading", { name: "AI 模型配置" })).toHaveCount(0);
@@ -134,19 +135,17 @@ test.describe("legacy teacher/student browser flows", () => {
     await loginTeacher(page);
 
     await page.getByTestId("teacher-nav-settings").click();
-    const sidebar = page.getByTestId("teacher-settings-sidebar");
-    await expect(sidebar).toBeVisible();
-    await expect(sidebar.getByText(teacherUsername)).toBeVisible();
-    await expect(sidebar.getByText("添加教师账号")).toBeVisible();
+    const settingsPage = page.getByTestId("teacher-settings-page");
+    await expect(settingsPage).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "设置" })).toHaveCount(0);
+    await expect(settingsPage.getByText(teacherUsername)).toBeVisible();
+    await expect(settingsPage.getByText("添加教师账号")).toBeVisible();
 
-    await sidebar.getByLabel("当前密码", { exact: true }).fill(teacherPassword);
-    await sidebar.getByLabel("新密码", { exact: true }).fill("new-password-123");
-    await sidebar.getByLabel("确认新密码", { exact: true }).fill("new-password-456");
-    await sidebar.getByRole("button", { name: "保存密码" }).click();
-    await expect(sidebar.getByText("两次输入的新密码不一致。")).toBeVisible();
-
-    await sidebar.getByRole("button", { name: "取消" }).click();
-    await expect(sidebar).toBeHidden();
+    await settingsPage.getByLabel("当前密码", { exact: true }).fill(teacherPassword);
+    await settingsPage.getByLabel("新密码", { exact: true }).fill("new-password-123");
+    await settingsPage.getByLabel("确认新密码", { exact: true }).fill("new-password-456");
+    await settingsPage.getByRole("button", { name: "保存密码" }).click();
+    await expect(settingsPage.getByText("两次输入的新密码不一致。")).toBeVisible();
   });
 
   test("teacher can upload and bind a video from the catalog point editor", async ({ page, request }) => {
