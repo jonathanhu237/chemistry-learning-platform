@@ -708,16 +708,19 @@ function ResourceShowcaseSlide({ slide }) {
 
       <section className="showcase-screens" aria-label="教师端与学生端资源展示">
         <figure className="showcase-shot teacher-shot">
-          <div className="showcase-window-bar">
-            <span />
+          <div className="showcase-mac-screen">
+            <span className="showcase-mac-camera" aria-hidden="true" />
+            <img src={slide.teacherImage} alt={slide.teacherCaption} />
           </div>
-          <img src={slide.teacherImage} alt={slide.teacherCaption} />
+          <div className="showcase-mac-base" aria-hidden="true" />
           <figcaption>{slide.teacherCaption}</figcaption>
         </figure>
 
         <figure className="showcase-shot student-shot">
-          <div className="showcase-phone-top" aria-hidden="true" />
-          <img src={slide.studentImage} alt={slide.studentCaption} />
+          <div className="showcase-iphone-frame">
+            <span className="showcase-iphone-island" aria-hidden="true" />
+            <img src={slide.studentImage} alt={slide.studentCaption} />
+          </div>
           <figcaption>{slide.studentCaption}</figcaption>
         </figure>
       </section>

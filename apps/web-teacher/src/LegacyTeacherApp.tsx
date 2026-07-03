@@ -1880,7 +1880,7 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
     <section className="legacy-ai-config-sidebar legacy-settings-ai-section" data-testid="teacher-ai-config-settings" aria-label="AI 配置">
       <div className="legacy-profile-form-head">
         <strong>AI 配置</strong>
-        <span>配置 AI 出题和 AI 报告使用的大语言模型。</span>
+        <span>配置 AI 出题、AI 报告和学生答疑使用的大语言模型。</span>
       </div>
       <div className="legacy-ai-config-sidebar-body">
         {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
