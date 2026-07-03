@@ -25,7 +25,7 @@ def list_question_drafts(
     point_node_id: str | None = None,
     canonical_point_id: str | None = None,
 ) -> dict[str, Any]:
-    filters = ["1 = 1"]
+    filters = ["d.status = 'draft'"]
     params: dict[str, Any] = {}
     if generation_id:
         filters.append("d.generation_id = CAST(:generation_id AS uuid)")

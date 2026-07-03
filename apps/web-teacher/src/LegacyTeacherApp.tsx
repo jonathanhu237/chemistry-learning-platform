@@ -1968,10 +1968,11 @@ function QuestionsPage() {
   const [revokingQuestionId, setRevokingQuestionId] = useState("");
   const [selectedDraftId, setSelectedDraftId] = useState("");
   const [selectedBankQuestionId, setSelectedBankQuestionId] = useState("");
-  const draftItems = draftsState.data?.items || [];
+  const draftItems = (draftsState.data?.items || []).filter((item) => item.status === "draft");
   const bankQuestions = questionsState.data?.items || [];
   const selectedDraft = draftItems.find((item) => item.id === selectedDraftId) || draftItems[0] || null;
   const selectedBankQuestion = bankQuestions.find((item) => item.id === selectedBankQuestionId) || bankQuestions[0] || null;
+  const selectedDraftPublishable = Boolean(selectedDraft && selectedDraft.status === "draft" && !selectedDraft.validation_errors?.length);
 
   useEffect(() => {
     if (selectedPoint) {
@@ -2029,7 +2030,9 @@ function QuestionsPage() {
     setActionError("");
     setPublishingDraftId(draftId);
     try {
-      await publishQuestionDraft(draftId);
+      const publishedQuestion = await publishQuestionDraft(draftId);
+      setSelectedDraftId("");
+      setSelectedBankQuestionId(publishedQuestion.id);
       setReloadKey((value) => value + 1);
     } catch (caught) {
       setActionError(legacyTeacherErrorMessage(caught));
@@ -2053,7 +2056,9 @@ function QuestionsPage() {
     setActionError("");
     setRevokingQuestionId(questionId);
     try {
-      await revokeQuestionToDraft(questionId);
+      const draft = await revokeQuestionToDraft(questionId);
+      setSelectedBankQuestionId("");
+      setSelectedDraftId(draft.id);
       setReloadKey((value) => value + 1);
     } catch (caught) {
       setActionError(legacyTeacherErrorMessage(caught));
@@ -2197,8 +2202,8 @@ function QuestionsPage() {
                   type="button"
                   aria-label="入库选中待审题"
                   title="入库选中待审题"
-                  disabled={!selectedDraft || Boolean(selectedDraft.validation_errors?.length) || Boolean(publishingDraftId)}
-                  onClick={() => selectedDraft && publishDraft(selectedDraft.id)}
+                  disabled={!selectedDraftPublishable || Boolean(publishingDraftId)}
+                  onClick={() => selectedDraftPublishable && selectedDraft && publishDraft(selectedDraft.id)}
                 >
                   {publishingDraftId ? "…" : "→"}
                 </button>

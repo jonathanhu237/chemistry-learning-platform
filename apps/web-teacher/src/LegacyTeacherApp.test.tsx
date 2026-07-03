@@ -23,6 +23,10 @@ function requestPaths(fetchMock: ReturnType<typeof installTeacherFetchMock>): st
   });
 }
 
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
 function expectNoForbiddenGenerationFlows(fetchMock: ReturnType<typeof installTeacherFetchMock>) {
   const urls = fetchMock.mock.calls.map((call) => requestUrl(call[0]));
 
@@ -482,6 +486,8 @@ const assessmentReportDetail = {
 };
 
 function installTeacherFetchMock() {
+  let questionDrafts = [cloneJson(draftQuestion)];
+  let questionBankQuestions = [cloneJson(publishedQuestion)];
   let teacherAccounts = [
     {
       id: "teacher-1",
@@ -672,23 +678,35 @@ function installTeacherFetchMock() {
     }
 
     if (path === "/api/teacher/question-banks/drafts") {
-      return jsonResponse({ items: [draftQuestion], total: 1 });
+      const visibleDrafts = questionDrafts.filter((draft) => draft.status === "draft");
+      return jsonResponse({ items: visibleDrafts, total: visibleDrafts.length });
     }
 
     if (path === "/api/teacher/question-banks/questions") {
-      return jsonResponse({ items: [publishedQuestion], total: 1 });
+      const visibleQuestions = questionBankQuestions.filter((question) => question.status === "published");
+      return jsonResponse({ items: visibleQuestions, total: visibleQuestions.length });
     }
 
-    if (path === "/api/teacher/question-banks/questions/question-ch13-1/revoke-to-draft" && method === "POST") {
-      return jsonResponse({
-        ...draftQuestion,
-        id: "draft-from-question-1",
+    const revokeQuestionMatch = path.match(/^\/api\/teacher\/question-banks\/questions\/([^/]+)\/revoke-to-draft$/);
+    if (revokeQuestionMatch && method === "POST") {
+      const questionId = decodeURIComponent(revokeQuestionMatch[1]);
+      const question = questionBankQuestions.find((item) => item.id === questionId);
+      if (!question || question.status !== "published") return jsonResponse({ detail: "Only published questions can be revoked to draft" }, 400);
+      questionBankQuestions = questionBankQuestions.map((item) => (item.id === questionId ? { ...item, status: "draft" } : item));
+      const questionMetadata =
+        "metadata" in question && question.metadata && typeof question.metadata === "object" ? (question.metadata as Record<string, unknown>) : {};
+      const draft = {
+        ...cloneJson(draftQuestion),
+        id: `draft-from-${questionId}`,
+        status: "draft",
         payload: {
-          ...publishedQuestion,
-          metadata: { revoked_from_question_id: "question-ch13-1" },
+          ...cloneJson(question),
+          metadata: { ...questionMetadata, revoked_from_question_id: questionId },
           status: "draft",
         },
-      });
+      };
+      questionDrafts = [draft, ...questionDrafts];
+      return jsonResponse(draft);
     }
 
     if (path === "/api/teacher/question-banks/legacy-point-generate" && method === "POST") {
@@ -702,17 +720,46 @@ function installTeacherFetchMock() {
       });
     }
 
-    if (path === "/api/teacher/question-banks/drafts/draft-ch13-1/publish" && method === "POST") {
-      return jsonResponse({ ...publishedQuestion, id: "question-from-draft-1" });
+    const publishDraftMatch = path.match(/^\/api\/teacher\/question-banks\/drafts\/([^/]+)\/publish$/);
+    if (publishDraftMatch && method === "POST") {
+      const draftId = decodeURIComponent(publishDraftMatch[1]);
+      const draft = questionDrafts.find((item) => item.id === draftId);
+      if (!draft || draft.status !== "draft") return jsonResponse({ detail: "Only draft questions can be published" }, 400);
+      const payload = (draft.payload || {}) as Record<string, unknown> & { metadata?: { revoked_from_question_id?: unknown } };
+      const revokedFromQuestionId = String(payload.metadata?.revoked_from_question_id || "");
+      const question = {
+        ...cloneJson(publishedQuestion),
+        ...payload,
+        id: revokedFromQuestionId || `question-from-${draftId}`,
+        status: "published",
+      };
+      questionBankQuestions = revokedFromQuestionId
+        ? questionBankQuestions.map((item) => (item.id === revokedFromQuestionId ? question : item))
+        : [question, ...questionBankQuestions];
+      const publishedDraftPayload = { ...cloneJson(draftQuestion.payload), ...payload, status: "published" };
+      questionDrafts = questionDrafts.map((item) => (item.id === draftId ? { ...item, status: "published", payload: publishedDraftPayload } : item));
+      return jsonResponse(question);
     }
 
-    if (path === "/api/teacher/question-banks/drafts/draft-ch13-1" && method === "PATCH") {
+    const draftUpdateMatch = path.match(/^\/api\/teacher\/question-banks\/drafts\/([^/]+)$/);
+    if (draftUpdateMatch && method === "PATCH") {
+      const draftId = decodeURIComponent(draftUpdateMatch[1]);
       const body = JSON.parse(String(init?.body || "{}"));
-      return jsonResponse({ ...draftQuestion, payload: body.payload, status: body.status || "draft" });
+      const existing = questionDrafts.find((draft) => draft.id === draftId);
+      if (!existing) return jsonResponse({ detail: "Draft not found" }, 404);
+      const updated = { ...existing, payload: body.payload, status: body.status || "draft" };
+      questionDrafts = questionDrafts.map((draft) => (draft.id === draftId ? updated : draft));
+      return jsonResponse(updated);
     }
 
-    if (path === "/api/teacher/question-banks/drafts/draft-ch13-1/reject" && method === "POST") {
-      return jsonResponse({ ...draftQuestion, status: "rejected" });
+    const draftRejectMatch = path.match(/^\/api\/teacher\/question-banks\/drafts\/([^/]+)\/reject$/);
+    if (draftRejectMatch && method === "POST") {
+      const draftId = decodeURIComponent(draftRejectMatch[1]);
+      const existing = questionDrafts.find((draft) => draft.id === draftId);
+      if (!existing) return jsonResponse({ detail: "Draft not found" }, 404);
+      const updated = { ...existing, status: "rejected" };
+      questionDrafts = questionDrafts.map((draft) => (draft.id === draftId ? updated : draft));
+      return jsonResponse(updated);
     }
 
     if (path === "/api/teacher/classes" && method === "POST") {
@@ -1333,14 +1380,16 @@ describe("LegacyTeacherApp", () => {
     fireEvent.click(screen.getByRole("button", { name: "撤销选中正式题" }));
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/questions/question-ch13-1/revoke-to-draft"));
 
-    fireEvent.click(screen.getByRole("button", { name: "修改" }));
+    const reviewPanel = screen.getByRole("region", { name: "待审队列" });
+    const revokedDraftCard = await within(reviewPanel).findByRole("button", { name: /为什么干燥有色布条放入氯气中不明显褪色/ });
+    fireEvent.click(within(revokedDraftCard).getByRole("button", { name: "修改" }));
     fireEvent.change(screen.getByLabelText("题干"), { target: { value: "修改后的氯水漂白性题干？" } });
     fireEvent.change(screen.getByLabelText("答案"), { target: { value: "B" } });
     fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
 
-    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/drafts/draft-ch13-1"));
+    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/drafts/draft-from-question-ch13-1"));
     const updateDraftCall = fetchMock.mock.calls.find(
-      (call) => requestUrl(call[0]).pathname === "/api/teacher/question-banks/drafts/draft-ch13-1" && String(call[1]?.method || "GET").toUpperCase() === "PATCH",
+      (call) => requestUrl(call[0]).pathname === "/api/teacher/question-banks/drafts/draft-from-question-ch13-1" && String(call[1]?.method || "GET").toUpperCase() === "PATCH",
     );
     expect(updateDraftCall).toBeTruthy();
     expect(JSON.parse(String(updateDraftCall?.[1]?.body))).toMatchObject({
@@ -1368,16 +1417,17 @@ describe("LegacyTeacherApp", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "入库选中待审题" }));
-    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/drafts/draft-ch13-1/publish"));
+    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/drafts/draft-from-question-ch13-1/publish"));
     expect(screen.queryByText("教师审核通过，题目已入库。")).toBeNull();
-    expect(await screen.findByText("为什么干燥有色布条放入氯气中不明显褪色？")).toBeTruthy();
+    expect(await screen.findByText("修改后的氯水漂白性题干？")).toBeTruthy();
 
     const paths = requestPaths(fetchMock);
     expect(paths).toContain("/api/teacher/question-banks/drafts?point_node_id=point-ch13-bleach&canonical_point_id=canon-bleach");
     expect(paths.some((path) => path.startsWith("/api/teacher/question-banks/questions?") && path.includes("status_filter=published"))).toBe(true);
     expect(paths).toContain("/api/teacher/question-banks/questions/question-ch13-1/revoke-to-draft");
     expect(paths.some((path) => path.startsWith("/api/teacher/question-banks/drafts/draft-ch13-1/reject"))).toBe(false);
-    expect(paths).toContain("/api/teacher/question-banks/drafts/draft-ch13-1/publish");
+    expect(paths).toContain("/api/teacher/question-banks/drafts/draft-from-question-ch13-1/publish");
+    expect(paths).not.toContain("/api/teacher/question-banks/drafts/draft-ch13-1/publish");
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 
