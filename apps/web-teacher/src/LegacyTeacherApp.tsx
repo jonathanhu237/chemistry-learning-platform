@@ -2155,9 +2155,6 @@ function QuestionsPage() {
                 </div>
                 <div className="legacy-question-panel-actions">
                   <span>{questionTypes.length} 类题型</span>
-                  <TeacherButton type="primary" htmlType="submit" className="primary-button legacy-question-generate-button" disabled={generating || !selectedPoint}>
-                    {generating ? "生成中..." : "生成待审题"}
-                  </TeacherButton>
                 </div>
               </div>
               <PointContentSummary detail={detailState.data} loading={detailState.loading} />
@@ -2184,6 +2181,11 @@ function QuestionsPage() {
                 教师要求
                 <TeacherInput.TextArea value={prompt} onChange={(event) => setPrompt(event.target.value)} rows={3} />
               </label>
+              <div className="legacy-question-submit-row">
+                <TeacherButton type="primary" htmlType="submit" className="primary-button legacy-question-generate-button" disabled={generating || !selectedPoint}>
+                  {generating ? "生成中..." : "生成待审题"}
+                </TeacherButton>
+              </div>
             </form>
             <section className="legacy-question-library-transfer" aria-label="题库流转">
               <section className="legacy-question-review-panel" aria-label="待审队列">

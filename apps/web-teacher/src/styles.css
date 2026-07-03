@@ -845,9 +845,14 @@ p {
 }
 
 .legacy-question-generate-button.primary-button {
-  min-width: 128px;
-  min-height: 34px;
-  padding: 6px 10px;
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 12px;
+}
+
+.legacy-question-submit-row {
+  display: grid;
+  min-width: 0;
 }
 
 .legacy-question-point-list {
