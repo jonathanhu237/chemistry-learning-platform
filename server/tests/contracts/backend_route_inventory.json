@@ -297,6 +297,12 @@
       "owner": "student-api"
     },
     {
+      "method": "POST",
+      "path": "/api/teacher/accounts/teachers",
+      "name": "teacher_create_teacher_account",
+      "owner": "teacher-api"
+    },
+    {
       "method": "GET",
       "path": "/api/teacher/ai-configuration",
       "name": "teacher_get_ai_configuration",

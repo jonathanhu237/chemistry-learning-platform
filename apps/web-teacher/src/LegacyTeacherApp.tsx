@@ -6,6 +6,7 @@ import {
   changeCurrentPassword,
   changeCatalogPointMediaBinding,
   createCatalogNode,
+  createTeacherAccount,
   createTeacherClass,
   createTeacherClassStudent,
   generateLegacyPointQuestions,
@@ -59,6 +60,7 @@ import {
   TeacherButton,
   TeacherCard,
   TeacherContent,
+  TeacherDrawer,
   TeacherEmptyState,
   TeacherForm,
   TeacherHeader,
@@ -92,7 +94,7 @@ const forbiddenPathSegments = [
   "/import",
 ];
 
-type RouteKey = "experiments" | "classes" | "questions" | "analytics" | "reports" | "aiConfig";
+type RouteKey = "experiments" | "classes" | "questions" | "analytics" | "reports";
 type ObjectiveQuestionType = Question["question_type"];
 
 const navItems: Array<{ key: RouteKey; label: string; path: string }> = [
@@ -152,7 +154,6 @@ function isForbiddenPath(path: string): boolean {
 }
 
 function routeFromPath(path: string): RouteKey {
-  if (path.startsWith("/ai-config")) return "aiConfig";
   if (path.startsWith("/classes")) return "classes";
   if (path.startsWith("/questions")) return "questions";
   if (path.startsWith("/analytics")) return "analytics";
@@ -174,6 +175,7 @@ function LegacyTeacherAppContent() {
   const [checkingSession, setCheckingSession] = useState(Boolean(getAuthToken()));
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aiConfigOpen, setAiConfigOpen] = useState(false);
 
   useEffect(() => {
     if (!getAuthToken()) return;
@@ -199,6 +201,12 @@ function LegacyTeacherAppContent() {
   }, [path]);
 
   useEffect(() => {
+    if (!path.startsWith("/ai-config")) return;
+    setAiConfigOpen(true);
+    navigate("/experiments");
+  }, [path]);
+
+  useEffect(() => {
     if (!userMenuOpen) return;
     const closeMenu = () => setUserMenuOpen(false);
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -216,7 +224,7 @@ function LegacyTeacherAppContent() {
   if (!user) return <LoginScreen onLogin={setUser} />;
 
   const activeRoute = routeFromPath(isForbiddenPath(path) ? "/experiments" : path);
-  const activeLabel = activeRoute === "aiConfig" ? "AI 配置" : navItems.find((item) => item.key === activeRoute)?.label || "实验管理";
+  const activeLabel = navItems.find((item) => item.key === activeRoute)?.label || "实验管理";
   const logout = () => {
     setAuthToken("");
     window.location.assign("/");
@@ -263,13 +271,13 @@ function LegacyTeacherAppContent() {
                     setUserMenuOpen(false);
                   }}
                 >
-                  个人设置
+                  设置
                 </button>
                 <button
                   type="button"
                   role="menuitem"
                   onClick={() => {
-                    navigate("/ai-config");
+                    setAiConfigOpen(true);
                     setUserMenuOpen(false);
                   }}
                 >
@@ -282,12 +290,11 @@ function LegacyTeacherAppContent() {
             ) : null}
           </div>
         </TeacherHeader>
-        <PersonalSettingsDialog user={user} open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+        <SettingsSidebar user={user} open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+        <AIConfigurationSidebar open={aiConfigOpen} onClose={() => setAiConfigOpen(false)} />
         <TeacherContent>
           {activeRoute === "questions" ? (
             <QuestionsPage />
-          ) : activeRoute === "aiConfig" ? (
-            <AIConfigurationPage />
           ) : activeRoute === "classes" ? (
             <ClassesPage />
           ) : activeRoute === "analytics" ? (
@@ -373,38 +380,52 @@ function userRoleLabel(role: User["role"]): string {
   return role === "teacher" ? "教师" : "学生";
 }
 
-function PersonalSettingsDialog({ user, open, onClose }: { user: User; open: boolean; onClose: () => void }) {
+function SettingsSidebar({ user, open, onClose }: { user: User; open: boolean; onClose: () => void }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [notice, setNotice] = useState("");
-  const [error, setError] = useState("");
+  const [passwordNotice, setPasswordNotice] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [teacherUsername, setTeacherUsername] = useState("");
+  const [teacherDisplayName, setTeacherDisplayName] = useState("");
+  const [teacherPassword, setTeacherPassword] = useState("");
+  const [teacherMustChangePassword, setTeacherMustChangePassword] = useState(true);
+  const [teacherNotice, setTeacherNotice] = useState("");
+  const [teacherError, setTeacherError] = useState("");
+  const [creatingTeacher, setCreatingTeacher] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
-    setNotice("");
-    setError("");
+    setPasswordNotice("");
+    setPasswordError("");
     setSaving(false);
+    setTeacherUsername("");
+    setTeacherDisplayName("");
+    setTeacherPassword("");
+    setTeacherMustChangePassword(true);
+    setTeacherNotice("");
+    setTeacherError("");
+    setCreatingTeacher(false);
   }, [open]);
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  const submitPassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setNotice("");
-    setError("");
+    setPasswordNotice("");
+    setPasswordError("");
     if (!currentPassword) {
-      setError("请输入当前密码。");
+      setPasswordError("请输入当前密码。");
       return;
     }
     if (newPassword.length < 8) {
-      setError("新密码至少需要 8 位。");
+      setPasswordError("新密码至少需要 8 位。");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("两次输入的新密码不一致。");
+      setPasswordError("两次输入的新密码不一致。");
       return;
     }
     setSaving(true);
@@ -413,70 +434,188 @@ function PersonalSettingsDialog({ user, open, onClose }: { user: User; open: boo
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setNotice("个人密码已更新。");
+      setPasswordNotice("个人密码已更新。");
     } catch (caught) {
-      setError(legacyTeacherErrorMessage(caught));
+      setPasswordError(legacyTeacherErrorMessage(caught));
     } finally {
       setSaving(false);
     }
   };
 
+  const submitTeacher = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setTeacherNotice("");
+    setTeacherError("");
+    const username = teacherUsername.trim();
+    const displayName = teacherDisplayName.trim();
+    if (!username) {
+      setTeacherError("请输入教师账号。");
+      return;
+    }
+    if (!displayName) {
+      setTeacherError("请输入教师姓名。");
+      return;
+    }
+    if (teacherPassword.length < 8) {
+      setTeacherError("初始密码至少需要 8 位。");
+      return;
+    }
+
+    setCreatingTeacher(true);
+    try {
+      await createTeacherAccount({
+        username,
+        display_name: displayName,
+        password: teacherPassword,
+        must_change_password: teacherMustChangePassword,
+      });
+      setTeacherUsername("");
+      setTeacherDisplayName("");
+      setTeacherPassword("");
+      setTeacherMustChangePassword(true);
+      setTeacherNotice("已添加教师账号。");
+    } catch (caught) {
+      const message = caught instanceof Error && caught.message === "Teacher username already exists" ? "教师账号已存在。" : legacyTeacherErrorMessage(caught);
+      setTeacherError(message);
+    } finally {
+      setCreatingTeacher(false);
+    }
+  };
+
+  const busy = saving || creatingTeacher;
+
   return (
-    <TeacherModal className="legacy-create-dialog legacy-profile-dialog" title="个人设置" open={open} footer={null} onCancel={onClose} maskClosable={!saving}>
-      <div className="legacy-profile-summary" aria-label="当前账号">
-        <div>
-          <span>账号</span>
-          <strong>{user.username}</strong>
+    <TeacherDrawer
+      className="legacy-profile-sidebar legacy-settings-sidebar"
+      title="设置"
+      open={open}
+      onClose={onClose}
+      placement="right"
+      width="min(420px, calc(100vw - 24px))"
+      maskClosable={!busy}
+      keyboard={!busy}
+      destroyOnHidden
+    >
+      <section className="legacy-profile-sidebar-body legacy-settings-sidebar-body" data-testid="teacher-settings-sidebar" aria-label="设置">
+        <div className="legacy-profile-account-card" aria-label="当前账号">
+          <div className="legacy-profile-avatar" aria-hidden="true">
+            {(user.display_name || user.username).slice(0, 1).toUpperCase()}
+          </div>
+          <div>
+            <span>当前账号</span>
+            <strong>{user.display_name || user.username}</strong>
+            <small>{user.username}</small>
+          </div>
         </div>
-        <div>
-          <span>姓名</span>
-          <strong>{user.display_name || user.username}</strong>
-        </div>
-        <div>
-          <span>身份</span>
-          <strong>{userRoleLabel(user.role)}</strong>
-        </div>
-      </div>
-      <form className="legacy-profile-password-form" onSubmit={submit}>
-        <label>
-          当前密码
-          <TeacherInput.Password
-            aria-label="当前密码"
-            autoComplete="current-password"
-            value={currentPassword}
-            onChange={(event) => setCurrentPassword(event.target.value)}
-          />
-        </label>
-        <label>
-          新密码
-          <TeacherInput.Password
-            aria-label="新密码"
-            autoComplete="new-password"
-            value={newPassword}
-            onChange={(event) => setNewPassword(event.target.value)}
-          />
-        </label>
-        <label>
-          确认新密码
-          <TeacherInput.Password
-            aria-label="确认新密码"
-            autoComplete="new-password"
-            value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
-          />
-        </label>
-        {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
-        {error ? <ErrorBlock compact>{error}</ErrorBlock> : null}
-        <div className="legacy-create-dialog-actions">
-          <TeacherButton type="default" className="legacy-secondary-button" onClick={onClose} disabled={saving}>
-            取消
-          </TeacherButton>
-          <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={saving}>
-            {saving ? "保存中..." : "保存密码"}
-          </TeacherButton>
-        </div>
-      </form>
-    </TeacherModal>
+
+        <dl className="legacy-profile-meta-list">
+          <div>
+            <dt>身份</dt>
+            <dd>{userRoleLabel(user.role)}</dd>
+          </div>
+          <div>
+            <dt>账号类型</dt>
+            <dd>后台账号</dd>
+          </div>
+        </dl>
+
+        <form className="legacy-profile-password-form" onSubmit={submitPassword}>
+          <div className="legacy-profile-form-head">
+            <strong>修改密码</strong>
+            <span>保存后请使用新密码登录。</span>
+          </div>
+          <label>
+            当前密码
+            <TeacherInput.Password
+              aria-label="当前密码"
+              autoComplete="current-password"
+              autoFocus={open}
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+            />
+          </label>
+          <label>
+            新密码
+            <TeacherInput.Password
+              aria-label="新密码"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+            />
+          </label>
+          <label>
+            确认新密码
+            <TeacherInput.Password
+              aria-label="确认新密码"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+            />
+          </label>
+          {passwordNotice ? <NoticeBlock>{passwordNotice}</NoticeBlock> : null}
+          {passwordError ? <ErrorBlock compact>{passwordError}</ErrorBlock> : null}
+          <div className="legacy-profile-sidebar-actions">
+            <TeacherButton type="default" className="legacy-secondary-button" onClick={onClose} disabled={busy}>
+              取消
+            </TeacherButton>
+            <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={saving}>
+              {saving ? "保存中..." : "保存密码"}
+            </TeacherButton>
+          </div>
+        </form>
+
+        <form className="legacy-profile-password-form legacy-settings-teacher-form" onSubmit={submitTeacher}>
+          <div className="legacy-profile-form-head">
+            <strong>添加教师账号</strong>
+            <span>新老师可使用初始密码进入后台。</span>
+          </div>
+          <label>
+            教师账号
+            <TeacherInput
+              aria-label="教师账号"
+              autoComplete="username"
+              value={teacherUsername}
+              onChange={(event) => setTeacherUsername(event.target.value)}
+              placeholder="例如 teacher2"
+            />
+          </label>
+          <label>
+            教师姓名
+            <TeacherInput
+              aria-label="教师姓名"
+              autoComplete="name"
+              value={teacherDisplayName}
+              onChange={(event) => setTeacherDisplayName(event.target.value)}
+              placeholder="例如 李老师"
+            />
+          </label>
+          <label>
+            初始密码
+            <TeacherInput.Password
+              aria-label="初始密码"
+              autoComplete="new-password"
+              value={teacherPassword}
+              onChange={(event) => setTeacherPassword(event.target.value)}
+            />
+          </label>
+          <label className="legacy-settings-switch-row">
+            <TeacherSwitch
+              aria-label="首次登录必须修改密码"
+              checked={teacherMustChangePassword}
+              onChange={(checked) => setTeacherMustChangePassword(checked)}
+            />
+            <span>首次登录必须修改密码</span>
+          </label>
+          {teacherNotice ? <NoticeBlock>{teacherNotice}</NoticeBlock> : null}
+          {teacherError ? <ErrorBlock compact>{teacherError}</ErrorBlock> : null}
+          <div className="legacy-profile-sidebar-actions legacy-settings-single-action">
+            <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={creatingTeacher}>
+              {creatingTeacher ? "添加中..." : "添加教师"}
+            </TeacherButton>
+          </div>
+        </form>
+      </section>
+    </TeacherDrawer>
   );
 }
 
@@ -556,7 +695,8 @@ function ErrorBlock({ children, compact = false }: { children: ReactNode; compac
 
 function aiConnectivityStatusLabel(status?: string | null): string {
   const labels: Record<string, string> = {
-    connected: "已连接",
+    authenticated: "启用",
+    connected: "启用",
     failed: "连接失败",
     not_configured: "未配置",
     stale: "待复检",
@@ -566,6 +706,8 @@ function aiConnectivityStatusLabel(status?: string | null): string {
 }
 
 function aiStatusMessageLabel(message?: string | null): string {
+  const normalized = (message || "").trim().toLowerCase();
+  if (normalized === "authenticated" || normalized === "connected") return "启用";
   return (message || "未检测").replaceAll("API Key", "API 密钥");
 }
 
@@ -1136,8 +1278,8 @@ function NodeVisibilityControl({ node, disabled, onToggle }: { node: CatalogQues
         checked={nodeEnabled}
         aria-label="学生端可见"
         disabled={disabled}
-        checkedChildren="开"
-        unCheckedChildren="关"
+        checkedChildren="启用"
+        unCheckedChildren="关闭"
         onChange={() => onToggle(node)}
       />
       <span className="legacy-help-tooltip">
@@ -1450,9 +1592,9 @@ function PointVideoManager({
   );
 }
 
-function AIConfigurationPage() {
+function AIConfigurationSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [reloadKey, setReloadKey] = useState(0);
-  const state = useAsyncData<AIConfigurationResponse>(getAIConfiguration, [reloadKey]);
+  const state = useAsyncData<AIConfigurationResponse | null>(() => (open ? getAIConfiguration() : Promise.resolve(null)), [reloadKey, open]);
   const [baseUrl, setBaseUrl] = useState(deepSeekDefaultBaseUrl);
   const [model, setModel] = useState(deepSeekDefaultModel);
   const [apiKey, setApiKey] = useState("");
@@ -1530,92 +1672,71 @@ function AIConfigurationPage() {
   const configuredKey = state.data?.api_key_configured ? state.data.api_key_fingerprint || "已保存" : "未保存";
 
   return (
-    <PageFrame
-      eyebrow="模型服务"
+    <TeacherDrawer
+      className="legacy-ai-config-sidebar"
       title="AI 模型配置"
-      description="配置 AI 出题和 AI 报告使用的大语言模型。"
-      showHeader={false}
-      testId="teacher-page-ai-config"
+      open={open}
+      onClose={onClose}
+      placement="right"
+      width="min(520px, calc(100vw - 24px))"
+      maskClosable={!saving}
+      keyboard={!saving}
+      destroyOnHidden
     >
-      <div className="legacy-compact-page-title">
-        <span className="legacy-section-kicker">模型服务</span>
-        <h1>AI 模型配置</h1>
-        <p>配置 AI 出题和 AI 报告使用的大语言模型。</p>
-      </div>
-      {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
-      {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
-      <StateBlock loading={state.loading && !state.data} error={state.error}>
-        <div className="legacy-ai-config-grid">
-          <TeacherCard className="legacy-table-card legacy-ai-config-card">
-            <header>
-              <h2>DeepSeek 接入</h2>
-              <span>OpenAI 兼容</span>
-            </header>
-            <form className="legacy-ai-config-form" onSubmit={saveConfig}>
-              <label>
-                接口地址
-                <TeacherInput value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} />
-              </label>
-              <label>
-                模型名称
-                <TeacherInput list="legacy-deepseek-models" value={model} onChange={(event) => setModel(event.target.value)} />
-                <datalist id="legacy-deepseek-models">
-                  <option value="deepseek-v4-flash" />
-                  <option value="deepseek-v4-pro" />
-                </datalist>
-              </label>
-              <label>
-                API 密钥
-                <TeacherInput.Password
-                  aria-label="API 密钥"
-                  autoComplete="off"
-                  value={apiKey}
-                  placeholder={state.data?.api_key_configured ? "留空则保留已保存密钥" : ""}
-                  onChange={(event) => setApiKey(event.target.value)}
-                />
-              </label>
-              <label>
-                连接检测间隔
-                <select value={checkInterval} onChange={(event) => setCheckInterval(Number(event.target.value) || 30)}>
-                  <option value={5}>5 分钟</option>
-                  <option value={15}>15 分钟</option>
-                  <option value={30}>30 分钟</option>
-                  <option value={60}>60 分钟</option>
-                  <option value={180}>180 分钟</option>
-                </select>
-              </label>
-              <fieldset className="legacy-ai-feature-fieldset">
-                <legend>启用范围</legend>
-                {aiConfigFeatureOptions.map((item) => (
-                  <label key={item.key}>
-                    <TeacherSwitch checked={Boolean(enabledFeatures[item.key])} onChange={(checked) => toggleFeature(item.key, checked)} />
-                    <span>{item.label}</span>
-                  </label>
-                ))}
-              </fieldset>
-              <div className="legacy-editor-actions">
-                <TeacherButton
-                  type="default"
-                  className="legacy-secondary-button"
-                  disabled={saving}
-                  onClick={() => {
-                    setBaseUrl(deepSeekDefaultBaseUrl);
-                    setModel(deepSeekDefaultModel);
-                  }}
-                >
-                  使用 DeepSeek 默认值
-                </TeacherButton>
-                <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={saving}>
-                  {saving ? "保存中..." : "保存配置"}
-                </TeacherButton>
-              </div>
-            </form>
-          </TeacherCard>
-          <TeacherCard className="legacy-table-card legacy-ai-status-card">
-            <header>
-              <h2>当前状态</h2>
-              <span>{aiConnectivityStatusLabel(status?.connectivity_status)}</span>
-            </header>
+      <section className="legacy-ai-config-sidebar-body" data-testid="teacher-ai-config-sidebar" aria-label="AI 配置">
+        {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
+        {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
+        <StateBlock loading={state.loading && !state.data} error={state.error}>
+          <div className="legacy-ai-config-provider-card">
+            <div>
+              <span>模型服务</span>
+              <strong>DeepSeek 接入</strong>
+              <small>OpenAI 兼容接口，用于 AI 出题和 AI 报告。</small>
+            </div>
+            <em>{aiConnectivityStatusLabel(status?.connectivity_status)}</em>
+          </div>
+          <form className="legacy-ai-config-form" onSubmit={saveConfig}>
+            <label>
+              接口地址
+              <TeacherInput value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} />
+            </label>
+            <label>
+              模型名称
+              <TeacherInput list="legacy-deepseek-models" value={model} onChange={(event) => setModel(event.target.value)} />
+              <datalist id="legacy-deepseek-models">
+                <option value="deepseek-v4-flash" />
+                <option value="deepseek-v4-pro" />
+              </datalist>
+            </label>
+            <label>
+              API 密钥
+              <TeacherInput.Password
+                aria-label="API 密钥"
+                autoComplete="off"
+                value={apiKey}
+                placeholder={state.data?.api_key_configured ? "留空则保留已保存密钥" : ""}
+                onChange={(event) => setApiKey(event.target.value)}
+              />
+            </label>
+            <label>
+              连接检测间隔
+              <select value={checkInterval} onChange={(event) => setCheckInterval(Number(event.target.value) || 30)}>
+                <option value={5}>5 分钟</option>
+                <option value={15}>15 分钟</option>
+                <option value={30}>30 分钟</option>
+                <option value={60}>60 分钟</option>
+                <option value={180}>180 分钟</option>
+              </select>
+            </label>
+            <fieldset className="legacy-ai-feature-fieldset">
+              <legend>启用范围</legend>
+              {aiConfigFeatureOptions.map((item) => (
+                <label key={item.key}>
+                  <TeacherSwitch checked={Boolean(enabledFeatures[item.key])} onChange={(checked) => toggleFeature(item.key, checked)} />
+                  <span>{item.label}</span>
+                </label>
+              ))}
+            </fieldset>
             <dl className="legacy-ai-status-list">
               <div>
                 <dt>模型</dt>
@@ -1640,10 +1761,26 @@ function AIConfigurationPage() {
                 </dd>
               </div>
             </dl>
-          </TeacherCard>
-        </div>
-      </StateBlock>
-    </PageFrame>
+            <div className="legacy-ai-config-sidebar-actions">
+              <TeacherButton
+                type="default"
+                className="legacy-secondary-button"
+                disabled={saving}
+                onClick={() => {
+                  setBaseUrl(deepSeekDefaultBaseUrl);
+                  setModel(deepSeekDefaultModel);
+                }}
+              >
+                使用默认值
+              </TeacherButton>
+              <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={saving}>
+                {saving ? "保存中..." : "保存配置"}
+              </TeacherButton>
+            </div>
+          </form>
+        </StateBlock>
+      </section>
+    </TeacherDrawer>
   );
 }
 
@@ -2115,11 +2252,6 @@ function ClassesPage() {
       showHeader={false}
       testId="teacher-page-classes"
     >
-      <div className="legacy-compact-page-title">
-        <span className="legacy-section-kicker">班级与学生</span>
-        <h1>班级管理</h1>
-        <p>维护教师后台可管理的班级与学生名单，学生使用账号密码登录后关联到对应班级。</p>
-      </div>
       {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
       {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
       <StateBlock loading={classState.loading && !classState.data} error={classState.error}>
@@ -2504,11 +2636,6 @@ function ReportsPage() {
       showHeader={false}
       testId="teacher-page-reports"
     >
-      <div className="legacy-compact-page-title">
-        <span className="legacy-section-kicker">评价报告生成</span>
-        <h1>评价报告</h1>
-        <p>维护测评报告生成 Prompt，并查看学生提交测评后生成的学习总结与错题讲解。</p>
-      </div>
       {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
       {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
       <StateBlock loading={(promptState.loading && !promptState.data) || (classState.loading && !classState.data)} error={promptState.error || classState.error}>

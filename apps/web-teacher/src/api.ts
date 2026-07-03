@@ -6,6 +6,10 @@ export type User = {
   status: string;
 };
 
+export type TeacherAccount = User & {
+  must_change_password: boolean;
+};
+
 export type LoginResponse = {
   access_token: string;
   token_type: string;
@@ -253,6 +257,15 @@ export function loadCurrentUser(): Promise<User> {
 
 export function changeCurrentPassword(payload: { current_password: string; new_password: string }): Promise<{ ok: boolean }> {
   return postJson<{ ok: boolean }>("/api/auth/password", payload);
+}
+
+export function createTeacherAccount(payload: {
+  username: string;
+  display_name: string;
+  password: string;
+  must_change_password?: boolean;
+}): Promise<TeacherAccount> {
+  return postJson<TeacherAccount>("/api/teacher/accounts/teachers", payload);
 }
 
 export function getTeacherDemoOverview(): Promise<TeacherDemoOverview> {

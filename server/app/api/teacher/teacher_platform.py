@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+from sqlalchemy import text
 
 from server.app.auth import AuthUser, is_teacher_role, require_teacher_user
+from server.app.domains.platform.roles import TEACHER_ROLE
 from server.app.domains.assessments.reports import (
     get_global_report_prompt_settings,
     reset_global_report_prompt_settings,
@@ -22,9 +25,87 @@ from server.app.student_assessment_report_schemas import (
     AssessmentReportPromptSettingsResponse,
     AssessmentReportPromptSettingsUpdate,
 )
+from server.app.infrastructure.database import db_session
+from server.app.security import hash_password
 
 
 router = APIRouter(prefix="/api/teacher", tags=["teacher-platform"])
+
+
+class TeacherAccountCreateRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    display_name: str = Field(min_length=1, max_length=80)
+    password: str = Field(min_length=8, max_length=128)
+    must_change_password: bool = True
+
+
+class TeacherAccountResponse(BaseModel):
+    id: str
+    username: str
+    role: str
+    display_name: str
+    status: str
+    must_change_password: bool
+
+
+@router.post("/accounts/teachers", response_model=TeacherAccountResponse, status_code=status.HTTP_201_CREATED)
+async def teacher_create_teacher_account(
+    payload: TeacherAccountCreateRequest,
+    user: AuthUser = Depends(require_teacher_user),
+) -> TeacherAccountResponse:
+    if not is_teacher_role(user.role):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teacher role is required")
+
+    username = payload.username.strip()
+    display_name = payload.display_name.strip()
+    if not username:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Teacher username is required")
+    if not display_name:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Teacher display name is required")
+
+    with db_session() as session:
+        existing = session.execute(
+            text("SELECT id FROM app_users WHERE username = :username"),
+            {"username": username},
+        ).first()
+        if existing:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Teacher username already exists")
+
+        row = (
+            session.execute(
+                text(
+                    """
+                    INSERT INTO app_users (
+                      username, role, display_name, password_hash, status,
+                      must_change_password, password_version, updated_at
+                    )
+                    VALUES (
+                      :username, :role, :display_name, :password_hash, 'active',
+                      :must_change_password, 1, now()
+                    )
+                    RETURNING id, username, role, display_name, status, must_change_password
+                    """
+                ),
+                {
+                    "username": username,
+                    "role": TEACHER_ROLE,
+                    "display_name": display_name,
+                    "password_hash": hash_password(payload.password),
+                    "must_change_password": payload.must_change_password,
+                },
+            )
+            .mappings()
+            .one()
+        )
+
+    return TeacherAccountResponse(
+        id=str(row["id"]),
+        username=str(row["username"]),
+        role=str(row["role"]),
+        display_name=str(row["display_name"]),
+        status=str(row["status"]),
+        must_change_password=bool(row["must_change_password"]),
+    )
 
 
 @router.get("/platform-settings", response_model=PlatformSettingsResponse)

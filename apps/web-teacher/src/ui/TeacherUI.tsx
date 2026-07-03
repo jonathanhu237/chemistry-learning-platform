@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   ConfigProvider,
+  Drawer,
   Empty,
   Form,
   Input,
@@ -19,6 +20,7 @@ import {
   type AlertProps,
   type ButtonProps,
   type CardProps,
+  type DrawerProps,
   type ModalProps,
   type SelectProps,
   type SwitchProps,
@@ -176,6 +178,10 @@ export function TeacherMetricGrid({ metrics }: { metrics: Array<{ label: string;
 
 export function TeacherModal({ className, ...props }: ModalProps) {
   return <Modal className={cx("teacher-ui-modal", className)} {...props} />;
+}
+
+export function TeacherDrawer({ className, ...props }: DrawerProps) {
+  return <Drawer className={cx("teacher-ui-drawer", className)} {...props} />;
 }
 
 export const TeacherForm = Form;

@@ -94,7 +94,8 @@ test.describe("legacy teacher/student browser flows", () => {
 
     await page.getByTestId("teacher-nav-classes").click();
     await expect(page.getByTestId("teacher-page-classes")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "班级管理" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "班级管理" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "班级列表" })).toBeVisible();
     await expectNoVisibleLegacyError(page);
 
     await page.getByTestId("teacher-nav-questions").click();
@@ -110,7 +111,8 @@ test.describe("legacy teacher/student browser flows", () => {
 
     await page.getByTestId("teacher-nav-reports").click();
     await expect(page.getByTestId("teacher-page-reports")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "评价报告" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "评价报告" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "报告生成 Prompt" })).toBeVisible();
     await expectNoVisibleLegacyError(page);
 
     await page.goto(`${teacherUrl}/videos`);
@@ -119,29 +121,31 @@ test.describe("legacy teacher/student browser flows", () => {
 
     await page.locator(".legacy-user-menu-button").click();
     await page.getByRole("menuitem", { name: "AI 配置" }).click();
-    await expect(page.getByTestId("teacher-page-ai-config")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "AI 模型配置" })).toBeVisible();
-    await expect(page.getByLabel("模型名称", { exact: true })).toBeVisible();
+    const aiConfigSidebar = page.getByTestId("teacher-ai-config-sidebar");
+    await expect(aiConfigSidebar).toBeVisible();
+    await expect(page.getByRole("heading", { name: "AI 模型配置" })).toHaveCount(0);
+    await expect(aiConfigSidebar.getByLabel("模型名称", { exact: true })).toBeVisible();
     await expectNoVisibleLegacyError(page);
   });
 
-  test("teacher can open personal settings and validate password changes", async ({ page }) => {
+  test("teacher can open settings and validate password changes", async ({ page }) => {
     await loginTeacher(page);
 
     await page.locator(".legacy-user-menu-button").click();
-    await page.getByRole("menuitem", { name: "个人设置" }).click();
-    const dialog = page.getByRole("dialog", { name: "个人设置" });
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByText(teacherUsername)).toBeVisible();
+    await page.getByRole("menuitem", { name: "设置" }).click();
+    const sidebar = page.getByTestId("teacher-settings-sidebar");
+    await expect(sidebar).toBeVisible();
+    await expect(sidebar.getByText(teacherUsername)).toBeVisible();
+    await expect(sidebar.getByText("添加教师账号")).toBeVisible();
 
-    await dialog.getByLabel("当前密码", { exact: true }).fill(teacherPassword);
-    await dialog.getByLabel("新密码", { exact: true }).fill("new-password-123");
-    await dialog.getByLabel("确认新密码", { exact: true }).fill("new-password-456");
-    await dialog.getByRole("button", { name: "保存密码" }).click();
-    await expect(dialog.getByText("两次输入的新密码不一致。")).toBeVisible();
+    await sidebar.getByLabel("当前密码", { exact: true }).fill(teacherPassword);
+    await sidebar.getByLabel("新密码", { exact: true }).fill("new-password-123");
+    await sidebar.getByLabel("确认新密码", { exact: true }).fill("new-password-456");
+    await sidebar.getByRole("button", { name: "保存密码" }).click();
+    await expect(sidebar.getByText("两次输入的新密码不一致。")).toBeVisible();
 
-    await dialog.getByRole("button", { name: "取消" }).click();
-    await expect(dialog).toBeHidden();
+    await sidebar.getByRole("button", { name: "取消" }).click();
+    await expect(sidebar).toBeHidden();
   });
 
   test("teacher can upload and bind a video from the catalog point editor", async ({ page, request }) => {

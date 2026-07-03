@@ -491,6 +491,21 @@ function installTeacherFetchMock() {
       return jsonResponse({ ok: true });
     }
 
+    if (path === "/api/teacher/accounts/teachers" && method === "POST") {
+      const body = JSON.parse(String(init?.body || "{}"));
+      return jsonResponse(
+        {
+          id: "teacher-2",
+          username: body.username,
+          display_name: body.display_name,
+          role: "teacher",
+          status: "active",
+          must_change_password: Boolean(body.must_change_password),
+        },
+        201,
+      );
+    }
+
     if (path === "/api/teacher/ai-configuration") {
       if (method === "PUT") {
         const body = JSON.parse(String(init?.body || "{}"));
@@ -756,7 +771,7 @@ describe("LegacyTeacherApp", () => {
     const userMenuButton = screen.getByRole("button", { name: /王老师/ });
     fireEvent.click(userMenuButton);
     const userMenu = await screen.findByRole("menu");
-    expect(within(userMenu).getAllByRole("menuitem").map((item) => item.textContent?.trim())).toEqual(["个人设置", "AI 配置", "登出"]);
+    expect(within(userMenu).getAllByRole("menuitem").map((item) => item.textContent?.trim())).toEqual(["设置", "AI 配置", "登出"]);
     expect(screen.queryByRole("button", { name: "退出登录" })).toBeNull();
 
     const nav = screen.getByRole("navigation", { name: "后台导航" });
@@ -846,7 +861,7 @@ describe("LegacyTeacherApp", () => {
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 
-  it("lets a teacher change their own password from personal settings", async () => {
+  it("lets a teacher manage settings from the account menu", async () => {
     const fetchMock = installTeacherFetchMock();
     vi.stubGlobal("fetch", fetchMock);
 
@@ -854,24 +869,40 @@ describe("LegacyTeacherApp", () => {
 
     await screen.findByRole("navigation", { name: "当前位置" });
     fireEvent.click(screen.getByRole("button", { name: /王老师/ }));
-    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "个人设置" }));
+    fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "设置" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "个人设置" });
-    expect(within(dialog).getByText("teacher")).toBeTruthy();
-    expect(within(dialog).getByText("教师")).toBeTruthy();
+    const sidebar = await screen.findByTestId("teacher-settings-sidebar");
+    expect(within(sidebar).getByText("teacher")).toBeTruthy();
+    expect(within(sidebar).getByText("教师")).toBeTruthy();
 
-    fireEvent.change(within(dialog).getByLabelText("当前密码"), { target: { value: "old-password" } });
-    fireEvent.change(within(dialog).getByLabelText("新密码"), { target: { value: "new-password-123" } });
-    fireEvent.change(within(dialog).getByLabelText("确认新密码"), { target: { value: "new-password-123" } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "保存密码" }));
+    fireEvent.change(within(sidebar).getByLabelText("当前密码"), { target: { value: "old-password" } });
+    fireEvent.change(within(sidebar).getByLabelText("新密码"), { target: { value: "new-password-123" } });
+    fireEvent.change(within(sidebar).getByLabelText("确认新密码"), { target: { value: "new-password-123" } });
+    fireEvent.click(within(sidebar).getByRole("button", { name: "保存密码" }));
 
-    expect(await within(dialog).findByText("个人密码已更新。")).toBeTruthy();
+    expect(await within(sidebar).findByText("个人密码已更新。")).toBeTruthy();
     const passwordRequest = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/auth/password");
     expect(passwordRequest).toBeTruthy();
     expect(passwordRequest?.[1]?.method).toBe("POST");
     expect(JSON.parse(String(passwordRequest?.[1]?.body))).toEqual({
       current_password: "old-password",
       new_password: "new-password-123",
+    });
+
+    fireEvent.change(within(sidebar).getByLabelText("教师账号"), { target: { value: "teacher2" } });
+    fireEvent.change(within(sidebar).getByLabelText("教师姓名"), { target: { value: "李老师" } });
+    fireEvent.change(within(sidebar).getByLabelText("初始密码"), { target: { value: "teacher-pass-123" } });
+    fireEvent.click(within(sidebar).getByRole("button", { name: "添加教师" }));
+
+    expect(await within(sidebar).findByText("已添加教师账号。")).toBeTruthy();
+    const teacherRequest = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/teacher/accounts/teachers");
+    expect(teacherRequest).toBeTruthy();
+    expect(teacherRequest?.[1]?.method).toBe("POST");
+    expect(JSON.parse(String(teacherRequest?.[1]?.body))).toEqual({
+      username: "teacher2",
+      display_name: "李老师",
+      password: "teacher-pass-123",
+      must_change_password: true,
     });
   });
 
@@ -885,14 +916,15 @@ describe("LegacyTeacherApp", () => {
     fireEvent.click(screen.getByRole("button", { name: /王老师/ }));
     fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitem", { name: "AI 配置" }));
 
-    expect(await screen.findByRole("heading", { name: "AI 模型配置" })).toBeTruthy();
-    expect(await screen.findByDisplayValue("https://api.deepseek.com")).toBeTruthy();
-    expect(screen.getByDisplayValue("deepseek-v4-flash")).toBeTruthy();
+    const sidebar = await screen.findByTestId("teacher-ai-config-sidebar");
+    expect(screen.queryByRole("heading", { name: "AI 模型配置" })).toBeNull();
+    expect(await within(sidebar).findByDisplayValue("https://api.deepseek.com")).toBeTruthy();
+    expect(within(sidebar).getByDisplayValue("deepseek-v4-flash")).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText("API 密钥"), { target: { value: "sk-test-from-ui" } });
-    fireEvent.click(screen.getByRole("button", { name: "保存配置" }));
+    fireEvent.change(within(sidebar).getByLabelText("API 密钥"), { target: { value: "sk-test-from-ui" } });
+    fireEvent.click(within(sidebar).getByRole("button", { name: "保存配置" }));
 
-    expect(await screen.findByText("AI 模型配置已保存。")).toBeTruthy();
+    expect(await within(sidebar).findByText("AI 模型配置已保存。")).toBeTruthy();
     const updateCall = fetchMock.mock.calls.find(
       (call) => requestUrl(call[0]).pathname === "/api/teacher/ai-configuration" && String(call[1]?.method || "GET").toUpperCase() === "PUT",
     );
@@ -1042,7 +1074,8 @@ describe("LegacyTeacherApp", () => {
 
     render(<LegacyTeacherApp />);
 
-    expect(await screen.findByRole("heading", { name: "班级管理" })).toBeTruthy();
+    expect(await screen.findByTestId("teacher-page-classes")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "班级管理" })).toBeNull();
     expect((await screen.findAllByText("无机化学一班")).length).toBeGreaterThan(0);
     expect(await screen.findByText("张三")).toBeTruthy();
     expect(screen.getByText("李四")).toBeTruthy();
@@ -1119,7 +1152,8 @@ describe("LegacyTeacherApp", () => {
 
     render(<LegacyTeacherApp />);
 
-    expect(await screen.findByRole("heading", { name: "评价报告" })).toBeTruthy();
+    expect(await screen.findByTestId("teacher-page-reports")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "评价报告" })).toBeNull();
     expect(await screen.findByText("报告生成 Prompt")).toBeTruthy();
     expect(screen.getByRole("button", { name: "student_name" })).toBeTruthy();
     expect(await screen.findByText("张三")).toBeTruthy();
