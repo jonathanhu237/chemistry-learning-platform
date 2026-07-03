@@ -246,9 +246,15 @@ function LegacyTeacherAppContent() {
       <TeacherMain>
         <TeacherHeader>
           <nav className="legacy-breadcrumb" aria-label="当前位置">
-            <span>后台工作台</span>
-            <span aria-hidden="true">&gt;</span>
-            <strong>{activeLabel}</strong>
+            <ol>
+              <li>
+                <span>后台工作台</span>
+              </li>
+              <li className="legacy-breadcrumb-separator" aria-hidden="true" />
+              <li>
+                <strong>{activeLabel}</strong>
+              </li>
+            </ol>
           </nav>
           <div className="legacy-user-menu" onClick={(event) => event.stopPropagation()}>
             <button
