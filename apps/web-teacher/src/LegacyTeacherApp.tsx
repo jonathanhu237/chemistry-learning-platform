@@ -2709,7 +2709,6 @@ function ClassesPage() {
     [selectedClass?.id, registrationReloadKey],
   );
   const [className, setClassName] = useState("");
-  const [classDescription, setClassDescription] = useState("");
   const [studentId, setStudentId] = useState("");
   const [studentName, setStudentName] = useState("");
   const [classDialogOpen, setClassDialogOpen] = useState(false);
@@ -2774,9 +2773,8 @@ function ClassesPage() {
     setNotice("");
     setActionError("");
     try {
-      const response = await createTeacherClass({ class_name: nextName, description: classDescription.trim() || undefined });
+      const response = await createTeacherClass({ class_name: nextName });
       setClassName("");
-      setClassDescription("");
       setClassDialogOpen(false);
       setSelectedClassId(response.id);
       setReloadKey((value) => value + 1);
@@ -3093,10 +3091,6 @@ function ClassesPage() {
           <label>
             班级名称
             <TeacherInput value={className} onChange={(event) => setClassName(event.target.value)} placeholder="例如：26级本科 1 班" autoFocus />
-          </label>
-          <label>
-            备注
-            <TeacherInput.TextArea value={classDescription} onChange={(event) => setClassDescription(event.target.value)} rows={3} placeholder="选填，用于区分教学班或实验分组。" />
           </label>
           <div className="legacy-create-dialog-actions">
             <TeacherButton type="default" className="legacy-secondary-button" onClick={() => setClassDialogOpen(false)} disabled={creatingClass}>

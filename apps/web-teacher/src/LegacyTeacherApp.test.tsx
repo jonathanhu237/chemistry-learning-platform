@@ -1458,7 +1458,7 @@ describe("LegacyTeacherApp", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "新增班级" }));
     fireEvent.change(await screen.findByLabelText("班级名称"), { target: { value: "无机化学二班" } });
-    fireEvent.change(screen.getByLabelText("备注"), { target: { value: "新增测试班级" } });
+    expect(screen.queryByLabelText("备注")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "创建班级" }));
 
     expect(await screen.findByText("已创建班级。")).toBeTruthy();
@@ -1468,7 +1468,6 @@ describe("LegacyTeacherApp", () => {
     expect(createClassCall).toBeTruthy();
     expect(JSON.parse(String(createClassCall?.[1]?.body))).toEqual({
       class_name: "无机化学二班",
-      description: "新增测试班级",
     });
     expectNoForbiddenGenerationFlows(fetchMock);
   });
