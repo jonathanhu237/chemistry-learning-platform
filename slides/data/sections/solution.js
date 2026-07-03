@@ -1,12 +1,12 @@
 export const solutionSlides = [
   {
-    no: 8,
+    no: 9,
     layout: "chapter",
     section: "02 总体方案",
     title: "总体方案"
   },
   {
-    no: 9,
+    no: 10,
     layout: "systemBlueprint",
     section: "02 总体方案",
     title: "以掌握度驱动实验学习推荐",
@@ -32,7 +32,7 @@ export const solutionSlides = [
     conclusion: "资源、题目、作答、掌握度和推荐在同一平台中持续迭代。"
   },
   {
-    no: 10,
+    no: 11,
     layout: "questionLogic",
     section: "02 总体方案",
     title: "教师可控的题目生成",
@@ -55,7 +55,7 @@ export const solutionSlides = [
     ]
   },
   {
-    no: 11,
+    no: 12,
     layout: "bktUpdate",
     section: "02 总体方案",
     title: "掌握度怎么算",
@@ -76,7 +76,7 @@ export const solutionSlides = [
     ]
   },
   {
-    no: 12,
+    no: 13,
     layout: "recommendationStrategy",
     section: "02 总体方案",
     title: "推荐策略：从知识单元到元素族",

@@ -393,7 +393,7 @@ function PlatformPositionSlide({ slide }) {
       </section>
       <section className="platform-body">
         <section className="resource-base">
-          <p>已有资源基础</p>
+          <p>{slide.statsTitle || "已有资源基础"}</p>
           <div className="resource-numbers">
             {(slide.stats || []).map(([value, label]) => (
               <div key={label}>

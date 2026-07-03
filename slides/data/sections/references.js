@@ -1,22 +1,25 @@
 export const referenceSlides = [
   {
-    no: 14,
+    no: 15,
     layout: "referenceList",
     section: "参考文献",
     title: "参考文献与资料来源",
     references: [
-      ["[1]", "张树永、朱亚先、张剑荣. 本科化学类专业化学实验教学体系改革的思路与实施建议. 《大学化学》, 2018."],
-      ["[2]", "American Chemical Society. Laboratory Curriculum & Skills."],
-      ["[3]", "American Chemical Society. Creating a Safety Culture."],
-      ["[4]", "教育部. 高等学校实验室安全规范. 2023."],
+      ["[1]", "项目内部资料. 元素性质实验—精选实验内容—20260514."],
+      ["[2]", "教育部. 关于加快建设高水平本科教育 全面提高人才培养能力的意见. 2018."],
+      ["[3]", "教育部. 高等学校实验室安全规范. 2023."],
+      ["[4]", "教育部. 高等学校实验室安全分级分类管理办法. 2024."],
       ["[5]", "教育部. 关于开展国家虚拟仿真实验教学项目建设工作的通知. 2018."],
-      ["[6]", "教育部办公厅. 关于2017-2020年开展示范性虚拟仿真实验教学项目建设的通知. 2017."],
-      ["[7]", "中共中央、国务院. 教育强国建设规划纲要（2024-2035年）. 2025."],
-      ["[8]", "教育部等九部门. 关于加快推进教育数字化的意见. 2025."],
-      ["[9]", "陆红叶等. 基于学习通平台的混合式教学在物理化学实验中的实践. 2026."],
-      ["[10]", "陈薇薇等. 环境化学实验创新教学体系的改革探索. 2025."],
-      ["[11]", "韩艳阳、刘珊珊、何涛等. AI助教在无机元素化学教学中的应用. 《大学化学》, 2026."],
-      ["[12]", "项目内部流程 PPT. 元素性质实验—小程序学习流程—20260513. 2026-05-13."]
+      ["[6]", "韩艳阳、刘珊珊、何涛等. AI助教在无机元素化学教学中的应用. 《大学化学》, 2026."],
+      ["[7]", "Black, P.; Wiliam, D. Assessment and Classroom Learning. Assessment in Education, 1998."],
+      ["[8]", "Hattie, J.; Timperley, H. The Power of Feedback. Review of Educational Research, 2007."],
+      ["[9]", "中共中央、国务院. 教育强国建设规划纲要（2024-2035年）. 2025."],
+      ["[10]", "教育部等九部门. 关于加快推进教育数字化的意见. 2025."],
+      ["[11]", "Khor & K. Learning analytics for personalized learning: a systematic review. Education Sciences, 2024."],
+      ["[12]", "Corbett & Anderson. Knowledge tracing: modeling procedural knowledge acquisition. User Modeling and User-Adapted Interaction, 1995."],
+      ["[13]", "Tan 等. LLM-based automatic item generation: a review. International Journal of Assessment Tools in Education, 2025."],
+      ["[14]", "Chan 等. Automatic item generation in STEM using LLM prompting. Computers and Education: Artificial Intelligence, 2024."],
+      ["[15]", "UNESCO. Guidance for generative AI in education and research. 2023."]
     ]
   }
 ];
