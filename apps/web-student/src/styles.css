@@ -1118,6 +1118,7 @@ p {
 
 .legacy-periodic-card,
 .legacy-learning-chapter,
+.legacy-learning-recommendations,
 .legacy-catalog-panel,
 .legacy-profile-index {
   border: 1px solid var(--legacy-line);
@@ -1258,6 +1259,91 @@ p {
 }
 
 .legacy-profile-grid strong {
+  color: var(--legacy-sysu-red);
+}
+
+.legacy-learning-recommendations {
+  margin: 12px 0 0;
+  padding: 14px;
+}
+
+.legacy-learning-recommendations-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--legacy-line);
+  padding-bottom: 10px;
+}
+
+.legacy-learning-recommendations-head h2 {
+  margin: 2px 0 0;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.legacy-learning-recommendation-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.legacy-learning-recommendation-list button {
+  display: grid;
+  min-width: 0;
+  min-height: 128px;
+  align-content: start;
+  gap: 7px;
+  border: 1px solid var(--legacy-line);
+  background: #fff;
+  padding: 10px;
+  text-align: left;
+}
+
+.legacy-learning-recommendation-list button:hover,
+.legacy-learning-recommendation-list button:focus-visible {
+  border-color: var(--legacy-sysu-red);
+  background: var(--legacy-red-050);
+}
+
+.legacy-learning-recommendation-reason,
+.legacy-learning-recommendation-meta {
+  width: fit-content;
+  border: 1px solid #ead3b2;
+  background: #fff8e8;
+  color: #7a4c00;
+  padding: 3px 6px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.legacy-learning-recommendation-list strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--legacy-ink);
+  font-size: 15px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.legacy-learning-recommendation-list small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--legacy-muted);
+  font-size: 12px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.legacy-learning-recommendation-meta {
+  align-self: end;
+  margin-top: auto;
+  border-color: var(--legacy-line);
+  background: var(--legacy-red-050);
   color: var(--legacy-sysu-red);
 }
 
@@ -1762,9 +1848,14 @@ p {
 
   .legacy-periodic-card,
   .legacy-learning-chapter,
+  .legacy-learning-recommendations,
   .legacy-catalog-panel,
   .legacy-profile-index {
     padding: 12px;
+  }
+
+  .legacy-learning-recommendation-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .legacy-drilldown-page {

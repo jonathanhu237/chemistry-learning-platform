@@ -28,6 +28,7 @@ from server.app.student_learning_schemas import (
     StudentLearningPropertyCard,
     StudentLearningPropertySection,
     StudentLearningReferenceMedia,
+    StudentLearningRecommendedPoint,
 )
 
 AREA_ORDER = ["hydrogen", "p", "s", "ds", "d", "f"]
@@ -959,9 +960,174 @@ def _select_learning_profile(
     return enabled[0]
 
 
-def _learning_page_response(*, profiles: list[dict[str, Any]], active: dict[str, Any] | None) -> StudentLearningPageResponse:
+def _ensure_legacy_recommendation_table(session: Any) -> None:
+    session.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS legacy_recommended_video_points (
+              node_id text PRIMARY KEY,
+              sort_order int NOT NULL DEFAULT 0,
+              recommended_by text,
+              recommended_at timestamptz NOT NULL DEFAULT now()
+            )
+            """
+        )
+    )
+
+
+def _recommended_point_reason(row: dict[str, Any]) -> str:
+    score = row.get("mastery_score")
+    if score is not None:
+        numeric_score = float(score)
+        if numeric_score < 60:
+            return "薄弱点位"
+        if numeric_score < 75:
+            return "巩固点位"
+    if row.get("is_teacher_recommended"):
+        return "教师推荐"
+    if int(row.get("media_count") or 0) > 0:
+        return "视频学习"
+    return "建议学习"
+
+
+def _recommended_learning_points(
+    session: Any,
+    *,
+    user: Any,
+    active: dict[str, Any],
+    limit: int = 4,
+) -> list[StudentLearningRecommendedPoint]:
+    chapter_id = str(active.get("chapter_id") or "").strip()
+    if not chapter_id:
+        return []
+    _ensure_legacy_recommendation_table(session)
+    student_id = _student_id(user)
+    rows = session.execute(
+        text(
+            """
+            SELECT
+              n.id AS node_id,
+              n.chapter_id,
+              COALESCE(pc.point_title, n.title) AS point_title,
+              COALESCE(n.summary, pc.phenomenon_explanation, pc.principle_text, pc.principle_equation, '') AS point_summary,
+              COALESCE((
+                WITH RECURSIVE path AS (
+                  SELECT id, parent_id, title, 0 AS depth
+                  FROM experiment_catalog_nodes
+                  WHERE id = n.id
+                  UNION ALL
+                  SELECT parent.id, parent.parent_id, parent.title, path.depth + 1
+                  FROM experiment_catalog_nodes parent
+                  JOIN path ON path.parent_id = parent.id
+                )
+                SELECT jsonb_agg(title ORDER BY depth DESC)
+                FROM path
+              ), '[]'::jsonb) AS catalog_path,
+              mastery.mastery_score,
+              CASE WHEN lr.node_id IS NULL THEN false ELSE true END AS is_teacher_recommended,
+              COALESCE(media_counts.media_count, 0) AS media_count
+            FROM experiment_catalog_nodes n
+            JOIN experiment_catalog_points cp ON cp.id = n.canonical_point_id
+            LEFT JOIN LATERAL (
+              SELECT pc.*
+              FROM experiment_catalog_point_content pc
+              WHERE pc.content_status = 'published'
+                AND (
+                  (n.canonical_point_id IS NOT NULL AND pc.canonical_point_id = n.canonical_point_id)
+                  OR pc.node_id = n.id
+                )
+              ORDER BY CASE WHEN pc.canonical_point_id = n.canonical_point_id THEN 0 ELSE 1 END,
+                       pc.updated_at DESC,
+                       pc.node_id
+              LIMIT 1
+            ) pc ON TRUE
+            LEFT JOIN LATERAL (
+              SELECT spm.mastery_score
+              FROM student_point_mastery spm
+              WHERE spm.student_id = :student_id
+                AND (
+                  spm.point_node_id = n.id
+                  OR (n.canonical_point_id IS NOT NULL AND spm.canonical_point_id = n.canonical_point_id)
+                )
+              ORDER BY CASE WHEN spm.point_node_id = n.id THEN 0 ELSE 1 END,
+                       spm.updated_at DESC
+              LIMIT 1
+            ) mastery ON TRUE
+            LEFT JOIN legacy_recommended_video_points lr ON lr.node_id = n.id
+            LEFT JOIN LATERAL (
+              SELECT COUNT(*) AS media_count
+              FROM experiment_catalog_point_media_bindings mb
+              JOIN media_assets ma ON ma.id = mb.media_asset_id
+              WHERE ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
+                  OR mb.node_id = n.id)
+                AND ma.upload_status = 'ready'
+                AND COALESCE(ma.lifecycle_status, 'active') = 'active'
+                AND mb.binding_status = 'published'
+                AND COALESCE(mb.metadata->>'placeholder_video', 'false') <> 'true'
+                AND COALESCE(mb.metadata->>'coverage_kind', ma.metadata->>'seed_kind', '') <> 'placeholder_video'
+                AND COALESCE(ma.original_file_name, '') <> 'no-video-placeholder.mp4'
+            ) media_counts ON TRUE
+            WHERE n.node_kind = 'point'
+              AND n.status = 'published'
+              AND n.chapter_id = :chapter_id
+              AND cp.status = 'published'
+              AND (
+                WITH RECURSIVE path AS (
+                  SELECT id, parent_id, status
+                  FROM experiment_catalog_nodes
+                  WHERE id = n.id
+                  UNION ALL
+                  SELECT parent.id, parent.parent_id, parent.status
+                  FROM experiment_catalog_nodes parent
+                  JOIN path ON path.parent_id = parent.id
+                )
+                SELECT COALESCE(bool_and(status = 'published'), false)
+                FROM path
+              )
+            ORDER BY
+              CASE
+                WHEN mastery.mastery_score IS NOT NULL AND mastery.mastery_score < 60 THEN 0
+                WHEN lr.node_id IS NOT NULL THEN 1
+                WHEN mastery.mastery_score IS NOT NULL AND mastery.mastery_score < 75 THEN 2
+                WHEN mastery.mastery_score IS NULL THEN 3
+                ELSE 4
+              END,
+              mastery.mastery_score ASC NULLS LAST,
+              CASE WHEN COALESCE(media_counts.media_count, 0) > 0 THEN 0 ELSE 1 END,
+              lr.sort_order,
+              n.display_order,
+              n.id
+            LIMIT :limit
+            """
+        ),
+        {"student_id": student_id, "chapter_id": chapter_id, "limit": max(1, min(limit, 8))},
+    ).mappings()
+    points: list[StudentLearningRecommendedPoint] = []
+    for row in rows:
+        item = dict(row)
+        points.append(
+            StudentLearningRecommendedPoint(
+                node_id=str(item["node_id"]),
+                chapter_id=str(item["chapter_id"]),
+                title=str(item.get("point_title") or item["node_id"]),
+                summary=str(item.get("point_summary") or ""),
+                catalog_path=[str(value) for value in item.get("catalog_path") or [] if str(value).strip()],
+                reason=_recommended_point_reason(item),
+                mastery_score=float(item["mastery_score"]) if item.get("mastery_score") is not None else None,
+                has_video=int(item.get("media_count") or 0) > 0,
+            )
+        )
+    return points
+
+
+def _learning_page_response(
+    *,
+    profiles: list[dict[str, Any]],
+    active: dict[str, Any] | None,
+    recommended_points: list[StudentLearningRecommendedPoint] | None = None,
+) -> StudentLearningPageResponse:
     if not active:
-        return StudentLearningPageResponse(recommended_profile_id=None, profiles=[], active_profile=None)
+        return StudentLearningPageResponse(recommended_profile_id=None, profiles=[], active_profile=None, recommended_points=[])
 
     sections = [section for section in active.get("property_sections") or [] if isinstance(section, dict)]
     hero = active.get("hero") if isinstance(active.get("hero"), dict) else {}
@@ -989,21 +1155,24 @@ def _learning_page_response(*, profiles: list[dict[str, Any]], active: dict[str,
         recommended_profile_id=str(active.get("profile_id") or ""),
         profiles=[_profile_summary(profile) for profile in profiles if profile.get("enabled", True)],
         active_profile=active_profile,
+        recommended_points=recommended_points or [],
     )
 
 
 def get_student_learning_page(user: Any, profile_id: str | None = None) -> StudentLearningPageResponse:
     profiles = _learning_profiles()
+    recommended_points: list[StudentLearningRecommendedPoint] = []
     with db_session() as session:
         active = _select_learning_profile(profiles=profiles, profile_id=profile_id, session=session, user=user)
         if active:
+            recommended_points = _recommended_learning_points(session, user=user, active=active)
             _record_learning_event(
                 session,
                 user=user,
                 event_type="learning_profile_opened",
                 chapter_id=str(active.get("chapter_id") or "") or None,
             )
-    return _learning_page_response(profiles=profiles, active=active)
+    return _learning_page_response(profiles=profiles, active=active, recommended_points=recommended_points)
 
 
 def get_student_learning_page_by_chapter(*, chapter_id: str) -> StudentLearningPageResponse:
@@ -1016,7 +1185,7 @@ def get_student_learning_page_by_chapter(*, chapter_id: str) -> StudentLearningP
         ),
         None,
     )
-    return _learning_page_response(profiles=profiles, active=active)
+    return _learning_page_response(profiles=profiles, active=active, recommended_points=[])
 
 
 def _published_student_media_row(asset_id: str) -> dict[str, Any]:

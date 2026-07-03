@@ -269,6 +269,18 @@ function installStudentFetchMock() {
         recommended_profile_id: "halogens-17",
         profiles: [learningProfile(false), alkaliProfile()],
         active_profile: learningProfile(true),
+        recommended_points: [
+          {
+            node_id: "point-1",
+            chapter_id: "chapter-halogen",
+            title: "氯水漂白性实验",
+            summary: "优先复盘氯水氧化性与漂白性。",
+            catalog_path: ["第13章 卤族元素", "氯的氧化性", "氯水漂白性实验"],
+            reason: "薄弱点位",
+            mastery_score: 42,
+            has_video: true,
+          },
+        ],
       });
     }
     if (url.includes("/api/student/learning-page")) {
@@ -276,6 +288,18 @@ function installStudentFetchMock() {
         recommended_profile_id: "halogens-17",
         profiles: [learningProfile(false), alkaliProfile()],
         active_profile: null,
+        recommended_points: [
+          {
+            node_id: "point-1",
+            chapter_id: "chapter-halogen",
+            title: "氯水漂白性实验",
+            summary: "优先复盘氯水氧化性与漂白性。",
+            catalog_path: ["第13章 卤族元素", "氯的氧化性", "氯水漂白性实验"],
+            reason: "薄弱点位",
+            mastery_score: 42,
+            has_video: true,
+          },
+        ],
       });
     }
     if (url.includes("/api/student/chapters/chapter-halogen/catalog")) {
@@ -827,9 +851,13 @@ describe("LegacyStudentApp", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "学习" }));
     expect(await screen.findByRole("heading", { name: "元素周期表" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "优先复盘这些实验点位" })).toBeTruthy();
+    expect(screen.getByText("薄弱点位")).toBeTruthy();
+    expect(screen.getByText("已配视频")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Cl 氯" }));
     expect(await screen.findByText("当前章节：卤素")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "优先复盘这些实验点位" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "元素周期表" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "返回上一级目录" })).toBeTruthy();
     expect(await screen.findByText("当前元素")).toBeTruthy();

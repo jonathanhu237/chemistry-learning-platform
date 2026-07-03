@@ -128,10 +128,22 @@ export type StudentLearningProfile = StudentLearningProfileSummary & {
   }>;
 };
 
+export type StudentLearningRecommendedPoint = {
+  node_id: string;
+  chapter_id: string;
+  title: string;
+  summary?: string;
+  catalog_path?: string[];
+  reason?: string;
+  mastery_score?: number | null;
+  has_video?: boolean;
+};
+
 export type StudentLearningPageResponse = {
   recommended_profile_id?: string | null;
   profiles: StudentLearningProfileSummary[];
   active_profile?: StudentLearningProfile | null;
+  recommended_points?: StudentLearningRecommendedPoint[];
 };
 
 export type StudentCatalogNodeKind = "directory" | "point";

@@ -38,6 +38,7 @@ import {
   type StudentLearningElementBadge,
   type StudentLearningPageResponse,
   type StudentLearningProfile,
+  type StudentLearningRecommendedPoint,
 } from "./api";
 import {
   findProfileForElement,
@@ -678,6 +679,10 @@ function LearningRootPage() {
       {error ? <div className="legacy-error">{error}</div> : null}
       {!loading && !error ? (
         <>
+          <LearningRecommendationPanel
+            points={page?.recommended_points || []}
+            from={page?.active_profile ? chapterRoute(page.active_profile.profile_id, page.active_profile.default_element_symbol || page.active_profile.element_symbols?.[0]) : "/learn"}
+          />
           <PeriodicTableSelector
             selectedArea={selectedArea}
             onSelectArea={(areaId) => {
@@ -690,6 +695,31 @@ function LearningRootPage() {
           <LearningProfileIndex profiles={filteredProfiles} selectedArea={selectedArea} />
         </>
       ) : null}
+    </section>
+  );
+}
+
+function LearningRecommendationPanel({ points, from }: { points: StudentLearningRecommendedPoint[]; from: string }) {
+  const visiblePoints = points.slice(0, 4);
+  if (!visiblePoints.length) return null;
+  return (
+    <section className="legacy-learning-recommendations" aria-label="推荐学习">
+      <div className="legacy-learning-recommendations-head">
+        <div>
+          <span className="eyebrow">推荐学习</span>
+          <h2>优先复盘这些实验点位</h2>
+        </div>
+      </div>
+      <div className="legacy-learning-recommendation-list">
+        {visiblePoints.map((point) => (
+          <button key={point.node_id} type="button" onClick={() => navigate(pointRoute(point.node_id, from))}>
+            <span className="legacy-learning-recommendation-reason">{point.reason || "建议学习"}</span>
+            <strong>{point.title}</strong>
+            <small>{point.catalog_path?.slice(0, -1).slice(-2).join(" / ") || "实验点位"}</small>
+            <span className="legacy-learning-recommendation-meta">{point.has_video ? "已配视频" : "知识点位"}</span>
+          </button>
+        ))}
+      </div>
     </section>
   );
 }
@@ -844,6 +874,7 @@ function LearningChapterPage({ profileId, initialElementSymbol }: { profileId: s
         <ElementRail profile={profile} selectedSymbol={selectedElement?.symbol || ""} onSelect={setSelectedElementSymbol} />
         {selectedElement ? <SelectedElementSummary element={selectedElement} /> : null}
       </section>
+      <LearningRecommendationPanel points={page?.recommended_points || []} from={currentRoute} />
       <section className="legacy-catalog-panel">
         {catalogLoading ? <div className="legacy-state">正在载入目录...</div> : null}
         {!catalogLoading ? (

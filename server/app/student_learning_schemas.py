@@ -117,7 +117,19 @@ class StudentLearningProfile(BaseModel):
     reference_media: list[StudentLearningReferenceMedia] = Field(default_factory=list)
 
 
+class StudentLearningRecommendedPoint(BaseModel):
+    node_id: str
+    chapter_id: str
+    title: str
+    summary: str = ""
+    catalog_path: list[str] = Field(default_factory=list)
+    reason: str = "建议学习"
+    mastery_score: float | None = None
+    has_video: bool = False
+
+
 class StudentLearningPageResponse(BaseModel):
     recommended_profile_id: str | None = None
     profiles: list[StudentLearningProfileSummary] = Field(default_factory=list)
     active_profile: StudentLearningProfile | None = None
+    recommended_points: list[StudentLearningRecommendedPoint] = Field(default_factory=list)
