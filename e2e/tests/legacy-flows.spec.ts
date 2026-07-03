@@ -197,13 +197,14 @@ test.describe("legacy teacher/student browser flows", () => {
         buffer: Buffer.from("e2e video content"),
       });
       await expect(videoRegion.getByText("e2e-point-video.mp4")).toBeVisible();
+      await expect(videoRegion.getByText("待保存")).toBeVisible();
 
       const uploadResponse = page.waitForResponse((response) => response.url().includes("/api/teacher/media/assets") && response.request().method() === "POST");
       const bindingResponse = page.waitForResponse((response) => response.url().includes(`/api/teacher/catalog/nodes/${pointNodeId}/media-bindings`));
-      await videoRegion.getByRole("button", { name: "上传视频" }).click();
+      await page.getByRole("button", { name: "保存" }).click();
       expect((await uploadResponse).ok(), "media upload should succeed").toBeTruthy();
       expect((await bindingResponse).ok(), "point media binding should succeed").toBeTruthy();
-      await expect(page.getByText(/已上传并绑定视频|已添加视频/)).toBeVisible();
+      await expect(page.getByText("已保存节点资料。")).toBeVisible();
       await expectNoVisibleLegacyError(page);
     } finally {
       if (pointNodeId) {

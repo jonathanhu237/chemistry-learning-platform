@@ -619,6 +619,11 @@ function installTeacherFetchMock() {
       return jsonResponse(catalogDetail(decodeURIComponent(catalogNodeStatusMatch[1])));
     }
 
+    const catalogPointContentMatch = path.match(/^\/api\/teacher\/catalog\/nodes\/([^/]+)\/point-content$/);
+    if (catalogPointContentMatch && method === "PUT") {
+      return jsonResponse(catalogDetail(decodeURIComponent(catalogPointContentMatch[1])));
+    }
+
     const catalogNodeMatch = path.match(/^\/api\/teacher\/catalog\/nodes\/([^/]+)$/);
     if (catalogNodeMatch) {
       return jsonResponse(catalogDetail(decodeURIComponent(catalogNodeMatch[1])));
@@ -803,9 +808,11 @@ describe("LegacyTeacherApp", () => {
     expect(screen.queryByRole("button", { name: "取消发布" })).toBeNull();
     expect(screen.queryByText("点位资料")).toBeNull();
     expect(screen.queryByText("目录信息")).toBeNull();
-    expect(await screen.findByRole("region", { name: "视频" })).toBeTruthy();
-    expect(screen.getByText("氯水漂白性实验视频")).toBeTruthy();
-    expect(screen.getByText("bleach-demo.mp4")).toBeTruthy();
+    const existingVideoRegion = await screen.findByRole("region", { name: "视频" });
+    expect(within(existingVideoRegion).queryByText("氯水漂白性实验视频")).toBeNull();
+    expect(within(existingVideoRegion).getByText("bleach-demo.mp4")).toBeTruthy();
+    expect(within(existingVideoRegion).getByRole("button", { name: "移除" })).toBeTruthy();
+    expect(within(existingVideoRegion).getByRole("button", { name: "上传" })).toBeTruthy();
     expect(screen.queryByText("1000 KB")).toBeNull();
     expect(screen.queryByText("1:36")).toBeNull();
     expect(screen.queryByLabelText("视频标题")).toBeNull();
@@ -972,7 +979,9 @@ describe("LegacyTeacherApp", () => {
     fireEvent.change(fileInput!, { target: { files: [file] } });
 
     expect(await within(videoRegion).findByText("iodide-demo.mp4")).toBeTruthy();
-    fireEvent.click(within(videoRegion).getByRole("button", { name: "上传视频" }));
+    expect(within(videoRegion).getByText("待保存")).toBeTruthy();
+    expect(requestPaths(fetchMock)).not.toContain("/api/teacher/media/assets");
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/media/assets"));
     const uploadCall = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/teacher/media/assets");
@@ -991,7 +1000,29 @@ describe("LegacyTeacherApp", () => {
       title: "碘离子检验",
       metadata: { source: "teacher_point_editor" },
     });
-    expect(await screen.findByText("已上传并绑定视频，处理完成后学生端可播放。")).toBeTruthy();
+    expect(await screen.findByText("已保存节点资料。")).toBeTruthy();
+    expectNoForbiddenGenerationFlows(fetchMock);
+  });
+
+  it("stages removing a point video until the catalog editor is saved", async () => {
+    const fetchMock = installTeacherFetchMock();
+    vi.stubGlobal("fetch", fetchMock);
+    window.history.pushState({}, "", "/experiments");
+
+    render(<LegacyTeacherApp />);
+
+    const videoRegion = await screen.findByRole("region", { name: "视频" });
+    expect(within(videoRegion).getByText("bleach-demo.mp4")).toBeTruthy();
+    fireEvent.click(within(videoRegion).getByRole("button", { name: "移除" }));
+
+    expect(within(videoRegion).getByText("暂无真实视频")).toBeTruthy();
+    expect(within(videoRegion).getByText("待保存")).toBeTruthy();
+    expect(requestPaths(fetchMock)).not.toContain("/api/teacher/catalog/media-bindings/binding-ch13-bleach/delete");
+
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/catalog/media-bindings/binding-ch13-bleach/delete"));
+    expect(await screen.findByText("已保存节点资料。")).toBeTruthy();
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 
