@@ -1158,7 +1158,9 @@ describe("LegacyTeacherApp", () => {
     expect(await screen.findByRole("heading", { name: "命题工作区" })).toBeTruthy();
     expect(await screen.findByText("新制氯水中的 HClO 具有强氧化性。")).toBeTruthy();
     expect(await screen.findByText("氯水使湿润有色布条褪色，最关键的微粒是什么？")).toBeTruthy();
-    expect(await screen.findByText("为什么干燥有色布条放入氯气中不明显褪色？")).toBeTruthy();
+    expect(screen.getByText("本轮入库")).toBeTruthy();
+    expect(screen.getByText("审核通过后，题目会显示在这里。")).toBeTruthy();
+    expect(screen.queryByText("为什么干燥有色布条放入氯气中不明显褪色？")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "生成待审题" }));
 
@@ -1179,10 +1181,11 @@ describe("LegacyTeacherApp", () => {
     fireEvent.click(screen.getByRole("button", { name: "通过入库" }));
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/drafts/draft-ch13-1/publish"));
     expect(screen.queryByText("教师审核通过，题目已入库。")).toBeNull();
+    expect(await screen.findByText("为什么干燥有色布条放入氯气中不明显褪色？")).toBeTruthy();
 
     const paths = requestPaths(fetchMock);
     expect(paths).toContain("/api/teacher/question-banks/drafts?point_node_id=point-ch13-bleach&canonical_point_id=canon-bleach");
-    expect(paths).toContain("/api/teacher/question-banks/questions?limit=200&point_node_id=point-ch13-bleach&canonical_point_id=canon-bleach");
+    expect(paths.some((path) => path.startsWith("/api/teacher/question-banks/questions"))).toBe(false);
     expect(paths).toContain("/api/teacher/question-banks/drafts/draft-ch13-1/publish");
     expectNoForbiddenGenerationFlows(fetchMock);
   });

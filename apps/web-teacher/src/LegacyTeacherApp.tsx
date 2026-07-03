@@ -23,7 +23,6 @@ import {
   legacyTeacherErrorMessage,
   listTeacherAccounts,
   listCatalogQuestionBank,
-  listQuestionBankQuestions,
   listQuestionDrafts,
   listTeacherClasses,
   listTeacherClassStudents,
@@ -1626,22 +1625,18 @@ function QuestionsPage() {
     selectedPoint?.node_id,
     reloadKey,
   ]);
-  const questionsState = useAsyncData(() => {
-    if (!selectedPoint) return Promise.resolve({ items: [], total: 0 });
-    const params = new URLSearchParams({ limit: "200", point_node_id: selectedPoint.node_id });
-    if (selectedPoint.canonical_point_id) params.set("canonical_point_id", selectedPoint.canonical_point_id);
-    return listQuestionBankQuestions(params);
-  }, [selectedPoint?.node_id, reloadKey]);
   const [questionTypes, setQuestionTypes] = useState<ObjectiveQuestionType[]>(["single_choice"]);
   const [count, setCount] = useState(1);
   const [prompt, setPrompt] = useState("");
   const [actionError, setActionError] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [sessionPublishedQuestions, setSessionPublishedQuestions] = useState<Question[]>([]);
 
   useEffect(() => {
     if (selectedPoint) {
       setPrompt(`请围绕“${selectedPoint.title}”生成 1 道课堂测评题，依据点位原理、现象和安全资料命题。`);
       setActionError("");
+      setSessionPublishedQuestions([]);
     }
   }, [selectedPoint?.node_id]);
 
@@ -1682,7 +1677,8 @@ function QuestionsPage() {
     setActionError("");
     try {
       if (action === "publish") {
-        await publishQuestionDraft(draftId);
+        const publishedQuestion = await publishQuestionDraft(draftId);
+        setSessionPublishedQuestions((current) => [publishedQuestion, ...current.filter((question) => question.id !== publishedQuestion.id)]);
       } else {
         await rejectQuestionDraft(draftId);
       }
@@ -1815,25 +1811,23 @@ function QuestionsPage() {
                 )}
               </StateBlock>
             </section>
-            <section className="legacy-question-review-panel legacy-question-bank-panel" aria-label="正式题库">
+            <section className="legacy-question-review-panel legacy-question-bank-panel" aria-label="本轮入库">
               <div className="legacy-question-review-head">
                 <div>
                   <span className="legacy-section-kicker">04</span>
-                  <strong>正式题库</strong>
+                  <strong>本轮入库</strong>
                 </div>
-                <span>{questionsState.loading ? "读取中" : `${questionsState.data?.total || 0} 题`}</span>
+                <span>{sessionPublishedQuestions.length} 题</span>
               </div>
-              <StateBlock loading={questionsState.loading && !questionsState.data} error={questionsState.error}>
-                {(questionsState.data?.items || []).length ? (
-                  <div className="legacy-question-bank-list">
-                    {(questionsState.data?.items || []).slice(0, 10).map((question) => (
-                      <QuestionRow key={question.id} question={question} />
-                    ))}
-                  </div>
-                ) : (
-                  <TeacherEmptyState message="当前点位暂无正式题。" compact />
-                )}
-              </StateBlock>
+              {sessionPublishedQuestions.length ? (
+                <div className="legacy-question-bank-list">
+                  {sessionPublishedQuestions.slice(0, 10).map((question) => (
+                    <QuestionRow key={question.id} question={question} />
+                  ))}
+                </div>
+              ) : (
+                <TeacherEmptyState message="审核通过后，题目会显示在这里。" compact />
+              )}
             </section>
           </div>
         </TeacherCard>

@@ -842,7 +842,10 @@ p {
 
 .legacy-question-point-list {
   display: grid;
+  align-content: start;
+  align-items: start;
   gap: 6px;
+  grid-auto-rows: max-content;
   max-height: none;
   min-height: 0;
   overflow: auto;
@@ -851,6 +854,7 @@ p {
 
 .legacy-question-point-button {
   display: grid;
+  align-self: start;
   gap: 4px;
   width: 100%;
   min-height: 50px;
