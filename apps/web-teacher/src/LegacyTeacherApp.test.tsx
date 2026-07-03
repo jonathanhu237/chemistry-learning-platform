@@ -472,6 +472,25 @@ const assessmentReportDetail = {
 };
 
 function installTeacherFetchMock() {
+  let teacherAccounts = [
+    {
+      id: "teacher-1",
+      username: "teacher",
+      display_name: "王老师",
+      role: "teacher",
+      status: "active",
+      must_change_password: false,
+    },
+    {
+      id: "teacher-2",
+      username: "teacher2",
+      display_name: "李老师",
+      role: "teacher",
+      status: "disabled",
+      must_change_password: true,
+    },
+  ];
+
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = requestUrl(input);
     const path = url.pathname;
@@ -491,19 +510,32 @@ function installTeacherFetchMock() {
       return jsonResponse({ ok: true });
     }
 
+    if (path === "/api/teacher/accounts/teachers" && method === "GET") {
+      return jsonResponse(teacherAccounts);
+    }
+
     if (path === "/api/teacher/accounts/teachers" && method === "POST") {
       const body = JSON.parse(String(init?.body || "{}"));
-      return jsonResponse(
-        {
-          id: "teacher-2",
-          username: body.username,
-          display_name: body.display_name,
-          role: "teacher",
-          status: "active",
-          must_change_password: Boolean(body.must_change_password),
-        },
-        201,
-      );
+      const account = {
+        id: `teacher-${teacherAccounts.length + 1}`,
+        username: body.username,
+        display_name: body.display_name,
+        role: "teacher",
+        status: "active",
+        must_change_password: Boolean(body.must_change_password),
+      };
+      teacherAccounts = [...teacherAccounts, account];
+      return jsonResponse(account, 201);
+    }
+
+    if (path.startsWith("/api/teacher/accounts/teachers/") && method === "PATCH") {
+      const accountId = decodeURIComponent(path.split("/").at(-1) || "");
+      const body = JSON.parse(String(init?.body || "{}"));
+      const existing = teacherAccounts.find((account) => account.id === accountId);
+      if (!existing) return jsonResponse({ detail: "Teacher account not found" }, 404);
+      const updated = { ...existing, ...body };
+      teacherAccounts = teacherAccounts.map((account) => (account.id === accountId ? updated : account));
+      return jsonResponse(updated);
     }
 
     if (path === "/api/teacher/ai-configuration") {
@@ -902,7 +934,7 @@ describe("LegacyTeacherApp", () => {
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 
-  it("lets a teacher manage settings from the sidebar", async () => {
+  it("lets a teacher manage settings from the settings page", async () => {
     const fetchMock = installTeacherFetchMock();
     vi.stubGlobal("fetch", fetchMock);
 
@@ -916,7 +948,13 @@ describe("LegacyTeacherApp", () => {
     expect(within(settings).queryByText("当前账号")).toBeNull();
     expect(within(settings).queryByText("账号类型")).toBeNull();
     expect(within(settings).getByText("修改密码")).toBeTruthy();
-    expect(within(settings).getByText("添加教师账号")).toBeTruthy();
+    const accountManagement = await within(settings).findByTestId("teacher-account-management");
+    expect(within(accountManagement).getByText("账号管理")).toBeTruthy();
+    expect(within(accountManagement).queryByText("添加教师账号")).toBeNull();
+    expect(await within(accountManagement).findByText("王老师")).toBeTruthy();
+    expect(within(accountManagement).getByText("teacher2")).toBeTruthy();
+    expect(within(accountManagement).getByText("本人")).toBeTruthy();
+    expect(within(accountManagement).getByText("已停用")).toBeTruthy();
     expect(screen.queryByRole("dialog", { name: "设置" })).toBeNull();
 
     fireEvent.change(within(settings).getByLabelText("当前密码"), { target: { value: "old-password" } });
@@ -933,18 +971,28 @@ describe("LegacyTeacherApp", () => {
       new_password: "new-password-123",
     });
 
-    fireEvent.change(within(settings).getByLabelText("教师账号"), { target: { value: "teacher2" } });
-    fireEvent.change(within(settings).getByLabelText("教师姓名"), { target: { value: "李老师" } });
-    fireEvent.change(within(settings).getByLabelText("初始密码"), { target: { value: "teacher-pass-123" } });
-    fireEvent.click(within(settings).getByRole("button", { name: "添加教师" }));
+    fireEvent.click(within(accountManagement).getByRole("button", { name: "启用" }));
+    expect(await within(accountManagement).findByText("李老师已启用。")).toBeTruthy();
+    const statusRequest = fetchMock.mock.calls.find(
+      (call) => requestUrl(call[0]).pathname === "/api/teacher/accounts/teachers/teacher-2" && String(call[1]?.method || "GET").toUpperCase() === "PATCH",
+    );
+    expect(statusRequest).toBeTruthy();
+    expect(JSON.parse(String(statusRequest?.[1]?.body))).toEqual({ status: "active" });
 
-    expect(await within(settings).findByText("已添加教师账号。")).toBeTruthy();
-    const teacherRequest = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/teacher/accounts/teachers");
+    fireEvent.change(within(settings).getByLabelText("后台账号"), { target: { value: "teacher3" } });
+    fireEvent.change(within(settings).getByLabelText("显示姓名"), { target: { value: "陈老师" } });
+    fireEvent.change(within(settings).getByLabelText("初始密码"), { target: { value: "teacher-pass-123" } });
+    fireEvent.click(within(settings).getByRole("button", { name: "新增账号" }));
+
+    expect(await within(settings).findByText("已新增后台账号。")).toBeTruthy();
+    const teacherRequest = fetchMock.mock.calls.find(
+      (call) => requestUrl(call[0]).pathname === "/api/teacher/accounts/teachers" && String(call[1]?.method || "GET").toUpperCase() === "POST",
+    );
     expect(teacherRequest).toBeTruthy();
     expect(teacherRequest?.[1]?.method).toBe("POST");
     expect(JSON.parse(String(teacherRequest?.[1]?.body))).toEqual({
-      username: "teacher2",
-      display_name: "李老师",
+      username: "teacher3",
+      display_name: "陈老师",
       password: "teacher-pass-123",
       must_change_password: true,
     });

@@ -2969,7 +2969,7 @@ p {
 
 .legacy-settings-page-grid {
   display: grid;
-  grid-template-columns: minmax(340px, 0.9fr) minmax(460px, 1.1fr);
+  grid-template-columns: minmax(300px, 0.72fr) minmax(620px, 1.28fr);
   align-items: start;
   gap: 14px;
 }
@@ -3072,6 +3072,14 @@ p {
   padding: 14px;
 }
 
+.legacy-account-management-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--legacy-line);
+  background: #fff;
+  padding: 14px;
+}
+
 .legacy-profile-form-head {
   display: grid;
   gap: 3px;
@@ -3085,7 +3093,8 @@ p {
   font-weight: 900;
 }
 
-.legacy-profile-password-form label {
+.legacy-profile-password-form label,
+.legacy-account-create-form label {
   display: grid;
   gap: 7px;
   color: var(--legacy-sysu-red);
@@ -3093,7 +3102,9 @@ p {
 }
 
 .legacy-profile-password-form .ant-input,
-.legacy-profile-password-form .ant-input-affix-wrapper {
+.legacy-profile-password-form .ant-input-affix-wrapper,
+.legacy-account-create-form .ant-input,
+.legacy-account-create-form .ant-input-affix-wrapper {
   width: 100%;
   min-height: 44px;
   border: 1px solid #d9c7c2;
@@ -3101,26 +3112,177 @@ p {
   background: #fff;
 }
 
-.legacy-profile-password-form .ant-input {
+.legacy-profile-password-form .ant-input,
+.legacy-account-create-form .ant-input {
   padding: 0 11px;
 }
 
-.legacy-profile-password-form .ant-input-affix-wrapper {
+.legacy-profile-password-form .ant-input-affix-wrapper,
+.legacy-account-create-form .ant-input-affix-wrapper {
   padding: 0 11px;
 }
 
 .legacy-profile-password-form .ant-input:hover,
 .legacy-profile-password-form .ant-input:focus,
 .legacy-profile-password-form .ant-input-affix-wrapper:hover,
-.legacy-profile-password-form .ant-input-affix-wrapper-focused {
+.legacy-profile-password-form .ant-input-affix-wrapper-focused,
+.legacy-account-create-form .ant-input:hover,
+.legacy-account-create-form .ant-input:focus,
+.legacy-account-create-form .ant-input-affix-wrapper:hover,
+.legacy-account-create-form .ant-input-affix-wrapper-focused {
   border-color: var(--legacy-sysu-red);
   box-shadow: 0 0 0 3px rgba(160, 19, 24, 0.08);
 }
 
 .legacy-profile-password-form .legacy-notice,
-.legacy-profile-password-form .legacy-error {
+.legacy-profile-password-form .legacy-error,
+.legacy-account-management-card .legacy-notice,
+.legacy-account-management-card .legacy-error {
   margin: 0;
   box-shadow: none;
+}
+
+.legacy-account-table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--legacy-line);
+}
+
+.legacy-account-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.legacy-account-table th,
+.legacy-account-table td {
+  border-bottom: 1px solid var(--legacy-line);
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.legacy-account-table th {
+  background: #fff8f4;
+  color: var(--legacy-sysu-red);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.legacy-account-table td {
+  color: var(--legacy-ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.legacy-account-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.legacy-account-table td:first-child {
+  min-width: 210px;
+}
+
+.legacy-account-table td:last-child {
+  width: 96px;
+  text-align: right;
+}
+
+.legacy-account-table strong,
+.legacy-account-table span {
+  display: block;
+}
+
+.legacy-account-table strong {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.legacy-account-table td:first-child > span {
+  color: var(--legacy-muted);
+  font-size: 12px;
+}
+
+.legacy-account-table em {
+  display: inline-block;
+  margin-left: 8px;
+  border: 1px solid #dfc7c0;
+  padding: 1px 6px;
+  color: var(--legacy-sysu-red);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.legacy-account-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  border: 1px solid #dfc7c0;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.legacy-account-status.active {
+  border-color: rgba(15, 118, 110, 0.28);
+  color: #0f766e;
+}
+
+.legacy-account-status.disabled {
+  color: var(--legacy-muted);
+}
+
+.legacy-account-table .ant-btn {
+  min-width: 64px;
+  min-height: 34px;
+  border-radius: 0;
+  font-weight: 900;
+}
+
+.legacy-account-action-note {
+  color: var(--legacy-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.legacy-account-empty {
+  border: 1px solid var(--legacy-line);
+  background: #fff8f4;
+  padding: 18px;
+  color: var(--legacy-muted);
+  font-weight: 900;
+}
+
+.legacy-account-create-form {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--legacy-line);
+  padding-top: 12px;
+}
+
+.legacy-account-create-head {
+  display: grid;
+  gap: 3px;
+}
+
+.legacy-account-create-head strong {
+  color: var(--legacy-ink);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.legacy-account-create-head span {
+  color: var(--legacy-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.legacy-account-create-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .legacy-profile-sidebar-actions {
@@ -3267,6 +3429,7 @@ p {
   .legacy-class-management-grid,
   .legacy-class-dashboard-grid,
   .legacy-settings-page-grid,
+  .legacy-account-create-grid,
   .legacy-inline-form.two-column {
     grid-template-columns: minmax(0, 1fr);
   }

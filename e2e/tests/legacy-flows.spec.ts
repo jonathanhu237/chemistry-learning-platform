@@ -146,7 +146,8 @@ test.describe("legacy teacher/student browser flows", () => {
     await expect(settingsPage.getByText("当前账号")).toHaveCount(0);
     await expect(settingsPage.getByText("账号类型")).toHaveCount(0);
     await expect(settingsPage.getByText("修改密码")).toBeVisible();
-    await expect(settingsPage.getByText("添加教师账号")).toBeVisible();
+    await expect(settingsPage.getByText("账号管理")).toBeVisible();
+    await expect(settingsPage.getByText("新增后台账号")).toBeVisible();
 
     await settingsPage.getByLabel("当前密码", { exact: true }).fill(teacherPassword);
     await settingsPage.getByLabel("新密码", { exact: true }).fill("new-password-123");

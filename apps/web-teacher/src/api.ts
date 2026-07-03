@@ -285,6 +285,17 @@ export function createTeacherAccount(payload: {
   return postJson<TeacherAccount>("/api/teacher/accounts/teachers", payload);
 }
 
+export function listTeacherAccounts(): Promise<TeacherAccount[]> {
+  return api<TeacherAccount[]>("/api/teacher/accounts/teachers");
+}
+
+export function updateTeacherAccount(
+  teacherId: string,
+  payload: { display_name?: string; status?: "active" | "disabled"; must_change_password?: boolean },
+): Promise<TeacherAccount> {
+  return patchJson<TeacherAccount>(`/api/teacher/accounts/teachers/${encodeURIComponent(teacherId)}`, payload);
+}
+
 export function getTeacherDemoOverview(): Promise<TeacherDemoOverview> {
   return api<TeacherDemoOverview>("/api/teacher/legacy/teacher-demo/overview");
 }

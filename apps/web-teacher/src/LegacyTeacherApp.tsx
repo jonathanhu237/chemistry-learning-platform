@@ -21,6 +21,7 @@ import {
   getTeacherStudentAssessmentReport,
   importTeacherClassRoster,
   legacyTeacherErrorMessage,
+  listTeacherAccounts,
   listCatalogQuestionBank,
   listQuestionBankQuestions,
   listQuestionDrafts,
@@ -37,6 +38,7 @@ import {
   updateAIConfiguration,
   updateCatalogNode,
   updateGlobalAssessmentReportPrompts,
+  updateTeacherAccount,
   uploadTeacherMediaAsset,
   type AIConfigurationResponse,
   type AnalyticsDashboard,
@@ -52,6 +54,7 @@ import {
   type TeacherMediaUploadPolicy,
   type StudentAssessmentReportSummary,
   type StudentReport,
+  type TeacherAccount,
   type TeacherClassRegistrationSettings,
   type TeacherClassSummary,
   type TeacherStudentSummary,
@@ -277,7 +280,7 @@ function LegacyTeacherAppContent() {
           ) : activeRoute === "reports" ? (
             <ReportsPage />
           ) : activeRoute === "settings" ? (
-            <SettingsPage />
+            <SettingsPage currentUser={user} />
           ) : (
             <ExperimentsPage />
           )}
@@ -353,20 +356,24 @@ function LoginScreen({ onLogin }: { onLogin: (user: User) => void }) {
   );
 }
 
-function SettingsPage() {
+function SettingsPage({ currentUser }: { currentUser: User }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordNotice, setPasswordNotice] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [teacherUsername, setTeacherUsername] = useState("");
-  const [teacherDisplayName, setTeacherDisplayName] = useState("");
-  const [teacherPassword, setTeacherPassword] = useState("");
-  const [teacherMustChangePassword, setTeacherMustChangePassword] = useState(true);
-  const [teacherNotice, setTeacherNotice] = useState("");
-  const [teacherError, setTeacherError] = useState("");
-  const [creatingTeacher, setCreatingTeacher] = useState(false);
+  const [accountUsername, setAccountUsername] = useState("");
+  const [accountDisplayName, setAccountDisplayName] = useState("");
+  const [accountPassword, setAccountPassword] = useState("");
+  const [accountMustChangePassword, setAccountMustChangePassword] = useState(true);
+  const [accountNotice, setAccountNotice] = useState("");
+  const [accountError, setAccountError] = useState("");
+  const [creatingAccount, setCreatingAccount] = useState(false);
+  const [updatingAccountId, setUpdatingAccountId] = useState("");
+  const [accountReloadKey, setAccountReloadKey] = useState(0);
+  const accountState = useAsyncData<TeacherAccount[]>(listTeacherAccounts, [accountReloadKey]);
+  const accounts = accountState.data || [];
 
   const submitPassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -398,43 +405,65 @@ function SettingsPage() {
     }
   };
 
-  const submitTeacher = async (event: FormEvent<HTMLFormElement>) => {
+  const accountErrorMessage = (caught: unknown): string => {
+    if (caught instanceof Error && caught.message === "Teacher username already exists") return "后台账号已存在。";
+    if (caught instanceof Error && caught.message === "Current teacher account cannot be disabled") return "不能停用当前登录账号。";
+    return legacyTeacherErrorMessage(caught);
+  };
+
+  const submitAccount = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setTeacherNotice("");
-    setTeacherError("");
-    const username = teacherUsername.trim();
-    const displayName = teacherDisplayName.trim();
+    setAccountNotice("");
+    setAccountError("");
+    const username = accountUsername.trim();
+    const displayName = accountDisplayName.trim();
     if (!username) {
-      setTeacherError("请输入教师账号。");
+      setAccountError("请输入后台账号。");
       return;
     }
     if (!displayName) {
-      setTeacherError("请输入教师姓名。");
+      setAccountError("请输入显示姓名。");
       return;
     }
-    if (teacherPassword.length < 8) {
-      setTeacherError("初始密码至少需要 8 位。");
+    if (accountPassword.length < 8) {
+      setAccountError("初始密码至少需要 8 位。");
       return;
     }
 
-    setCreatingTeacher(true);
+    setCreatingAccount(true);
     try {
       await createTeacherAccount({
         username,
         display_name: displayName,
-        password: teacherPassword,
-        must_change_password: teacherMustChangePassword,
+        password: accountPassword,
+        must_change_password: accountMustChangePassword,
       });
-      setTeacherUsername("");
-      setTeacherDisplayName("");
-      setTeacherPassword("");
-      setTeacherMustChangePassword(true);
-      setTeacherNotice("已添加教师账号。");
+      setAccountUsername("");
+      setAccountDisplayName("");
+      setAccountPassword("");
+      setAccountMustChangePassword(true);
+      setAccountNotice("已新增后台账号。");
+      setAccountReloadKey((value) => value + 1);
     } catch (caught) {
-      const message = caught instanceof Error && caught.message === "Teacher username already exists" ? "教师账号已存在。" : legacyTeacherErrorMessage(caught);
-      setTeacherError(message);
+      setAccountError(accountErrorMessage(caught));
     } finally {
-      setCreatingTeacher(false);
+      setCreatingAccount(false);
+    }
+  };
+
+  const updateAccountStatus = async (account: TeacherAccount) => {
+    const nextStatus = account.status === "active" ? "disabled" : "active";
+    setAccountNotice("");
+    setAccountError("");
+    setUpdatingAccountId(account.id);
+    try {
+      await updateTeacherAccount(account.id, { status: nextStatus });
+      setAccountNotice(`${account.display_name || account.username}已${nextStatus === "active" ? "启用" : "停用"}。`);
+      setAccountReloadKey((value) => value + 1);
+    } catch (caught) {
+      setAccountError(accountErrorMessage(caught));
+    } finally {
+      setUpdatingAccountId("");
     }
   };
 
@@ -482,60 +511,119 @@ function SettingsPage() {
               </TeacherButton>
             </div>
           </form>
-
-          <form className="legacy-profile-password-form legacy-settings-teacher-form" onSubmit={submitTeacher}>
-            <div className="legacy-profile-form-head">
-              <strong>添加教师账号</strong>
-              <span>新老师可使用初始密码进入后台。</span>
-            </div>
-            <label>
-              教师账号
-              <TeacherInput
-                aria-label="教师账号"
-                autoComplete="username"
-                value={teacherUsername}
-                onChange={(event) => setTeacherUsername(event.target.value)}
-                placeholder="例如 teacher2"
-              />
-            </label>
-            <label>
-              教师姓名
-              <TeacherInput
-                aria-label="教师姓名"
-                autoComplete="name"
-                value={teacherDisplayName}
-                onChange={(event) => setTeacherDisplayName(event.target.value)}
-                placeholder="例如 李老师"
-              />
-            </label>
-            <label>
-              初始密码
-              <TeacherInput.Password
-                aria-label="初始密码"
-                autoComplete="new-password"
-                value={teacherPassword}
-                onChange={(event) => setTeacherPassword(event.target.value)}
-              />
-            </label>
-            <label className="legacy-settings-switch-row">
-              <TeacherSwitch
-                aria-label="首次登录必须修改密码"
-                checked={teacherMustChangePassword}
-                onChange={(checked) => setTeacherMustChangePassword(checked)}
-              />
-              <span>首次登录必须修改密码</span>
-            </label>
-            {teacherNotice ? <NoticeBlock>{teacherNotice}</NoticeBlock> : null}
-            {teacherError ? <ErrorBlock compact>{teacherError}</ErrorBlock> : null}
-            <div className="legacy-profile-sidebar-actions legacy-settings-single-action">
-              <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={creatingTeacher}>
-                {creatingTeacher ? "添加中..." : "添加教师"}
-              </TeacherButton>
-            </div>
-          </form>
         </div>
 
         <div className="legacy-settings-ai-column">
+          <section className="legacy-account-management-card" data-testid="teacher-account-management" aria-label="账号管理">
+            <div className="legacy-profile-form-head">
+              <strong>账号管理</strong>
+              <span>查看和管理可进入后台的账号。</span>
+            </div>
+
+            {accountNotice ? <NoticeBlock>{accountNotice}</NoticeBlock> : null}
+            {accountError ? <ErrorBlock compact>{accountError}</ErrorBlock> : null}
+
+            <StateBlock loading={accountState.loading} error={accountState.error}>
+              {accounts.length ? (
+                <div className="legacy-account-table-scroll">
+                  <table className="legacy-account-table">
+                    <thead>
+                      <tr>
+                        <th>后台账号</th>
+                        <th>状态</th>
+                        <th>首次改密</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {accounts.map((account) => {
+                        const active = account.status === "active";
+                        const isCurrent = account.id === currentUser.id;
+                        return (
+                          <tr key={account.id}>
+                            <td>
+                              <strong>{account.display_name || account.username}</strong>
+                              <span>
+                                {account.username}
+                                {isCurrent ? <em>本人</em> : null}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`legacy-account-status ${active ? "active" : "disabled"}`}>{active ? "已启用" : "已停用"}</span>
+                            </td>
+                            <td>{account.must_change_password ? "需要" : "不需要"}</td>
+                            <td>
+                              {isCurrent ? (
+                                <span className="legacy-account-action-note">不可停用</span>
+                              ) : (
+                                <TeacherButton danger={active} disabled={updatingAccountId === account.id} onClick={() => updateAccountStatus(account)}>
+                                  {updatingAccountId === account.id ? "处理中..." : active ? "停用" : "启用"}
+                                </TeacherButton>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="legacy-account-empty">暂无后台账号。</div>
+              )}
+            </StateBlock>
+
+            <form className="legacy-account-create-form" onSubmit={submitAccount}>
+              <div className="legacy-account-create-head">
+                <strong>新增后台账号</strong>
+                <span>新账号可使用初始密码进入后台。</span>
+              </div>
+              <div className="legacy-account-create-grid">
+                <label>
+                  后台账号
+                  <TeacherInput
+                    aria-label="后台账号"
+                    autoComplete="username"
+                    value={accountUsername}
+                    onChange={(event) => setAccountUsername(event.target.value)}
+                    placeholder="例如 teacher2"
+                  />
+                </label>
+                <label>
+                  显示姓名
+                  <TeacherInput
+                    aria-label="显示姓名"
+                    autoComplete="name"
+                    value={accountDisplayName}
+                    onChange={(event) => setAccountDisplayName(event.target.value)}
+                    placeholder="例如 李老师"
+                  />
+                </label>
+                <label>
+                  初始密码
+                  <TeacherInput.Password
+                    aria-label="初始密码"
+                    autoComplete="new-password"
+                    value={accountPassword}
+                    onChange={(event) => setAccountPassword(event.target.value)}
+                  />
+                </label>
+                <label className="legacy-settings-switch-row">
+                  <TeacherSwitch
+                    aria-label="首次登录必须修改密码"
+                    checked={accountMustChangePassword}
+                    onChange={(checked) => setAccountMustChangePassword(checked)}
+                  />
+                  <span>首次登录必须修改密码</span>
+                </label>
+              </div>
+              <div className="legacy-profile-sidebar-actions legacy-settings-single-action">
+                <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={creatingAccount}>
+                  {creatingAccount ? "新增中..." : "新增账号"}
+                </TeacherButton>
+              </div>
+            </form>
+          </section>
+
           <AIConfigurationSettingsSection active />
         </div>
       </section>

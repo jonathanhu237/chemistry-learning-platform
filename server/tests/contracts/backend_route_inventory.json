@@ -297,9 +297,21 @@
       "owner": "student-api"
     },
     {
+      "method": "GET",
+      "path": "/api/teacher/accounts/teachers",
+      "name": "teacher_list_teacher_accounts",
+      "owner": "teacher-api"
+    },
+    {
       "method": "POST",
       "path": "/api/teacher/accounts/teachers",
       "name": "teacher_create_teacher_account",
+      "owner": "teacher-api"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/teacher/accounts/teachers/{teacher_id}",
+      "name": "teacher_update_teacher_account",
       "owner": "teacher-api"
     },
     {

@@ -8,7 +8,9 @@ from server.app.app_runtime.main import app
 
 
 ADMIN_ROUTE_CONTRACTS = [
+    ("GET", "/api/teacher/accounts/teachers"),
     ("POST", "/api/teacher/accounts/teachers"),
+    ("PATCH", "/api/teacher/accounts/teachers/{teacher_id}"),
     ("GET", "/api/teacher/platform-settings"),
     ("PUT", "/api/teacher/platform-settings"),
     ("GET", "/api/teacher/assessment-report-prompts"),

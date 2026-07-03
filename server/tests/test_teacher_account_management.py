@@ -12,9 +12,10 @@ from server.app.auth import AuthUser
 
 
 class _FakeResult:
-    def __init__(self, *, first: Any = None, one: dict[str, Any] | None = None) -> None:
+    def __init__(self, *, first: Any = None, one: dict[str, Any] | None = None, all: list[dict[str, Any]] | None = None) -> None:
         self._first = first
         self._one = one
+        self._all = all or []
 
     def first(self) -> Any:
         return self._first
@@ -27,17 +28,41 @@ class _FakeResult:
             raise AssertionError("No fake row configured")
         return self._one
 
+    def all(self) -> list[dict[str, Any]]:
+        return self._all
+
 
 class _FakeSession:
-    def __init__(self, *, duplicate: bool = False) -> None:
+    def __init__(self, *, duplicate: bool = False, update_missing: bool = False) -> None:
         self.duplicate = duplicate
+        self.update_missing = update_missing
         self.calls: list[dict[str, Any]] = []
+        self.teacher_rows = [
+            {
+                "id": "teacher-1",
+                "username": "teacher",
+                "role": "teacher",
+                "display_name": "王老师",
+                "status": "active",
+                "must_change_password": False,
+            },
+            {
+                "id": "teacher-2",
+                "username": "teacher2",
+                "role": "teacher",
+                "display_name": "李老师",
+                "status": "disabled",
+                "must_change_password": True,
+            },
+        ]
 
     def execute(self, statement: Any, params: dict[str, Any] | None = None) -> _FakeResult:
         sql = str(statement)
         self.calls.append({"sql": sql, "params": params or {}})
         if "SELECT id FROM app_users" in sql:
             return _FakeResult(first={"id": "existing-teacher"} if self.duplicate else None)
+        if "FROM app_users" in sql and "WHERE role = :role" in sql and "ORDER BY" in sql:
+            return _FakeResult(all=self.teacher_rows)
         if "INSERT INTO app_users" in sql:
             return _FakeResult(
                 one={
@@ -49,6 +74,18 @@ class _FakeSession:
                     "must_change_password": params["must_change_password"],
                 }
             )
+        if "UPDATE app_users" in sql and "RETURNING id, username, role, display_name, status, must_change_password" in sql:
+            if self.update_missing:
+                return _FakeResult(first=None)
+            row = {
+                **self.teacher_rows[1],
+                "display_name": params["display_name"] or self.teacher_rows[1]["display_name"],
+                "status": params["account_status"] or self.teacher_rows[1]["status"],
+                "must_change_password": (
+                    params["must_change_password"] if params["must_change_password"] is not None else self.teacher_rows[1]["must_change_password"]
+                ),
+            }
+            return _FakeResult(first=row)
         raise AssertionError(f"Unexpected SQL: {sql}")
 
 
@@ -117,6 +154,69 @@ def test_teacher_create_teacher_account_rejects_duplicate_username(monkeypatch: 
                     display_name="王老师",
                     password="teacher-pass-123",
                 ),
+                user=_teacher_user(),
+            )
+        )
+
+    assert exc_info.value.status_code == 409
+
+
+def test_teacher_list_teacher_accounts_returns_backend_accounts(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = _FakeSession()
+
+    @contextmanager
+    def fake_db_session():
+        yield session
+
+    monkeypatch.setattr(teacher_platform, "db_session", fake_db_session)
+
+    response = asyncio.run(teacher_platform.teacher_list_teacher_accounts(user=_teacher_user()))
+
+    assert [item.username for item in response] == ["teacher", "teacher2"]
+    assert response[0].display_name == "王老师"
+    assert response[1].status == "disabled"
+
+    list_call = next(call for call in session.calls if "ORDER BY" in call["sql"])
+    assert list_call["params"] == {"role": "teacher", "current_user_id": "teacher-1"}
+
+
+def test_teacher_update_teacher_account_changes_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = _FakeSession()
+
+    @contextmanager
+    def fake_db_session():
+        yield session
+
+    monkeypatch.setattr(teacher_platform, "db_session", fake_db_session)
+
+    response = asyncio.run(
+        teacher_platform.teacher_update_teacher_account(
+            "teacher-2",
+            teacher_platform.TeacherAccountUpdateRequest(status="active", must_change_password=False),
+            user=_teacher_user(),
+        )
+    )
+
+    assert response.username == "teacher2"
+    assert response.status == "active"
+    assert response.must_change_password is False
+
+    update_call = next(call for call in session.calls if "UPDATE app_users" in call["sql"])
+    assert update_call["params"] == {
+        "teacher_id": "teacher-2",
+        "role": "teacher",
+        "display_name": None,
+        "account_status": "active",
+        "must_change_password": False,
+    }
+
+
+def test_teacher_update_teacher_account_rejects_disabling_self() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(
+            teacher_platform.teacher_update_teacher_account(
+                "teacher-1",
+                teacher_platform.TeacherAccountUpdateRequest(status="disabled"),
                 user=_teacher_user(),
             )
         )
