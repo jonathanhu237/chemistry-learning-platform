@@ -20,7 +20,6 @@ import {
   getTeacherClassSmartAssessmentStrategy,
   getTeacherMediaUploadPolicy,
   getGlobalAssessmentReportPrompts,
-  getStudentReport,
   getTeacherStudentAssessmentReport,
   importTeacherClassRoster,
   legacyTeacherErrorMessage,
@@ -60,7 +59,6 @@ import {
   type SmartAssessmentStrategyResponse,
   type TeacherMediaUploadPolicy,
   type StudentAssessmentReportSummary,
-  type StudentReport,
   type TeacherAccount,
   type TeacherClassRegistrationSettings,
   type TeacherClassSummary,
@@ -2952,10 +2950,6 @@ function AnalyticsPage() {
     if (selectedFamilyId && columns.length && !columns.some((item) => item.id === selectedFamilyId)) setSelectedFamilyId(columns[0]?.id || "");
   }, [columns, selectedFamilyId]);
 
-  const reportState = useAsyncData<StudentReport | null>(
-    () => (selectedClassId && selectedStudentId ? getStudentReport(selectedClassId, selectedStudentId) : Promise.resolve(null)),
-    [selectedClassId, selectedStudentId],
-  );
   const selectedStudent = rows.find((row) => row.student_id === selectedStudentId) || rows[0] || null;
   const selectedFamily = columns.find((item) => item.id === selectedFamilyId) || columns[0] || null;
   const selectedFamilyCell = selectedStudent && selectedFamily ? analyticsScoreCellForColumn(selectedStudent, selectedFamily) : null;
@@ -3055,15 +3049,6 @@ function AnalyticsPage() {
                   <TeacherEmptyState message="当前学生在该族元素下暂无点位得分。" compact />
                 )}
               </TeacherCard>
-              <TeacherCard className="legacy-table-card">
-                <header>
-                  <h2>学生报告摘要</h2>
-                  <span>{selectedStudentId || "未选择学生"}</span>
-                </header>
-                <StateBlock loading={reportState.loading && !reportState.data} error={reportState.error}>
-                  {reportState.data ? <StudentReportPanel report={reportState.data} /> : <TeacherEmptyState message="请选择学生。" compact />}
-                </StateBlock>
-              </TeacherCard>
             </>
           ) : null}
         </StateBlock>
@@ -3091,32 +3076,6 @@ function PointScoreList({ points }: { points: AnalyticsPointScore[] }) {
           </article>
         );
       })}
-    </div>
-  );
-}
-
-function StudentReportPanel({ report }: { report: StudentReport }) {
-  const latest = report.latest_posttest_report;
-  const weakPoints = report.weak_video_points || [];
-  return (
-    <div className="legacy-report-summary-grid">
-      <article>
-        <strong>最近测评</strong>
-        <p>{latest ? `${latest.score ?? "-"} 分，${latest.correct_count}/${latest.total_count} 正确` : "暂无测评报告。"}</p>
-        <p>{latest?.ai_summary?.text || "暂无学习总结。"}</p>
-      </article>
-      <article>
-        <strong>薄弱点位</strong>
-        {weakPoints.length ? (
-          weakPoints.slice(0, 5).map((item) => (
-            <span key={item.point_title}>
-              {item.point_title} · 错误率 {item.incorrect_rate}%
-            </span>
-          ))
-        ) : (
-          <p>暂无薄弱点位。</p>
-        )}
-      </article>
     </div>
   );
 }

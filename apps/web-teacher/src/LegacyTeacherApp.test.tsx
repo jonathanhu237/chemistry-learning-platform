@@ -1429,7 +1429,7 @@ describe("LegacyTeacherApp", () => {
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 
-  it("loads learning analytics from the new dashboard and student report endpoints", async () => {
+  it("loads learning analytics from the dashboard endpoint", async () => {
     const fetchMock = installTeacherFetchMock();
     vi.stubGlobal("fetch", fetchMock);
     window.history.pushState({}, "", "/analytics");
@@ -1447,19 +1447,18 @@ describe("LegacyTeacherApp", () => {
     expect(await screen.findByRole("heading", { name: "点位得分明细" })).toBeTruthy();
     expect(screen.getByText("氯水漂白性实验")).toBeTruthy();
     expect(screen.getByText("92 分")).toBeTruthy();
-    expect(await screen.findByText("张三已经掌握 CH13 氯水漂白的核心证据。")).toBeTruthy();
-    expect(screen.getByText("碘离子检验 · 错误率 40%")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "学生报告摘要" })).toBeNull();
+    expect(screen.queryByText("张三已经掌握 CH13 氯水漂白的核心证据。")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "李四 卤族元素 70 分" }));
     expect(await screen.findByText("62 分")).toBeTruthy();
     expect(screen.getAllByText("碘离子检验").length).toBeGreaterThan(0);
-    expect(await screen.findByText("李四已经掌握 CH13 氯水漂白的核心证据。")).toBeTruthy();
 
     const paths = requestPaths(fetchMock);
     expect(paths).toContain("/api/teacher/classes");
     expect(paths).toContain("/api/teacher/analytics/classes/class-1/dashboard");
-    expect(paths).toContain("/api/teacher/analytics/classes/class-1/students/2026001");
-    expect(paths).toContain("/api/teacher/analytics/classes/class-1/students/2026002");
+    expect(paths).not.toContain("/api/teacher/analytics/classes/class-1/students/2026001");
+    expect(paths).not.toContain("/api/teacher/analytics/classes/class-1/students/2026002");
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 
