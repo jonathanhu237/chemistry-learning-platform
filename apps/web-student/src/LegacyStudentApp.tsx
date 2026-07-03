@@ -340,7 +340,14 @@ function LegacyBottomNav({ activeTab }: { activeTab: LegacyRootTab }) {
   return (
     <nav className="legacy-tabbar" aria-label="旧版学生底部导航">
       {legacyNavItems.map(({ id, label, path, Icon }) => (
-        <button key={id} className={activeTab === id ? "active" : ""} aria-current={activeTab === id ? "page" : undefined} aria-label={label} onClick={() => navigate(path)}>
+        <button
+          key={id}
+          className={activeTab === id ? "active" : ""}
+          data-testid={`student-nav-${id}`}
+          aria-current={activeTab === id ? "page" : undefined}
+          aria-label={label}
+          onClick={() => navigate(path)}
+        >
           <span className="legacy-tabbar-icon" aria-hidden="true">
             <Icon />
           </span>
@@ -353,7 +360,7 @@ function LegacyBottomNav({ activeTab }: { activeTab: LegacyRootTab }) {
 
 function ShellFrame({ children, onLogout }: { children: ReactNode; onLogout?: () => void }) {
   return (
-    <div className="legacy-student-shell">
+    <div className="legacy-student-shell" data-testid={onLogout ? "student-shell" : undefined}>
       <header className="legacy-student-header">
         <div className="legacy-brand">
           <img src={logoSrc} alt="中山大学" />
@@ -398,14 +405,14 @@ function LoginScreen({ onLogin }: { onLogin: (user: AuthUser) => void }) {
         <img className="legacy-login-logo" src={logoSrc} alt="中山大学" />
         <h1>无机化学实验学习平台</h1>
         <p>以实验为知识单元，结合 BKT 掌握度跟踪、视频学习和测评反馈，支持学生开展自主实验学习。</p>
-        <form onSubmit={submit}>
+        <form data-testid="student-login-form" onSubmit={submit}>
           <label>
             学号
-            <input value={studentId} onChange={(event) => setStudentId(event.target.value)} autoComplete="username" />
+            <input name="student_id" value={studentId} onChange={(event) => setStudentId(event.target.value)} autoComplete="username" />
           </label>
           <label>
             密码
-            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" />
+            <input name="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" />
           </label>
           {error ? <div className="legacy-error">{error}</div> : null}
           <button className="primary-button" disabled={submitting}>
@@ -608,7 +615,7 @@ function LearningRootPage() {
   };
 
   return (
-    <section className="legacy-page legacy-learning-page legacy-drilldown-page">
+    <section className="legacy-page legacy-learning-page legacy-drilldown-page" data-testid="student-learning-root">
       <div className="legacy-section-head">
         <span className="eyebrow">实验知识图谱式导航</span>
         <h1>元素周期表学习入口</h1>
@@ -1027,7 +1034,7 @@ function PointPage({ nodeId, backPath }: { nodeId: string; backPath: string }) {
   };
 
   return (
-    <section className="legacy-page">
+    <section className="legacy-page" data-testid="student-point-page">
       <button className="text-button" onClick={() => navigate(backAction.path)}>
         {backAction.label}
       </button>
@@ -1301,7 +1308,7 @@ function AssessmentPage() {
 
   if (selectingRange) {
     return (
-      <section className="legacy-page legacy-assessment-page">
+      <section className="legacy-page legacy-assessment-page" data-testid="student-assessment-page">
         <div className="legacy-assessment-subbar legacy-page-topbar">
           <strong>自选实验范围</strong>
           <button
@@ -1374,7 +1381,7 @@ function AssessmentPage() {
   }
 
   return (
-    <section className="legacy-page legacy-assessment-page">
+    <section className="legacy-page legacy-assessment-page" data-testid="student-assessment-page">
       <div className="legacy-section-head">
         <span className="eyebrow">BKT 实验测评</span>
         <h1>按掌握度与范围出题</h1>
@@ -1663,7 +1670,7 @@ function ReportsPage({ user }: { user: AuthUser }) {
   const className = user.class_name || user.class_id || "未分班";
 
   return (
-    <section className="legacy-page">
+    <section className="legacy-page" data-testid="student-reports-page">
       <section className="legacy-profile-info-card" aria-label="学生信息">
         <dl>
           <div>

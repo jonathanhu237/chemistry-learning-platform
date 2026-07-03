@@ -144,3 +144,12 @@ Run the Compose smoke check when deployment wiring changes:
 ```powershell
 python scripts/validate_compose_stack.py --build
 ```
+
+Run the browser E2E smoke against the real Compose runtime:
+
+```powershell
+python scripts/validate_legacy_e2e.py --build
+```
+
+This checks the student login and learning/video/assessment/report journeys, the teacher login and canonical workbench pages, and the teacher/student API role boundaries.
+By default it imports the production seed baseline inside the backend container with external Elasticsearch import skipped, so the video and point-detail journeys have deterministic data.

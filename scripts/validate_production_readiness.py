@@ -17,7 +17,7 @@ FRONTENDS = [
     ("web-teacher frontend", WEB_TEACHER_DIR, True),
     ("web-student frontend", WEB_STUDENT_DIR, True),
 ]
-DEFAULT_CHANGE = "trim-legacy-to-old-runtime"
+DEFAULT_CHANGE = "collapse-legacy-to-teacher-student"
 
 
 @dataclass
@@ -81,7 +81,7 @@ def _run(stage: Stage) -> StageResult:
 
 
 def _frontend_dependencies_stage(args: argparse.Namespace) -> list[Stage]:
-    if args.skip_frontend and not args.run_e2e:
+    if args.skip_frontend:
         return []
     if args.install_frontend:
         return [Stage(f"{name} dependency install", [_npm(), "ci"], cwd=frontend_dir) for name, frontend_dir, _ in FRONTENDS]
@@ -118,15 +118,6 @@ def _compose_host_env() -> dict[str, str]:
         "VIDEO_LIBRARY_SEARCH_URL": f"http://127.0.0.1:{elasticsearch_port}",
         "VIDEO_LIBRARY_SEARCH_LOCAL_FALLBACK": "false",
     }
-
-
-def _student_mobile_qa_env() -> dict[str, str]:
-    has_credentials = bool(os.environ.get("STUDENT_H5_QA_STUDENT_ID") and os.environ.get("STUDENT_H5_QA_PASSWORD"))
-    has_auth_override = os.environ.get("STUDENT_H5_QA_ALLOW_AUTH_SKIP") == "1"
-    has_mock_override = os.environ.get("STUDENT_H5_QA_MOCK") == "1"
-    if has_credentials or has_auth_override or has_mock_override:
-        return {}
-    return {"STUDENT_H5_QA_MOCK": "1"}
 
 
 def _stages(args: argparse.Namespace) -> list[Stage]:
@@ -202,12 +193,15 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
                 stages.append(Stage(f"{name} tests", [_npm(), "test"], cwd=frontend_dir))
             stages.append(Stage(f"{name} build", [_npm(), "run", "build"], cwd=frontend_dir))
     if args.run_e2e:
+        command = [sys.executable, "scripts/validate_legacy_e2e.py"]
+        if args.run_compose_smoke:
+            command.append("--skip-up")
+        if args.install_frontend:
+            command.append("--install-deps")
         stages.append(
             Stage(
-                "web-student mobile route-stack QA",
-                [_npm(), "run", "qa:mobile"],
-                cwd=WEB_STUDENT_DIR,
-                env=_student_mobile_qa_env(),
+                "legacy teacher/student browser e2e",
+                command,
             )
         )
     return stages
@@ -226,7 +220,7 @@ def main() -> None:
     parser.add_argument(
         "--run-e2e",
         action="store_true",
-        help="Run opt-in browser e2e smoke. Requires backend and student frontend origins to be running.",
+        help="Run opt-in browser e2e smoke for the legacy teacher and student products.",
     )
     parser.add_argument(
         "--run-compose-smoke",

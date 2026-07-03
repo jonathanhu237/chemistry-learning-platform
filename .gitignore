@@ -11,6 +11,8 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 node_modules/
+e2e/playwright-report/
+e2e/test-results/
 dist/
 apps/web-admin/dist/
 apps/web-teacher/dist/

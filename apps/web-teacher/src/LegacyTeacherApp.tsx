@@ -158,13 +158,13 @@ export function LegacyTeacherApp() {
   };
 
   return (
-    <div className="legacy-teacher-shell">
+    <div className="legacy-teacher-shell" data-testid="teacher-shell">
       <aside className="legacy-sidebar">
         <img src={logoSrc} alt="实验平台标识" className="legacy-sidebar-logo" />
         <strong>无机化学实验教学后台</strong>
         <nav aria-label="后台导航">
           {navItems.map((item) => (
-            <NavButton key={item.key} active={activeRoute === item.key} label={item.label} path={item.path} />
+            <NavButton key={item.key} active={activeRoute === item.key} label={item.label} path={item.path} testId={`teacher-nav-${item.key}`} />
           ))}
         </nav>
       </aside>
@@ -209,9 +209,9 @@ export function LegacyTeacherApp() {
   );
 }
 
-function NavButton({ active, label, path }: { active: boolean; label: string; path: string }) {
+function NavButton({ active, label, path, testId }: { active: boolean; label: string; path: string; testId: string }) {
   return (
-    <button className={active ? "active" : ""} onClick={() => navigate(path)}>
+    <button className={active ? "active" : ""} data-testid={testId} onClick={() => navigate(path)}>
       {label}
     </button>
   );
@@ -248,14 +248,14 @@ function LoginScreen({ onLogin }: { onLogin: (user: User) => void }) {
         <span className="eyebrow">Teacher</span>
         <h1>无机化学实验教学后台</h1>
         <p>管理实验目录与点位资料，基于点位内容出题，并查看学生学习与报告生成结果。</p>
-        <form onSubmit={submit}>
+        <form data-testid="teacher-login-form" onSubmit={submit}>
           <label>
             账号
-            <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" />
+            <input name="username" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" />
           </label>
           <label>
             密码
-            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" />
+            <input name="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" />
           </label>
           {error ? <div className="legacy-error">{error}</div> : null}
           <button className="primary-button" disabled={submitting}>
@@ -294,9 +294,23 @@ function useAsyncData<T>(loader: () => Promise<T>, deps: DependencyList): { data
   return { data, error, loading };
 }
 
-function PageFrame({ eyebrow, title, description, showHeader = true, children }: { eyebrow?: string; title: string; description?: string; showHeader?: boolean; children: ReactNode }) {
+function PageFrame({
+  eyebrow,
+  title,
+  description,
+  showHeader = true,
+  testId,
+  children,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  showHeader?: boolean;
+  testId?: string;
+  children: ReactNode;
+}) {
   return (
-    <main className="legacy-teacher-page">
+    <main className="legacy-teacher-page" data-testid={testId}>
       {showHeader ? (
         <section className="legacy-page-head">
           {eyebrow ? <span className="eyebrow">{eyebrow}</span> : null}
@@ -466,7 +480,7 @@ function ExperimentsPage() {
   };
 
   return (
-    <PageFrame title="实验管理" showHeader={false}>
+    <PageFrame title="实验管理" showHeader={false} testId="teacher-page-experiments">
       <StateBlock loading={catalog.loading} error={catalog.error}>
         {notice ? <div className="legacy-notice">{notice}</div> : null}
         {actionError ? <div className="legacy-error">{actionError}</div> : null}
@@ -978,6 +992,7 @@ function QuestionsPage() {
       eyebrow="点位资料直接命题"
       title="LLM 出题"
       description="选择一个实验点位，把原理、现象、安全三段式资料连同教师要求交给 LLM 生成待审题；不调用检索增强流程。"
+      testId="teacher-page-questions"
     >
       <StateBlock loading={catalog.loading} error={catalog.error}>
         <MetricGrid
@@ -1226,6 +1241,7 @@ function AnalyticsPage() {
       eyebrow="学生学习情况"
       title="学情分析"
       description="按班级展示每个学生的参与、得分、掌握度证据和薄弱点位，数据来自新版学情接口。"
+      testId="teacher-page-analytics"
     >
       <StateBlock loading={classState.loading} error={classState.error}>
         <section className="legacy-card">
@@ -1409,6 +1425,7 @@ function ReportsPage() {
       eyebrow="评价报告生成"
       title="评价报告"
       description="维护测评报告生成 Prompt，并查看学生提交测评后生成的学习总结与错题讲解。"
+      testId="teacher-page-reports"
     >
       {notice ? <div className="legacy-notice">{notice}</div> : null}
       {actionError ? <div className="legacy-error">{actionError}</div> : null}

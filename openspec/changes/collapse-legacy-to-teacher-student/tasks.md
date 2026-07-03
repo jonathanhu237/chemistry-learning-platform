@@ -39,3 +39,4 @@
 - [x] 5.4 Run backend route inventory and architecture validation.
 - [x] 5.5 Run `docker compose config --services` and a Compose smoke check for the legacy runtime.
 - [x] 5.6 Run `openspec validate collapse-legacy-to-teacher-student --strict`.
+- [x] 5.7 Add and run Playwright E2E smoke for student journeys, teacher journeys, and role/retired-route boundaries.

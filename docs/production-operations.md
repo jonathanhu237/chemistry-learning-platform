@@ -307,29 +307,25 @@ To also rebuild images as part of the smoke check, run the lower-level command e
 python scripts/validate_compose_stack.py --build
 ```
 
-Browser e2e smoke is opt-in because it requires a running backend, a running backoffice frontend on the allowed local origin, and a local browser runtime:
+Browser E2E smoke is opt-in because it runs a real browser against the Compose backend, `web-student`, and `web-teacher` services:
 
 ```powershell
-Set-Location apps/web-teacher
-npm run dev
-# In another shell, with the Docker backend running:
-npm run e2e:smoke
-Set-Location ..\..
+python scripts/validate_legacy_e2e.py --build
 ```
 
-The smoke script defaults to:
+The script discovers the actual Compose host ports, imports the production seed baseline with external Elasticsearch import skipped, and runs Playwright through `e2e/`. Use `--skip-seed-bootstrap` only when the target database is already seeded and you want a faster local rerun. Defaults are:
 
-- backoffice frontend: `http://localhost:5177`
-- backend API: `http://localhost:8000`
-- local admin: `codex_smoke_admin`
+- teacher account: `teacher / 123456`
+- student account: `SEED001 / 123456`
+- browser project: Playwright Chromium, or `PLAYWRIGHT_BROWSER_CHANNEL=chrome` to use local Chrome
 
-If `E2E_ADMIN_PASSWORD` is not set, the script prepares a disposable local smoke admin through the Docker backend container. For an existing admin account, set `E2E_ADMIN_USERNAME` and `E2E_ADMIN_PASSWORD`. To run the same check through the validation chain:
+It covers the student login plus learning/video/assessment/report journeys, the teacher login plus canonical workbench pages, and API boundaries proving student tokens cannot access `/api/teacher/*`, teacher tokens cannot access `/api/student/*`, and retired `/api/admin/*` and `/api/web-admin/*` routes are not available.
+
+To run the same check through the validation chain:
 
 ```powershell
 python scripts/validate_production_readiness.py --run-e2e
 ```
-
-The student H5 mobile route-stack QA defaults to `http://127.0.0.1:5173` through `STUDENT_H5_URL`. It covers direct root routes, nested detail routes, and the video library detail route `/video-library` when run with a student account or `STUDENT_H5_QA_MOCK=1`.
 
 ## Local Smoke Tests
 
@@ -345,18 +341,10 @@ For textbook RAG readiness, check `/api/teacher/learning-assistant/runtime` or t
 Run representative authenticated API checks:
 
 ```powershell
-# Log in with a local-only admin account, then reuse the bearer token.
+# Log in with a local-only teacher account, then reuse the bearer token.
 Invoke-RestMethod http://localhost:8000/api/teacher/media/assets?limit=3 -Headers @{ Authorization = "Bearer <token>" }
 Invoke-RestMethod http://localhost:8000/api/teacher/learning-assistant/ask -Method Post -Headers @{ Authorization = "Bearer <token>" } -ContentType "application/json" -Body '{"question":"Explain a representative experiment point.","allow_rag_lookup":false}'
 ```
-
-Browser-smoke the main admin paths after the frontend service or dev server is running:
-
-- `/overview`
-- `/videos`
-- `/learning-assistant`
-- `/question-banks`
-- `/analytics`
 
 ## Local Smoke Teacher Account
 
@@ -462,6 +450,6 @@ CI performs the same readiness gates as the local script:
 - frontend `npm ci`, typecheck, tests, production build, and chunk report
 - OpenSpec strict validation for the active quality change
 - protected resource manifest validation
-- admin app import smoke
+- teacher app import smoke
 
-If an environment-specific phase needs to skip a stage locally, use the explicit script flags such as `--skip-frontend`, `--skip-backend-tests`, `--skip-openspec`, or `--skip-resource-validation`. Use `--run-e2e` only when the local browser smoke prerequisites are running. Production release gates should run the full chain and may add `--run-e2e` when validating an interactive runtime.
+If an environment-specific phase needs to skip a stage locally, use the explicit script flags such as `--skip-frontend`, `--skip-backend-tests`, `--skip-openspec`, or `--skip-resource-validation`. Use `--run-e2e` when validating the interactive Compose runtime. Production release gates should run the full chain and may add `--run-e2e` when browser infrastructure is available.
