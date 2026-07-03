@@ -1033,7 +1033,10 @@ p {
 
 .legacy-question-candidate-list {
   display: grid;
+  align-content: start;
+  align-items: start;
   gap: 8px;
+  grid-auto-rows: max-content;
   max-height: none;
   min-height: 0;
   overflow: auto;
@@ -1042,6 +1045,7 @@ p {
 
 .legacy-question-candidate-card {
   display: grid;
+  align-self: start;
   gap: 7px;
   border: 1px solid #e1c8c2;
   border-left: 4px solid #d7a84e;
@@ -1145,13 +1149,17 @@ p {
 
 .legacy-question-bank-list {
   display: grid;
+  align-content: start;
+  align-items: start;
   gap: 8px;
+  grid-auto-rows: max-content;
   min-height: 0;
   overflow: auto;
   padding-right: 4px;
 }
 
 .legacy-question-bank-list .legacy-resource-row {
+  align-self: start;
   grid-template-columns: minmax(0, 1fr);
   gap: 7px;
   padding: 9px;
