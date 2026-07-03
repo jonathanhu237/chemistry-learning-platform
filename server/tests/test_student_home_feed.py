@@ -27,6 +27,12 @@ def test_home_feed_sql_only_uses_existing_reaction_equation_columns() -> None:
     assert "eq.condition_tags" not in source
 
 
+def test_home_feed_sql_excludes_placeholder_videos() -> None:
+    source = Path("server/app/domains/student_home_feed.py").read_text(encoding="utf-8")
+    assert "placeholder_video" in source
+    assert "no-video-placeholder.mp4" in source
+
+
 def test_student_home_video_feed_maps_rows_to_video_cards(monkeypatch: pytest.MonkeyPatch) -> None:
     rows: list[dict[str, Any]] = [
         {

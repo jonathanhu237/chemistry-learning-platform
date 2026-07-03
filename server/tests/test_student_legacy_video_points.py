@@ -107,6 +107,13 @@ def test_legacy_video_point_query_uses_point_content_primary_key() -> None:
     assert "pc.node_id" in source
 
 
+def test_legacy_video_point_query_does_not_count_placeholder_videos() -> None:
+    source = inspect.getsource(video_points._legacy_video_point_rows)
+
+    assert "placeholder_video" in source
+    assert "no-video-placeholder.mp4" in source
+
+
 def test_legacy_video_points_include_no_video_points_and_filter_query(monkeypatch) -> None:
     monkeypatch.setattr(video_points, "db_session", _fake_db_session)
     monkeypatch.setattr(video_points, "_ensure_recommendation_table", lambda _session: None)

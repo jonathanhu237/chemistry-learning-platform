@@ -160,6 +160,9 @@ def _legacy_video_point_rows(session: Any) -> list[dict[str, Any]]:
                     AND ma.upload_status = 'ready'
                     AND COALESCE(ma.lifecycle_status, 'active') = 'active'
                     AND mb.binding_status = 'published'
+                    AND COALESCE(mb.metadata->>'placeholder_video', 'false') <> 'true'
+                    AND COALESCE(mb.metadata->>'coverage_kind', ma.metadata->>'seed_kind', '') <> 'placeholder_video'
+                    AND COALESCE(ma.original_file_name, '') <> 'no-video-placeholder.mp4'
                 ) media_counts ON true
                 LEFT JOIN LATERAL (
                   SELECT ma.id AS thumbnail_media_id
@@ -171,6 +174,9 @@ def _legacy_video_point_rows(session: Any) -> list[dict[str, Any]]:
                     AND COALESCE(ma.lifecycle_status, 'active') = 'active'
                     AND mb.binding_status = 'published'
                     AND ma.thumbnail_relative_path IS NOT NULL
+                    AND COALESCE(mb.metadata->>'placeholder_video', 'false') <> 'true'
+                    AND COALESCE(mb.metadata->>'coverage_kind', ma.metadata->>'seed_kind', '') <> 'placeholder_video'
+                    AND COALESCE(ma.original_file_name, '') <> 'no-video-placeholder.mp4'
                   ORDER BY mb.display_order, mb.created_at, ma.id
                   LIMIT 1
                 ) media_preview ON true

@@ -228,6 +228,9 @@ def _feed_rows(session: Any, *, limit: int | None = None) -> list[dict[str, Any]
                     AND mb.binding_status = 'published'
                     AND ma.upload_status = 'ready'
                     AND COALESCE(ma.lifecycle_status, 'active') = 'active'
+                    AND COALESCE(mb.metadata->>'placeholder_video', 'false') <> 'true'
+                    AND COALESCE(mb.metadata->>'coverage_kind', ma.metadata->>'seed_kind', '') <> 'placeholder_video'
+                    AND COALESCE(ma.original_file_name, '') <> 'no-video-placeholder.mp4'
                   ORDER BY mb.display_order, mb.created_at
                   LIMIT 1
                 ) media ON TRUE
