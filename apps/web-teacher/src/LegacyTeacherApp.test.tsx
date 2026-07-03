@@ -913,8 +913,10 @@ describe("LegacyTeacherApp", () => {
 
     const settingsPage = await screen.findByTestId("teacher-page-settings");
     const settings = await within(settingsPage).findByTestId("teacher-settings-page");
-    expect(within(settings).getByText("teacher")).toBeTruthy();
-    expect(within(settings).getByText("教师")).toBeTruthy();
+    expect(within(settings).queryByText("当前账号")).toBeNull();
+    expect(within(settings).queryByText("账号类型")).toBeNull();
+    expect(within(settings).getByText("修改密码")).toBeTruthy();
+    expect(within(settings).getByText("添加教师账号")).toBeTruthy();
     expect(screen.queryByRole("dialog", { name: "设置" })).toBeNull();
 
     fireEvent.change(within(settings).getByLabelText("当前密码"), { target: { value: "old-password" } });

@@ -282,7 +282,7 @@ function LegacyTeacherAppContent() {
           ) : activeRoute === "reports" ? (
             <ReportsPage />
           ) : activeRoute === "settings" ? (
-            <SettingsPage user={user} />
+            <SettingsPage />
           ) : (
             <ExperimentsPage />
           )}
@@ -358,11 +358,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: User) => void }) {
   );
 }
 
-function userRoleLabel(role: User["role"]): string {
-  return role === "teacher" ? "教师" : "学生";
-}
-
-function SettingsPage({ user }: { user: User }) {
+function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -450,30 +446,6 @@ function SettingsPage({ user }: { user: User }) {
   return (
     <PageFrame title="设置" showHeader={false} testId="teacher-page-settings">
       <section className="legacy-settings-page-grid" data-testid="teacher-settings-page" aria-label="设置">
-        <div className="legacy-settings-account-column">
-          <div className="legacy-profile-account-card" aria-label="当前账号">
-            <div className="legacy-profile-avatar" aria-hidden="true">
-              {(user.display_name || user.username).slice(0, 1).toUpperCase()}
-            </div>
-            <div>
-              <span>当前账号</span>
-              <strong>{user.display_name || user.username}</strong>
-              <small>{user.username}</small>
-            </div>
-          </div>
-
-          <dl className="legacy-profile-meta-list">
-            <div>
-              <dt>身份</dt>
-              <dd>{userRoleLabel(user.role)}</dd>
-            </div>
-            <div>
-              <dt>账号类型</dt>
-              <dd>后台账号</dd>
-            </div>
-          </dl>
-        </div>
-
         <div className="legacy-settings-security-column">
           <form className="legacy-profile-password-form" onSubmit={submitPassword}>
             <div className="legacy-profile-form-head">

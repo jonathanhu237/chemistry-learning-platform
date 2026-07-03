@@ -138,7 +138,9 @@ test.describe("legacy teacher/student browser flows", () => {
     const settingsPage = page.getByTestId("teacher-settings-page");
     await expect(settingsPage).toBeVisible();
     await expect(page.getByRole("dialog", { name: "设置" })).toHaveCount(0);
-    await expect(settingsPage.getByText(teacherUsername)).toBeVisible();
+    await expect(settingsPage.getByText("当前账号")).toHaveCount(0);
+    await expect(settingsPage.getByText("账号类型")).toHaveCount(0);
+    await expect(settingsPage.getByText("修改密码")).toBeVisible();
     await expect(settingsPage.getByText("添加教师账号")).toBeVisible();
 
     await settingsPage.getByLabel("当前密码", { exact: true }).fill(teacherPassword);
