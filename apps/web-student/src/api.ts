@@ -61,6 +61,7 @@ export type LegacyVideoPointItem = {
   catalog_path?: string[];
   media_count?: number;
   published_media_count?: number;
+  preview_stream_path?: string | null;
   thumbnail_path?: string | null;
   is_recommended?: boolean;
   recommended_order?: number | null;

@@ -16,6 +16,7 @@ class LegacyStudentVideoPointItem(BaseModel):
     catalog_path: list[str] = Field(default_factory=list)
     media_count: int = 0
     published_media_count: int = 0
+    preview_stream_path: str | None = None
     thumbnail_path: str | None = None
     is_recommended: bool = False
     recommended_order: int | None = None

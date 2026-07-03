@@ -545,7 +545,7 @@ function HomeVideoCard({ item }: { item: LegacyVideoPointItem }) {
     <article className="legacy-video-card">
       {item.is_recommended ? <span className="legacy-recommend-badge">推荐学习</span> : null}
       <button className="legacy-video-button" onClick={() => navigate(pointRoute(item.node_id, "/"))} aria-label={`打开 ${item.title}`}>
-        {item.thumbnail_path ? <img src={mediaUrl(item.thumbnail_path)} alt="" /> : <span className="poster-fallback">实验点位</span>}
+        <VideoCardPreview item={item} fallbackLabel="实验点位" />
       </button>
       <div className="legacy-video-body">
         <h2>{item.title}</h2>
@@ -558,13 +558,33 @@ function HomeVideoCard({ item }: { item: LegacyVideoPointItem }) {
   );
 }
 
+function VideoCardPreview({ item, fallbackLabel }: { item: LegacyVideoPointItem; fallbackLabel: string }) {
+  if (item.preview_stream_path) {
+    return (
+      <video
+        className="legacy-video-preview"
+        src={mediaUrl(item.preview_stream_path)}
+        poster={mediaUrl(item.thumbnail_path)}
+        muted
+        loop
+        autoPlay
+        playsInline
+        preload="metadata"
+        aria-hidden="true"
+      />
+    );
+  }
+  if (item.thumbnail_path) return <img src={mediaUrl(item.thumbnail_path)} alt="" />;
+  return <span className="poster-fallback">{fallbackLabel}</span>;
+}
+
 function SearchResultCard({ item }: { item: LegacyVideoPointItem }) {
   const location = item.catalog_path?.slice(0, -1).slice(-2).join(" / ") || "实验视频库";
   return (
     <article className="legacy-video-card search-result">
       {item.is_recommended ? <span className="legacy-recommend-badge">推荐学习</span> : null}
       <button className="legacy-video-button result-icon" onClick={() => navigate(pointRoute(item.node_id, "/"))} aria-label={`打开 ${item.title}`}>
-        {item.thumbnail_path ? <img src={mediaUrl(item.thumbnail_path)} alt="" /> : <span>视频</span>}
+        <VideoCardPreview item={item} fallbackLabel="视频" />
       </button>
       <div className="legacy-video-body">
         <h2>{item.title}</h2>

@@ -354,10 +354,17 @@ p {
 }
 
 .legacy-video-button img,
+.legacy-video-preview,
 .native-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.legacy-video-preview {
+  display: block;
+  pointer-events: none;
+  background: #111;
 }
 
 .poster-fallback {

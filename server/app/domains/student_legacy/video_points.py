@@ -84,6 +84,7 @@ def _point_item(row: dict[str, Any]) -> LegacyStudentVideoPointItem:
     title = _clean(row.get("point_title")) or _clean(row.get("node_title"))
     snippet = _clean(row.get("phenomenon_explanation")) or _clean(row.get("principle_equation")) or _clean(row.get("principle_text"))
     media_count = int(row.get("media_count") or 0)
+    preview_media_id = _clean(row.get("preview_media_id"))
     thumbnail_media_id = _clean(row.get("thumbnail_media_id"))
     thumbnail_path = f"/api/student/media/assets/{thumbnail_media_id}/thumbnail" if thumbnail_media_id else _clean(row.get("thumbnail_path"))
     return LegacyStudentVideoPointItem(
@@ -96,6 +97,7 @@ def _point_item(row: dict[str, Any]) -> LegacyStudentVideoPointItem:
         catalog_path=_string_list(row.get("catalog_path")),
         media_count=media_count,
         published_media_count=media_count,
+        preview_stream_path=f"/api/student/media/assets/{preview_media_id}/stream" if preview_media_id else None,
         thumbnail_path=thumbnail_path or None,
         is_recommended=bool(row.get("is_recommended")),
         recommended_order=int(row["recommended_order"]) if row.get("recommended_order") is not None else None,
@@ -133,6 +135,7 @@ def _legacy_video_point_rows(session: Any) -> list[dict[str, Any]]:
                     FROM path
                   ), '[]'::jsonb) AS catalog_path,
                   COALESCE(media_counts.media_count, 0) AS media_count,
+                  media_preview.preview_media_id,
                   media_preview.thumbnail_media_id,
                   CASE WHEN lr.node_id IS NULL THEN false ELSE true END AS is_recommended,
                   lr.sort_order AS recommended_order,
@@ -165,7 +168,9 @@ def _legacy_video_point_rows(session: Any) -> list[dict[str, Any]]:
                     AND COALESCE(ma.original_file_name, '') <> 'no-video-placeholder.mp4'
                 ) media_counts ON true
                 LEFT JOIN LATERAL (
-                  SELECT ma.id AS thumbnail_media_id
+                  SELECT
+                    ma.id AS preview_media_id,
+                    CASE WHEN ma.thumbnail_relative_path IS NOT NULL THEN ma.id ELSE NULL END AS thumbnail_media_id
                   FROM experiment_catalog_point_media_bindings mb
                   JOIN media_assets ma ON ma.id = mb.media_asset_id
                   WHERE ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
@@ -173,7 +178,6 @@ def _legacy_video_point_rows(session: Any) -> list[dict[str, Any]]:
                     AND ma.upload_status = 'ready'
                     AND COALESCE(ma.lifecycle_status, 'active') = 'active'
                     AND mb.binding_status = 'published'
-                    AND ma.thumbnail_relative_path IS NOT NULL
                     AND COALESCE(mb.metadata->>'placeholder_video', 'false') <> 'true'
                     AND COALESCE(mb.metadata->>'coverage_kind', ma.metadata->>'seed_kind', '') <> 'placeholder_video'
                     AND COALESCE(ma.original_file_name, '') <> 'no-video-placeholder.mp4'

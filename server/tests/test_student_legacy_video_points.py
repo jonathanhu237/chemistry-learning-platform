@@ -49,6 +49,7 @@ def _rows() -> list[dict[str, object]]:
             "safety_note": "",
             "catalog_path": ["Chapter 13", "With video"],
             "media_count": 2,
+            "preview_media_id": "media-2",
             "thumbnail_media_id": "media-2",
             "is_recommended": True,
             "recommended_order": 0,
@@ -66,6 +67,7 @@ def _rows() -> list[dict[str, object]]:
             "safety_note": "注意通风。",
             "catalog_path": ["第13章 卤族元素", "氯的氧化性", "氯水漂白性实验"],
             "media_count": 1,
+            "preview_media_id": "media-1",
             "thumbnail_media_id": "media-1",
         },
         {
@@ -129,6 +131,7 @@ def test_legacy_video_points_include_no_video_points_and_filter_query(monkeypatc
         "point-no-video",
     ]
     assert all_points.items[0].published_media_count == 2
+    assert all_points.items[0].preview_stream_path == "/api/student/media/assets/media-2/stream"
     assert all_points.items[0].thumbnail_path == "/api/student/media/assets/media-2/thumbnail"
     assert all_points.items[0].is_recommended is True
     assert all_points.items[2].published_media_count == 0

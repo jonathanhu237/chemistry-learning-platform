@@ -169,6 +169,7 @@ function installStudentFetchMock() {
           catalog_path: ["第13章 卤族元素", "氯的氧化性", "氯水漂白性实验"],
           media_count: 1,
           published_media_count: 1,
+          preview_stream_path: "/api/student/media/assets/media-1/stream",
           thumbnail_path: "/api/student/media/assets/media-1/thumbnail",
           is_recommended: false,
           recommended_order: null,
@@ -734,7 +735,7 @@ describe("LegacyStudentApp", () => {
     expect(await screen.findByText("氯水漂白性实验")).toBeTruthy();
     expect(await screen.findByText("钠与水反应观察")).toBeTruthy();
     expect(container.querySelector(".legacy-video-card h2")?.textContent).toBe("氯水漂白性实验");
-    expect((container.querySelector(".legacy-video-button img") as HTMLImageElement | null)?.src).toContain("/api/student/media/assets/media-1/thumbnail");
+    expect((container.querySelector(".legacy-video-preview") as HTMLVideoElement | null)?.src).toContain("/api/student/media/assets/media-1/stream");
     expect(screen.getByText("推荐学习")).toBeTruthy();
     expect(screen.getByText("没有更多视频了")).toBeTruthy();
     expect(screen.getByText(/默认显示全部视频点位，不管当前是否已绑定视频。搜索后显示搜索结果内容。/)).toBeTruthy();
