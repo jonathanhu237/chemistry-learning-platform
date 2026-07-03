@@ -2466,74 +2466,97 @@ p {
   box-shadow: inset 5px 0 0 var(--legacy-sysu-red);
 }
 
-.legacy-family-score-table {
-  display: grid;
-  gap: 8px;
-  max-height: min(68vh, 680px);
-  overflow: auto;
-  padding-bottom: 4px;
-}
-
-.legacy-family-score-head,
-.legacy-family-score-row {
-  display: grid;
-  align-items: stretch;
-  gap: 8px;
-  width: max-content;
-  min-width: 100%;
-}
-
-.legacy-family-score-head {
-  position: sticky;
-  top: 0;
-  z-index: 4;
-  background: var(--legacy-paper);
+.legacy-family-score-table-wrap {
+  overflow-x: auto;
   padding-bottom: 2px;
 }
 
-.legacy-family-score-head span,
-.legacy-family-student-cell,
-.legacy-family-average-cell,
-.legacy-family-score-cell {
-  min-width: 0;
-  min-height: 48px;
-  border: 1px solid var(--legacy-line);
-  background: #fff;
-  padding: 8px 10px;
+.legacy-family-score-table {
+  width: 100%;
+  min-width: max-content;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
 }
 
-.legacy-family-score-head span {
-  display: flex;
-  align-items: center;
-  border-color: #e1c8c2;
+.legacy-family-score-table th,
+.legacy-family-score-table td {
+  min-width: 112px;
+  border-right: 1px solid var(--legacy-line);
+  border-bottom: 1px solid var(--legacy-line);
+  padding: 0;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.legacy-family-score-table thead th {
+  height: 42px;
+  border-top: 1px solid #e1c8c2;
   background: var(--legacy-red-050);
   color: var(--legacy-sysu-red);
+  font-size: 13px;
   font-weight: 900;
-  line-height: 1.35;
+  line-height: 1.25;
+  padding: 7px 10px;
+  white-space: normal;
 }
 
-.legacy-family-student-cell,
-.legacy-family-score-cell {
-  border-radius: 0;
-  text-align: left;
+.legacy-family-score-table th:first-child,
+.legacy-family-score-table td:first-child {
+  border-left: 1px solid var(--legacy-line);
 }
 
-.legacy-family-score-head span:first-child,
-.legacy-family-student-cell {
+.legacy-family-score-table thead th:first-child {
+  border-left-color: #e1c8c2;
+}
+
+.legacy-family-score-table thead th:not(:first-child) {
+  border-color: #e1c8c2;
+}
+
+.legacy-family-score-table thead th:first-child,
+.legacy-family-score-table tbody th {
   position: sticky;
   left: 0;
   z-index: 3;
+  min-width: 156px;
+  max-width: 176px;
+  background: #fff;
   box-shadow: 8px 0 10px rgba(255, 251, 248, 0.88);
 }
 
-.legacy-family-score-head span:first-child {
+.legacy-family-score-table thead th:first-child {
   z-index: 5;
+  background: var(--legacy-red-050);
+}
+
+.legacy-family-score-table thead th:nth-child(2),
+.legacy-family-score-table .legacy-family-average-cell {
+  min-width: 72px;
+  max-width: 84px;
+}
+
+.legacy-family-score-table tbody tr:hover th,
+.legacy-family-score-table tbody tr:hover td {
+  background: #fffdfb;
+}
+
+.legacy-family-student-cell,
+.legacy-family-score-cell {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
 }
 
 .legacy-family-student-cell {
   display: grid;
-  gap: 3px;
+  gap: 2px;
   color: var(--legacy-ink);
+  padding: 7px 10px;
 }
 
 .legacy-family-student-cell strong,
@@ -2546,28 +2569,31 @@ p {
 .legacy-family-student-cell small,
 .legacy-family-score-cell small {
   color: var(--legacy-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
 }
 
 .legacy-family-average-cell {
-  display: flex;
-  align-items: center;
+  height: 44px;
+  background: #fff;
   color: var(--legacy-ink);
+  font-size: 14px;
   font-weight: 900;
+  padding: 7px 10px !important;
 }
 
 .legacy-family-score-cell {
   display: grid;
-  gap: 3px;
+  gap: 2px;
   color: var(--legacy-ink);
+  padding: 7px 10px;
 }
 
 .legacy-family-score-cell:hover,
 .legacy-family-score-cell.selected,
-.legacy-family-score-row.selected .legacy-family-student-cell {
-  border-color: var(--legacy-sysu-red);
+.legacy-family-score-table tbody tr.selected .legacy-family-student-cell {
   background: #fff8f4;
+  box-shadow: inset 0 0 0 1px var(--legacy-sysu-red);
 }
 
 .legacy-family-student-cell:focus-visible,
@@ -2577,7 +2603,11 @@ p {
 }
 
 .legacy-family-score-cell.selected {
-  box-shadow: inset 0 -4px 0 var(--legacy-sysu-red);
+  box-shadow: inset 0 -4px 0 var(--legacy-sysu-red), inset 0 0 0 1px var(--legacy-sysu-red);
+}
+
+.legacy-family-score-pagination {
+  margin-top: 8px;
 }
 
 .legacy-score-detail-dialog.ant-modal {

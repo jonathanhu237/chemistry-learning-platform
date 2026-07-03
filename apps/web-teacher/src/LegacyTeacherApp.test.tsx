@@ -1441,6 +1441,7 @@ describe("LegacyTeacherApp", () => {
     expect(await screen.findByRole("heading", { name: "各族元素得分" })).toBeTruthy();
     expect(await screen.findByText("张三")).toBeTruthy();
     expect(screen.getByText("李四")).toBeTruthy();
+    expect(screen.getByText("第 1 / 1 页 · 共 2 名学生")).toBeTruthy();
     expect(screen.getByText("卤族元素")).toBeTruthy();
     expect(screen.getByText("氧族元素")).toBeTruthy();
     expect(screen.queryByText("CAT-CH13-f99cb352")).toBeNull();

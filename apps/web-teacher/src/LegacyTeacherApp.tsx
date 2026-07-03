@@ -1086,6 +1086,7 @@ const elementFamilyTitleByChapter: Record<string, string> = {
   CH22: "氢和稀有气体",
 };
 const DEFAULT_ANALYTICS_SCORE = 50;
+const ANALYTICS_STUDENT_PAGE_SIZE = 8;
 
 function chapterIdFromText(value?: string | null): string {
   const textValue = String(value || "");
@@ -2947,19 +2948,25 @@ function AnalyticsPage() {
   const rawColumns = dashboard?.experiment_groups?.length ? dashboard.experiment_groups : dashboard?.experiments || [];
   const columns = useMemo(() => analyticsFamilyColumns(rawColumns), [rawColumns]);
   const [scoreDetail, setScoreDetail] = useState<AnalyticsScoreDetailDialog | null>(null);
+  const [analyticsPage, setAnalyticsPage] = useState(1);
+  const analyticsPageCount = Math.max(1, Math.ceil(rows.length / ANALYTICS_STUDENT_PAGE_SIZE));
+  const clampedAnalyticsPage = Math.min(analyticsPage, analyticsPageCount);
+  const pagedRows = rows.slice((clampedAnalyticsPage - 1) * ANALYTICS_STUDENT_PAGE_SIZE, clampedAnalyticsPage * ANALYTICS_STUDENT_PAGE_SIZE);
 
   useEffect(() => {
     if (!selectedStudentId && rows[0]?.student_id) setSelectedStudentId(rows[0].student_id);
   }, [rows, selectedStudentId]);
   useEffect(() => {
+    setAnalyticsPage(1);
+  }, [selectedClassId, rows.length]);
+  useEffect(() => {
+    if (analyticsPage > analyticsPageCount) setAnalyticsPage(analyticsPageCount);
+  }, [analyticsPage, analyticsPageCount]);
+  useEffect(() => {
     if (scoreDetail && (!rows.some((row) => row.student_id === scoreDetail.student.student_id) || !columns.some((item) => item.id === scoreDetail.family.id))) {
       setScoreDetail(null);
     }
   }, [columns, rows, scoreDetail]);
-  const familyGridStyle = useMemo<CSSProperties>(() => {
-    const familyTracks = columns.length ? ` repeat(${columns.length}, minmax(118px, 1fr))` : "";
-    return { gridTemplateColumns: `minmax(176px, 1.25fr) 92px${familyTracks}` };
-  }, [columns.length]);
 
   return (
     <PageFrame
@@ -2996,51 +3003,73 @@ function AnalyticsPage() {
               <TeacherCard className="legacy-table-card">
                 <header>
                   <h2>各族元素得分</h2>
-                  <span>{rows.length} 名学生</span>
+                  <span>{rows.length} 名学生 · 每页 {ANALYTICS_STUDENT_PAGE_SIZE} 人</span>
                 </header>
-                <div className="legacy-family-score-table" role="table" aria-label="各族元素得分">
-                  <div className="legacy-family-score-head" role="row" style={familyGridStyle}>
-                    <span role="columnheader">学生</span>
-                    <span role="columnheader">平均分</span>
-                    {columns.map((item) => (
-                      <span role="columnheader" key={item.id}>
-                        {item.title}
-                      </span>
-                    ))}
+                <div className="legacy-family-score-table-wrap">
+                  <table className="legacy-family-score-table" aria-label="各族元素得分">
+                    <thead>
+                      <tr>
+                        <th scope="col">学生</th>
+                        <th scope="col">平均分</th>
+                        {columns.map((item) => (
+                          <th scope="col" key={item.id}>
+                            {item.title}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedRows.map((student) => (
+                        <tr className={student.student_id === selectedStudentId ? "selected" : ""} key={student.student_id}>
+                          <th scope="row">
+                            <button type="button" className="legacy-family-student-cell" onClick={() => setSelectedStudentId(student.student_id)}>
+                              <strong>{student.student_name}</strong>
+                              <small>{student.student_id}</small>
+                            </button>
+                          </th>
+                          <td className="legacy-family-average-cell">{scoreLabel(student.average_score)}</td>
+                          {columns.map((item) => {
+                            const state = analyticsScoreCellForColumn(student, item);
+                            const selected = scoreDetail?.student.student_id === student.student_id && scoreDetail.family.id === item.id;
+                            const pointScores = state?.points || [];
+                            const pointSummary = pointScores.length
+                              ? pointScores.map((point) => `${point.point_title || "未命名点位"}：${scoreLabel(point.score ?? point.mastery_score)}`).join("\n")
+                              : "暂无点位得分";
+                            return (
+                              <td key={item.id}>
+                                <button
+                                  type="button"
+                                  className={`legacy-family-score-cell${selected ? " selected" : ""}`}
+                                  aria-label={`${student.student_name} ${item.title} ${scoreLabel(state?.score ?? state?.mastery_score)}`}
+                                  title={pointSummary}
+                                  onClick={() => {
+                                    setSelectedStudentId(student.student_id);
+                                    setScoreDetail({ student, family: item, cell: state });
+                                  }}
+                                >
+                                  <strong>{scoreLabel(state?.score ?? state?.mastery_score)}</strong>
+                                  <small>{state ? `${state.evidence_count || 0} 证据` : "无记录"}</small>
+                                </button>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="legacy-class-pagination legacy-family-score-pagination" aria-label="学情分页">
+                  <span>
+                    第 {clampedAnalyticsPage} / {analyticsPageCount} 页 · 共 {rows.length} 名学生
+                  </span>
+                  <div>
+                    <button type="button" disabled={clampedAnalyticsPage <= 1} onClick={() => setAnalyticsPage((value) => Math.max(1, value - 1))}>
+                      上一页
+                    </button>
+                    <button type="button" disabled={clampedAnalyticsPage >= analyticsPageCount} onClick={() => setAnalyticsPage((value) => Math.min(analyticsPageCount, value + 1))}>
+                      下一页
+                    </button>
                   </div>
-                  {rows.map((student) => (
-                    <div className={`legacy-family-score-row${student.student_id === selectedStudentId ? " selected" : ""}`} key={student.student_id} role="row" style={familyGridStyle}>
-                      <button type="button" className="legacy-family-student-cell" onClick={() => setSelectedStudentId(student.student_id)}>
-                        <strong>{student.student_name}</strong>
-                        <small>{student.student_id}</small>
-                      </button>
-                      <span className="legacy-family-average-cell">{scoreLabel(student.average_score)}</span>
-                      {columns.map((item) => {
-                        const state = analyticsScoreCellForColumn(student, item);
-                        const selected = scoreDetail?.student.student_id === student.student_id && scoreDetail.family.id === item.id;
-                        const pointScores = state?.points || [];
-                        const pointSummary = pointScores.length
-                          ? pointScores.map((point) => `${point.point_title || "未命名点位"}：${scoreLabel(point.score ?? point.mastery_score)}`).join("\n")
-                          : "暂无点位得分";
-                        return (
-                          <button
-                            type="button"
-                            className={`legacy-family-score-cell${selected ? " selected" : ""}`}
-                            key={item.id}
-                            aria-label={`${student.student_name} ${item.title} ${scoreLabel(state?.score ?? state?.mastery_score)}`}
-                            title={pointSummary}
-                            onClick={() => {
-                              setSelectedStudentId(student.student_id);
-                              setScoreDetail({ student, family: item, cell: state });
-                            }}
-                          >
-                            <strong>{scoreLabel(state?.score ?? state?.mastery_score)}</strong>
-                            <small>{state ? `${state.evidence_count || 0} 证据` : "无记录"}</small>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ))}
                 </div>
               </TeacherCard>
               <TeacherModal
