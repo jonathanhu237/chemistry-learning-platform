@@ -375,7 +375,7 @@ const smartAssessmentPreview = {
   ],
   warnings: {
     untested_pool_underfilled: false,
-    measured_pool_empty: false,
+    measured_pool_empty: true,
   },
 };
 
@@ -1156,6 +1156,8 @@ describe("LegacyTeacherApp", () => {
     expect(within(workbench).getByText("未测目标 2 题")).toBeTruthy();
     expect(within(workbench).getByText("第 1 / 1 页 · 共 2 个实验")).toBeTruthy();
     expect(await within(workbench).findByText("当前班级继承默认策略")).toBeTruthy();
+    expect(within(workbench).queryByText("暂无已测点位，会优先覆盖未测点位")).toBeNull();
+    expect(within(workbench).queryByText("measured_pool_empty")).toBeNull();
 
     fireEvent.change(within(workbench).getByLabelText("每次题量数值"), { target: { value: "15" } });
     fireEvent.change(within(workbench).getByLabelText("未测点位比例数值"), { target: { value: "30" } });

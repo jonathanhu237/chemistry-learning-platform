@@ -665,7 +665,6 @@ const smartAssessmentWarningLabels: Record<string, string> = {
   no_candidate_points: "题库暂无可用于测评的点位题",
   underfilled_by_candidate_points: "候选点位少于目标题数",
   untested_pool_underfilled: "未测点位不足，会回填已测点位",
-  measured_pool_empty: "暂无已测点位，会优先覆盖未测点位",
   experiment_cap_underfilled: "单实验题数上限可能导致题量不足",
 };
 
@@ -701,7 +700,7 @@ function PaperManagementPage() {
   const strategy = strategyState.data;
   const preview = previewState.data;
   const previewWarnings = Object.entries(preview?.warnings || {})
-    .filter(([, active]) => Boolean(active))
+    .filter(([key, active]) => Boolean(active) && key !== "measured_pool_empty")
     .map(([key]) => smartAssessmentWarningLabels[key] || key);
   const previewExperiments = preview?.experiments || [];
   const previewPageCount = Math.max(1, Math.ceil(previewExperiments.length / PAPER_PREVIEW_PAGE_SIZE));
