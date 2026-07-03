@@ -1118,7 +1118,6 @@ p {
 
 .legacy-periodic-card,
 .legacy-learning-chapter,
-.legacy-catalog-recommendations,
 .legacy-catalog-panel,
 .legacy-profile-index {
   border: 1px solid var(--legacy-line);
@@ -1287,64 +1286,6 @@ p {
   line-height: 1;
 }
 
-.legacy-learning-recommendations-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid var(--legacy-line);
-  padding-bottom: 10px;
-}
-
-.legacy-learning-recommendations-head h2 {
-  margin: 2px 0 0;
-  font-size: 20px;
-  line-height: 1.2;
-}
-
-.legacy-catalog-recommendations {
-  margin-top: 14px;
-  padding: 14px;
-}
-
-.legacy-catalog-recommendation-list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.legacy-catalog-recommendation-list button {
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  min-width: 0;
-  min-height: 86px;
-  border: 1px solid var(--legacy-line);
-  background: #fff;
-  padding: 10px;
-  text-align: left;
-}
-
-.legacy-catalog-recommendation-list button:hover,
-.legacy-catalog-recommendation-list button:focus-visible {
-  border-color: var(--legacy-sysu-red);
-  background: var(--legacy-red-050);
-}
-
-.legacy-catalog-recommendation-meta {
-  grid-column: 2;
-  width: fit-content;
-  border: 1px solid #ead3b2;
-  background: #fff8e8;
-  color: #7a4c00;
-  padding: 3px 6px;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-}
-
 .legacy-learning-chapter {
   margin-top: 12px;
   padding: 16px;
@@ -1456,6 +1397,12 @@ p {
   background: #fff;
 }
 
+.legacy-catalog-row.recommended {
+  border-color: var(--legacy-sysu-red);
+  background: var(--legacy-red-050);
+  box-shadow: inset 4px 0 0 var(--legacy-sysu-red);
+}
+
 .legacy-catalog-row button {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr) 24px;
@@ -1501,6 +1448,13 @@ p {
   min-width: 0;
 }
 
+.legacy-catalog-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .legacy-catalog-copy strong,
 .legacy-catalog-copy small {
   overflow: hidden;
@@ -1515,6 +1469,18 @@ p {
 .legacy-catalog-copy small {
   color: var(--legacy-muted);
   font-size: 12px;
+}
+
+.legacy-catalog-row-recommendation {
+  flex: 0 0 auto;
+  border: 1px solid #ead3b2;
+  background: #fff8e8;
+  color: #7a4c00;
+  padding: 3px 6px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .legacy-catalog-arrow {
@@ -1846,14 +1812,9 @@ p {
 
   .legacy-periodic-card,
   .legacy-learning-chapter,
-  .legacy-catalog-recommendations,
   .legacy-catalog-panel,
   .legacy-profile-index {
     padding: 12px;
-  }
-
-  .legacy-catalog-recommendation-list {
-    grid-template-columns: 1fr;
   }
 
   .legacy-drilldown-page {

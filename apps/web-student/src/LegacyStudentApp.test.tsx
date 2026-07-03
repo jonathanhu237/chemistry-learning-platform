@@ -860,7 +860,8 @@ describe("LegacyStudentApp", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Cl 氯" }));
     expect(await screen.findByText("当前章节：卤素")).toBeTruthy();
-    expect(await screen.findByRole("heading", { name: "先看这些目录内容" })).toBeTruthy();
+    await waitFor(() => expect(container.querySelector(".legacy-catalog-row.recommended")).toBeTruthy());
+    expect(screen.queryByRole("heading", { name: "先看这些目录内容" })).toBeNull();
     expect(screen.getByText("薄弱点位")).toBeTruthy();
     expect(screen.getByRole("button", { name: "元素周期表" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "返回上一级目录" })).toBeTruthy();
@@ -876,7 +877,8 @@ describe("LegacyStudentApp", () => {
     expect(screen.getByText("He").closest("button")?.style.background).toBe("rgb(238, 243, 255)");
 
     fireEvent.click((await screen.findAllByText("氯的氧化性"))[0].closest("button")!);
-    expect(await screen.findByRole("heading", { name: "先看这些目录内容" })).toBeTruthy();
+    await waitFor(() => expect(container.querySelector(".legacy-catalog-row.kind-point.recommended")).toBeTruthy());
+    expect(screen.queryByRole("heading", { name: "先看这些目录内容" })).toBeNull();
     expect((await screen.findAllByText("氯水漂白性实验")).length).toBeGreaterThan(0);
     expect(screen.queryByRole("heading", { name: "氯的氧化性" })).toBeNull();
 
