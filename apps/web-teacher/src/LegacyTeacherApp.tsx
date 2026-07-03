@@ -29,7 +29,6 @@ import {
   listTeacherStudentAssessmentReports,
   loadCurrentUser,
   publishQuestionDraft,
-  rejectQuestionDraft,
   resetGlobalAssessmentReportPrompts,
   saveCatalogPointContent,
   setAuthToken,
@@ -37,6 +36,7 @@ import {
   updateAIConfiguration,
   updateCatalogNode,
   updateGlobalAssessmentReportPrompts,
+  updateQuestionDraft,
   updateTeacherAccount,
   uploadTeacherMediaAsset,
   type AIConfigurationResponse,
@@ -1673,18 +1673,25 @@ function QuestionsPage() {
     }
   };
 
-  const reviewDraft = async (draftId: string, action: "publish" | "reject") => {
+  const publishDraft = async (draftId: string) => {
     setActionError("");
     try {
-      if (action === "publish") {
-        const publishedQuestion = await publishQuestionDraft(draftId);
-        setSessionPublishedQuestions((current) => [publishedQuestion, ...current.filter((question) => question.id !== publishedQuestion.id)]);
-      } else {
-        await rejectQuestionDraft(draftId);
-      }
+      const publishedQuestion = await publishQuestionDraft(draftId);
+      setSessionPublishedQuestions((current) => [publishedQuestion, ...current.filter((question) => question.id !== publishedQuestion.id)]);
       setReloadKey((value) => value + 1);
     } catch (caught) {
       setActionError(legacyTeacherErrorMessage(caught));
+    }
+  };
+
+  const saveDraft = async (draftId: string, payload: QuestionDraft["payload"]) => {
+    setActionError("");
+    try {
+      await updateQuestionDraft(draftId, { payload, status: "draft" });
+      setReloadKey((value) => value + 1);
+    } catch (caught) {
+      setActionError(legacyTeacherErrorMessage(caught));
+      throw caught;
     }
   };
   const workbenchMetrics = [
@@ -1803,7 +1810,7 @@ function QuestionsPage() {
                 {draftsState.data?.items.length ? (
                   <div className="legacy-question-candidate-list">
                     {draftsState.data.items.slice(0, 5).map((draft) => (
-                      <DraftReviewCard key={draft.id} draft={draft} onReview={reviewDraft} />
+                      <DraftReviewCard key={draft.id} draft={draft} onPublish={publishDraft} onSave={saveDraft} />
                     ))}
                   </div>
                 ) : (
@@ -1864,9 +1871,135 @@ function PointContentSummary({ detail, loading }: { detail: CatalogNodeDetail | 
   );
 }
 
-function DraftReviewCard({ draft, onReview }: { draft: QuestionDraft; onReview: (draftId: string, action: "publish" | "reject") => void }) {
+type DraftEditState = {
+  stem: string;
+  options: Array<{ label: string; text: string }>;
+  answerValue: string;
+  explanation: string;
+};
+
+function draftEditStateFromPayload(payload: QuestionDraft["payload"] | undefined): DraftEditState {
+  const options = Array.isArray(payload?.options)
+    ? payload.options.map((option, index) => {
+        if (option && typeof option === "object") {
+          return {
+            label: String((option as { label?: unknown }).label || String.fromCharCode(65 + index)),
+            text: String((option as { text?: unknown }).text || ""),
+          };
+        }
+        return { label: String.fromCharCode(65 + index), text: String(option || "") };
+      })
+    : [];
+  return {
+    stem: String(payload?.stem || ""),
+    options,
+    answerValue: answerSummary(payload?.answer),
+    explanation: String(payload?.explanation || ""),
+  };
+}
+
+function answerFromDraftEdit(original: unknown, value: string): Record<string, unknown> {
+  const trimmed = value.trim();
+  if (original && typeof original === "object" && !Array.isArray(original)) {
+    if ("accepted_answers" in original) {
+      return {
+        ...(original as Record<string, unknown>),
+        accepted_answers: trimmed ? trimmed.split(/[\/,，;；\n]+/).map((item) => item.trim()).filter(Boolean) : [],
+      };
+    }
+    return { ...(original as Record<string, unknown>), value: trimmed };
+  }
+  return { value: trimmed };
+}
+
+function DraftReviewCard({
+  draft,
+  onPublish,
+  onSave,
+}: {
+  draft: QuestionDraft;
+  onPublish: (draftId: string) => Promise<void>;
+  onSave: (draftId: string, payload: QuestionDraft["payload"]) => Promise<void>;
+}) {
   const payload = draft.payload || {};
   const validationErrors = draft.validation_errors || [];
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editState, setEditState] = useState<DraftEditState>(() => draftEditStateFromPayload(payload));
+
+  useEffect(() => {
+    if (!editing) setEditState(draftEditStateFromPayload(draft.payload));
+  }, [draft.id, draft.payload, editing]);
+
+  const updateOptionText = (index: number, text: string) => {
+    setEditState((current) => ({
+      ...current,
+      options: current.options.map((option, optionIndex) => (optionIndex === index ? { ...option, text } : option)),
+    }));
+  };
+
+  const saveEdit = async () => {
+    setSaving(true);
+    const nextPayload: QuestionDraft["payload"] = {
+      ...payload,
+      stem: editState.stem.trim(),
+      options: editState.options.map((option) => ({ label: option.label, text: option.text.trim() })).filter((option) => option.text),
+      answer: answerFromDraftEdit(payload.answer, editState.answerValue),
+      explanation: editState.explanation.trim(),
+      status: "draft",
+    };
+    try {
+      await onSave(draft.id, nextPayload);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <article className="legacy-question-candidate-card legacy-question-candidate-card-editing">
+        <div className="legacy-question-candidate-title">
+          <span className="legacy-row-label">{questionTypeLabel(String(payload.question_type || ""))}</span>
+          <span className={`legacy-row-label${validationErrors.length ? "" : " gold"}`}>{validationErrors.length ? "需复核" : "可入库"}</span>
+        </div>
+        <div className="legacy-draft-edit-form">
+          <label>
+            题干
+            <TeacherInput.TextArea value={editState.stem} onChange={(event) => setEditState((current) => ({ ...current, stem: event.target.value }))} rows={3} />
+          </label>
+          {editState.options.length ? (
+            <div className="legacy-draft-option-editor" aria-label="选项">
+              {editState.options.map((option, index) => (
+                <label key={`${option.label}-${index}`}>
+                  <span>{option.label}</span>
+                  <TeacherInput value={option.text} onChange={(event) => updateOptionText(index, event.target.value)} />
+                </label>
+              ))}
+            </div>
+          ) : null}
+          <label>
+            答案
+            <TeacherInput value={editState.answerValue} onChange={(event) => setEditState((current) => ({ ...current, answerValue: event.target.value }))} />
+          </label>
+          <label>
+            解析
+            <TeacherInput.TextArea value={editState.explanation} onChange={(event) => setEditState((current) => ({ ...current, explanation: event.target.value }))} rows={3} />
+          </label>
+        </div>
+        {validationErrors.length ? <div className="legacy-error compact">{validationErrors.join("；")}</div> : null}
+        <div className="legacy-question-card-actions">
+          <TeacherButton className="legacy-secondary-button" disabled={saving} onClick={saveEdit}>
+            {saving ? "保存中..." : "保存修改"}
+          </TeacherButton>
+          <TeacherButton className="legacy-secondary-button" disabled={saving} onClick={() => setEditing(false)}>
+            取消
+          </TeacherButton>
+        </div>
+      </article>
+    );
+  }
+
   return (
     <article className="legacy-question-candidate-card">
       <div className="legacy-question-candidate-title">
@@ -1887,11 +2020,11 @@ function DraftReviewCard({ draft, onReview }: { draft: QuestionDraft; onReview: 
       </dl>
       {validationErrors.length ? <div className="legacy-error compact">{validationErrors.join("；")}</div> : null}
       <div className="legacy-question-card-actions">
-        <TeacherButton className="legacy-secondary-button" disabled={draft.status !== "draft"} onClick={() => onReview(draft.id, "publish")}>
+        <TeacherButton className="legacy-secondary-button" disabled={draft.status !== "draft"} onClick={() => onPublish(draft.id)}>
           通过入库
         </TeacherButton>
-        <TeacherButton className="legacy-secondary-button" disabled={draft.status !== "draft"} onClick={() => onReview(draft.id, "reject")}>
-          退回修改
+        <TeacherButton className="legacy-secondary-button" disabled={draft.status !== "draft"} onClick={() => setEditing(true)}>
+          修改
         </TeacherButton>
       </div>
     </article>

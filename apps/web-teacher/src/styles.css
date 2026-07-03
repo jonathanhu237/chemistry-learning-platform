@@ -1063,6 +1063,10 @@ p {
   line-height: 1.4;
 }
 
+.legacy-question-candidate-card-editing {
+  border-left-color: var(--legacy-sysu-red);
+}
+
 .legacy-question-candidate-title,
 .legacy-question-card-actions {
   display: flex;
@@ -1119,6 +1123,43 @@ p {
   color: var(--legacy-muted);
   font-size: 12px;
   line-height: 1.45;
+}
+
+.legacy-draft-edit-form {
+  display: grid;
+  gap: 8px;
+}
+
+.legacy-draft-edit-form label {
+  display: grid;
+  gap: 4px;
+  color: var(--legacy-sysu-red);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.legacy-draft-edit-form .ant-input,
+.legacy-draft-edit-form textarea.ant-input {
+  border-radius: 0;
+  border-color: var(--legacy-line);
+  color: var(--legacy-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.legacy-draft-option-editor {
+  display: grid;
+  gap: 5px;
+}
+
+.legacy-draft-option-editor label {
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+}
+
+.legacy-draft-option-editor span {
+  color: var(--legacy-sysu-red);
+  text-align: center;
 }
 
 .legacy-question-prompt-panel .legacy-point-content-summary {

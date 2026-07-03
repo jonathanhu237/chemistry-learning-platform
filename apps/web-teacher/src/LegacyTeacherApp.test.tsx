@@ -684,6 +684,11 @@ function installTeacherFetchMock() {
       return jsonResponse({ ...publishedQuestion, id: "question-from-draft-1" });
     }
 
+    if (path === "/api/teacher/question-banks/drafts/draft-ch13-1" && method === "PATCH") {
+      const body = JSON.parse(String(init?.body || "{}"));
+      return jsonResponse({ ...draftQuestion, payload: body.payload, status: body.status || "draft" });
+    }
+
     if (path === "/api/teacher/question-banks/drafts/draft-ch13-1/reject" && method === "POST") {
       return jsonResponse({ ...draftQuestion, status: "rejected" });
     }
@@ -1161,6 +1166,25 @@ describe("LegacyTeacherApp", () => {
     expect(screen.getByText("本轮入库")).toBeTruthy();
     expect(screen.getByText("审核通过后，题目会显示在这里。")).toBeTruthy();
     expect(screen.queryByText("为什么干燥有色布条放入氯气中不明显褪色？")).toBeNull();
+    expect(screen.queryByRole("button", { name: "退回修改" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "修改" }));
+    fireEvent.change(screen.getByLabelText("题干"), { target: { value: "修改后的氯水漂白性题干？" } });
+    fireEvent.change(screen.getByLabelText("答案"), { target: { value: "B" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+
+    await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/drafts/draft-ch13-1"));
+    const updateDraftCall = fetchMock.mock.calls.find(
+      (call) => requestUrl(call[0]).pathname === "/api/teacher/question-banks/drafts/draft-ch13-1" && String(call[1]?.method || "GET").toUpperCase() === "PATCH",
+    );
+    expect(updateDraftCall).toBeTruthy();
+    expect(JSON.parse(String(updateDraftCall?.[1]?.body))).toMatchObject({
+      status: "draft",
+      payload: {
+        stem: "修改后的氯水漂白性题干？",
+        answer: { value: "B" },
+      },
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "生成待审题" }));
 
@@ -1186,6 +1210,7 @@ describe("LegacyTeacherApp", () => {
     const paths = requestPaths(fetchMock);
     expect(paths).toContain("/api/teacher/question-banks/drafts?point_node_id=point-ch13-bleach&canonical_point_id=canon-bleach");
     expect(paths.some((path) => path.startsWith("/api/teacher/question-banks/questions"))).toBe(false);
+    expect(paths.some((path) => path.startsWith("/api/teacher/question-banks/drafts/draft-ch13-1/reject"))).toBe(false);
     expect(paths).toContain("/api/teacher/question-banks/drafts/draft-ch13-1/publish");
     expectNoForbiddenGenerationFlows(fetchMock);
   });

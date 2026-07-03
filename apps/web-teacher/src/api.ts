@@ -830,6 +830,10 @@ export function publishQuestionDraft(draftId: string): Promise<Question> {
   return postJson<Question>(`/api/teacher/question-banks/drafts/${encodeURIComponent(draftId)}/publish`, {});
 }
 
+export function updateQuestionDraft(draftId: string, payload: { payload: QuestionDraft["payload"]; status?: "draft" | "published" | "rejected" }): Promise<QuestionDraft> {
+  return patchJson<QuestionDraft>(`/api/teacher/question-banks/drafts/${encodeURIComponent(draftId)}`, payload);
+}
+
 export function rejectQuestionDraft(draftId: string): Promise<QuestionDraft> {
   return postJson<QuestionDraft>(`/api/teacher/question-banks/drafts/${encodeURIComponent(draftId)}/reject`, {});
 }
