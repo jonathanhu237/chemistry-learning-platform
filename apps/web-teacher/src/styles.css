@@ -3884,25 +3884,6 @@ p {
   line-height: 1;
 }
 
-.legacy-paper-enable {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid rgba(160, 19, 24, 0.28);
-  background: #fff8f4;
-  min-height: 36px;
-  padding: 0 10px;
-  color: var(--legacy-sysu-red);
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.legacy-paper-enable input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--legacy-sysu-red);
-}
-
 .legacy-paper-board-grid {
   display: grid;
   grid-template-columns: minmax(420px, 0.88fr) minmax(0, 1.12fr);

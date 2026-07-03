@@ -669,7 +669,7 @@ const smartAssessmentWarningLabels: Record<string, string> = {
 };
 
 function normalizeSmartAssessmentSettings(value?: Partial<SmartAssessmentSettings> | null): SmartAssessmentSettings {
-  return { ...smartAssessmentDefaults, ...(value || {}) };
+  return { ...smartAssessmentDefaults, ...(value || {}), enabled: true };
 }
 
 function smartAssessmentTickets(settings: SmartAssessmentSettings, mastery: number): number {
@@ -734,7 +734,7 @@ function PaperManagementPage() {
     setNotice("");
     setError("");
     try {
-      const saved = await updateTeacherClassSmartAssessmentStrategy(effectiveClassId, settings);
+      const saved = await updateTeacherClassSmartAssessmentStrategy(effectiveClassId, { ...settings, enabled: true });
       setSettings(normalizeSmartAssessmentSettings(saved.strategy));
       setNotice("智能组卷策略已保存。");
       setReloadKey((value) => value + 1);
@@ -815,14 +815,6 @@ function PaperManagementPage() {
                     <span>{strategy?.has_override ? "当前班级使用独立策略" : "当前班级继承默认策略"}</span>
                   </div>
                   <div className="legacy-paper-board-actions">
-                    <label className="legacy-paper-enable">
-                      <input
-                        type="checkbox"
-                        checked={settings.enabled}
-                        onChange={(event) => setSetting("enabled", event.target.checked)}
-                      />
-                      <span>启用</span>
-                    </label>
                     <TeacherButton type="default" onClick={reset} disabled={saving || !strategy?.has_override}>
                       恢复默认
                     </TeacherButton>
