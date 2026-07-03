@@ -1106,11 +1106,13 @@ p {
 }
 
 .legacy-question-candidate-title {
+  flex-wrap: nowrap;
   justify-content: space-between;
 }
 
 .legacy-question-card-labels {
   display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
@@ -1122,19 +1124,22 @@ p {
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  padding: 0;
   border: 1px solid var(--legacy-sysu-red);
   border-radius: 0;
-  background: var(--legacy-sysu-red);
-  color: #fff;
+  background: #fff;
+  color: var(--legacy-sysu-red);
   cursor: pointer;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 900;
   line-height: 1;
   transition:
     background-color 180ms ease,
     border-color 180ms ease,
+    color 180ms ease,
     opacity 180ms ease;
 }
 
@@ -1142,6 +1147,7 @@ p {
 .legacy-question-card-flow-button:focus-visible {
   border-color: #84000a;
   background: #84000a;
+  color: #fff;
   outline: 0;
 }
 
