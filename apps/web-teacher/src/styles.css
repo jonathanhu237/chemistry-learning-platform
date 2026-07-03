@@ -3053,8 +3053,39 @@ p {
 }
 
 .primary-button.ant-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 44px;
-  color: #fff;
+  border-color: var(--legacy-sysu-red) !important;
+  background: var(--legacy-sysu-red) !important;
+  box-shadow: 0 2px 0 rgba(82, 0, 0, 0.18);
+  color: #fff !important;
+  font-weight: 900;
+}
+
+.primary-button.ant-btn:hover,
+.primary-button.ant-btn:focus,
+.primary-button.ant-btn:active {
+  border-color: #84000a !important;
+  background: #84000a !important;
+  color: #fff !important;
+}
+
+.primary-button.ant-btn:disabled,
+.primary-button.ant-btn.ant-btn-disabled {
+  border-color: #e3d6d2 !important;
+  background: #f5efed !important;
+  box-shadow: none;
+  color: #9b8d89 !important;
+  cursor: not-allowed;
+}
+
+.primary-button.compact.ant-btn {
+  min-height: 34px;
+  height: 34px;
+  padding: 4px 12px;
+  line-height: 1;
 }
 
 .legacy-secondary-button.ant-btn {
