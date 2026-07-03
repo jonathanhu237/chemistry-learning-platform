@@ -36,7 +36,7 @@ from server.app.domains.roster.classes import (
     assign_teacher_to_class,
     create_class,
     create_roster_student,
-    disable_roster_student,
+    delete_roster_student,
     get_class,
     get_class_registration_settings,
     get_registration_settings,
@@ -293,7 +293,7 @@ async def teacher_disable_roster_student(
     student_id: str = Path(min_length=1),
     user: AuthUser = Depends(require_teacher_user),
 ) -> RosterStudentResponse:
-    return disable_roster_student(class_id, student_id, user)
+    return delete_roster_student(class_id, student_id, user)
 
 
 @router.post("/classes/{class_id}/students/{student_id}/reset-password")

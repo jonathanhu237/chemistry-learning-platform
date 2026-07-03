@@ -385,6 +385,27 @@ export function createTeacherClassStudent(
   });
 }
 
+export function updateTeacherClassStudent(
+  classId: string,
+  studentId: string,
+  payload: { student_name?: string; status?: "pending" | "active" | "disabled" },
+): Promise<TeacherStudentSummary> {
+  return patchJson<TeacherStudentSummary>(`/api/teacher/classes/${encodeURIComponent(classId)}/students/${encodeURIComponent(studentId)}`, payload);
+}
+
+export function resetTeacherClassStudentPassword(classId: string, studentId: string, initialPassword: string): Promise<{ ok: boolean }> {
+  return postJson<{ ok: boolean }>(`/api/teacher/classes/${encodeURIComponent(classId)}/students/${encodeURIComponent(studentId)}/reset-password`, {
+    initial_password: initialPassword,
+    force_change: true,
+  });
+}
+
+export function deleteTeacherClassStudent(classId: string, studentId: string): Promise<TeacherStudentSummary> {
+  return api<TeacherStudentSummary>(`/api/teacher/classes/${encodeURIComponent(classId)}/students/${encodeURIComponent(studentId)}`, {
+    method: "DELETE",
+  });
+}
+
 export function getTeacherClassRegistrationSettings(classId: string): Promise<TeacherClassRegistrationSettings> {
   return api<TeacherClassRegistrationSettings>(`/api/teacher/classes/${encodeURIComponent(classId)}/registration-settings`);
 }

@@ -10,6 +10,7 @@ import {
   createTeacherAccount,
   createTeacherClass,
   createTeacherClassStudent,
+  deleteTeacherClassStudent,
   generateLegacyPointQuestions,
   getAIConfiguration,
   getAnalyticsDashboard,
@@ -33,6 +34,7 @@ import {
   loadCurrentUser,
   publishQuestionDraft,
   resetGlobalAssessmentReportPrompts,
+  resetTeacherClassStudentPassword,
   revokeQuestionToDraft,
   saveCatalogPointContent,
   setAuthToken,
@@ -41,6 +43,7 @@ import {
   updateCatalogNode,
   updateGlobalAssessmentReportPrompts,
   updateQuestionDraft,
+  updateTeacherClassStudent,
   updateTeacherAccount,
   uploadTeacherMediaAsset,
   type AIConfigurationResponse,
@@ -2685,6 +2688,14 @@ function activationModeLabel(value?: string | null): string {
   return value || "默认密码";
 }
 
+function studentDisplayName(student: TeacherStudentSummary): string {
+  return student.student_name || student.display_name || student.username || student.student_id;
+}
+
+function studentIsActive(student: TeacherStudentSummary): boolean {
+  return student.status !== "disabled" && (student.activated || student.status === "active");
+}
+
 function ClassesPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [studentReloadKey, setStudentReloadKey] = useState(0);
@@ -2704,6 +2715,11 @@ function ClassesPage() {
   const [classDialogOpen, setClassDialogOpen] = useState(false);
   const [studentDialogOpen, setStudentDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<TeacherStudentSummary | null>(null);
+  const [editingStudentName, setEditingStudentName] = useState("");
+  const [passwordStudent, setPasswordStudent] = useState<TeacherStudentSummary | null>(null);
+  const [studentPassword, setStudentPassword] = useState("");
+  const [deletingStudent, setDeletingStudent] = useState<TeacherStudentSummary | null>(null);
   const [importMode, setImportMode] = useState<"upsert" | "overwrite">("upsert");
   const [passwordMode, setPasswordMode] = useState<"student_id" | "shared">("student_id");
   const [sharedPassword, setSharedPassword] = useState("");
@@ -2714,6 +2730,10 @@ function ClassesPage() {
   const [creatingClass, setCreatingClass] = useState(false);
   const [creatingStudent, setCreatingStudent] = useState(false);
   const [importingRoster, setImportingRoster] = useState(false);
+  const [savingStudentName, setSavingStudentName] = useState(false);
+  const [resettingStudentPassword, setResettingStudentPassword] = useState(false);
+  const [togglingStudentId, setTogglingStudentId] = useState("");
+  const [deletingStudentId, setDeletingStudentId] = useState("");
 
   useEffect(() => {
     if (!selectedClassId && selectedClass?.id) setSelectedClassId(selectedClass.id);
@@ -2729,7 +2749,7 @@ function ClassesPage() {
   const studentPageCount = Math.max(1, Math.ceil(students.length / studentPageSize));
   const pagedStudents = students.slice((studentPage - 1) * studentPageSize, studentPage * studentPageSize);
   const classStudentTotal = classes.reduce((total, item) => total + Number(item.student_count || 0), 0);
-  const activeStudentTotal = students.filter((item) => item.activated || item.status === "active").length;
+  const activeStudentTotal = students.filter(studentIsActive).length;
   const defaultPasswordMode = registrationState.data?.default_password_mode === "shared" ? "shared" : "student_id";
   const initialPasswordLabel = defaultPasswordMode === "shared" ? "统一初始密码" : "使用学号";
 
@@ -2800,6 +2820,101 @@ function ClassesPage() {
       setActionError(legacyTeacherErrorMessage(caught));
     } finally {
       setCreatingStudent(false);
+    }
+  };
+
+  const openEditStudent = (student: TeacherStudentSummary) => {
+    setEditingStudent(student);
+    setEditingStudentName(studentDisplayName(student));
+    setActionError("");
+  };
+
+  const saveStudentName = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!selectedClass?.id || !editingStudent) return;
+    const nextName = editingStudentName.trim();
+    if (!nextName) {
+      setActionError("请填写学生姓名。");
+      return;
+    }
+    setSavingStudentName(true);
+    setNotice("");
+    setActionError("");
+    try {
+      await updateTeacherClassStudent(selectedClass.id, editingStudent.student_id, { student_name: nextName });
+      setEditingStudent(null);
+      setEditingStudentName("");
+      setStudentReloadKey((value) => value + 1);
+      setNotice("已更新学生姓名。");
+    } catch (caught) {
+      setActionError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setSavingStudentName(false);
+    }
+  };
+
+  const openResetStudentPassword = (student: TeacherStudentSummary) => {
+    setPasswordStudent(student);
+    setStudentPassword("");
+    setActionError("");
+  };
+
+  const resetStudentPassword = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!selectedClass?.id || !passwordStudent) return;
+    const nextPassword = studentPassword.trim();
+    if (nextPassword.length < 8) {
+      setActionError("新密码至少 8 位。");
+      return;
+    }
+    setResettingStudentPassword(true);
+    setNotice("");
+    setActionError("");
+    try {
+      await resetTeacherClassStudentPassword(selectedClass.id, passwordStudent.student_id, nextPassword);
+      setPasswordStudent(null);
+      setStudentPassword("");
+      setNotice(`已重置 ${studentDisplayName(passwordStudent)} 的密码。`);
+    } catch (caught) {
+      setActionError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setResettingStudentPassword(false);
+    }
+  };
+
+  const toggleStudentStatus = async (student: TeacherStudentSummary) => {
+    if (!selectedClass?.id) return;
+    const nextStatus = student.status === "disabled" ? "active" : "disabled";
+    setTogglingStudentId(student.student_id);
+    setNotice("");
+    setActionError("");
+    try {
+      await updateTeacherClassStudent(selectedClass.id, student.student_id, { status: nextStatus });
+      setStudentReloadKey((value) => value + 1);
+      setReloadKey((value) => value + 1);
+      setNotice(nextStatus === "disabled" ? "已停用学生账号。" : "已启用学生账号。");
+    } catch (caught) {
+      setActionError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setTogglingStudentId("");
+    }
+  };
+
+  const deleteStudent = async () => {
+    if (!selectedClass?.id || !deletingStudent) return;
+    setDeletingStudentId(deletingStudent.student_id);
+    setNotice("");
+    setActionError("");
+    try {
+      await deleteTeacherClassStudent(selectedClass.id, deletingStudent.student_id);
+      setDeletingStudent(null);
+      setStudentReloadKey((value) => value + 1);
+      setReloadKey((value) => value + 1);
+      setNotice("已删除学生账号。");
+    } catch (caught) {
+      setActionError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setDeletingStudentId("");
     }
   };
 
@@ -2919,13 +3034,28 @@ function ClassesPage() {
                       <span>学号</span>
                       <strong>姓名</strong>
                       <span>状态</span>
+                      <span>操作</span>
                     </article>
                     {pagedStudents.map((student) => (
                       <article key={`${student.student_id}-${student.id || student.class_id || selectedClass.id}`}>
                         <span>{student.student_id}</span>
-                        <strong>{student.student_name || student.display_name || student.username || student.student_id}</strong>
-                        <span className={`legacy-status-pill status-${student.activated || student.status === "active" ? "active" : student.status}`}>
-                          {student.activated || student.status === "active" ? "已激活" : studentStatusLabel(student.status)}
+                        <strong>{studentDisplayName(student)}</strong>
+                        <span className={`legacy-status-pill status-${studentIsActive(student) ? "active" : student.status}`}>
+                          {studentIsActive(student) ? "已激活" : studentStatusLabel(student.status)}
+                        </span>
+                        <span className="legacy-student-actions">
+                          <button type="button" onClick={() => openEditStudent(student)}>
+                            编辑
+                          </button>
+                          <button type="button" onClick={() => openResetStudentPassword(student)}>
+                            重置密码
+                          </button>
+                          <button type="button" disabled={togglingStudentId === student.student_id} onClick={() => toggleStudentStatus(student)}>
+                            {student.status === "disabled" ? "启用" : "停用"}
+                          </button>
+                          <button type="button" className="danger" disabled={deletingStudentId === student.student_id} onClick={() => setDeletingStudent(student)}>
+                            删除
+                          </button>
                         </span>
                       </article>
                     ))}
@@ -3004,6 +3134,83 @@ function ClassesPage() {
             </TeacherButton>
           </div>
         </form>
+      </TeacherModal>
+      <TeacherModal
+        open={Boolean(editingStudent)}
+        className="legacy-create-dialog"
+        title="编辑学生"
+        onCancel={() => setEditingStudent(null)}
+        footer={null}
+        maskClosable={!savingStudentName}
+      >
+        <form className="legacy-dialog-form compact" onSubmit={saveStudentName}>
+          <label>
+            学号
+            <TeacherInput value={editingStudent?.student_id || ""} disabled />
+          </label>
+          <label>
+            姓名
+            <TeacherInput value={editingStudentName} onChange={(event) => setEditingStudentName(event.target.value)} placeholder="学生姓名" autoFocus />
+          </label>
+          <div className="legacy-create-dialog-actions">
+            <TeacherButton type="default" className="legacy-secondary-button" onClick={() => setEditingStudent(null)} disabled={savingStudentName}>
+              取消
+            </TeacherButton>
+            <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={savingStudentName}>
+              {savingStudentName ? "保存中..." : "保存"}
+            </TeacherButton>
+          </div>
+        </form>
+      </TeacherModal>
+      <TeacherModal
+        open={Boolean(passwordStudent)}
+        className="legacy-create-dialog"
+        title="重置密码"
+        onCancel={() => setPasswordStudent(null)}
+        footer={null}
+        maskClosable={!resettingStudentPassword}
+      >
+        <form className="legacy-dialog-form compact" onSubmit={resetStudentPassword}>
+          <div className="legacy-dialog-warning">
+            <strong>{passwordStudent ? studentDisplayName(passwordStudent) : ""}</strong>
+            <span>{passwordStudent?.student_id}</span>
+          </div>
+          <label>
+            新密码
+            <TeacherInput.Password value={studentPassword} onChange={(event) => setStudentPassword(event.target.value)} placeholder="至少 8 位" autoFocus />
+          </label>
+          <div className="legacy-create-dialog-actions">
+            <TeacherButton type="default" className="legacy-secondary-button" onClick={() => setPasswordStudent(null)} disabled={resettingStudentPassword}>
+              取消
+            </TeacherButton>
+            <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={resettingStudentPassword}>
+              {resettingStudentPassword ? "重置中..." : "重置密码"}
+            </TeacherButton>
+          </div>
+        </form>
+      </TeacherModal>
+      <TeacherModal
+        open={Boolean(deletingStudent)}
+        className="legacy-create-dialog"
+        title="删除学生"
+        onCancel={() => setDeletingStudent(null)}
+        footer={null}
+        maskClosable={!deletingStudentId}
+      >
+        <div className="legacy-dialog-form compact">
+          <div className="legacy-dialog-warning danger">
+            <strong>{deletingStudent ? studentDisplayName(deletingStudent) : ""}</strong>
+            <span>删除后该学生账号将无法登录，名单中也不再展示该学生。</span>
+          </div>
+          <div className="legacy-create-dialog-actions">
+            <TeacherButton type="default" className="legacy-secondary-button" onClick={() => setDeletingStudent(null)} disabled={Boolean(deletingStudentId)}>
+              取消
+            </TeacherButton>
+            <TeacherButton type="primary" className="primary-button" onClick={deleteStudent} disabled={Boolean(deletingStudentId)}>
+              {deletingStudentId ? "删除中..." : "确认删除"}
+            </TeacherButton>
+          </div>
+        </div>
       </TeacherModal>
       <TeacherModal
         open={importDialogOpen}

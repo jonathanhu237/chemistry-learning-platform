@@ -844,6 +844,25 @@ function installTeacherFetchMock() {
       });
     }
 
+    const rosterStudentMatch = path.match(/^\/api\/teacher\/classes\/class-1\/students\/([^/]+)$/);
+    if (rosterStudentMatch && method === "PATCH") {
+      const student = students.find((item) => item.student_id === decodeURIComponent(rosterStudentMatch[1])) || students[0];
+      return jsonResponse({
+        ...student,
+        ...JSON.parse(String(init?.body || "{}")),
+      });
+    }
+
+    if (rosterStudentMatch && method === "DELETE") {
+      const student = students.find((item) => item.student_id === decodeURIComponent(rosterStudentMatch[1])) || students[0];
+      return jsonResponse(student);
+    }
+
+    const resetStudentPasswordMatch = path.match(/^\/api\/teacher\/classes\/class-1\/students\/([^/]+)\/reset-password$/);
+    if (resetStudentPasswordMatch && method === "POST") {
+      return jsonResponse({ ok: true });
+    }
+
     if (path === "/api/teacher/classes/class-1/students") {
       return jsonResponse(students);
     }
@@ -924,6 +943,29 @@ describe("LegacyTeacherApp", () => {
     cleanup();
     vi.unstubAllGlobals();
   });
+
+  const renderClassPage = async () => {
+    const fetchMock = installTeacherFetchMock();
+    vi.stubGlobal("fetch", fetchMock);
+    window.history.pushState({}, "", "/classes");
+    render(<LegacyTeacherApp />);
+
+    expect(await screen.findByTestId("teacher-page-classes")).toBeTruthy();
+    expect(await screen.findByText("张三")).toBeTruthy();
+    return fetchMock;
+  };
+
+  const clickFirstRosterAction = async (name: string) => {
+    let actionButton: HTMLElement | null = null;
+    await waitFor(() => {
+      const rosterTable = screen.getByLabelText("学生名单");
+      const buttons = within(rosterTable).getAllByRole("button", { name });
+      expect(buttons.length).toBeGreaterThan(0);
+      actionButton = buttons[0] as HTMLElement;
+    });
+    if (!actionButton) throw new Error(`Roster action not found: ${name}`);
+    fireEvent.click(actionButton);
+  };
 
   it("renders the focused teacher navigation and catalog-backed CH13 point editor", async () => {
     const fetchMock = installTeacherFetchMock();
@@ -1428,6 +1470,77 @@ describe("LegacyTeacherApp", () => {
       class_name: "无机化学二班",
       description: "新增测试班级",
     });
+    expectNoForbiddenGenerationFlows(fetchMock);
+  });
+
+  it("edits roster student names from the class page", async () => {
+    const fetchMock = await renderClassPage();
+
+    await clickFirstRosterAction("编辑");
+    const editDialog = await screen.findByRole("dialog", { name: "编辑学生" });
+    expect(within(editDialog).getByDisplayValue("2026001")).toBeTruthy();
+    fireEvent.change(within(editDialog).getByLabelText("姓名"), { target: { value: "张三丰" } });
+    fireEvent.click(within(editDialog).getByRole("button", { name: "保存" }));
+    expect(await screen.findByText("已更新学生姓名。")).toBeTruthy();
+    const editStudentCall = fetchMock.mock.calls.find(
+      (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/students/2026001" && String(call[1]?.method || "GET").toUpperCase() === "PATCH",
+    );
+    expect(editStudentCall).toBeTruthy();
+    expect(JSON.parse(String(editStudentCall?.[1]?.body))).toEqual({ student_name: "张三丰" });
+
+    expectNoForbiddenGenerationFlows(fetchMock);
+  });
+
+  it("resets roster student passwords from the class page", async () => {
+    const fetchMock = await renderClassPage();
+
+    await clickFirstRosterAction("重置密码");
+    const passwordDialog = await screen.findByRole("dialog", { name: "重置密码" });
+    fireEvent.change(within(passwordDialog).getByLabelText("新密码"), { target: { value: "newpass123" } });
+    fireEvent.click(within(passwordDialog).getByRole("button", { name: "重置密码" }));
+    expect(await screen.findByText("已重置 张三 的密码。")).toBeTruthy();
+    const resetPasswordCall = fetchMock.mock.calls.find(
+      (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/students/2026001/reset-password" && String(call[1]?.method || "GET").toUpperCase() === "POST",
+    );
+    expect(resetPasswordCall).toBeTruthy();
+    expect(JSON.parse(String(resetPasswordCall?.[1]?.body))).toEqual({
+      initial_password: "newpass123",
+      force_change: true,
+    });
+
+    expectNoForbiddenGenerationFlows(fetchMock);
+  });
+
+  it("toggles roster student status from the class page", async () => {
+    const fetchMock = await renderClassPage();
+
+    await clickFirstRosterAction("停用");
+    expect(await screen.findByText("已停用学生账号。")).toBeTruthy();
+    const disableStudentCall = fetchMock.mock.calls.find(
+      (call) =>
+        requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/students/2026001" &&
+        String(call[1]?.method || "GET").toUpperCase() === "PATCH" &&
+        String(call[1]?.body || "").includes("disabled"),
+    );
+    expect(disableStudentCall).toBeTruthy();
+    expect(JSON.parse(String(disableStudentCall?.[1]?.body))).toEqual({ status: "disabled" });
+
+    expectNoForbiddenGenerationFlows(fetchMock);
+  });
+
+  it("deletes roster student accounts from the class page", async () => {
+    const fetchMock = await renderClassPage();
+
+    await clickFirstRosterAction("删除");
+    const deleteDialog = await screen.findByRole("dialog", { name: "删除学生" });
+    expect(within(deleteDialog).getByText("删除后该学生账号将无法登录，名单中也不再展示该学生。")).toBeTruthy();
+    fireEvent.click(within(deleteDialog).getByRole("button", { name: "确认删除" }));
+    expect(await screen.findByText("已删除学生账号。")).toBeTruthy();
+    const deleteStudentCall = fetchMock.mock.calls.find(
+      (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1/students/2026001" && String(call[1]?.method || "GET").toUpperCase() === "DELETE",
+    );
+    expect(deleteStudentCall).toBeTruthy();
+
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 

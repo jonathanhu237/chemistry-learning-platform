@@ -939,6 +939,52 @@ def disable_roster_student(class_id: str, student_id: str, user: Any) -> RosterS
         return _load_roster_student(session, class_id, normalized_student_id)
 
 
+def delete_roster_student(class_id: str, student_id: str, user: Any) -> RosterStudentResponse:
+    require_class_access(class_id, user)
+    normalized_student_id = _normalize_student_id(student_id)
+    with db_session() as session:
+        response = _load_roster_student(session, class_id, normalized_student_id)
+        user_id = response.user_id
+        if user_id:
+            session.execute(
+                text(
+                    """
+                    UPDATE students
+                    SET status = 'disabled', updated_at = now()
+                    WHERE user_id = CAST(:user_id AS uuid)
+                    """
+                ),
+                {"user_id": user_id},
+            )
+            session.execute(
+                text(
+                    """
+                    DELETE FROM app_users
+                    WHERE id = CAST(:user_id AS uuid)
+                    """
+                ),
+                {"user_id": user_id},
+            )
+        deleted = (
+            session.execute(
+                text(
+                    """
+                    DELETE FROM roster_entries
+                    WHERE class_id = :class_id
+                      AND normalized_student_id = :student_id
+                    RETURNING id
+                    """
+                ),
+                {"class_id": class_id, "student_id": normalized_student_id},
+            )
+            .mappings()
+            .first()
+        )
+        if not deleted:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Roster student not found")
+        return response
+
+
 def reset_student_password(
     payload: StudentPasswordResetRequest,
     class_id: str,
