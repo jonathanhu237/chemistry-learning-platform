@@ -1662,6 +1662,12 @@ function AssessmentSessionPage({ sessionId }: { sessionId: string }) {
         </div>
         {underfilled ? <div className="legacy-state compact">题库可用题量不足，系统已按当前题库生成 {actualCount} 题。</div> : null}
         {error ? <div className="legacy-error">{error}</div> : null}
+        {submitting ? (
+          <div className="legacy-assessment-submit-status" role="status" aria-live="polite">
+            <strong>正在批改答案并生成报告</strong>
+            <span>系统正在判分、更新各部分掌握度，并生成学习总结和错题讲解；根据网络和模型响应情况，可能需要几十秒，请保持当前页面打开。</span>
+          </div>
+        ) : null}
 
         <div className="legacy-question-list">
           {questions.map((question, index) => (
@@ -1676,7 +1682,7 @@ function AssessmentSessionPage({ sessionId }: { sessionId: string }) {
         </div>
         {!questions.length ? <div className="legacy-state">本轮测评暂无可答题目，请返回后重新开始。</div> : null}
         <button className="primary-button legacy-assessment-start" type="button" disabled={!allAnswered || submitting} onClick={submit}>
-          {submitting ? "正在提交..." : allAnswered ? "提交答案" : "请完成全部题目"}
+          {submitting ? "正在批改并生成报告..." : allAnswered ? "提交答案" : "请完成全部题目"}
         </button>
       </article>
     </section>

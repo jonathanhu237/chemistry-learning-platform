@@ -1056,6 +1056,22 @@ describe("LegacyStudentApp", () => {
   });
 
   it("starts smart weak-point testing and renders old exam questions", async () => {
+    const baseFetch = installStudentFetchMock();
+    let resolveSubmit: (() => void) | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/student/legacy/smart-assessment/submit")) {
+          return new Promise<Response>((resolve) => {
+            resolveSubmit = () => {
+              void baseFetch(input).then(resolve);
+            };
+          });
+        }
+        return baseFetch(input);
+      }),
+    );
     const { container } = render(<LegacyStudentApp />);
 
     fireEvent.click(await screen.findByRole("button", { name: "评测" }));
@@ -1080,6 +1096,11 @@ describe("LegacyStudentApp", () => {
     fireEvent.change(screen.getByPlaceholderText("请输入答案"), { target: { value: "HClO" } });
     expect(screen.getByText("已完成 3 题")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "提交答案" }));
+
+    expect((await screen.findByRole("status")).textContent).toContain("正在批改答案并生成报告");
+    expect(screen.getByText(/正在判分、更新各部分掌握度，并生成学习总结和错题讲解/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "正在批改并生成报告..." })).toBeTruthy();
+    resolveSubmit?.();
 
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some((call) => String(call[0]).includes("/api/student/legacy/smart-assessment/submit"))).toBe(true));
     expect(vi.mocked(fetch).mock.calls.some((call) => String(call[0]).includes("/api/student/smart-assessment/submit"))).toBe(false);

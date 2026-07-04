@@ -975,6 +975,29 @@ p {
   font-size: 17px;
 }
 
+.legacy-assessment-submit-status {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+  border: 1px solid var(--legacy-line);
+  border-left: 5px solid var(--legacy-sysu-red);
+  background: #fff8f4;
+  padding: 12px 14px;
+}
+
+.legacy-assessment-submit-status strong {
+  color: var(--legacy-sysu-red);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.legacy-assessment-submit-status span {
+  color: var(--legacy-muted);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.65;
+}
+
 .legacy-exam-topbar {
   display: flex;
   align-items: center;
