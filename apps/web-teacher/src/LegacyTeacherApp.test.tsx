@@ -1747,6 +1747,7 @@ describe("LegacyTeacherApp", () => {
     expect(await screen.findByText("张三")).toBeTruthy();
     expect(screen.getByText("李四")).toBeTruthy();
     expect(screen.getByText("第 1 / 1 页 · 共 2 名学生")).toBeTruthy();
+    expect(screen.queryByText(/每页/)).toBeNull();
     expect(screen.getByText("卤族元素")).toBeTruthy();
     expect(screen.getByText("氧族元素")).toBeTruthy();
     const analyticsTable = screen.getByRole("table", { name: "学生报告与各元素得分" });
