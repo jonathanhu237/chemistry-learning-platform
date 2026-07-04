@@ -3413,7 +3413,6 @@ function AnalyticsPage() {
                                 <div className={`legacy-family-score-entry${selected ? " selected" : ""}`} title={pointSummary}>
                                   <div className="legacy-family-score-cell">
                                     <strong>{scoreLabel(state?.score ?? state?.mastery_score)}</strong>
-                                    <small>{state ? `${state.evidence_count || 0} 证据` : "无记录"}</small>
                                   </div>
                                   <button
                                     type="button"

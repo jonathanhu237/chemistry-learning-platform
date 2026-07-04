@@ -2826,8 +2826,7 @@ p {
   white-space: nowrap;
 }
 
-.legacy-family-student-cell small,
-.legacy-family-score-cell small {
+.legacy-family-student-cell small {
   color: var(--legacy-muted);
   font-size: 11px;
   font-weight: 800;
@@ -2852,6 +2851,7 @@ p {
 
 .legacy-family-score-cell {
   display: grid;
+  align-content: center;
   gap: 2px;
   color: var(--legacy-ink);
   min-width: 0;
