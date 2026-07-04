@@ -26,8 +26,8 @@ from server.app.student_smart_assessment_schemas import (
 from server.tests.route_helpers import assert_route
 
 
-def _candidate(question_id: str, *, experiment_id: str) -> PosttestQuestionCandidate:
-    point_id = f"point-{question_id}"
+def _candidate(question_id: str, *, experiment_id: str, point_id: str | None = None) -> PosttestQuestionCandidate:
+    point_id = point_id or f"point-{question_id}"
     return PosttestQuestionCandidate(
         id=question_id,
         experiment_id=experiment_id,
@@ -187,29 +187,29 @@ def test_smart_assessment_composition_reserves_untested_ratio() -> None:
     assert any(meta["source"] == "untested" for meta in point_meta.values())
 
 
-def test_custom_assessment_composition_uses_selected_experiments() -> None:
-    settings = CustomAssessmentSettings(default_question_count=5, max_question_count=10, max_questions_per_experiment=2)
+def test_custom_assessment_composition_uses_selected_points_with_per_point_quota() -> None:
     selected, composition, experiment_meta, point_meta = _compose_custom_questions(
         candidates=[
-            _candidate("q-a1", experiment_id="EXP_A"),
-            _candidate("q-a2", experiment_id="EXP_A"),
-            _candidate("q-a3", experiment_id="EXP_A"),
-            _candidate("q-b1", experiment_id="EXP_B"),
-            _candidate("q-b2", experiment_id="EXP_B"),
-            _candidate("q-c1", experiment_id="EXP_C"),
+            _candidate("q-a1", experiment_id="EXP_A", point_id="point-a"),
+            _candidate("q-a2", experiment_id="EXP_A", point_id="point-a"),
+            _candidate("q-a3", experiment_id="EXP_A", point_id="point-a"),
+            _candidate("q-b1", experiment_id="EXP_B", point_id="point-b"),
+            _candidate("q-c1", experiment_id="EXP_C", point_id="point-c"),
         ],
-        selected_experiment_ids=["EXP_A", "EXP_B"],
-        settings=settings,
+        selected_point_ids=["point-a", "point-b"],
         student_id="20240001",
-        requested_question_count=5,
+        questions_per_point=2,
     )
 
-    assert len(selected) == 4
+    assert len(selected) == 3
     assert {question.experiment_id for question in selected} == {"EXP_A", "EXP_B"}
-    assert composition.custom_question_count == 4
+    assert composition.target_question_count == 4
+    assert composition.custom_question_count == 3
+    assert composition.warnings["questions_per_point"] == 2
     assert composition.warnings["underfilled"] is True
     assert all(meta["source"] == "custom" for meta in experiment_meta.values())
-    assert all(meta["question_count"] <= 2 for meta in experiment_meta.values())
+    assert point_meta["point-a"]["question_count"] == 2
+    assert point_meta["point-b"]["question_count"] == 1
     assert all(meta["source"] == "custom" for meta in point_meta.values())
 
 

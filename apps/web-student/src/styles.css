@@ -850,6 +850,7 @@ p {
 }
 
 .legacy-assessment-count-panel .legacy-question-count-row {
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
   align-self: center;
   margin-bottom: 0;
 }
@@ -874,6 +875,42 @@ p {
 .legacy-question-list {
   display: grid;
   gap: 10px;
+}
+
+.legacy-assessment-scope-tree,
+.legacy-assessment-scope-children {
+  display: grid;
+  gap: 8px;
+}
+
+.legacy-assessment-scope-node {
+  display: grid;
+  gap: 8px;
+}
+
+.legacy-assessment-scope-tree button {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid var(--legacy-line);
+  border-radius: 0;
+  background: #fff;
+  padding: 9px 12px;
+  text-align: left;
+}
+
+.legacy-assessment-scope-tree button.selected {
+  border-color: var(--legacy-sysu-red);
+  background: var(--legacy-red-050);
+  box-shadow: inset 3px 0 0 var(--legacy-sysu-red);
+}
+
+.legacy-assessment-scope-tree button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
 }
 
 .legacy-assessment-option-list button {

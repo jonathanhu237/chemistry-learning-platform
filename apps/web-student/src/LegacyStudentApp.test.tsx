@@ -444,7 +444,10 @@ function installStudentFetchMock() {
           default_question_count: 10,
           max_question_count: 20,
           max_questions_per_experiment: 3,
+          questions_per_point_options: [1, 2, 3],
+          default_questions_per_point: 1,
         },
+        smart_question_count: 10,
         experiments: [
           {
             id: "exp-1",
@@ -466,6 +469,60 @@ function installStudentFetchMock() {
             title: "暂未开放题目的实验",
             parent_title: "待补题库",
             question_count: 0,
+          },
+        ],
+        scope_tree: [
+          {
+            id: "chapter-halogen",
+            title: "第13章 卤族元素",
+            kind: "chapter",
+            parent_id: null,
+            question_count: 15,
+            children: [
+              {
+                id: "dir-halogen-solubility",
+                title: "卤素单质在不同溶剂中的溶解性",
+                kind: "directory",
+                parent_id: "chapter-halogen",
+                question_count: 15,
+                children: [
+                  {
+                    id: "point-halogen-solubility",
+                    title: "四氯化碳萃取卤素单质",
+                    kind: "point",
+                    parent_id: "dir-halogen-solubility",
+                    question_count: 15,
+                    children: [],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            id: "chapter-oxygen",
+            title: "第14章 氧族元素",
+            kind: "chapter",
+            parent_id: null,
+            question_count: 20,
+            children: [
+              {
+                id: "dir-oxygen-prep",
+                title: "氧气的制备与性质",
+                kind: "directory",
+                parent_id: "chapter-oxygen",
+                question_count: 20,
+                children: [
+                  {
+                    id: "point-oxygen-prep",
+                    title: "过氧化氢制取氧气",
+                    kind: "point",
+                    parent_id: "dir-oxygen-prep",
+                    question_count: 20,
+                    children: [],
+                  },
+                ],
+              },
+            ],
           },
         ],
       });
@@ -957,14 +1014,13 @@ describe("LegacyStudentApp", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "评测" }));
     expect(await screen.findByRole("heading", { name: "按掌握度与范围出题" })).toBeTruthy();
-    expect(screen.getByText("目标题数")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "10 题" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /智能薄弱项测试/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /自选实验范围/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /随机练习/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /全部范围/ })).toBeTruthy();
+    expect(screen.queryByText("目标题数")).toBeNull();
+    expect(screen.getByRole("button", { name: /智能组卷/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /自主选择测试范围/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /随机练习/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /全部范围/ })).toBeNull();
     expect(screen.queryByText("一、卤素单质在不同溶剂中的溶解性")).toBeNull();
-    expect(screen.queryByPlaceholderText("搜索实验名称、章节或编号")).toBeNull();
+    expect(screen.queryByPlaceholderText("搜索章节、目录或点位")).toBeNull();
     expect(screen.queryByText("生成智能测评")).toBeNull();
     assertNoForbiddenVisibleTerms(container);
   });
@@ -973,28 +1029,28 @@ describe("LegacyStudentApp", () => {
     const { container } = render(<LegacyStudentApp />);
 
     fireEvent.click(await screen.findByRole("button", { name: "评测" }));
-    fireEvent.click(screen.getByRole("button", { name: /自选实验范围/ }));
-    expect(screen.queryByText("一、卤素单质在不同溶剂中的溶解性")).toBeNull();
-    expect(screen.getByRole("button", { name: "进入选择实验范围" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "进入选择实验范围" }));
-    expect(screen.getByText("自选实验范围")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /自主选择测试范围/ }));
+    expect(screen.queryByText("卤素单质在不同溶剂中的溶解性")).toBeNull();
+    expect(screen.getByRole("button", { name: "进入选择测试范围" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "进入选择测试范围" }));
+    expect(screen.getByText("自主选择测试范围")).toBeTruthy();
     expect(screen.getByRole("button", { name: "返回测评方式" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "仅显示有题实验" })).toBeNull();
-    expect(await screen.findByText("一、卤素单质在不同溶剂中的溶解性")).toBeTruthy();
-    expect(screen.getByText("15 道可用题")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "开始测评" }));
-    expect(await screen.findByText("请先选择至少 1 个有题实验范围。")).toBeTruthy();
+    expect(screen.getByText("每个点位抽题数")).toBeTruthy();
+    expect(await screen.findByText("卤素单质在不同溶剂中的溶解性")).toBeTruthy();
+    expect(screen.getAllByText("15 题").length).toBeGreaterThan(0);
+    expect((screen.getByRole("button", { name: "开始测评" }) as HTMLButtonElement).disabled).toBe(true);
 
-    fireEvent.change(screen.getByPlaceholderText("搜索实验名称、章节或编号"), { target: { value: "氧气" } });
-    expect(await screen.findByText("一、氧气的制备与性质")).toBeTruthy();
-    expect(screen.queryByText("一、卤素单质在不同溶剂中的溶解性")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /一、氧气的制备与性质/ }));
-    fireEvent.click(screen.getByRole("button", { name: "15 题" }));
+    fireEvent.change(screen.getByPlaceholderText("搜索章节、目录或点位"), { target: { value: "氧气" } });
+    expect(await screen.findByText("氧气的制备与性质")).toBeTruthy();
+    expect(screen.queryByText("卤素单质在不同溶剂中的溶解性")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /过氧化氢制取氧气/ }));
+    fireEvent.click(screen.getByRole("button", { name: "2" }));
     fireEvent.click(screen.getByRole("button", { name: "开始测评" }));
 
     await waitFor(() => expect(window.location.pathname).toBe("/assessment/session/custom-session-1"));
     const customStartCall = vi.mocked(fetch).mock.calls.find((call) => String(call[0]).includes("/api/student/custom-assessment/start"));
-    expect(JSON.parse(String(customStartCall?.[1]?.body))).toMatchObject({ experiment_ids: ["exp-2"], question_count: 15 });
+    expect(JSON.parse(String(customStartCall?.[1]?.body))).toMatchObject({ scope_node_ids: ["point-oxygen-prep"], questions_per_point: 2 });
     expect(await screen.findByText("自选范围测评")).toBeTruthy();
     assertNoForbiddenVisibleTerms(container);
   });
@@ -1006,7 +1062,7 @@ describe("LegacyStudentApp", () => {
     fireEvent.click(screen.getByRole("button", { name: "开始测评" }));
 
     await waitFor(() => expect(window.location.pathname).toBe("/assessment/session/session-1"));
-    expect(await screen.findByText("智能薄弱项测试")).toBeTruthy();
+    expect(await screen.findByText("智能组卷测评")).toBeTruthy();
     expect(screen.getByRole("button", { name: "返回评测" })).toBeTruthy();
     expect(screen.getByText("共 3 题")).toBeTruthy();
     expect(screen.getByText("已完成 0 题")).toBeTruthy();
@@ -1027,7 +1083,7 @@ describe("LegacyStudentApp", () => {
 
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some((call) => String(call[0]).includes("/api/student/legacy/smart-assessment/submit"))).toBe(true));
     expect(vi.mocked(fetch).mock.calls.some((call) => String(call[0]).includes("/api/student/smart-assessment/submit"))).toBe(false);
-    expect(await screen.findByRole("heading", { name: "智能薄弱项测试完成" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "智能组卷测评完成" })).toBeTruthy();
     expect(screen.getByText("66.7")).toBeTruthy();
     expect(screen.getByRole("button", { name: "返回测评" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "查看报告" })).toBeTruthy();
@@ -1040,29 +1096,21 @@ describe("LegacyStudentApp", () => {
     );
   });
 
-  it("starts random and all-range assessment through current custom API", async () => {
+  it("starts custom range assessment with a selected directory scope", async () => {
     render(<LegacyStudentApp />);
 
     fireEvent.click(await screen.findByRole("button", { name: "评测" }));
-    fireEvent.click(screen.getByRole("button", { name: /随机练习/ }));
-    await waitFor(() => expect((screen.getByRole("button", { name: "开始测评" }) as HTMLButtonElement).disabled).toBe(false));
-    fireEvent.click(screen.getByRole("button", { name: "开始测评" }));
-    await waitFor(() => expect(window.location.pathname).toBe("/assessment/session/custom-session-1"));
-    const randomStartCall = vi.mocked(fetch).mock.calls.find((call) => String(call[0]).includes("/api/student/custom-assessment/start"));
-    expect(JSON.parse(String(randomStartCall?.[1]?.body)).experiment_ids.length).toBeGreaterThan(0);
-
-    cleanup();
-    window.history.pushState({}, "", "/");
-    setAuthToken("student-token");
-    vi.stubGlobal("fetch", installStudentFetchMock());
-    render(<LegacyStudentApp />);
-    fireEvent.click(await screen.findByRole("button", { name: "评测" }));
-    fireEvent.click(screen.getByRole("button", { name: /全部范围/ }));
-    await waitFor(() => expect((screen.getByRole("button", { name: "开始测评" }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole("button", { name: /自主选择测试范围/ }));
+    fireEvent.click(screen.getByRole("button", { name: "进入选择测试范围" }));
+    fireEvent.click(await screen.findByRole("button", { name: /卤素单质在不同溶剂中的溶解性/ }));
+    fireEvent.click(screen.getByRole("button", { name: "3" }));
     fireEvent.click(screen.getByRole("button", { name: "开始测评" }));
     await waitFor(() => expect(window.location.pathname).toBe("/assessment/session/custom-session-1"));
     const calls = vi.mocked(fetch).mock.calls.filter((call) => String(call[0]).includes("/api/student/custom-assessment/start"));
-    expect(JSON.parse(String(calls.at(-1)?.[1]?.body)).experiment_ids).toEqual(["exp-1", "exp-2"]);
+    expect(JSON.parse(String(calls.at(-1)?.[1]?.body))).toMatchObject({
+      scope_node_ids: ["dir-halogen-solubility"],
+      questions_per_point: 3,
+    });
   });
 
   it("renders report list and legacy AI wrong-question detail", async () => {

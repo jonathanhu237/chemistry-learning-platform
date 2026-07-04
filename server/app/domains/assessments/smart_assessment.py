@@ -38,6 +38,7 @@ from server.app.mastery import update_mastery
 from server.app.student_smart_assessment_schemas import (
     CustomAssessmentExperimentOption,
     CustomAssessmentOptionsSettings,
+    CustomAssessmentScopeNode,
     CustomAssessmentSettingsResponse,
     PublicSmartAssessmentQuestion,
     StudentAssessmentStatusResponse,
@@ -58,6 +59,7 @@ from server.app.student_smart_assessment_schemas import (
 )
 
 CUSTOM_QUESTION_COUNT_OPTIONS = [5, 10, 15, 20]
+CUSTOM_QUESTIONS_PER_POINT_OPTIONS = [1, 2, 3]
 POINT_ASSESSMENT_TARGET_COUNT = 3
 SMART_BASELINE_PROMPT_DISMISSED_EVENT = "smart_baseline_prompt_dismissed"
 ASSESSMENT_SOURCE_VALUES = {"measured", "untested", "custom", "point"}
@@ -165,6 +167,8 @@ def _custom_options_settings(settings: CustomAssessmentSettings) -> CustomAssess
         default_question_count=settings.default_question_count,
         max_question_count=settings.max_question_count,
         max_questions_per_experiment=settings.max_questions_per_experiment,
+        questions_per_point_options=CUSTOM_QUESTIONS_PER_POINT_OPTIONS,
+        default_questions_per_point=1,
     )
 
 
@@ -882,6 +886,188 @@ def _custom_options_from_candidates(
     return options
 
 
+def _candidate_question_counts_by_point(candidates: list[PosttestQuestionCandidate]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for question in candidates:
+        for point_id in _question_assessment_point_ids(question):
+            counts[point_id] = counts.get(point_id, 0) + 1
+    return counts
+
+
+def _custom_scope_tree_from_candidates(
+    session: Any,
+    candidates: list[PosttestQuestionCandidate],
+) -> list[CustomAssessmentScopeNode]:
+    point_counts = _candidate_question_counts_by_point(candidates)
+    point_ids = sorted(point_counts)
+    if not point_ids:
+        return []
+    rows = session.execute(
+        text(
+            """
+            WITH RECURSIVE path AS (
+              SELECT
+                n.id,
+                n.parent_id,
+                n.node_kind,
+                n.title,
+                n.chapter_id,
+                n.display_order
+              FROM experiment_catalog_nodes n
+              WHERE n.id = ANY(:point_ids)
+                AND n.node_kind = 'point'
+                AND n.status = 'published'
+              UNION
+              SELECT
+                parent.id,
+                parent.parent_id,
+                parent.node_kind,
+                parent.title,
+                parent.chapter_id,
+                parent.display_order
+              FROM experiment_catalog_nodes parent
+              JOIN path child ON child.parent_id = parent.id
+              WHERE parent.status = 'published'
+            )
+            SELECT DISTINCT
+              path.id,
+              path.parent_id,
+              path.node_kind,
+              path.title,
+              path.chapter_id,
+              path.display_order,
+              c.chapter_title
+            FROM path
+            JOIN chapters c ON c.id = path.chapter_id
+            ORDER BY c.chapter_title, path.display_order, path.title, path.id
+            """
+        ),
+        {"point_ids": point_ids},
+    ).mappings()
+    nodes: dict[str, dict[str, Any]] = {}
+
+    def chapter_node_id(chapter_id: str) -> str:
+        return f"chapter:{chapter_id}"
+
+    for row in rows:
+        chapter_id = str(row["chapter_id"])
+        chapter_id_value = chapter_node_id(chapter_id)
+        nodes.setdefault(
+            chapter_id_value,
+            {
+                "id": chapter_id_value,
+                "title": str(row.get("chapter_title") or chapter_id),
+                "kind": "chapter",
+                "parent_id": None,
+                "display_order": 0,
+                "question_count": 0,
+                "children": [],
+            },
+        )
+        node_id = str(row["id"])
+        node_kind = "point" if str(row.get("node_kind")) == "point" else "directory"
+        nodes[node_id] = {
+            "id": node_id,
+            "title": str(row.get("title") or node_id),
+            "kind": node_kind,
+            "parent_id": str(row["parent_id"]) if row.get("parent_id") else chapter_id_value,
+            "display_order": int(row.get("display_order") or 0),
+            "question_count": point_counts.get(node_id, 0) if node_kind == "point" else 0,
+            "children": [],
+        }
+
+    for node in list(nodes.values()):
+        parent_id = node.get("parent_id")
+        if parent_id and parent_id in nodes:
+            nodes[parent_id]["children"].append(node)
+
+    def normalize(node: dict[str, Any]) -> int:
+        if node["kind"] == "point":
+            return int(node.get("question_count") or 0)
+        children = node.get("children") or []
+        children.sort(key=lambda item: (int(item.get("display_order") or 0), str(item.get("title") or ""), str(item.get("id") or "")))
+        kept_children = [child for child in children if normalize(child) > 0]
+        node["children"] = kept_children
+        node["question_count"] = sum(int(child.get("question_count") or 0) for child in kept_children)
+        return int(node["question_count"])
+
+    def to_schema(node: dict[str, Any]) -> CustomAssessmentScopeNode:
+        return CustomAssessmentScopeNode(
+            id=str(node["id"]),
+            title=str(node["title"]),
+            kind=node["kind"],  # type: ignore[arg-type]
+            parent_id=str(node["parent_id"]) if node.get("parent_id") else None,
+            question_count=int(node.get("question_count") or 0),
+            children=[to_schema(child) for child in node.get("children") or []],
+        )
+
+    roots = [node for node in nodes.values() if node.get("kind") == "chapter" and normalize(node) > 0]
+    roots.sort(key=lambda item: (str(item.get("title") or ""), str(item.get("id") or "")))
+    return [to_schema(node) for node in roots]
+
+
+def _scope_tree_node_map(nodes: list[CustomAssessmentScopeNode]) -> dict[str, CustomAssessmentScopeNode]:
+    result: dict[str, CustomAssessmentScopeNode] = {}
+
+    def walk(node: CustomAssessmentScopeNode) -> None:
+        result[node.id] = node
+        for child in node.children:
+            walk(child)
+
+    for node in nodes:
+        walk(node)
+    return result
+
+
+def _scope_leaf_point_ids(node: CustomAssessmentScopeNode) -> list[str]:
+    if node.kind == "point":
+        return [node.id] if node.question_count > 0 else []
+    return _unique([point_id for child in node.children for point_id in _scope_leaf_point_ids(child)])
+
+
+def _point_ids_for_scope_nodes(
+    scope_tree: list[CustomAssessmentScopeNode],
+    scope_node_ids: list[str],
+) -> tuple[list[str], list[str]]:
+    node_map = _scope_tree_node_map(scope_tree)
+    selected: list[str] = []
+    invalid: list[str] = []
+    seen_scope_ids: set[str] = set()
+    for raw_id in scope_node_ids:
+        scope_id = str(raw_id).strip()
+        if not scope_id or scope_id in seen_scope_ids:
+            continue
+        seen_scope_ids.add(scope_id)
+        node = node_map.get(scope_id)
+        if not node:
+            invalid.append(scope_id)
+            continue
+        selected.extend(_scope_leaf_point_ids(node))
+    return _unique(selected), invalid
+
+
+def _point_ids_for_experiments(candidates: list[PosttestQuestionCandidate], experiment_ids: list[str]) -> list[str]:
+    selected_experiments = {str(experiment_id).strip() for experiment_id in experiment_ids if str(experiment_id).strip()}
+    return _unique(
+        [
+            point_id
+            for question in candidates
+            if question.experiment_id in selected_experiments
+            for point_id in _question_assessment_point_ids(question)
+        ]
+    )
+
+
+def _coerce_questions_per_point(value: Any) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = 1
+    if parsed not in CUSTOM_QUESTIONS_PER_POINT_OPTIONS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Questions per point is not allowed")
+    return parsed
+
+
 def _ordered_experiment_ids(candidates: list[PosttestQuestionCandidate]) -> list[str]:
     seen: set[str] = set()
     ordered: list[str] = []
@@ -1127,7 +1313,7 @@ def _compose_questions(
             "source": "untested",
             "draw_tickets": None,
             "question_count": 0,
-            "reason": "未测点位按老师设置的比例纳入",
+            "reason": "系统会优先覆盖尚未形成掌握证据的点位",
         }
 
     untested_taken = _take_point_questions(
@@ -1250,100 +1436,71 @@ def _compose_questions(
 def _compose_custom_questions(
     *,
     candidates: list[PosttestQuestionCandidate],
-    selected_experiment_ids: list[str],
-    settings: CustomAssessmentSettings,
+    selected_point_ids: list[str],
     student_id: str,
-    requested_question_count: int,
+    questions_per_point: int,
 ) -> tuple[list[PosttestQuestionCandidate], SmartAssessmentCompositionSummary, dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
-    selected_set = set(selected_experiment_ids)
-    filtered = [question for question in candidates if question.experiment_id in selected_set]
+    selected_points = _unique(selected_point_ids)
+    selected_set = set(selected_points)
+    filtered = [question for question in candidates if any(point_id in selected_set for point_id in _question_assessment_point_ids(question))]
     point_to_experiment = _point_experiment_map(filtered)
     pools = _ordered_point_pools(filtered, student_id=student_id, seed_namespace="custom-assessment")
-    points_by_experiment: dict[str, list[str]] = defaultdict(list)
-    for point_id, experiment_id in point_to_experiment.items():
-        if experiment_id in selected_set and point_id not in points_by_experiment[experiment_id]:
-            points_by_experiment[experiment_id].append(point_id)
-    for experiment_id, point_ids in list(points_by_experiment.items()):
-        points_by_experiment[experiment_id] = _stable_experiment_order(point_ids, f"{student_id}:custom-assessment:{experiment_id}")
-    order = [experiment_id for experiment_id in selected_experiment_ids if points_by_experiment.get(experiment_id)]
+    order = [point_id for point_id in selected_points if point_to_experiment.get(point_id) and pools.get(point_id)]
     used_questions: set[str] = set()
-    used_points: set[str] = set()
-    counts: dict[str, int] = {}
     selected: list[PosttestQuestionCandidate] = []
     question_sources: dict[str, str] = {}
-    point_meta: dict[str, dict[str, Any]] = {}
-    experiment_meta: dict[str, dict[str, Any]] = {
-        experiment_id: {
+    point_meta: dict[str, dict[str, Any]] = {
+        point_id: {
             "source": "custom",
             "draw_tickets": None,
             "question_count": 0,
-            "reason": "学生自主选择本轮要练习的实验",
+            "reason": "学生自主选择本轮要练习的点位",
         }
-        for experiment_id in order
+        for point_id in order
     }
-    target_count = min(requested_question_count, settings.max_question_count)
-    quota_by_experiment: dict[str, int] = {}
-    if order:
-        base = target_count // len(order)
-        remainder = target_count % len(order)
-        for index, experiment_id in enumerate(order):
-            quota_by_experiment[experiment_id] = base + (1 if index < remainder else 0)
-    for experiment_id in order:
-        _take_point_questions(
-            order=points_by_experiment.get(experiment_id, []),
-            pools=pools,
-            quota=quota_by_experiment.get(experiment_id, 0),
-            max_per_experiment=settings.max_questions_per_experiment,
-            point_to_experiment=point_to_experiment,
-            used_questions=used_questions,
-            used_points=used_points,
-            counts=counts,
-            selected=selected,
-            source="custom",
-            point_meta=point_meta,
-            question_sources=question_sources,
-        )
-    if len(selected) < target_count:
-        all_points = [point_id for experiment_id in order for point_id in points_by_experiment.get(experiment_id, [])]
-        _take_point_questions(
-            order=all_points,
-            pools=pools,
-            quota=target_count - len(selected),
-            max_per_experiment=settings.max_questions_per_experiment,
-            point_to_experiment=point_to_experiment,
-            used_questions=used_questions,
-            used_points=used_points,
-            counts=counts,
-            selected=selected,
-            source="custom",
-            point_meta=point_meta,
-            question_sources=question_sources,
-        )
+    target_count = len(order) * questions_per_point
+    for point_id in order:
+        taken = 0
+        pool = pools.get(point_id, [])
+        while taken < questions_per_point and pool:
+            question = pool.pop(0)
+            if question.id in used_questions:
+                continue
+            selected.append(question)
+            used_questions.add(question.id)
+            question_sources[question.id] = "custom"
+            point_meta[point_id]["question_count"] = int(point_meta[point_id].get("question_count") or 0) + 1
+            taken += 1
+    experiment_meta: dict[str, dict[str, Any]] = {}
     for question in selected:
         meta = experiment_meta.setdefault(
             question.experiment_id,
-            {"source": "custom", "draw_tickets": None, "question_count": 0, "reason": "学生自主选择本轮要练习的实验"},
+            {"source": "custom", "draw_tickets": None, "question_count": 0, "reason": "学生自主选择本轮要练习的点位"},
         )
         meta["question_count"] = int(meta.get("question_count") or 0) + 1
-    selected_experiments = {question.experiment_id for question in selected}
-    experiment_meta = {experiment_id: meta for experiment_id, meta in experiment_meta.items() if experiment_id in selected_experiments}
+    used_point_ids = {
+        point_id
+        for point_id in order
+        if int((point_meta.get(point_id) or {}).get("question_count") or 0) > 0
+    }
     composition = SmartAssessmentCompositionSummary(
         total_questions=len(selected),
         target_question_count=target_count,
-        requested_question_count=requested_question_count,
-        selected_point_count=len({point_id for question in selected for point_id in _question_assessment_point_ids(question)}),
-        candidate_point_count=len(point_to_experiment),
+        requested_question_count=target_count,
+        selected_point_count=len(used_point_ids),
+        candidate_point_count=len(selected_points),
         custom_question_count=len(selected),
-        max_questions_per_experiment=settings.max_questions_per_experiment,
+        max_questions_per_experiment=questions_per_point,
         warnings={
             "underfilled": len(selected) < target_count,
-            "selected_experiment_count": len(selected_experiment_ids),
+            "selected_point_count": len(selected_points),
+            "questions_per_point": questions_per_point,
         },
     )
     return selected, composition, experiment_meta, {
         point_id: {**meta, "question_count": int(meta.get("question_count") or 0)}
         for point_id, meta in point_meta.items()
-        if point_id in used_points
+        if point_id in used_point_ids
     }
 
 
@@ -1853,10 +2010,13 @@ def get_student_custom_assessment_options(user: Any) -> StudentCustomAssessmentO
         _ensure_tables(session)
         context = _load_student_context(session, user)
         settings, _inherited, _has_override = _effective_custom_settings(session, context.class_id)
+        strategy, _strategy_inherited, _strategy_has_override = _effective_strategy(session, context.class_id)
         candidates = _load_all_published_candidates(session) if settings.enabled else []
         return StudentCustomAssessmentOptionsResponse(
             settings=_custom_options_settings(settings),
+            smart_question_count=strategy.question_count,
             experiments=_custom_options_from_candidates(session, candidates),
+            scope_tree=_custom_scope_tree_from_candidates(session, candidates),
         )
 
 
@@ -1864,15 +2024,11 @@ def start_student_custom_assessment(
     user: Any,
     payload: StudentCustomAssessmentStartRequest,
 ) -> StudentSmartAssessmentResponse:
-    requested_experiment_ids: list[str] = []
-    seen_requested: set[str] = set()
-    for experiment_id in payload.experiment_ids:
-        experiment_id = str(experiment_id).strip()
-        if experiment_id and experiment_id not in seen_requested:
-            requested_experiment_ids.append(experiment_id)
-            seen_requested.add(experiment_id)
-    if not requested_experiment_ids:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Select at least one experiment")
+    requested_scope_node_ids = _unique([str(scope_id).strip() for scope_id in payload.scope_node_ids])
+    requested_experiment_ids = _unique([str(experiment_id).strip() for experiment_id in payload.experiment_ids])
+    questions_per_point = _coerce_questions_per_point(payload.questions_per_point)
+    if not requested_scope_node_ids and not requested_experiment_ids:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Select at least one assessment scope")
 
     with db_session() as session:
         _ensure_tables(session)
@@ -1886,31 +2042,44 @@ def start_student_custom_assessment(
         if existing:
             return _response_for_session(session, existing)
 
-        options_settings = _custom_options_settings(settings)
-        if payload.question_count not in options_settings.question_count_options:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Question count is not allowed")
-
         candidates = _load_all_published_candidates(session)
         options = _custom_options_from_candidates(session, candidates)
-        allowed_ids = {option.id for option in options}
-        invalid_ids = [experiment_id for experiment_id in requested_experiment_ids if experiment_id not in allowed_ids]
-        if invalid_ids:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Selected experiments are not available for custom assessment", "experiment_ids": invalid_ids},
-            )
         if not candidates or not options:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Custom assessment question bank is not configured")
+        scope_tree = _custom_scope_tree_from_candidates(session, candidates)
+        if requested_scope_node_ids:
+            selected_point_ids, invalid_scope_ids = _point_ids_for_scope_nodes(scope_tree, requested_scope_node_ids)
+            if invalid_scope_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"message": "Selected scopes are not available for custom assessment", "scope_node_ids": invalid_scope_ids},
+                )
+        else:
+            allowed_ids = {option.id for option in options}
+            invalid_ids = [experiment_id for experiment_id in requested_experiment_ids if experiment_id not in allowed_ids]
+            if invalid_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"message": "Selected experiments are not available for custom assessment", "experiment_ids": invalid_ids},
+                )
+            selected_point_ids = _point_ids_for_experiments(candidates, requested_experiment_ids)
+            if payload.question_count:
+                questions_per_point = max(
+                    1,
+                    min(
+                        max(CUSTOM_QUESTIONS_PER_POINT_OPTIONS),
+                        math.ceil(payload.question_count / max(1, len(selected_point_ids))),
+                    ),
+                )
 
         selected, composition, experiment_meta, point_meta = _compose_custom_questions(
             candidates=candidates,
-            selected_experiment_ids=requested_experiment_ids,
-            settings=settings,
+            selected_point_ids=selected_point_ids,
             student_id=context.student_id,
-            requested_question_count=payload.question_count,
+            questions_per_point=questions_per_point,
         )
         if not selected:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Selected experiments do not have available questions")
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Selected scope does not have available questions")
 
         experiment_ids = []
         seen: set[str] = set()
@@ -1930,6 +2099,9 @@ def start_student_custom_assessment(
             "candidate_experiment_count": len(options),
             "candidate_point_count": len(_all_candidate_point_ids(candidates)),
             "requested_experiment_ids": requested_experiment_ids,
+            "requested_scope_node_ids": requested_scope_node_ids,
+            "requested_point_ids": selected_point_ids,
+            "questions_per_point": questions_per_point,
             "selected_experiment_count": len(experiment_ids),
             "custom_assessment_settings": _model_dump(settings),
         }
@@ -1987,7 +2159,9 @@ def start_student_custom_assessment(
                         "experiment_ids": experiment_ids,
                         "point_node_ids": point_node_ids,
                         "question_count": len(selected),
-                        "requested_question_count": payload.question_count,
+                        "requested_question_count": composition.requested_question_count,
+                        "requested_scope_node_ids": requested_scope_node_ids,
+                        "questions_per_point": questions_per_point,
                     }
                 ),
             },

@@ -23,8 +23,8 @@ import {
   studentLogin,
   type AssessmentReportSummary,
   type AuthUser,
-  type CustomAssessmentExperimentOption,
   type CustomAssessmentOptionsResponse,
+  type CustomAssessmentScopeNode,
   type LegacyAssessmentReportDetail,
   type LegacyVideoPointItem,
   type PointDetail,
@@ -1350,32 +1350,32 @@ function isEquationLike(value: string): boolean {
   return arrowIndex > 0 && arrowIndex < value.length - 1;
 }
 
-type AssessmentSetupMode = "smart" | "selected" | "random" | "all";
+type AssessmentSetupMode = "smart" | "custom";
 type AnswerMap = Record<string, string>;
 
 const assessmentSetupModes: Array<{ id: AssessmentSetupMode; label: string; summary: string }> = [
-  { id: "smart", label: "智能薄弱项测试", summary: "由 BKT 掌握度优先覆盖薄弱和未充分测量点位。" },
-  { id: "selected", label: "自选实验范围", summary: "勾选本轮要练习的实验范围后组卷。" },
-  { id: "random", label: "随机练习", summary: "从当前可选实验中随机抽取范围后组卷。" },
-  { id: "all", label: "全部范围", summary: "覆盖全部有题实验范围后组卷。" },
+  { id: "smart", label: "智能组卷", summary: "按老师设置的策略，结合掌握度自动出题。" },
+  { id: "custom", label: "自主选择测试范围", summary: "按章节、目录或点位勾选本轮要测的内容。" },
 ];
 
-function AssessmentQuestionCountSelector({
+function AssessmentChoiceSelector({
+  label,
   countOptions,
-  questionCount,
+  value,
   onChange,
 }: {
+  label: string;
   countOptions: number[];
-  questionCount: number;
+  value: number;
   onChange: (count: number) => void;
 }) {
   return (
     <div className="legacy-assessment-count-panel">
-      <span>目标题数</span>
+      <span>{label}</span>
       <div className="legacy-question-count-row" aria-label="选择题数">
         {countOptions.map((count) => (
-          <button key={count} type="button" className={questionCount === count ? "active" : ""} onClick={() => onChange(count)}>
-            {count} 题
+          <button key={count} type="button" className={value === count ? "active" : ""} onClick={() => onChange(count)}>
+            {count}
           </button>
         ))}
       </div>
@@ -1389,7 +1389,7 @@ function AssessmentPage() {
   const [selectingRange, setSelectingRange] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
-  const [questionCount, setQuestionCount] = useState(10);
+  const [questionsPerPoint, setQuestionsPerPoint] = useState(1);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
@@ -1403,7 +1403,7 @@ function AssessmentPage() {
       .then((response) => {
         if (!active) return;
         setData(response);
-        setQuestionCount(response.settings.default_question_count || response.settings.question_count_options?.[0] || 10);
+        setQuestionsPerPoint(response.settings.default_questions_per_point || response.settings.questions_per_point_options?.[0] || 1);
       })
       .catch((caught) => {
         if (active) setOptionError(legacyStudentErrorMessage(caught));
@@ -1416,42 +1416,39 @@ function AssessmentPage() {
     };
   }, []);
 
-  const experiments = data?.experiments || [];
-  const eligibleExperiments = useMemo(() => experiments.filter((item) => item.question_count > 0), [experiments]);
-  const filteredExperiments = useMemo(() => {
+  const scopeTree = data?.scope_tree || [];
+  const filteredScopeTree = useMemo(() => {
     const keyword = query.trim().toLowerCase();
-    return experiments.filter((item) => {
-      if (!keyword) return true;
-      return assessmentOptionSearchText(item).includes(keyword);
-    });
-  }, [experiments, query]);
-  const filteredEligible = useMemo(() => filteredExperiments.filter((item) => item.question_count > 0), [filteredExperiments]);
-  const selectedExperiments = useMemo(() => experiments.filter((item) => selectedIds.has(item.id)), [experiments, selectedIds]);
-  const countOptions = useMemo(() => {
-    const values = data?.settings.question_count_options?.length ? data.settings.question_count_options : [5, 10, 15, 20];
+    return filterAssessmentScopeTree(scopeTree, keyword);
+  }, [scopeTree, query]);
+  const perPointOptions = useMemo(() => {
+    const values = data?.settings.questions_per_point_options?.length ? data.settings.questions_per_point_options : [1, 2, 3];
     return Array.from(new Set(values)).sort((left, right) => left - right);
-  }, [data?.settings.question_count_options]);
-  const selectedCount = mode === "all" ? eligibleExperiments.length : selectedIds.size;
-  const availableQuestionCount = eligibleExperiments.reduce((sum, item) => sum + item.question_count, 0);
+  }, [data?.settings.questions_per_point_options]);
+  const selectedPointIds = useMemo(() => selectedAssessmentPointIds(scopeTree, selectedIds), [scopeTree, selectedIds]);
+  const selectedPointCount = selectedPointIds.length;
+  const estimatedQuestionCount = selectedPointCount * questionsPerPoint;
+  const availablePointCount = useMemo(() => selectedAssessmentPointIds(scopeTree, new Set(scopeTree.map((item) => item.id))).length, [scopeTree]);
   const customDisabled = data?.settings.enabled === false;
-  const canStartCustom = Boolean(data && eligibleExperiments.length && !customDisabled);
+  const canOpenCustom = !customDisabled && (loadingOptions || Boolean(data && availablePointCount));
+  const canStartCustom = canOpenCustom && selectedPointCount > 0;
 
-  const toggleExperiment = (option: CustomAssessmentExperimentOption) => {
-    if (option.question_count <= 0) return;
-    setMode("selected");
+  const toggleScope = (node: CustomAssessmentScopeNode) => {
+    if (node.question_count <= 0 || customDisabled) return;
+    setMode("custom");
     setSelectedIds((current) => {
       const next = new Set(current);
-      if (next.has(option.id)) next.delete(option.id);
-      else next.add(option.id);
+      if (next.has(node.id)) next.delete(node.id);
+      else next.add(node.id);
       return next;
     });
   };
 
   const selectCurrent = () => {
-    setMode("selected");
+    setMode("custom");
     setSelectedIds((current) => {
       const next = new Set(current);
-      filteredEligible.forEach((item) => next.add(item.id));
+      filteredScopeTree.forEach((node) => next.add(node.id));
       return next;
     });
   };
@@ -1475,26 +1472,20 @@ function AssessmentPage() {
         response = await startSmartAssessment();
       } else {
         if (!data) {
-          setError("暂时无法读取实验范围，请稍后再试。");
+          setError("暂时无法读取测试范围，请稍后再试。");
           return;
         }
         if (customDisabled) {
-          setError("教师暂未开放自选范围测评，请使用智能薄弱项测试。");
+          setError("教师暂未开放自主选择范围测评，请使用智能组卷。");
           return;
         }
-        let experimentIds: string[] = [];
-        if (mode === "selected") experimentIds = Array.from(selectedIds);
-        if (mode === "random") {
-          experimentIds = randomExperimentIds(eligibleExperiments, questionCount, data.settings.max_questions_per_experiment || 3);
-          setSelectedIds(new Set(experimentIds));
-        }
-        if (mode === "all") experimentIds = eligibleExperiments.map((item) => item.id);
-        if (!experimentIds.length) {
-          setError("请先选择至少 1 个有题实验范围。");
-          if (mode === "selected") setSelectingRange(true);
+        const scopeNodeIds = Array.from(selectedIds);
+        if (!scopeNodeIds.length) {
+          setError("请先选择至少 1 个章节、目录或点位。");
+          setSelectingRange(true);
           return;
         }
-        response = await startCustomAssessment(experimentIds, questionCount);
+        response = await startCustomAssessment(scopeNodeIds, questionsPerPoint);
       }
       storeLegacyAssessmentSession(response);
       navigate(assessmentSessionRoute(response.session_id, "assessment"));
@@ -1509,7 +1500,7 @@ function AssessmentPage() {
     return (
       <section className="legacy-page legacy-assessment-page" data-testid="student-assessment-page">
         <div className="legacy-assessment-subbar legacy-page-topbar">
-          <strong>自选实验范围</strong>
+          <strong>自主选择测试范围</strong>
           <button
             className="text-button"
             type="button"
@@ -1522,18 +1513,18 @@ function AssessmentPage() {
           </button>
         </div>
 
-        <section className="legacy-assessment-setup" aria-label="自选实验范围">
-          <AssessmentQuestionCountSelector countOptions={countOptions} questionCount={questionCount} onChange={setQuestionCount} />
+        <section className="legacy-assessment-setup" aria-label="自主选择测试范围">
+          <AssessmentChoiceSelector label="每个点位抽题数" countOptions={perPointOptions} value={questionsPerPoint} onChange={setQuestionsPerPoint} />
 
-          {optionError ? <div className="legacy-error">实验范围暂时无法加载；请稍后再试。</div> : null}
+          {optionError ? <div className="legacy-error">测试范围暂时无法加载；请稍后再试。</div> : null}
           {error ? <div className="legacy-error">{error}</div> : null}
 
           <div className="legacy-assessment-toolbar">
             <label>
-              <span>搜索实验范围</span>
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索实验名称、章节或编号" />
+              <span>搜索测试范围</span>
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索章节、目录或点位" />
             </label>
-            <button type="button" onClick={selectCurrent} disabled={!filteredEligible.length || customDisabled}>
+            <button type="button" onClick={selectCurrent} disabled={!filteredScopeTree.length || customDisabled}>
               全选当前列表
             </button>
             <button type="button" onClick={clearSelection} disabled={!selectedIds.size}>
@@ -1541,34 +1532,15 @@ function AssessmentPage() {
             </button>
           </div>
 
-          {loadingOptions ? <div className="legacy-state">正在载入可选实验范围...</div> : null}
-          {!loadingOptions && !filteredExperiments.length ? <div className="legacy-state">没有匹配的实验范围。</div> : null}
-          {!loadingOptions && filteredExperiments.length ? (
-            <div className="legacy-assessment-option-list" aria-label="可选实验范围">
-              {filteredExperiments.map((option) => {
-                const disabled = option.question_count <= 0 || customDisabled;
-                const selected = selectedIds.has(option.id);
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className={selected ? "selected" : ""}
-                    disabled={disabled}
-                    aria-pressed={selected}
-                    onClick={() => toggleExperiment(option)}
-                  >
-                    <span className="legacy-checkbox" aria-hidden="true">
-                      {selected ? "✓" : ""}
-                    </span>
-                    <span className="legacy-assessment-option-copy">
-                      <strong>{option.title}</strong>
-                      <small>{option.parent_title || option.code}</small>
-                    </span>
-                    <em>{option.question_count} 道可用题</em>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="legacy-assessment-compact-status">
+            已选点位 <strong>{selectedPointCount}</strong>
+            <span>预计 {estimatedQuestionCount} 题</span>
+          </div>
+
+          {loadingOptions ? <div className="legacy-state">正在载入可选测试范围...</div> : null}
+          {!loadingOptions && !filteredScopeTree.length ? <div className="legacy-state">没有匹配的测试范围。</div> : null}
+          {!loadingOptions && filteredScopeTree.length ? (
+            <AssessmentScopeTree nodes={filteredScopeTree} selectedIds={selectedIds} disabled={customDisabled} onToggle={toggleScope} />
           ) : null}
 
           <button className="primary-button legacy-assessment-start" type="button" disabled={starting || !canStartCustom} onClick={start}>
@@ -1584,31 +1556,29 @@ function AssessmentPage() {
       <div className="legacy-section-head">
         <span className="eyebrow">BKT 实验测评</span>
         <h1>按掌握度与范围出题</h1>
-        <p>学生可选择智能薄弱项测试，也可按实验范围自选、随机或全选组卷；测评结果将回写掌握度，形成视频学习、测评巩固和学情反馈闭环。</p>
+        <p>学生可直接进入智能组卷，也可按章节目录选择测试范围；测评结果会回写掌握度，用于后续学习推荐。</p>
       </div>
 
       <section className="legacy-assessment-setup" aria-label="测评设置">
-        <AssessmentQuestionCountSelector countOptions={countOptions} questionCount={questionCount} onChange={setQuestionCount} />
-
         <div className="legacy-assessment-mode-grid" aria-label="出题方式">
           {assessmentSetupModes.map((item) => (
             <button key={item.id} type="button" className={mode === item.id ? "active" : ""} onClick={() => chooseMode(item.id)}>
               <strong>{item.label}</strong>
-              <small>{item.summary}</small>
+              <small>{item.id === "smart" && data?.smart_question_count ? `${item.summary} 本轮 ${data.smart_question_count} 题。` : item.summary}</small>
             </button>
           ))}
         </div>
 
-        {optionError ? <div className="legacy-error">实验范围暂时无法加载；仍可使用智能薄弱项测试。</div> : null}
+        {optionError ? <div className="legacy-error">测试范围暂时无法加载；仍可使用智能组卷。</div> : null}
         {error ? <div className="legacy-error">{error}</div> : null}
         {loadingOptions && mode !== "smart" ? <div className="legacy-state compact">正在读取可用题库...</div> : null}
 
-        {mode === "selected" ? (
-          <button className="primary-button legacy-assessment-start" type="button" onClick={() => setSelectingRange(true)}>
-            {selectedCount ? "继续选择实验范围" : "进入选择实验范围"}
+        {mode === "custom" ? (
+          <button className="primary-button legacy-assessment-start" type="button" disabled={!canOpenCustom} onClick={() => setSelectingRange(true)}>
+            {selectedPointCount ? "继续选择测试范围" : "进入选择测试范围"}
           </button>
         ) : (
-          <button className="primary-button legacy-assessment-start" type="button" disabled={starting || (mode !== "smart" && !canStartCustom)} onClick={start}>
+          <button className="primary-button legacy-assessment-start" type="button" disabled={starting} onClick={start}>
             {starting ? "正在组卷..." : "开始测评"}
           </button>
         )}
@@ -1773,19 +1743,80 @@ function AssessmentResultPage({ report, reportId }: { report: SmartAssessmentRep
   );
 }
 
-function assessmentOptionSearchText(option: CustomAssessmentExperimentOption): string {
-  return [option.title, option.parent_title, option.parent_code, option.code].filter(Boolean).join(" ").toLowerCase();
+function AssessmentScopeTree({
+  nodes,
+  selectedIds,
+  disabled,
+  onToggle,
+  depth = 0,
+}: {
+  nodes: CustomAssessmentScopeNode[];
+  selectedIds: Set<string>;
+  disabled: boolean;
+  onToggle: (node: CustomAssessmentScopeNode) => void;
+  depth?: number;
+}) {
+  return (
+    <div className={depth === 0 ? "legacy-assessment-scope-tree" : "legacy-assessment-scope-children"} aria-label={depth === 0 ? "可选测试范围" : undefined}>
+      {nodes.map((node) => {
+        const selected = selectedIds.has(node.id);
+        const unavailable = disabled || node.question_count <= 0;
+        return (
+          <div key={node.id} className="legacy-assessment-scope-node">
+            <button
+              type="button"
+              className={selected ? "selected" : ""}
+              disabled={unavailable}
+              aria-pressed={selected}
+              onClick={() => onToggle(node)}
+              style={{ paddingLeft: `${12 + depth * 18}px` }}
+            >
+              <span className="legacy-checkbox" aria-hidden="true">
+                {selected ? "✓" : ""}
+              </span>
+              <span className="legacy-assessment-option-copy">
+                <strong>{node.title}</strong>
+                <small>{assessmentScopeKindLabel(node.kind)}</small>
+              </span>
+              <em>{node.question_count} 题</em>
+            </button>
+            {node.children.length ? (
+              <AssessmentScopeTree nodes={node.children} selectedIds={selectedIds} disabled={disabled} onToggle={onToggle} depth={depth + 1} />
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
-function randomExperimentIds(options: CustomAssessmentExperimentOption[], questionCount: number, maxQuestionsPerExperiment: number): string[] {
-  const eligible = options.filter((item) => item.question_count > 0);
-  if (!eligible.length) return [];
-  const targetExperimentCount = Math.max(1, Math.ceil(questionCount / Math.max(1, maxQuestionsPerExperiment)));
-  return eligible
-    .map((item) => ({ item, sort: Math.random() }))
-    .sort((left, right) => left.sort - right.sort)
-    .slice(0, Math.min(targetExperimentCount, eligible.length))
-    .map(({ item }) => item.id);
+function filterAssessmentScopeTree(nodes: CustomAssessmentScopeNode[], keyword: string): CustomAssessmentScopeNode[] {
+  if (!keyword) return nodes;
+  return nodes
+    .map((node) => {
+      const children = filterAssessmentScopeTree(node.children || [], keyword);
+      const selfMatches = [node.title, node.kind].join(" ").toLowerCase().includes(keyword);
+      if (!selfMatches && !children.length) return null;
+      return { ...node, children };
+    })
+    .filter((node): node is CustomAssessmentScopeNode => Boolean(node));
+}
+
+function selectedAssessmentPointIds(nodes: CustomAssessmentScopeNode[], selectedIds: Set<string>): string[] {
+  const result = new Set<string>();
+  const walk = (node: CustomAssessmentScopeNode, inheritedSelected: boolean) => {
+    const selected = inheritedSelected || selectedIds.has(node.id);
+    if (node.kind === "point" && selected && node.question_count > 0) result.add(node.id);
+    node.children.forEach((child) => walk(child, selected));
+  };
+  nodes.forEach((node) => walk(node, false));
+  return Array.from(result);
+}
+
+function assessmentScopeKindLabel(kind: CustomAssessmentScopeNode["kind"]): string {
+  if (kind === "chapter") return "章节";
+  if (kind === "directory") return "目录";
+  return "点位";
 }
 
 function isAnswered(value?: string): boolean {
@@ -1795,7 +1826,7 @@ function isAnswered(value?: string): boolean {
 function assessmentModeLabel(mode?: string): string {
   if (mode === "custom") return "自选范围测评";
   if (mode === "point") return "学后点位测评";
-  return "智能薄弱项测试";
+  return "智能组卷测评";
 }
 
 function assessmentSessionTitle(assessment: SmartAssessmentResponse): string {
@@ -2035,7 +2066,7 @@ function reportTypeLabel(type?: string): string {
   if (type === "point") return "学后测评";
   if (type === "pretest") return "课前测评";
   if (type === "posttest") return "课后测评";
-  return "智能薄弱项测试";
+  return "智能组卷测评";
 }
 
 function formatReportDate(value?: string | null): string {

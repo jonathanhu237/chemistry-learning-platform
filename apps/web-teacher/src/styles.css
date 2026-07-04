@@ -3965,6 +3965,29 @@ p {
   font-weight: 900;
 }
 
+.legacy-paper-choice-control {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.legacy-paper-choice-control button {
+  min-height: 34px;
+  border: 1px solid var(--legacy-line);
+  border-radius: 0;
+  background: #fff;
+  color: var(--legacy-ink);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.legacy-paper-choice-control button.active {
+  border-color: var(--legacy-sysu-red);
+  background: var(--legacy-red-050);
+  color: var(--legacy-sysu-red);
+  box-shadow: inset 0 -3px 0 var(--legacy-sysu-red);
+}
+
 .legacy-paper-mini-table th:first-child {
   width: 70px;
 }

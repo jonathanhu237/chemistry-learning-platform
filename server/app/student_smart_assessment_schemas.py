@@ -176,22 +176,37 @@ class CustomAssessmentExperimentOption(BaseModel):
     question_count: int = 0
 
 
+class CustomAssessmentScopeNode(BaseModel):
+    id: str
+    title: str
+    kind: Literal["chapter", "directory", "point"]
+    parent_id: str | None = None
+    question_count: int = 0
+    children: list["CustomAssessmentScopeNode"] = Field(default_factory=list)
+
+
 class CustomAssessmentOptionsSettings(BaseModel):
     enabled: bool = True
     question_count_options: list[int] = Field(default_factory=list)
     default_question_count: int = 10
     max_question_count: int = 20
     max_questions_per_experiment: int = 3
+    questions_per_point_options: list[int] = Field(default_factory=lambda: [1, 2, 3])
+    default_questions_per_point: int = 1
 
 
 class StudentCustomAssessmentOptionsResponse(BaseModel):
     settings: CustomAssessmentOptionsSettings
+    smart_question_count: int = 10
     experiments: list[CustomAssessmentExperimentOption] = Field(default_factory=list)
+    scope_tree: list[CustomAssessmentScopeNode] = Field(default_factory=list)
 
 
 class StudentCustomAssessmentStartRequest(BaseModel):
-    experiment_ids: list[str] = Field(min_length=1)
-    question_count: int
+    experiment_ids: list[str] = Field(default_factory=list)
+    question_count: int | None = None
+    scope_node_ids: list[str] = Field(default_factory=list)
+    questions_per_point: int = Field(default=1, ge=1, le=3)
 
 
 class CustomAssessmentSettingsResponse(BaseModel):

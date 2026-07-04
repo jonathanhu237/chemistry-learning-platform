@@ -1177,9 +1177,9 @@ describe("LegacyTeacherApp", () => {
     expect(within(workbench).queryByText("氯水漂白性实验")).toBeNull();
     expect(within(workbench).queryByText("未测目标 2 题")).toBeNull();
     expect(within(workbench).queryByText("启用")).toBeNull();
+    expect(within(workbench).queryByText("未测点位比例")).toBeNull();
 
-    fireEvent.change(within(workbench).getByLabelText("每次题量数值"), { target: { value: "15" } });
-    fireEvent.change(within(workbench).getByLabelText("未测点位比例数值"), { target: { value: "30" } });
+    fireEvent.click(within(within(workbench).getByLabelText("每次题量选项")).getByRole("button", { name: "15题" }));
     fireEvent.click(within(workbench).getByRole("button", { name: "保存策略" }));
 
     await waitFor(() =>
@@ -1201,7 +1201,7 @@ describe("LegacyTeacherApp", () => {
     expect(JSON.parse(String(saveRequest?.[1]?.body))).toMatchObject({
       enabled: true,
       question_count: 15,
-      untested_ratio_percent: 30,
+      untested_ratio_percent: 20,
       max_questions_per_experiment: 2,
     });
     expect(requestPaths(fetchMock)).not.toContain("/api/teacher/classes/class-1/smart-assessment-preview");

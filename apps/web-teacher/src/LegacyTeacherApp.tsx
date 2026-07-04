@@ -658,6 +658,7 @@ const smartAssessmentDefaults: SmartAssessmentSettings = {
   weak_curve: 2,
   weak_max_bonus: 9,
 };
+const smartQuestionCountOptions = [5, 10, 15, 20];
 
 function normalizeSmartAssessmentSettings(value?: Partial<SmartAssessmentSettings> | null): SmartAssessmentSettings {
   return { ...smartAssessmentDefaults, ...(value || {}), enabled: true };
@@ -790,22 +791,12 @@ function PaperManagementPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        <PaperNumberField
+                        <PaperChoiceField
                           label="每次题量"
                           value={settings.question_count}
-                          min={1}
-                          max={50}
+                          options={smartQuestionCountOptions}
                           unit="题"
                           onChange={(value) => setSetting("question_count", value)}
-                        />
-                        <PaperNumberField
-                          label="未测点位比例"
-                          value={settings.untested_ratio_percent}
-                          min={0}
-                          max={100}
-                          step={5}
-                          unit="%"
-                          onChange={(value) => setSetting("untested_ratio_percent", value)}
                         />
                         <PaperNumberField
                           label="薄弱点位倾向"
@@ -891,6 +882,40 @@ function PaperNumberField({
         <div className="legacy-paper-field-control">
           <input aria-label={`${label}滑块`} type="range" min={min} max={max} step={step} value={value} onChange={(event) => update(Number(event.target.value))} />
           <input aria-label={`${label}数值`} type="number" min={min} max={max} step={step} value={value} onChange={(event) => update(Number(event.target.value))} />
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function PaperChoiceField({
+  label,
+  value,
+  options,
+  unit,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  options: number[];
+  unit: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <tr>
+      <th scope="row">{label}</th>
+      <td>
+        <strong>{value}</strong>
+        {unit ? <em>{unit}</em> : null}
+      </td>
+      <td>
+        <div className="legacy-paper-choice-control" aria-label={`${label}选项`}>
+          {options.map((option) => (
+            <button key={option} type="button" className={value === option ? "active" : ""} onClick={() => onChange(option)}>
+              {option}
+              {unit}
+            </button>
+          ))}
         </div>
       </td>
     </tr>

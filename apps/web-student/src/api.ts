@@ -405,17 +405,30 @@ export type CustomAssessmentExperimentOption = {
   question_count: number;
 };
 
+export type CustomAssessmentScopeNode = {
+  id: string;
+  title: string;
+  kind: "chapter" | "directory" | "point";
+  parent_id?: string | null;
+  question_count: number;
+  children: CustomAssessmentScopeNode[];
+};
+
 export type CustomAssessmentOptionsSettings = {
   enabled: boolean;
   question_count_options: number[];
   default_question_count: number;
   max_question_count?: number;
   max_questions_per_experiment: number;
+  questions_per_point_options?: number[];
+  default_questions_per_point?: number;
 };
 
 export type CustomAssessmentOptionsResponse = {
   settings: CustomAssessmentOptionsSettings;
+  smart_question_count?: number;
   experiments: CustomAssessmentExperimentOption[];
+  scope_tree?: CustomAssessmentScopeNode[];
 };
 
 export type SmartAssessmentAnswer = {
@@ -631,10 +644,10 @@ export function loadCustomAssessmentOptions(): Promise<CustomAssessmentOptionsRe
   return api<CustomAssessmentOptionsResponse>("/api/student/custom-assessment/options");
 }
 
-export function startCustomAssessment(experimentIds: string[], questionCount: number): Promise<SmartAssessmentResponse> {
+export function startCustomAssessment(scopeNodeIds: string[], questionsPerPoint: number): Promise<SmartAssessmentResponse> {
   return postJson<SmartAssessmentResponse>("/api/student/custom-assessment/start", {
-    experiment_ids: experimentIds,
-    question_count: questionCount,
+    scope_node_ids: scopeNodeIds,
+    questions_per_point: questionsPerPoint,
   });
 }
 
