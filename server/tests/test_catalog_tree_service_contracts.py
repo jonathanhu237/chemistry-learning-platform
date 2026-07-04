@@ -621,6 +621,7 @@ def test_catalog_point_placement_backend_contracts_are_explicit() -> None:
     assert "Canonical experiment point not found" in nodes_source
     assert "active_placements_for_canonical_point" in nodes_source
     assert "Archiving the final placement requires an explicit canonical archive decision" in nodes_source
+    assert "not payload.archive_final_placement" in nodes_source
     assert "queue_subtree_point_indexes(session, node_id=node_id, soft=True)" in nodes_source
     assert 'reason="catalog_path_moved"' in nodes_source
 

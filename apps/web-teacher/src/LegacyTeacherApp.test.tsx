@@ -1404,7 +1404,7 @@ describe("LegacyTeacherApp", () => {
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/catalog/nodes/point-ch13-iodide/status"));
     const pointDeleteCall = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/teacher/catalog/nodes/point-ch13-iodide/status");
     expect(pointDeleteCall).toBeTruthy();
-    expect(JSON.parse(String(pointDeleteCall?.[1]?.body))).toEqual({ action: "archive", include_subtree: true });
+    expect(JSON.parse(String(pointDeleteCall?.[1]?.body))).toEqual({ action: "archive", include_subtree: true, archive_final_placement: true });
     expect(screen.queryByText("已删除点位。")).toBeNull();
 
     const refreshedTree = await screen.findByRole("tree", { name: "章节目录与点位" });
@@ -1418,7 +1418,7 @@ describe("LegacyTeacherApp", () => {
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/catalog/nodes/dir-ch13-displacement/status"));
     const directoryDeleteCall = fetchMock.mock.calls.find((call) => requestUrl(call[0]).pathname === "/api/teacher/catalog/nodes/dir-ch13-displacement/status");
     expect(directoryDeleteCall).toBeTruthy();
-    expect(JSON.parse(String(directoryDeleteCall?.[1]?.body))).toEqual({ action: "archive", include_subtree: true });
+    expect(JSON.parse(String(directoryDeleteCall?.[1]?.body))).toEqual({ action: "archive", include_subtree: true, archive_final_placement: true });
     expect(screen.queryByText("已删除目录及其下级内容。")).toBeNull();
     expectNoForbiddenGenerationFlows(fetchMock);
   });

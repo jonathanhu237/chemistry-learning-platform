@@ -1690,7 +1690,7 @@ function DeleteNodeDialog({
     onNotice("");
     onError("");
     try {
-      await changeCatalogNodeStatus(request.node.node_id, "archive", { includeSubtree: true });
+      await changeCatalogNodeStatus(request.node.node_id, "archive", { includeSubtree: true, archiveFinalPlacement: true });
       onNotice(isDirectory ? "已删除目录及其下级内容。" : "已删除点位。");
       onDeleted();
       onClose();

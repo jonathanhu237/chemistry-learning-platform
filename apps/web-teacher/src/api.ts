@@ -247,10 +247,21 @@ export function legacyTeacherErrorMessage(error: unknown): string {
       if (error.detail === "Current password is invalid") return "当前密码不正确。";
       return "登录状态已失效，请重新登录。";
     }
+    const detailMessage = apiDetailMessage(error.detail);
+    if (detailMessage === "Archiving the final placement requires an explicit canonical archive decision") {
+      return "该点位是当前实验点位的最后一个目录位置，请重新确认删除。";
+    }
+    if (detailMessage) return detailMessage;
     if (error.status >= 500) return "教学服务暂不可用，请稍后再试。";
     return "当前数据暂不可用，请稍后重试。";
   }
   return "当前数据暂不可用，请稍后重试。";
+}
+
+function apiDetailMessage(detail: unknown): string {
+  if (typeof detail === "string") return detail;
+  if (detail && typeof detail === "object" && "message" in detail) return String((detail as { message?: unknown }).message || "");
+  return "";
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -835,9 +846,14 @@ export function updateCatalogNode(nodeId: string, payload: CatalogNodeUpdatePayl
 export function changeCatalogNodeStatus(
   nodeId: string,
   action: "archive" | "restore" | "publish" | "unpublish",
-  options: { includeSubtree?: boolean } = {},
+  options: { includeSubtree?: boolean; archiveFinalPlacement?: boolean } = {},
 ): Promise<CatalogNodeDetail> {
-  return postJson<CatalogNodeDetail>(`/api/teacher/catalog/nodes/${encodeURIComponent(nodeId)}/status`, { action, include_subtree: Boolean(options.includeSubtree) });
+  const payload: { action: typeof action; include_subtree: boolean; archive_final_placement?: boolean } = {
+    action,
+    include_subtree: Boolean(options.includeSubtree),
+  };
+  if (options.archiveFinalPlacement) payload.archive_final_placement = true;
+  return postJson<CatalogNodeDetail>(`/api/teacher/catalog/nodes/${encodeURIComponent(nodeId)}/status`, payload);
 }
 
 export function saveCatalogPointContent(nodeId: string, payload: CatalogPointContentPayload): Promise<CatalogNodeDetail> {

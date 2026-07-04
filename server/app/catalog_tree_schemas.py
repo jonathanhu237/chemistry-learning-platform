@@ -52,6 +52,7 @@ class CatalogNodeReorderRequest(BaseModel):
 class CatalogNodeStatusRequest(BaseModel):
     action: str = Field(pattern="^(archive|restore|publish|unpublish)$")
     include_subtree: bool = False
+    archive_final_placement: bool = False
 
 
 class CatalogPreviewTokenResponse(BaseModel):

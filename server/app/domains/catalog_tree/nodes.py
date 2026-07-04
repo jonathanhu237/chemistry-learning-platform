@@ -762,7 +762,7 @@ def set_node_status(*, node_id: str, payload: CatalogNodeStatusRequest, user: An
                 .mappings()
                 .all()
             )
-            if final_placement_rows:
+            if final_placement_rows and not payload.archive_final_placement:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail={
