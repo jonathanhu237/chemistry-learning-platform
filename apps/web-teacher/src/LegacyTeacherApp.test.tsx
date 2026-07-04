@@ -1237,6 +1237,7 @@ describe("LegacyTeacherApp", () => {
     expect(within(sidebar).queryByText("启用范围")).toBeNull();
     expect(within(sidebar).queryByText("上次检测")).toBeNull();
     expect(within(sidebar).queryByText("近期调用")).toBeNull();
+    expect(within(sidebar).queryByRole("button", { name: "使用默认值" })).toBeNull();
 
     fireEvent.change(within(sidebar).getByLabelText("API 密钥"), { target: { value: "sk-test-from-ui" } });
     fireEvent.click(within(sidebar).getByRole("button", { name: "保存配置" }));

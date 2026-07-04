@@ -2012,17 +2012,6 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
               />
             </label>
             <div className="legacy-ai-config-sidebar-actions">
-              <TeacherButton
-                type="default"
-                className="legacy-secondary-button"
-                disabled={saving}
-                onClick={() => {
-                  setBaseUrl(deepSeekDefaultBaseUrl);
-                  setModel(deepSeekDefaultModel);
-                }}
-              >
-                使用默认值
-              </TeacherButton>
               <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={saving}>
                 {saving ? "保存中..." : "保存配置"}
               </TeacherButton>
