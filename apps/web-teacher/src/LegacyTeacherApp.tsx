@@ -3073,7 +3073,7 @@ function ClassesPage() {
         <form className="legacy-dialog-form" onSubmit={createClass}>
           <label>
             班级名称
-            <TeacherInput value={className} onChange={(event) => setClassName(event.target.value)} placeholder="例如：26级本科 1 班" autoFocus />
+            <TeacherInput value={className} onChange={(event) => setClassName(event.target.value)} placeholder="例如：26 级本科 1 班" autoFocus />
           </label>
           <div className="legacy-create-dialog-actions">
             <TeacherButton type="default" className="legacy-secondary-button" onClick={() => setClassDialogOpen(false)} disabled={creatingClass}>

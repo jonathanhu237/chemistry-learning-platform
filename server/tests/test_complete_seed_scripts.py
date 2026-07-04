@@ -23,8 +23,8 @@ def test_demo_identity_seed_payload_has_expected_demo_roster() -> None:
     assert result["summary"] == {"teacher": 1, "classes": 5, "students": 150}
     assert payload["teacher"]["username"] == "teacher"
     assert payload["class"]["id"] == "seed-class-2026"
-    assert payload["class"]["class_name"] == "26级本科 1 班"
-    assert [klass["class_name"] for klass in payload["classes"]] == [f"26级本科 {index} 班" for index in range(1, 6)]
+    assert payload["class"]["class_name"] == "26 级本科 1 班"
+    assert [klass["class_name"] for klass in payload["classes"]] == [f"26 级本科 {index} 班" for index in range(1, 6)]
     assert {student["student_id"] for student in payload["students"]} == {
         f"2632{class_index:02d}{student_index:02d}"
         for class_index in range(5)
