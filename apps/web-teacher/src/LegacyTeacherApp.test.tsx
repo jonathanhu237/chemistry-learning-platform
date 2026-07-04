@@ -1709,7 +1709,10 @@ describe("LegacyTeacherApp", () => {
     expect(within(reportDialog).getByText("测试次数")).toBeTruthy();
     expect(within(reportDialog).getByText("1 次")).toBeTruthy();
     expect(await within(reportDialog).findByText("CH13 后测评价报告")).toBeTruthy();
-    expect(within(reportDialog).getByText("88 分 · 4/5 题 · 错题 1")).toBeTruthy();
+    const reportButton = within(reportDialog).getByRole("button", { name: /CH13 后测评价报告/ });
+    await waitFor(() => expect(reportButton.getAttribute("aria-pressed")).toBe("true"));
+    expect(within(reportButton).getByText("88 分")).toBeTruthy();
+    expect(within(reportButton).getByText(/4\/5 题 · 错题 1/)).toBeTruthy();
     expect(await within(reportDialog).findByText("张三已经能解释氯水漂白现象，并能把 HClO 与氧化性联系起来。")).toBeTruthy();
     expect(within(reportDialog).getByText("错题集中在溴碘置换顺序，需要回看 KBr 与 CCl4 的分层颜色。")).toBeTruthy();
 

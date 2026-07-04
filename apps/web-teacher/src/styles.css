@@ -3195,46 +3195,85 @@ p {
 
 .legacy-report-list {
   display: grid;
-  gap: 8px;
+  gap: 0;
   max-height: 260px;
   overflow: auto;
   margin-bottom: 14px;
-  padding-right: 4px;
+  border: 1px solid var(--legacy-line);
+  background: #fff;
 }
 
 .legacy-report-list button {
   display: grid;
-  gap: 5px;
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: center;
   width: 100%;
-  border: 1px solid var(--legacy-line);
+  border: 0;
+  border-bottom: 1px solid var(--legacy-line);
   border-radius: 0;
   background: #fff;
-  padding: 10px 12px;
+  padding: 10px 12px 10px 16px;
   text-align: left;
+}
+
+.legacy-report-list button:last-child {
+  border-bottom: 0;
 }
 
 .legacy-report-list button:hover,
 .legacy-report-list button.selected {
-  border-color: var(--legacy-sysu-red);
-  box-shadow: inset 5px 0 0 var(--legacy-sysu-red);
+  background: #fff8f4;
 }
 
-.legacy-report-list strong {
+.legacy-report-list button.selected::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  background: var(--legacy-sysu-red);
+  content: "";
+}
+
+.legacy-report-list-title {
+  min-width: 0;
+  overflow: hidden;
   color: var(--legacy-ink);
-  font-size: 16px;
-  line-height: 1.4;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.legacy-report-list span {
-  color: var(--legacy-muted);
-  font-size: 13px;
-  line-height: 1.45;
+.legacy-report-list-score {
+  grid-row: 1 / 3;
+  grid-column: 2;
+  color: var(--legacy-sysu-red);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: right;
+  white-space: nowrap;
 }
 
-.legacy-report-list small {
+.legacy-report-list-meta {
+  min-width: 0;
+  overflow: hidden;
   color: var(--legacy-muted);
   font-size: 12px;
   font-weight: 800;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legacy-report-detail h2 {
+  margin-bottom: 12px;
+  color: var(--legacy-sysu-red);
+  font-size: 22px;
 }
 
 .legacy-report-detail {
@@ -3242,12 +3281,6 @@ p {
   border-left: 4px solid var(--legacy-sysu-red);
   background: #fffdfb;
   padding: 14px;
-}
-
-.legacy-report-detail h2 {
-  margin-bottom: 12px;
-  color: var(--legacy-sysu-red);
-  font-size: 22px;
 }
 
 .legacy-report-detail strong {

@@ -3737,12 +3737,18 @@ function StudentReportDialog({ reportDetail, onClose }: { reportDetail: Analytic
               <div className="legacy-student-report-layout">
                 <div className="legacy-report-list" aria-label="学生测试报告列表">
                   {reports.map((report) => (
-                    <button type="button" key={report.id} className={report.id === selectedReportId ? "selected" : ""} onClick={() => setSelectedReportId(report.id)}>
-                      <strong>{report.title}</strong>
-                      <span>
-                        {scoreLabel(report.score)} · {report.correct_count}/{report.total_count} 题 · 错题 {report.wrong_count}
+                    <button
+                      type="button"
+                      key={report.id}
+                      aria-pressed={report.id === selectedReportId}
+                      className={report.id === selectedReportId ? "selected" : ""}
+                      onClick={() => setSelectedReportId(report.id)}
+                    >
+                      <strong className="legacy-report-list-title">{report.title}</strong>
+                      <strong className="legacy-report-list-score">{scoreLabel(report.score)}</strong>
+                      <span className="legacy-report-list-meta">
+                        {formatShortDateTime(report.completed_at)} · {report.correct_count}/{report.total_count} 题 · 错题 {report.wrong_count}
                       </span>
-                      <small>{formatShortDateTime(report.completed_at)}</small>
                     </button>
                   ))}
                 </div>
