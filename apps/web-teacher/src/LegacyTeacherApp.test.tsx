@@ -1663,6 +1663,8 @@ describe("LegacyTeacherApp", () => {
     expect(screen.getByText("第 1 / 1 页 · 共 2 名学生")).toBeTruthy();
     expect(screen.getByText("卤族元素")).toBeTruthy();
     expect(screen.getByText("氧族元素")).toBeTruthy();
+    const analyticsTable = screen.getByRole("table", { name: "学生报告与各元素得分" });
+    expect(within(analyticsTable).queryByRole("columnheader", { name: "平均分" })).toBeNull();
     expect(screen.queryByText("CAT-CH13-f99cb352")).toBeNull();
     expect(screen.queryByRole("heading", { name: "点位得分明细" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "学生报告" })).toBeNull();
@@ -1671,7 +1673,7 @@ describe("LegacyTeacherApp", () => {
 
     expect(screen.getByRole("button", { name: "查看张三卤族元素点位得分详情" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "查看李四卤族元素点位得分详情" })).toBeTruthy();
-    expect(within(screen.getByRole("table", { name: "学生报告与各元素得分" })).queryByText(/证据/)).toBeNull();
+    expect(within(analyticsTable).queryByText(/证据/)).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "查看张三卤族元素点位得分详情" }));
     const zhangDialog = await screen.findByRole("dialog", { name: "张三 · 卤族元素" });

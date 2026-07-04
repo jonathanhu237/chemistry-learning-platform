@@ -3369,7 +3369,6 @@ function AnalyticsPage() {
                     <thead>
                       <tr>
                         <th scope="col">学生</th>
-                        <th scope="col">平均分</th>
                         {columns.map((item) => (
                           <th scope="col" key={item.id}>
                             {item.title}
@@ -3400,7 +3399,6 @@ function AnalyticsPage() {
                               </button>
                             </div>
                           </th>
-                          <td className="legacy-family-average-cell">{scoreLabel(student.average_score)}</td>
                           {columns.map((item) => {
                             const state = analyticsScoreCellForColumn(student, item);
                             const selected = scoreDetail?.student.student_id === student.student_id && scoreDetail.family.id === item.id;
