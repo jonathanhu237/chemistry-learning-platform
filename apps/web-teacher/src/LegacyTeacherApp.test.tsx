@@ -1284,7 +1284,7 @@ describe("LegacyTeacherApp", () => {
 
     expect(await screen.findByDisplayValue("I- 被氧化后与淀粉形成蓝色络合物。")).toBeTruthy();
     const videoRegion = await screen.findByRole("region", { name: "视频" });
-    expect(within(videoRegion).getByText("暂无真实视频")).toBeTruthy();
+    expect(within(videoRegion).getByText("暂无视频")).toBeTruthy();
     expect(within(videoRegion).queryByLabelText("视频标题")).toBeNull();
 
     const fileInput = container.querySelector(".legacy-point-video-field input[type='file']") as HTMLInputElement | null;
@@ -1329,7 +1329,7 @@ describe("LegacyTeacherApp", () => {
     expect(within(videoRegion).getByText("bleach-demo.mp4")).toBeTruthy();
     fireEvent.click(within(videoRegion).getByRole("button", { name: "移除" }));
 
-    expect(within(videoRegion).getByText("暂无真实视频")).toBeTruthy();
+    expect(within(videoRegion).getByText("暂无视频")).toBeTruthy();
     expect(within(videoRegion).getByText("待保存")).toBeTruthy();
     expect(requestPaths(fetchMock)).not.toContain("/api/teacher/catalog/media-bindings/binding-ch13-bleach/delete");
 

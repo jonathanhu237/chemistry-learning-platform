@@ -1890,7 +1890,7 @@ function PointVideoManager({
   }, []);
 
   const activeBinding = removeExisting ? null : binding;
-  const displayName = selectedFile?.name || activeBinding?.original_file_name || activeBinding?.title || "暂无真实视频";
+  const displayName = selectedFile?.name || activeBinding?.original_file_name || activeBinding?.title || "暂无视频";
   const canRemove = Boolean(selectedFile || activeBinding);
   const hasPendingChange = Boolean(selectedFile || removeExisting);
 
