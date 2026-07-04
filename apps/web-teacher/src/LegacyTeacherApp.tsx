@@ -666,7 +666,8 @@ const smartAssessmentDefaults: SmartAssessmentSettings = {
   weak_max_bonus: 9,
 };
 const smartQuestionCountOptions = [5, 10, 15, 20];
-const paperStrategyFormulaLatex = String.raw`w = 1 + \frac{T}{100}\cdot B\cdot \left(\frac{100-M}{100}\right)^C`;
+const paperStrategyTicketsFormulaLatex = String.raw`T_i = 1 + w_i \cdot B \cdot \left(\frac{100-s_i}{100}\right)^\gamma`;
+const paperStrategyProbabilityFormulaLatex = String.raw`p_i = \frac{T_i}{\sum_{j=1}^{n} T_j}`;
 
 function normalizeSmartAssessmentSettings(value?: Partial<SmartAssessmentSettings> | null): SmartAssessmentSettings {
   return { ...smartAssessmentDefaults, ...(value || {}), enabled: true };
@@ -863,11 +864,14 @@ function PaperManagementPage() {
                     <h3>薄弱权重曲线</h3>
                     <div className="legacy-paper-formula-panel" aria-label="策略参数公式">
                       <div className="legacy-paper-formula-expression">
-                        <span>抽题权重</span>
-                        <LatexFormula formula={paperStrategyFormulaLatex} label="抽题权重公式" />
+                        <span>tickets 与抽题概率</span>
+                        <div className="legacy-paper-formula-lines">
+                          <LatexFormula formula={paperStrategyTicketsFormulaLatex} label="tickets 公式" />
+                          <LatexFormula formula={paperStrategyProbabilityFormulaLatex} label="抽题概率公式" />
+                        </div>
                       </div>
                       <p>
-                        M=掌握度；T=薄弱倾向；B=加权上限；C=曲线。题量控制出题数；单实验最多题数避免试卷集中到同一实验。
+                        T_i=tickets；p_i=抽中概率；s_i=掌握度分数；w_i=薄弱倾向；B=加权上限；γ=曲线。
                       </p>
                     </div>
                     <PaperWeakCurve settings={settings} />

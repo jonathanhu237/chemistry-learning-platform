@@ -3873,7 +3873,7 @@ p {
 
 .teacher-ui-card.legacy-paper-board > .ant-card-body {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .legacy-paper-board > .ant-card-body > header {
@@ -3915,40 +3915,46 @@ p {
 
 .legacy-paper-formula-panel {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   border: 1px solid var(--legacy-line);
   background: var(--legacy-red-050);
-  padding: 7px 10px;
+  padding: 5px 8px;
 }
 
 .legacy-paper-formula-expression {
   display: grid;
-  gap: 4px;
+  gap: 3px;
 }
 
 .legacy-paper-formula-expression span {
   color: var(--legacy-sysu-red);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 900;
 }
 
 .legacy-latex-formula {
+  display: block;
   color: var(--legacy-ink);
   font-weight: 900;
-  line-height: 1.35;
+  line-height: 1.2;
 }
 
 .legacy-latex-formula .katex {
-  font-size: 14px;
-  line-height: 1.25;
+  font-size: 12px;
+  line-height: 1.1;
+}
+
+.legacy-paper-formula-lines {
+  display: grid;
+  gap: 1px;
 }
 
 .legacy-paper-formula-panel p {
   margin: 0;
   color: var(--legacy-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
-  line-height: 1.35;
+  line-height: 1.25;
 }
 
 .legacy-paper-board-grid {
