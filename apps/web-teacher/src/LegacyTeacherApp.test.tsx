@@ -1203,6 +1203,8 @@ describe("LegacyTeacherApp", () => {
     const workbench = await within(page).findByTestId("teacher-paper-management");
     expect(within(workbench).getByText("智能组卷策略")).toBeTruthy();
     expect(await within(workbench).findByText("当前班级继承默认策略")).toBeTruthy();
+    expect(within(workbench).getByText("1 + T / 100 × B × ((100 - M) / 100) ^ C")).toBeTruthy();
+    expect(within(workbench).getByText("M=掌握度；T=薄弱倾向；B=加权上限；C=曲线。题量控制出题数；单实验最多题数避免试卷集中到同一实验。")).toBeTruthy();
     expect(within(workbench).getByText("薄弱权重曲线")).toBeTruthy();
     expect(within(workbench).getByText("7.3 票")).toBeTruthy();
     expect(within(workbench).queryByText("当前班级预估")).toBeNull();

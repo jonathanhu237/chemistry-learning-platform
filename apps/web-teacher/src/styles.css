@@ -3913,6 +3913,40 @@ p {
   line-height: 1;
 }
 
+.legacy-paper-formula-panel {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--legacy-line);
+  background: var(--legacy-red-050);
+  padding: 7px 10px;
+}
+
+.legacy-paper-formula-expression {
+  display: grid;
+  gap: 4px;
+}
+
+.legacy-paper-formula-expression span {
+  color: var(--legacy-sysu-red);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.legacy-paper-formula-expression strong {
+  color: var(--legacy-ink);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.legacy-paper-formula-panel p {
+  margin: 0;
+  color: var(--legacy-muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .legacy-paper-board-grid {
   display: grid;
   grid-template-columns: minmax(480px, 1.3fr) minmax(260px, 0.7fr);

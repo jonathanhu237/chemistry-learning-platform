@@ -844,6 +844,15 @@ function PaperManagementPage() {
 
                   <section className="legacy-paper-section" aria-label="薄弱权重曲线">
                     <h3>薄弱权重曲线</h3>
+                    <div className="legacy-paper-formula-panel" aria-label="策略参数公式">
+                      <div className="legacy-paper-formula-expression">
+                        <span>抽题权重</span>
+                        <strong>1 + T / 100 × B × ((100 - M) / 100) ^ C</strong>
+                      </div>
+                      <p>
+                        M=掌握度；T=薄弱倾向；B=加权上限；C=曲线。题量控制出题数；单实验最多题数避免试卷集中到同一实验。
+                      </p>
+                    </div>
                     <PaperWeakCurve settings={settings} />
                   </section>
                 </div>
