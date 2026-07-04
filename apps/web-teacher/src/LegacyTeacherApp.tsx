@@ -1,6 +1,6 @@
 import { FormEvent, type CSSProperties, type DependencyList, type MouseEvent as ReactMouseEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import katex from "katex";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileText, Info } from "lucide-react";
 import "katex/dist/katex.min.css";
 
 import {
@@ -1072,25 +1072,11 @@ function ErrorBlock({ children, compact = false }: { children: ReactNode; compac
 }
 
 function ReportIcon() {
-  return (
-    <svg className="legacy-student-report-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
-      <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7Z" />
-      <path d="M14 2v5h5" />
-      <path d="M9 12h6" />
-      <path d="M9 16h4" />
-    </svg>
-  );
+  return <FileText className="legacy-student-report-icon" aria-hidden="true" strokeWidth={2.2} />;
 }
 
 function ScoreDetailIcon() {
-  return (
-    <svg className="legacy-student-report-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
-      <path d="M5 7h10" />
-      <path d="M5 12h8" />
-      <path d="M5 17h10" />
-      <path d="m16 10 3 3-3 3" />
-    </svg>
-  );
+  return <Info className="legacy-student-report-icon" aria-hidden="true" strokeWidth={2.4} />;
 }
 
 function normalizedScore(value?: number | string | null): number | null {
