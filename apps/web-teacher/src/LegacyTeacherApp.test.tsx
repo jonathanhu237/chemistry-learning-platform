@@ -1669,14 +1669,17 @@ describe("LegacyTeacherApp", () => {
     expect(screen.getByRole("button", { name: "查看张三测试报告" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "查看李四测试报告" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "张三 卤族元素 88 分" }));
+    expect(screen.getByRole("button", { name: "查看张三卤族元素点位得分详情" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "查看李四卤族元素点位得分详情" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "查看张三卤族元素点位得分详情" }));
     const zhangDialog = await screen.findByRole("dialog", { name: "张三 · 卤族元素" });
     expect(within(zhangDialog).getByRole("table", { name: "点位得分明细" })).toBeTruthy();
     expect(within(zhangDialog).getByText("第 1 / 1 页 · 共 2 个点位")).toBeTruthy();
     expect(within(zhangDialog).getByText("氯水漂白性实验")).toBeTruthy();
     expect(within(zhangDialog).getByText("92 分")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "李四 卤族元素 70 分" }));
+    fireEvent.click(screen.getByRole("button", { name: "查看李四卤族元素点位得分详情" }));
     const liDialog = await screen.findByRole("dialog", { name: "李四 · 卤族元素" });
     expect(within(liDialog).getByText("62 分")).toBeTruthy();
     expect(within(liDialog).getByText("碘离子检验")).toBeTruthy();

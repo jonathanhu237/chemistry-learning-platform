@@ -1036,6 +1036,17 @@ function ReportIcon() {
   );
 }
 
+function ScoreDetailIcon() {
+  return (
+    <svg className="legacy-student-report-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+      <path d="m21 21-4.3-4.3" />
+      <path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z" />
+      <path d="M8 11h6" />
+      <path d="M11 8v6" />
+    </svg>
+  );
+}
+
 function normalizedScore(value?: number | string | null): number | null {
   if (value === null || value === undefined || value === "") return null;
   const numeric = Number(value);
@@ -3399,19 +3410,24 @@ function AnalyticsPage() {
                               : "暂无点位得分";
                             return (
                               <td key={item.id}>
-                                <button
-                                  type="button"
-                                  className={`legacy-family-score-cell${selected ? " selected" : ""}`}
-                                  aria-label={`${student.student_name} ${item.title} ${scoreLabel(state?.score ?? state?.mastery_score)}`}
-                                  title={pointSummary}
-                                  onClick={() => {
-                                    setSelectedStudentId(student.student_id);
-                                    setScoreDetail({ student, family: item, cell: state });
-                                  }}
-                                >
-                                  <strong>{scoreLabel(state?.score ?? state?.mastery_score)}</strong>
-                                  <small>{state ? `${state.evidence_count || 0} 证据` : "无记录"}</small>
-                                </button>
+                                <div className={`legacy-family-score-entry${selected ? " selected" : ""}`} title={pointSummary}>
+                                  <div className="legacy-family-score-cell">
+                                    <strong>{scoreLabel(state?.score ?? state?.mastery_score)}</strong>
+                                    <small>{state ? `${state.evidence_count || 0} 证据` : "无记录"}</small>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="legacy-score-detail-button"
+                                    aria-label={`查看${student.student_name}${item.title}点位得分详情`}
+                                    title="查看点位得分详情"
+                                    onClick={() => {
+                                      setSelectedStudentId(student.student_id);
+                                      setScoreDetail({ student, family: item, cell: state });
+                                    }}
+                                  >
+                                    <ScoreDetailIcon />
+                                  </button>
+                                </div>
                               </td>
                             );
                           })}
