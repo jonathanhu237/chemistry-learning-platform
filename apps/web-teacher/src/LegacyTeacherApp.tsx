@@ -1,6 +1,6 @@
 import { FormEvent, type CSSProperties, type DependencyList, type MouseEvent as ReactMouseEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import katex from "katex";
-import { ArrowLeft, ArrowRight, FileText, Info } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileSearch, Info } from "lucide-react";
 import "katex/dist/katex.min.css";
 
 import {
@@ -1072,7 +1072,7 @@ function ErrorBlock({ children, compact = false }: { children: ReactNode; compac
 }
 
 function ReportIcon() {
-  return <FileText className="legacy-student-report-icon" aria-hidden="true" strokeWidth={2.2} />;
+  return <FileSearch className="legacy-student-report-icon" aria-hidden="true" strokeWidth={2.2} />;
 }
 
 function ScoreDetailIcon() {
