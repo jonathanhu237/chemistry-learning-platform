@@ -1743,14 +1743,14 @@ describe("LegacyTeacherApp", () => {
 
     expect(await screen.findByTestId("teacher-page-analytics")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "学情分析" })).toBeNull();
-    expect(await screen.findByRole("heading", { name: "学生报告与各元素得分" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "学生报告和各部分掌握度" })).toBeTruthy();
     expect(await screen.findByText("张三")).toBeTruthy();
     expect(screen.getByText("李四")).toBeTruthy();
     expect(screen.getByText("第 1 / 1 页 · 共 2 名学生")).toBeTruthy();
     expect(screen.queryByText(/每页/)).toBeNull();
     expect(screen.getByText("卤族元素")).toBeTruthy();
     expect(screen.getByText("氧族元素")).toBeTruthy();
-    const analyticsTable = screen.getByRole("table", { name: "学生报告与各元素得分" });
+    const analyticsTable = screen.getByRole("table", { name: "学生报告和各部分掌握度" });
     expect(within(analyticsTable).queryByRole("columnheader", { name: "平均分" })).toBeNull();
     expect(screen.queryByText("CAT-CH13-f99cb352")).toBeNull();
     expect(screen.queryByRole("heading", { name: "点位得分明细" })).toBeNull();
@@ -1791,7 +1791,7 @@ describe("LegacyTeacherApp", () => {
     render(<LegacyTeacherApp />);
 
     expect(await screen.findByTestId("teacher-page-analytics")).toBeTruthy();
-    expect(await screen.findByRole("heading", { name: "学生报告与各元素得分" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "学生报告和各部分掌握度" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "查看张三测试报告" }));
 
     const reportDialog = await screen.findByRole("dialog", { name: "张三 · 测试报告" });

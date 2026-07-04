@@ -3414,11 +3414,11 @@ function AnalyticsPage() {
               />
               <TeacherCard className="legacy-table-card">
                 <header>
-                  <h2>学生报告与各元素得分</h2>
+                  <h2>学生报告和各部分掌握度</h2>
                   <span>{rows.length} 名学生</span>
                 </header>
                 <div className="legacy-family-score-table-wrap">
-                  <table className="legacy-family-score-table" aria-label="学生报告与各元素得分">
+                  <table className="legacy-family-score-table" aria-label="学生报告和各部分掌握度">
                     <thead>
                       <tr>
                         <th scope="col">学生</th>
