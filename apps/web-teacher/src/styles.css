@@ -3827,6 +3827,26 @@ p {
   gap: 10px;
 }
 
+.legacy-account-create-form .legacy-account-switch-field {
+  align-self: end;
+}
+
+.legacy-account-switch-control {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  border: 1px solid #d9c7c2;
+  background: #fff;
+  gap: 12px;
+  padding: 0 12px;
+}
+
+.legacy-account-switch-control > span {
+  color: var(--legacy-ink);
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .legacy-paper-workbench {
   display: grid;
   gap: 12px;
@@ -4074,17 +4094,6 @@ p {
 
 .legacy-profile-sidebar-actions .ant-btn {
   min-height: 42px;
-}
-
-.legacy-settings-switch-row {
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  justify-content: start;
-}
-
-.legacy-settings-switch-row span {
-  color: var(--legacy-ink);
-  font-size: 13px;
 }
 
 .legacy-settings-single-action {

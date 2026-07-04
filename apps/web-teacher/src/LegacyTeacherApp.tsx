@@ -627,13 +627,17 @@ function SettingsPage({ currentUser }: { currentUser: User }) {
                     onChange={(event) => setAccountPassword(event.target.value)}
                   />
                 </label>
-                <label className="legacy-settings-switch-row">
-                  <TeacherSwitch
-                    aria-label="首次登录必须修改密码"
-                    checked={accountMustChangePassword}
-                    onChange={(checked) => setAccountMustChangePassword(checked)}
-                  />
-                  <span>首次登录必须修改密码</span>
+                <label className="legacy-account-switch-field">
+                  首次登录
+                  <span className="legacy-account-switch-control">
+                    <TeacherSwitch
+                      aria-label="首次登录必须修改密码"
+                      className={`legacy-enable-switch${accountMustChangePassword ? " is-on" : ""}`}
+                      checked={accountMustChangePassword}
+                      onChange={(checked) => setAccountMustChangePassword(checked)}
+                    />
+                    <span>必须修改密码</span>
+                  </span>
                 </label>
               </div>
               <div className="legacy-profile-sidebar-actions legacy-settings-single-action">
