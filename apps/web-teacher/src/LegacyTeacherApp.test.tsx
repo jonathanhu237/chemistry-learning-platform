@@ -293,6 +293,20 @@ const publishedQuestion = {
   status: "published",
 };
 
+function extraPublishedQuestion(index: number) {
+  return {
+    ...cloneJson(publishedQuestion),
+    id: `question-ch13-extra-${index}`,
+    stem: `正式题库完整展示题 ${index}`,
+    options: [
+      { label: "A", text: `完整展示选项 ${index}` },
+      { label: "B", text: "干扰项" },
+    ],
+    answer: { value: "A" },
+    explanation: `正式题库解析 ${index}`,
+  };
+}
+
 const classes = [
   {
     id: "class-1",
@@ -487,7 +501,7 @@ const assessmentReportDetail = {
 
 function installTeacherFetchMock() {
   let questionDrafts = [cloneJson(draftQuestion)];
-  let questionBankQuestions = [cloneJson(publishedQuestion)];
+  let questionBankQuestions = [cloneJson(publishedQuestion), ...Array.from({ length: 11 }, (_, index) => extraPublishedQuestion(index + 1))];
   let teacherAccounts = [
     {
       id: "teacher-1",
@@ -1402,6 +1416,10 @@ describe("LegacyTeacherApp", () => {
     expect(screen.queryByRole("button", { name: "退回修改" })).toBeNull();
     expect(screen.queryByRole("button", { name: "撤销选中正式题" })).toBeNull();
     expect(screen.queryByRole("button", { name: "入库选中待审题" })).toBeNull();
+    const bankPanel = screen.getByRole("region", { name: "正式题库" });
+    expect(within(bankPanel).getByText("缺少水生成 HClO")).toBeTruthy();
+    expect(within(bankPanel).getByText("氯气需要与水反应生成 HClO 后才表现出明显漂白性。")).toBeTruthy();
+    expect(within(bankPanel).getByText("正式题库完整展示题 11")).toBeTruthy();
 
     const reviewPanel = screen.getByRole("region", { name: "待审队列" });
     const initialDraftCard = within(reviewPanel).getByRole("button", { name: /氯水使湿润有色布条褪色/ });
@@ -1409,7 +1427,6 @@ describe("LegacyTeacherApp", () => {
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/drafts/draft-ch13-1/reject"));
     await waitFor(() => expect(within(reviewPanel).queryByRole("button", { name: /氯水使湿润有色布条褪色/ })).toBeNull());
 
-    const bankPanel = screen.getByRole("region", { name: "正式题库" });
     const initialQuestionCard = within(bankPanel).getByRole("button", { name: /为什么干燥有色布条放入氯气中不明显褪色/ });
     fireEvent.click(within(initialQuestionCard).getByRole("button", { name: "撤销到待审" }));
     await waitFor(() => expect(requestPaths(fetchMock)).toContain("/api/teacher/question-banks/questions/question-ch13-1/revoke-to-draft"));

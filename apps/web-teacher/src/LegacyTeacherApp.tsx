@@ -2307,7 +2307,7 @@ function QuestionsPage() {
                 <StateBlock loading={questionsState.loading && !questionsState.data} error={questionsState.error}>
                   {bankQuestions.length ? (
                     <div className="legacy-question-bank-list">
-                      {bankQuestions.slice(0, 10).map((question) => (
+                      {bankQuestions.map((question) => (
                         <QuestionRow
                           key={question.id}
                           question={question}
@@ -2587,7 +2587,7 @@ function QuestionRow({
 }) {
   return (
     <article
-      className={`legacy-resource-row legacy-question-bank-row${selected ? " selected" : ""}`}
+      className={`legacy-question-candidate-card legacy-question-bank-row${selected ? " selected" : ""}`}
       role="button"
       tabIndex={0}
       onClick={onSelect}
@@ -2602,6 +2602,7 @@ function QuestionRow({
       <div className="legacy-question-candidate-title">
         <div className="legacy-question-card-labels">
           <span className="legacy-row-label">{questionTypeLabel(question.question_type)}</span>
+          <span className="legacy-row-label">{catalogContentStatusLabel(question.status, "未知")}</span>
         </div>
         <button
           type="button"
@@ -2617,14 +2618,18 @@ function QuestionRow({
           {revoking ? "…" : "←"}
         </button>
       </div>
-      <div className="legacy-row-main">
-        <strong>{question.stem}</strong>
-        <p>{question.explanation || "暂无解析。"}</p>
-      </div>
-      <div className="legacy-row-stats">
-        <span>{catalogContentStatusLabel(question.status, "未知")}</span>
-        <span>{answerSummary(question.answer)}</span>
-      </div>
+      <strong>{question.stem}</strong>
+      <QuestionOptions options={question.options} />
+      <dl className="legacy-question-answer">
+        <div>
+          <dt>答案</dt>
+          <dd>{answerSummary(question.answer)}</dd>
+        </div>
+        <div>
+          <dt>解析</dt>
+          <dd>{question.explanation || "暂无解析。"}</dd>
+        </div>
+      </dl>
     </article>
   );
 }
