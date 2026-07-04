@@ -3932,11 +3932,15 @@ p {
   font-weight: 900;
 }
 
-.legacy-paper-formula-expression strong {
+.legacy-latex-formula {
   color: var(--legacy-ink);
-  font-size: 12px;
   font-weight: 900;
   line-height: 1.35;
+}
+
+.legacy-latex-formula .katex {
+  font-size: 14px;
+  line-height: 1.25;
 }
 
 .legacy-paper-formula-panel p {

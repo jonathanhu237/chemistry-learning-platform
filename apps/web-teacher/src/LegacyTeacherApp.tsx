@@ -1,4 +1,6 @@
 import { FormEvent, type CSSProperties, type DependencyList, type MouseEvent as ReactMouseEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 
 import {
   bindCatalogPointMedia,
@@ -664,6 +666,7 @@ const smartAssessmentDefaults: SmartAssessmentSettings = {
   weak_max_bonus: 9,
 };
 const smartQuestionCountOptions = [5, 10, 15, 20];
+const paperStrategyFormulaLatex = String.raw`w = 1 + \frac{T}{100}\cdot B\cdot \left(\frac{100-M}{100}\right)^C`;
 
 function normalizeSmartAssessmentSettings(value?: Partial<SmartAssessmentSettings> | null): SmartAssessmentSettings {
   return { ...smartAssessmentDefaults, ...(value || {}), enabled: true };
@@ -672,6 +675,20 @@ function normalizeSmartAssessmentSettings(value?: Partial<SmartAssessmentSetting
 function smartAssessmentTickets(settings: SmartAssessmentSettings, mastery: number): number {
   const weakness = Math.max(0, Math.min(1, (100 - mastery) / 100));
   return 1 + (settings.weak_tendency_percent / 100) * settings.weak_max_bonus * Math.pow(weakness, settings.weak_curve);
+}
+
+function LatexFormula({ formula, label }: { formula: string; label: string }) {
+  const html = useMemo(
+    () =>
+      katex.renderToString(formula, {
+        output: "htmlAndMathml",
+        strict: "ignore",
+        throwOnError: false,
+      }),
+    [formula],
+  );
+
+  return <span className="legacy-latex-formula" role="img" aria-label={label} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 function PaperManagementPage() {
@@ -847,7 +864,7 @@ function PaperManagementPage() {
                     <div className="legacy-paper-formula-panel" aria-label="策略参数公式">
                       <div className="legacy-paper-formula-expression">
                         <span>抽题权重</span>
-                        <strong>1 + T / 100 × B × ((100 - M) / 100) ^ C</strong>
+                        <LatexFormula formula={paperStrategyFormulaLatex} label="抽题权重公式" />
                       </div>
                       <p>
                         M=掌握度；T=薄弱倾向；B=加权上限；C=曲线。题量控制出题数；单实验最多题数避免试卷集中到同一实验。
