@@ -1039,10 +1039,10 @@ function ReportIcon() {
 function ScoreDetailIcon() {
   return (
     <svg className="legacy-student-report-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
-      <path d="m21 21-4.3-4.3" />
-      <path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z" />
-      <path d="M8 11h6" />
-      <path d="M11 8v6" />
+      <path d="M5 7h10" />
+      <path d="M5 12h8" />
+      <path d="M5 17h10" />
+      <path d="m16 10 3 3-3 3" />
     </svg>
   );
 }
