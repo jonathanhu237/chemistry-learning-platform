@@ -1850,6 +1850,19 @@ p {
   color: #fff;
 }
 
+.legacy-ai-config-tabs-card {
+  margin-bottom: 14px;
+}
+
+.legacy-ai-config-tabs {
+  max-width: 560px;
+}
+
+.legacy-ai-config-tabs button {
+  min-height: 42px;
+  font-size: 14px;
+}
+
 .legacy-class-grid.management {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -2945,6 +2958,10 @@ p {
   margin-top: 18px;
 }
 
+.legacy-analytics-report-card {
+  margin-top: 18px;
+}
+
 .legacy-report-prompt-header-actions {
   display: flex;
   flex-wrap: wrap;
@@ -3463,7 +3480,8 @@ p {
 }
 
 .legacy-settings-security-column,
-.legacy-settings-ai-column {
+.legacy-settings-ai-column,
+.legacy-settings-account-column {
   display: grid;
   min-width: 0;
   align-content: start;
@@ -4037,7 +4055,8 @@ p {
   grid-template-columns: 1fr;
 }
 
-.legacy-settings-ai-section {
+.legacy-settings-ai-section,
+.legacy-ai-config-model-panel {
   display: grid;
   gap: 12px;
   border: 1px solid var(--legacy-line);
@@ -4045,11 +4064,13 @@ p {
   padding: 14px;
 }
 
-.legacy-settings-ai-section .legacy-ai-config-sidebar-body {
+.legacy-settings-ai-section .legacy-ai-config-sidebar-body,
+.legacy-ai-config-model-panel .legacy-ai-config-sidebar-body {
   min-height: auto;
 }
 
-.legacy-settings-ai-section .legacy-ai-config-form {
+.legacy-settings-ai-section .legacy-ai-config-form,
+.legacy-ai-config-model-panel .legacy-ai-config-form {
   border-color: var(--legacy-line);
 }
 

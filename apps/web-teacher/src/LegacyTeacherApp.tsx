@@ -107,7 +107,7 @@ const forbiddenPathSegments = [
   "/import",
 ];
 
-type RouteKey = "experiments" | "classes" | "questions" | "paper" | "analytics" | "reports" | "settings";
+type RouteKey = "experiments" | "classes" | "questions" | "paper" | "analytics" | "aiConfig" | "settings";
 type ObjectiveQuestionType = Question["question_type"];
 
 const navItems: Array<{ key: RouteKey; label: string; path: string }> = [
@@ -116,7 +116,7 @@ const navItems: Array<{ key: RouteKey; label: string; path: string }> = [
   { key: "questions", label: "AI 出题", path: "/questions" },
   { key: "paper", label: "组卷管理", path: "/paper" },
   { key: "analytics", label: "学情分析", path: "/analytics" },
-  { key: "reports", label: "评价报告", path: "/reports" },
+  { key: "aiConfig", label: "AI 配置", path: "/ai-config" },
   { key: "settings", label: "设置", path: "/settings" },
 ];
 
@@ -169,7 +169,8 @@ function routeFromPath(path: string): RouteKey {
   if (path.startsWith("/questions")) return "questions";
   if (path.startsWith("/paper")) return "paper";
   if (path.startsWith("/analytics")) return "analytics";
-  if (path.startsWith("/reports")) return "reports";
+  if (path.startsWith("/ai-config")) return "aiConfig";
+  if (path.startsWith("/reports")) return "analytics";
   if (path.startsWith("/settings")) return "settings";
   return "experiments";
 }
@@ -212,8 +213,8 @@ function LegacyTeacherAppContent() {
   }, [path]);
 
   useEffect(() => {
-    if (!path.startsWith("/ai-config")) return;
-    navigate("/settings");
+    if (!path.startsWith("/reports")) return;
+    navigate("/analytics");
   }, [path]);
 
   useEffect(() => {
@@ -295,8 +296,8 @@ function LegacyTeacherAppContent() {
             <PaperManagementPage />
           ) : activeRoute === "analytics" ? (
             <AnalyticsPage />
-          ) : activeRoute === "reports" ? (
-            <ReportsPage />
+          ) : activeRoute === "aiConfig" ? (
+            <AIConfigurationPage />
           ) : activeRoute === "settings" ? (
             <SettingsPage currentUser={user} />
           ) : (
@@ -531,7 +532,7 @@ function SettingsPage({ currentUser }: { currentUser: User }) {
           </form>
         </div>
 
-        <div className="legacy-settings-ai-column">
+        <div className="legacy-settings-account-column">
           <section className="legacy-account-management-card" data-testid="teacher-account-management" aria-label="账号管理">
             <div className="legacy-profile-form-head">
               <strong>账号管理</strong>
@@ -642,7 +643,6 @@ function SettingsPage({ currentUser }: { currentUser: User }) {
             </form>
           </section>
 
-          <AIConfigurationSettingsSection active />
         </div>
       </section>
     </PageFrame>
@@ -1894,7 +1894,6 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
   const [baseUrl, setBaseUrl] = useState(deepSeekDefaultBaseUrl);
   const [model, setModel] = useState(deepSeekDefaultModel);
   const [apiKey, setApiKey] = useState("");
-  const [notice, setNotice] = useState("");
   const [actionError, setActionError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -1904,7 +1903,6 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
     setBaseUrl(config.base_url || config.chat_provider?.base_url || deepSeekDefaultBaseUrl);
     setModel(config.model || config.chat_provider?.model || deepSeekDefaultModel);
     setApiKey("");
-    setNotice("");
     setActionError("");
   }, [state.data]);
 
@@ -1918,7 +1916,6 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
       return;
     }
     setSaving(true);
-    setNotice("");
     setActionError("");
     try {
       await updateAIConfiguration({
@@ -1934,7 +1931,6 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
         },
       });
       setApiKey("");
-      setNotice("AI 模型配置已保存。");
       setReloadKey((value) => value + 1);
     } catch (caught) {
       setActionError(legacyTeacherErrorMessage(caught));
@@ -1944,13 +1940,12 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
   };
 
   return (
-    <section className="legacy-ai-config-sidebar legacy-settings-ai-section" data-testid="teacher-ai-config-settings" aria-label="AI 配置">
+    <section className="legacy-ai-config-sidebar legacy-ai-config-model-panel" data-testid="teacher-ai-config-model" aria-label="大语言模型配置">
       <div className="legacy-profile-form-head">
-        <strong>AI 配置</strong>
-        <span>配置 AI 出题、AI 报告和学生答疑使用的大语言模型。</span>
+        <strong>大语言模型配置</strong>
+        <span>配置 AI 出题和 AI 报告使用的大语言模型。</span>
       </div>
       <div className="legacy-ai-config-sidebar-body">
-        {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
         {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
         <StateBlock loading={state.loading && !state.data} error={state.error}>
           <form className="legacy-ai-config-form" onSubmit={saveConfig}>
@@ -3400,6 +3395,7 @@ function AnalyticsPage() {
               >
                 {scoreDetail ? <AnalyticsScoreDetail detail={scoreDetail} /> : null}
               </TeacherModal>
+              <StudentReportsPanel classes={classes} defaultClassId={selectedClassId} />
             </>
           ) : null}
         </StateBlock>
@@ -3497,16 +3493,44 @@ function PointScoreTable({
   );
 }
 
-function ReportsPage() {
+type AIConfigurationPanel = "prompts" | "model";
+
+function AIConfigurationPage() {
+  const [activePanel, setActivePanel] = useState<AIConfigurationPanel>("prompts");
+
+  return (
+    <PageFrame title="AI 配置" showHeader={false} testId="teacher-page-ai-config">
+      <TeacherCard className="legacy-card legacy-ai-config-tabs-card">
+        <div className="legacy-segmented-row legacy-ai-config-tabs" role="tablist" aria-label="AI 配置类型">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activePanel === "prompts"}
+            className={activePanel === "prompts" ? "active" : ""}
+            onClick={() => setActivePanel("prompts")}
+          >
+            报告生成 Prompt
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activePanel === "model"}
+            className={activePanel === "model" ? "active" : ""}
+            onClick={() => setActivePanel("model")}
+          >
+            大语言模型配置
+          </button>
+        </div>
+      </TeacherCard>
+      {activePanel === "prompts" ? <AssessmentReportPromptPanel /> : <AIConfigurationSettingsSection active />}
+    </PageFrame>
+  );
+}
+
+function AssessmentReportPromptPanel() {
   const promptState = useAsyncData(getGlobalAssessmentReportPrompts, []);
-  const classState = useAsyncData<TeacherClassSummary[]>(listTeacherClasses, []);
-  const classes = classState.data || [];
   const [summaryPrompt, setSummaryPrompt] = useState("");
   const [mistakePrompt, setMistakePrompt] = useState("");
-  const [selectedClassId, setSelectedClassId] = useState("");
-  const [selectedStudentId, setSelectedStudentId] = useState("");
-  const [selectedReportId, setSelectedReportId] = useState("");
-  const [notice, setNotice] = useState("");
   const [actionError, setActionError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -3516,31 +3540,6 @@ function ReportsPage() {
       setMistakePrompt(promptState.data.settings.mistake_prompt);
     }
   }, [promptState.data]);
-  useEffect(() => {
-    if (!selectedClassId && classes[0]?.id) setSelectedClassId(classes[0].id);
-  }, [classes, selectedClassId]);
-
-  const studentsState = useAsyncData<TeacherStudentSummary[]>(() => (selectedClassId ? listTeacherClassStudents(selectedClassId) : Promise.resolve([])), [selectedClassId]);
-  const students = studentsState.data || [];
-  useEffect(() => {
-    if (!selectedStudentId && students[0]?.student_id) setSelectedStudentId(students[0].student_id);
-    if (selectedStudentId && students.length && !students.some((student) => student.student_id === selectedStudentId)) setSelectedStudentId(students[0]?.student_id || "");
-  }, [selectedStudentId, students]);
-
-  const reportsState = useAsyncData(
-    () => (selectedClassId && selectedStudentId ? listTeacherStudentAssessmentReports(selectedClassId, selectedStudentId) : Promise.resolve({ reports: [] as StudentAssessmentReportSummary[] })),
-    [selectedClassId, selectedStudentId],
-  );
-  const reports = reportsState.data?.reports || [];
-  useEffect(() => {
-    if (!selectedReportId && reports[0]?.id) setSelectedReportId(reports[0].id);
-    if (selectedReportId && reports.length && !reports.some((report) => report.id === selectedReportId)) setSelectedReportId(reports[0]?.id || "");
-  }, [reports, selectedReportId]);
-
-  const reportDetailState = useAsyncData(
-    () => (selectedClassId && selectedStudentId && selectedReportId ? getTeacherStudentAssessmentReport(selectedClassId, selectedStudentId, selectedReportId) : Promise.resolve(null)),
-    [selectedClassId, selectedStudentId, selectedReportId],
-  );
 
   const savePrompts = async (event: FormEvent) => {
     event.preventDefault();
@@ -3549,11 +3548,9 @@ function ReportsPage() {
       return;
     }
     setSaving(true);
-    setNotice("");
     setActionError("");
     try {
       await updateGlobalAssessmentReportPrompts({ summary_prompt: summaryPrompt, mistake_prompt: mistakePrompt });
-      setNotice("报告生成 Prompt 已保存。");
     } catch (caught) {
       setActionError(legacyTeacherErrorMessage(caught));
     } finally {
@@ -3563,13 +3560,11 @@ function ReportsPage() {
 
   const resetPrompts = async () => {
     setSaving(true);
-    setNotice("");
     setActionError("");
     try {
       const response = await resetGlobalAssessmentReportPrompts();
       setSummaryPrompt(response.settings.summary_prompt);
       setMistakePrompt(response.settings.mistake_prompt);
-      setNotice("已恢复默认报告 Prompt。");
     } catch (caught) {
       setActionError(legacyTeacherErrorMessage(caught));
     } finally {
@@ -3578,111 +3573,153 @@ function ReportsPage() {
   };
 
   return (
-    <PageFrame
-      eyebrow="评价报告生成"
-      title="评价报告"
-      description="维护测评报告生成 Prompt，并查看学生提交测评后生成的学习总结与错题讲解。"
-      showHeader={false}
-      testId="teacher-page-reports"
-    >
-      {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
+    <TeacherCard className="legacy-table-card legacy-report-prompt-card" data-testid="teacher-report-prompt-panel">
+      <header>
+        <h2>报告生成 Prompt</h2>
+        <span>{promptState.data?.source === "global" ? "全局设置" : "班级设置"}</span>
+      </header>
       {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
-      <StateBlock loading={(promptState.loading && !promptState.data) || (classState.loading && !classState.data)} error={promptState.error || classState.error}>
-        <div className="legacy-management-grid">
-          <TeacherCard className="legacy-table-card">
-            <header>
-              <h2>报告生成 Prompt</h2>
-              <span>{promptState.data?.source === "global" ? "全局设置" : "班级设置"}</span>
-            </header>
-            <div className="legacy-report-variable-list">
-              {(promptState.data?.supported_variables || []).map((variable) => (
-                <button
-                  type="button"
-                  className="legacy-report-variable-chip"
-                  key={variable}
-                  onClick={() => setSummaryPrompt((current) => `${current}${current.endsWith("\n") ? "" : "\n"}{{${variable}}}`)}
-                >
-                  {variable}
-                </button>
-              ))}
-            </div>
-            <form className="legacy-report-prompt-form" onSubmit={savePrompts}>
-              <label className="legacy-textarea-label">
-                报告总结 Prompt
-                <TeacherInput.TextArea value={summaryPrompt} onChange={(event) => setSummaryPrompt(event.target.value)} rows={7} />
-              </label>
-              <label className="legacy-textarea-label">
-                错题讲解 Prompt
-                <TeacherInput.TextArea value={mistakePrompt} onChange={(event) => setMistakePrompt(event.target.value)} rows={7} />
-              </label>
-              <div className="legacy-editor-actions">
-                <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={saving}>
-                  {saving ? "保存中..." : "保存 Prompt"}
-                </TeacherButton>
-                <TeacherButton type="default" className="legacy-secondary-button" disabled={saving} onClick={resetPrompts}>
-                  恢复默认
-                </TeacherButton>
-              </div>
-            </form>
-          </TeacherCard>
-          <TeacherCard className="legacy-table-card">
-            <header>
-              <h2>学生报告</h2>
-              <span>{reports.length} 份</span>
-            </header>
-            <div className="legacy-filter-row">
-              <label>
-                班级
-                <select value={selectedClassId} onChange={(event) => setSelectedClassId(event.target.value)}>
-                  {classes.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.class_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                学生
-                <select value={selectedStudentId} onChange={(event) => setSelectedStudentId(event.target.value)}>
-                  {students.map((student) => (
-                    <option key={student.student_id} value={student.student_id}>
-                      {student.student_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <StateBlock loading={(studentsState.loading && !studentsState.data) || (reportsState.loading && !reportsState.data)} error={studentsState.error || reportsState.error}>
-              <div className="legacy-report-list">
-                {reports.map((report) => (
-                  <button
-                    type="button"
-                    key={report.id}
-                    className={report.id === selectedReportId ? "selected" : ""}
-                    onClick={() => setSelectedReportId(report.id)}
-                  >
-                    <strong>{report.title}</strong>
-                    <span>{report.score} 分 · 错题 {report.wrong_count}</span>
-                  </button>
-                ))}
-              </div>
-              <StateBlock loading={reportDetailState.loading && !reportDetailState.data} error={reportDetailState.error}>
-                {reportDetailState.data ? (
-                  <article className="legacy-report-detail">
-                    <h2>{reportDetailState.data.title}</h2>
-                    <strong>学习总结</strong>
-                    <p>{reportDetailState.data.summary.text}</p>
-                    <strong>错题讲解</strong>
-                    <p>{reportDetailState.data.mistake_explanation.text}</p>
-                  </article>
-                ) : (
-                  <TeacherEmptyState message="当前学生暂无报告。" compact />
-                )}
-              </StateBlock>
-            </StateBlock>
-          </TeacherCard>
+      <StateBlock loading={promptState.loading && !promptState.data} error={promptState.error}>
+        <div className="legacy-report-variable-list">
+          {(promptState.data?.supported_variables || []).map((variable) => (
+            <button
+              type="button"
+              className="legacy-report-variable-chip"
+              key={variable}
+              onClick={() => setSummaryPrompt((current) => `${current}${current.endsWith("\n") ? "" : "\n"}{{${variable}}}`)}
+            >
+              {variable}
+            </button>
+          ))}
         </div>
+        <form className="legacy-report-prompt-form" onSubmit={savePrompts}>
+          <label className="legacy-textarea-label">
+            报告总结 Prompt
+            <TeacherInput.TextArea value={summaryPrompt} onChange={(event) => setSummaryPrompt(event.target.value)} rows={7} />
+          </label>
+          <label className="legacy-textarea-label">
+            错题讲解 Prompt
+            <TeacherInput.TextArea value={mistakePrompt} onChange={(event) => setMistakePrompt(event.target.value)} rows={7} />
+          </label>
+          <div className="legacy-editor-actions">
+            <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={saving}>
+              {saving ? "保存中..." : "保存 Prompt"}
+            </TeacherButton>
+            <TeacherButton type="default" className="legacy-secondary-button" disabled={saving} onClick={resetPrompts}>
+              恢复默认
+            </TeacherButton>
+          </div>
+        </form>
       </StateBlock>
-    </PageFrame>
+    </TeacherCard>
+  );
+}
+
+function StudentReportsPanel({ classes, defaultClassId }: { classes: TeacherClassSummary[]; defaultClassId?: string }) {
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [selectedReportId, setSelectedReportId] = useState("");
+
+  useEffect(() => {
+    if (defaultClassId && defaultClassId !== selectedClassId) {
+      setSelectedClassId(defaultClassId);
+      return;
+    }
+    if (!selectedClassId && classes[0]?.id) {
+      setSelectedClassId(classes[0].id);
+      return;
+    }
+    if (selectedClassId && classes.length && !classes.some((item) => item.id === selectedClassId)) {
+      setSelectedClassId(classes[0]?.id || "");
+    }
+  }, [classes, defaultClassId, selectedClassId]);
+
+  useEffect(() => {
+    setSelectedStudentId("");
+    setSelectedReportId("");
+  }, [selectedClassId]);
+
+  const studentsState = useAsyncData<TeacherStudentSummary[]>(() => (selectedClassId ? listTeacherClassStudents(selectedClassId) : Promise.resolve([])), [selectedClassId]);
+  const students = studentsState.data || [];
+  useEffect(() => {
+    if (!selectedStudentId && students[0]?.student_id) setSelectedStudentId(students[0].student_id);
+    if (selectedStudentId && !students.length) setSelectedStudentId("");
+    if (selectedStudentId && students.length && !students.some((student) => student.student_id === selectedStudentId)) setSelectedStudentId(students[0]?.student_id || "");
+  }, [selectedStudentId, students]);
+
+  useEffect(() => {
+    setSelectedReportId("");
+  }, [selectedStudentId]);
+
+  const reportsState = useAsyncData(
+    () => (selectedClassId && selectedStudentId ? listTeacherStudentAssessmentReports(selectedClassId, selectedStudentId) : Promise.resolve({ reports: [] as StudentAssessmentReportSummary[] })),
+    [selectedClassId, selectedStudentId],
+  );
+  const reports = reportsState.data?.reports || [];
+  useEffect(() => {
+    if (!selectedReportId && reports[0]?.id) setSelectedReportId(reports[0].id);
+    if (selectedReportId && !reports.length) setSelectedReportId("");
+    if (selectedReportId && reports.length && !reports.some((report) => report.id === selectedReportId)) setSelectedReportId(reports[0]?.id || "");
+  }, [reports, selectedReportId]);
+
+  const reportDetailState = useAsyncData(
+    () => (selectedClassId && selectedStudentId && selectedReportId ? getTeacherStudentAssessmentReport(selectedClassId, selectedStudentId, selectedReportId) : Promise.resolve(null)),
+    [selectedClassId, selectedStudentId, selectedReportId],
+  );
+
+  return (
+    <TeacherCard className="legacy-table-card legacy-analytics-report-card" data-testid="teacher-analytics-report-panel">
+      <header>
+        <h2>学生报告</h2>
+        <span>{reports.length} 份</span>
+      </header>
+      <div className="legacy-filter-row">
+        <label>
+          班级
+          <select value={selectedClassId} onChange={(event) => setSelectedClassId(event.target.value)}>
+            {classes.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.class_name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          学生
+          <select value={selectedStudentId} onChange={(event) => setSelectedStudentId(event.target.value)}>
+            {students.map((student) => (
+              <option key={student.student_id} value={student.student_id}>
+                {student.student_name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <StateBlock loading={(studentsState.loading && !studentsState.data) || (reportsState.loading && !reportsState.data)} error={studentsState.error || reportsState.error}>
+        {reports.length ? (
+          <div className="legacy-report-list">
+            {reports.map((report) => (
+              <button type="button" key={report.id} className={report.id === selectedReportId ? "selected" : ""} onClick={() => setSelectedReportId(report.id)}>
+                <strong>{report.title}</strong>
+                <span>{report.score} 分 · 错题 {report.wrong_count}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <StateBlock loading={reportDetailState.loading && !reportDetailState.data} error={reportDetailState.error}>
+          {reportDetailState.data ? (
+            <article className="legacy-report-detail">
+              <h2>{reportDetailState.data.title}</h2>
+              <strong>学习总结</strong>
+              <p>{reportDetailState.data.summary.text}</p>
+              <strong>错题讲解</strong>
+              <p>{reportDetailState.data.mistake_explanation.text}</p>
+            </article>
+          ) : (
+            <TeacherEmptyState message="当前学生暂无报告。" compact />
+          )}
+        </StateBlock>
+      </StateBlock>
+    </TeacherCard>
   );
 }

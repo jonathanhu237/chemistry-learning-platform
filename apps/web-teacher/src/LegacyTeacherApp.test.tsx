@@ -991,7 +991,7 @@ describe("LegacyTeacherApp", () => {
     const navLabels = within(nav)
       .getAllByRole("button")
       .map((button) => String(button.textContent).trim());
-    expect(navLabels).toEqual(["实验管理", "班级管理", "AI 出题", "组卷管理", "学情分析", "评价报告", "设置"]);
+    expect(navLabels).toEqual(["实验管理", "班级管理", "AI 出题", "组卷管理", "学情分析", "AI 配置", "设置"]);
     expect(within(nav).queryByRole("button", { name: "视频资源" })).toBeNull();
     expect(within(nav).queryByRole("button", { name: "题库资源" })).toBeNull();
     expect(within(nav).getByRole("button", { name: "班级管理" })).toBeTruthy();
@@ -1214,10 +1214,11 @@ describe("LegacyTeacherApp", () => {
     render(<LegacyTeacherApp />);
 
     await screen.findByRole("navigation", { name: "当前位置" });
-    fireEvent.click(screen.getByTestId("teacher-nav-settings"));
+    fireEvent.click(screen.getByTestId("teacher-nav-aiConfig"));
 
-    const settingsPage = await screen.findByTestId("teacher-page-settings");
-    const sidebar = await within(settingsPage).findByTestId("teacher-ai-config-settings");
+    const settingsPage = await screen.findByTestId("teacher-page-ai-config");
+    fireEvent.click(within(settingsPage).getByRole("tab", { name: "大语言模型配置" }));
+    const sidebar = await within(settingsPage).findByTestId("teacher-ai-config-model");
     expect(screen.queryByRole("dialog", { name: "设置" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "AI 模型配置" })).toBeNull();
     expect(await within(sidebar).findByDisplayValue("https://api.deepseek.com")).toBeTruthy();
@@ -1664,8 +1665,10 @@ describe("LegacyTeacherApp", () => {
     expect(screen.getByText("氧族元素")).toBeTruthy();
     expect(screen.queryByText("CAT-CH13-f99cb352")).toBeNull();
     expect(screen.queryByRole("heading", { name: "点位得分明细" })).toBeNull();
-    expect(screen.queryByRole("heading", { name: "学生报告摘要" })).toBeNull();
-    expect(screen.queryByText("张三已经掌握 CH13 氯水漂白的核心证据。")).toBeNull();
+    expect(await screen.findByRole("heading", { name: "学生报告" })).toBeTruthy();
+    expect(await screen.findByText("CH13 后测评价报告")).toBeTruthy();
+    expect(await screen.findByText("张三已经能解释氯水漂白现象，并能把 HClO 与氧化性联系起来。")).toBeTruthy();
+    expect(screen.getByText("错题集中在溴碘置换顺序，需要回看 KBr 与 CCl4 的分层颜色。")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "张三 卤族元素 88 分" }));
     const zhangDialog = await screen.findByRole("dialog", { name: "张三 · 卤族元素" });
@@ -1682,27 +1685,25 @@ describe("LegacyTeacherApp", () => {
     const paths = requestPaths(fetchMock);
     expect(paths).toContain("/api/teacher/classes");
     expect(paths).toContain("/api/teacher/analytics/classes/class-1/dashboard");
-    expect(paths).not.toContain("/api/teacher/analytics/classes/class-1/students/2026001");
-    expect(paths).not.toContain("/api/teacher/analytics/classes/class-1/students/2026002");
+    expect(paths).toContain("/api/teacher/classes/class-1/students");
+    expect(paths).toContain("/api/teacher/classes/class-1/students/2026001/assessment-reports");
+    expect(paths).toContain("/api/teacher/classes/class-1/students/2026001/assessment-reports/report-ch13-1");
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 
-  it("loads report prompts and student assessment reports from the report APIs", async () => {
+  it("loads report prompts from the AI configuration page", async () => {
     const fetchMock = installTeacherFetchMock();
     vi.stubGlobal("fetch", fetchMock);
-    window.history.pushState({}, "", "/reports");
+    window.history.pushState({}, "", "/ai-config");
 
     render(<LegacyTeacherApp />);
 
-    expect(await screen.findByTestId("teacher-page-reports")).toBeTruthy();
+    expect(await screen.findByTestId("teacher-page-ai-config")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "评价报告" })).toBeNull();
-    expect(await screen.findByText("报告生成 Prompt")).toBeTruthy();
+    expect(await screen.findByRole("tab", { name: "报告生成 Prompt" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "报告生成 Prompt" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "student_name" })).toBeTruthy();
-    expect(await screen.findByText("张三")).toBeTruthy();
-    expect(screen.getByText("李四")).toBeTruthy();
-    expect(await screen.findByText("CH13 后测评价报告")).toBeTruthy();
-    expect(await screen.findByText("张三已经能解释氯水漂白现象，并能把 HClO 与氧化性联系起来。")).toBeTruthy();
-    expect(screen.getByText("错题集中在溴碘置换顺序，需要回看 KBr 与 CCl4 的分层颜色。")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "学生报告" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "保存 Prompt" }));
     await waitFor(() =>
@@ -1716,9 +1717,9 @@ describe("LegacyTeacherApp", () => {
 
     const paths = requestPaths(fetchMock);
     expect(paths).toContain("/api/teacher/assessment-report-prompts");
-    expect(paths).toContain("/api/teacher/classes/class-1/students");
-    expect(paths).toContain("/api/teacher/classes/class-1/students/2026001/assessment-reports");
-    expect(paths).toContain("/api/teacher/classes/class-1/students/2026001/assessment-reports/report-ch13-1");
+    expect(paths).not.toContain("/api/teacher/classes/class-1/students");
+    expect(paths).not.toContain("/api/teacher/classes/class-1/students/2026001/assessment-reports");
+    expect(paths).not.toContain("/api/teacher/classes/class-1/students/2026001/assessment-reports/report-ch13-1");
     expect(
       fetchMock.mock.calls.some(
         (call) => requestUrl(call[0]).pathname === "/api/teacher/assessment-report-prompts" && String(call[1]?.method || "GET").toUpperCase() === "PUT",
