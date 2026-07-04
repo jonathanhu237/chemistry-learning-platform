@@ -1263,6 +1263,7 @@ describe("LegacyTeacherApp", () => {
     expect(await within(sidebar).findByDisplayValue("https://api.deepseek.com")).toBeTruthy();
     expect(within(sidebar).getByDisplayValue("deepseek-v4-flash")).toBeTruthy();
     expect(within(sidebar).getByLabelText("API 密钥").getAttribute("placeholder")).toBe("");
+    expect((within(sidebar).getByLabelText("API 密钥") as HTMLInputElement).value).toBe("");
     expect(within(sidebar).queryByText("模型服务")).toBeNull();
     expect(within(sidebar).queryByText("连接检测间隔")).toBeNull();
     expect(within(sidebar).queryByText("启用范围")).toBeNull();
@@ -1299,7 +1300,22 @@ describe("LegacyTeacherApp", () => {
     });
     expect(JSON.parse(String(updateCall?.[1]?.body))).not.toHaveProperty("enabled_features");
     expect(JSON.parse(String(updateCall?.[1]?.body))).not.toHaveProperty("connection_check_interval_minutes");
-    await waitFor(() => expect(within(sidebar).getByLabelText("API 密钥").getAttribute("placeholder")).toBe("****"));
+    await waitFor(() => expect((within(sidebar).getByLabelText("API 密钥") as HTMLInputElement).value).toBe("********"));
+    expect(within(sidebar).getByLabelText("API 密钥").getAttribute("placeholder")).not.toBe("****");
+
+    fireEvent.click(within(sidebar).getByRole("button", { name: "保存配置" }));
+
+    await waitFor(() => {
+      const updateCalls = fetchMock.mock.calls.filter(
+        (call) => requestUrl(call[0]).pathname === "/api/teacher/ai-configuration" && String(call[1]?.method || "GET").toUpperCase() === "PUT",
+      );
+      expect(updateCalls).toHaveLength(2);
+    });
+    const secondUpdateCall = fetchMock.mock.calls.filter(
+      (call) => requestUrl(call[0]).pathname === "/api/teacher/ai-configuration" && String(call[1]?.method || "GET").toUpperCase() === "PUT",
+    )[1];
+    expect(JSON.parse(String(secondUpdateCall?.[1]?.body))).not.toHaveProperty("api_key");
+    expect(JSON.parse(String(secondUpdateCall?.[1]?.body)).chat_provider).not.toHaveProperty("api_key");
   });
 
   it("uploads and binds a video from the catalog point editor", async () => {

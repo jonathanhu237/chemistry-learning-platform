@@ -1980,8 +1980,10 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
   const [baseUrl, setBaseUrl] = useState(deepSeekDefaultBaseUrl);
   const [model, setModel] = useState(deepSeekDefaultModel);
   const [apiKey, setApiKey] = useState("");
+  const [editingApiKey, setEditingApiKey] = useState(false);
   const [actionError, setActionError] = useState("");
   const [saving, setSaving] = useState(false);
+  const apiKeyConfigured = Boolean(state.data?.api_key_configured || state.data?.chat_provider?.api_key_configured);
 
   useEffect(() => {
     const config = state.data;
@@ -1989,6 +1991,7 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
     setBaseUrl(config.base_url || config.chat_provider?.base_url || deepSeekDefaultBaseUrl);
     setModel(config.model || config.chat_provider?.model || deepSeekDefaultModel);
     setApiKey("");
+    setEditingApiKey(false);
     setActionError("");
   }, [state.data]);
 
@@ -1996,7 +1999,7 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
     event.preventDefault();
     const nextBaseUrl = baseUrl.trim().replace(/\/+$/, "");
     const nextModel = model.trim();
-    const nextApiKey = apiKey.trim();
+    const nextApiKey = editingApiKey || !apiKeyConfigured ? apiKey.trim() : "";
     if (!nextBaseUrl || !nextModel) {
       setActionError("请填写接口地址和模型名称。");
       return;
@@ -2017,6 +2020,7 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
         },
       });
       setApiKey("");
+      setEditingApiKey(false);
       setReloadKey((value) => value + 1);
     } catch (caught) {
       setActionError(legacyTeacherErrorMessage(caught));
@@ -2049,13 +2053,31 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
             </label>
             <label>
               API 密钥
-              <TeacherInput.Password
-                aria-label="API 密钥"
-                autoComplete="off"
-                value={apiKey}
-                placeholder={state.data?.api_key_configured ? "****" : ""}
-                onChange={(event) => setApiKey(event.target.value)}
-              />
+              {apiKeyConfigured && !editingApiKey && !apiKey ? (
+                <TeacherInput
+                  aria-label="API 密钥"
+                  autoComplete="off"
+                  className="legacy-ai-config-key-mask"
+                  readOnly
+                  value="********"
+                  onMouseDown={() => setEditingApiKey(true)}
+                  onFocus={() => setEditingApiKey(true)}
+                />
+              ) : (
+                <TeacherInput.Password
+                  aria-label="API 密钥"
+                  autoComplete="off"
+                  value={apiKey}
+                  placeholder=""
+                  onBlur={() => {
+                    if (apiKeyConfigured && !apiKey.trim()) setEditingApiKey(false);
+                  }}
+                  onChange={(event) => {
+                    if (!editingApiKey) setEditingApiKey(true);
+                    setApiKey(event.target.value);
+                  }}
+                />
+              )}
             </label>
             <div className="legacy-ai-config-sidebar-actions">
               <TeacherButton type="primary" htmlType="submit" className="primary-button" disabled={saving}>
