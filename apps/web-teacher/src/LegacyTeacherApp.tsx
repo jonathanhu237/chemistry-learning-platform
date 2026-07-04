@@ -1038,6 +1038,19 @@ function scoreLabel(value?: number | string | null, fallback = "-"): string {
   return `${Number.isInteger(score) ? score.toFixed(0) : score.toFixed(1)} 分`;
 }
 
+function formatShortDateTime(value?: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
 type AnalyticsFamilyColumn = {
   id: string;
   title: string;
@@ -1049,6 +1062,11 @@ type AnalyticsScoreDetailDialog = {
   student: AnalyticsDashboard["matrix"][number];
   family: AnalyticsFamilyColumn;
   cell: AnalyticsScoreCell | null;
+};
+
+type AnalyticsStudentReportDialog = {
+  classId: string;
+  student: AnalyticsDashboard["matrix"][number];
 };
 
 const elementFamilyTitleByChapter: Record<string, string> = {
@@ -3261,6 +3279,7 @@ function AnalyticsPage() {
   const rawColumns = dashboard?.experiment_groups?.length ? dashboard.experiment_groups : dashboard?.experiments || [];
   const columns = useMemo(() => analyticsFamilyColumns(rawColumns), [rawColumns]);
   const [scoreDetail, setScoreDetail] = useState<AnalyticsScoreDetailDialog | null>(null);
+  const [reportDetail, setReportDetail] = useState<AnalyticsStudentReportDialog | null>(null);
   const [analyticsPage, setAnalyticsPage] = useState(1);
   const analyticsPageCount = Math.max(1, Math.ceil(rows.length / ANALYTICS_STUDENT_PAGE_SIZE));
   const clampedAnalyticsPage = Math.min(analyticsPage, analyticsPageCount);
@@ -3280,6 +3299,11 @@ function AnalyticsPage() {
       setScoreDetail(null);
     }
   }, [columns, rows, scoreDetail]);
+  useEffect(() => {
+    if (reportDetail && (!rows.some((row) => row.student_id === reportDetail.student.student_id) || reportDetail.classId !== selectedClassId)) {
+      setReportDetail(null);
+    }
+  }, [reportDetail, rows, selectedClassId]);
 
   return (
     <PageFrame
@@ -3335,10 +3359,23 @@ function AnalyticsPage() {
                       {pagedRows.map((student) => (
                         <tr className={student.student_id === selectedStudentId ? "selected" : ""} key={student.student_id}>
                           <th scope="row">
-                            <button type="button" className="legacy-family-student-cell" onClick={() => setSelectedStudentId(student.student_id)}>
-                              <strong>{student.student_name}</strong>
-                              <small>{student.student_id}</small>
-                            </button>
+                            <div className="legacy-family-student-entry">
+                              <button type="button" className="legacy-family-student-cell" onClick={() => setSelectedStudentId(student.student_id)}>
+                                <strong>{student.student_name}</strong>
+                                <small>{student.student_id}</small>
+                              </button>
+                              <button
+                                type="button"
+                                className="legacy-student-report-button"
+                                aria-label={`查看${student.student_name}测试报告`}
+                                onClick={() => {
+                                  setSelectedStudentId(student.student_id);
+                                  setReportDetail({ classId: selectedClassId, student });
+                                }}
+                              >
+                                报告
+                              </button>
+                            </div>
                           </th>
                           <td className="legacy-family-average-cell">{scoreLabel(student.average_score)}</td>
                           {columns.map((item) => {
@@ -3395,7 +3432,7 @@ function AnalyticsPage() {
               >
                 {scoreDetail ? <AnalyticsScoreDetail detail={scoreDetail} /> : null}
               </TeacherModal>
-              <StudentReportsPanel classes={classes} defaultClassId={selectedClassId} />
+              <StudentReportDialog reportDetail={reportDetail} onClose={() => setReportDetail(null)} />
             </>
           ) : null}
         </StateBlock>
@@ -3615,45 +3652,20 @@ function AssessmentReportPromptPanel() {
   );
 }
 
-function StudentReportsPanel({ classes, defaultClassId }: { classes: TeacherClassSummary[]; defaultClassId?: string }) {
-  const [selectedClassId, setSelectedClassId] = useState("");
-  const [selectedStudentId, setSelectedStudentId] = useState("");
+function StudentReportDialog({ reportDetail, onClose }: { reportDetail: AnalyticsStudentReportDialog | null; onClose: () => void }) {
   const [selectedReportId, setSelectedReportId] = useState("");
-
-  useEffect(() => {
-    if (defaultClassId && defaultClassId !== selectedClassId) {
-      setSelectedClassId(defaultClassId);
-      return;
-    }
-    if (!selectedClassId && classes[0]?.id) {
-      setSelectedClassId(classes[0].id);
-      return;
-    }
-    if (selectedClassId && classes.length && !classes.some((item) => item.id === selectedClassId)) {
-      setSelectedClassId(classes[0]?.id || "");
-    }
-  }, [classes, defaultClassId, selectedClassId]);
-
-  useEffect(() => {
-    setSelectedStudentId("");
-    setSelectedReportId("");
-  }, [selectedClassId]);
-
-  const studentsState = useAsyncData<TeacherStudentSummary[]>(() => (selectedClassId ? listTeacherClassStudents(selectedClassId) : Promise.resolve([])), [selectedClassId]);
-  const students = studentsState.data || [];
-  useEffect(() => {
-    if (!selectedStudentId && students[0]?.student_id) setSelectedStudentId(students[0].student_id);
-    if (selectedStudentId && !students.length) setSelectedStudentId("");
-    if (selectedStudentId && students.length && !students.some((student) => student.student_id === selectedStudentId)) setSelectedStudentId(students[0]?.student_id || "");
-  }, [selectedStudentId, students]);
+  const open = Boolean(reportDetail);
+  const classId = reportDetail?.classId || "";
+  const student = reportDetail?.student || null;
+  const studentId = student?.student_id || "";
 
   useEffect(() => {
     setSelectedReportId("");
-  }, [selectedStudentId]);
+  }, [classId, studentId, open]);
 
   const reportsState = useAsyncData(
-    () => (selectedClassId && selectedStudentId ? listTeacherStudentAssessmentReports(selectedClassId, selectedStudentId) : Promise.resolve({ reports: [] as StudentAssessmentReportSummary[] })),
-    [selectedClassId, selectedStudentId],
+    () => (open && classId && studentId ? listTeacherStudentAssessmentReports(classId, studentId) : Promise.resolve({ reports: [] as StudentAssessmentReportSummary[] })),
+    [open, classId, studentId],
   );
   const reports = reportsState.data?.reports || [];
   useEffect(() => {
@@ -3663,63 +3675,70 @@ function StudentReportsPanel({ classes, defaultClassId }: { classes: TeacherClas
   }, [reports, selectedReportId]);
 
   const reportDetailState = useAsyncData(
-    () => (selectedClassId && selectedStudentId && selectedReportId ? getTeacherStudentAssessmentReport(selectedClassId, selectedStudentId, selectedReportId) : Promise.resolve(null)),
-    [selectedClassId, selectedStudentId, selectedReportId],
+    () => (open && classId && studentId && selectedReportId ? getTeacherStudentAssessmentReport(classId, studentId, selectedReportId) : Promise.resolve(null)),
+    [open, classId, studentId, selectedReportId],
   );
 
   return (
-    <TeacherCard className="legacy-table-card legacy-analytics-report-card" data-testid="teacher-analytics-report-panel">
-      <header>
-        <h2>学生报告</h2>
-        <span>{reports.length} 份</span>
-      </header>
-      <div className="legacy-filter-row">
-        <label>
-          班级
-          <select value={selectedClassId} onChange={(event) => setSelectedClassId(event.target.value)}>
-            {classes.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.class_name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          学生
-          <select value={selectedStudentId} onChange={(event) => setSelectedStudentId(event.target.value)}>
-            {students.map((student) => (
-              <option key={student.student_id} value={student.student_id}>
-                {student.student_name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <StateBlock loading={(studentsState.loading && !studentsState.data) || (reportsState.loading && !reportsState.data)} error={studentsState.error || reportsState.error}>
-        {reports.length ? (
-          <div className="legacy-report-list">
-            {reports.map((report) => (
-              <button type="button" key={report.id} className={report.id === selectedReportId ? "selected" : ""} onClick={() => setSelectedReportId(report.id)}>
-                <strong>{report.title}</strong>
-                <span>{report.score} 分 · 错题 {report.wrong_count}</span>
-              </button>
-            ))}
-          </div>
-        ) : null}
-        <StateBlock loading={reportDetailState.loading && !reportDetailState.data} error={reportDetailState.error}>
-          {reportDetailState.data ? (
-            <article className="legacy-report-detail">
-              <h2>{reportDetailState.data.title}</h2>
-              <strong>学习总结</strong>
-              <p>{reportDetailState.data.summary.text}</p>
-              <strong>错题讲解</strong>
-              <p>{reportDetailState.data.mistake_explanation.text}</p>
+    <TeacherModal
+      open={open}
+      className="legacy-student-report-dialog"
+      title={student ? `${student.student_name} · 测试报告` : "测试报告"}
+      onCancel={onClose}
+      footer={null}
+      width={900}
+    >
+      {student ? (
+        <div className="legacy-student-report-dialog-body" data-testid="teacher-student-report-dialog">
+          <div className="legacy-student-report-summary-strip">
+            <article>
+              <span>学生</span>
+              <strong>{student.student_name}</strong>
+              <small>{student.student_id}</small>
             </article>
-          ) : (
-            <TeacherEmptyState message="当前学生暂无报告。" compact />
-          )}
-        </StateBlock>
-      </StateBlock>
-    </TeacherCard>
+            <article>
+              <span>测试次数</span>
+              <strong>{reports.length} 次</strong>
+            </article>
+            <article>
+              <span>平均分</span>
+              <strong>{scoreLabel(student.average_score)}</strong>
+            </article>
+          </div>
+          <StateBlock loading={reportsState.loading && !reportsState.data} error={reportsState.error}>
+            {reports.length ? (
+              <div className="legacy-student-report-layout">
+                <div className="legacy-report-list" aria-label="学生测试报告列表">
+                  {reports.map((report) => (
+                    <button type="button" key={report.id} className={report.id === selectedReportId ? "selected" : ""} onClick={() => setSelectedReportId(report.id)}>
+                      <strong>{report.title}</strong>
+                      <span>
+                        {scoreLabel(report.score)} · {report.correct_count}/{report.total_count} 题 · 错题 {report.wrong_count}
+                      </span>
+                      <small>{formatShortDateTime(report.completed_at)}</small>
+                    </button>
+                  ))}
+                </div>
+                <StateBlock loading={reportDetailState.loading && !reportDetailState.data} error={reportDetailState.error}>
+                  {reportDetailState.data ? (
+                    <article className="legacy-report-detail">
+                      <h2>{reportDetailState.data.title}</h2>
+                      <strong>学习总结</strong>
+                      <p>{reportDetailState.data.summary.text}</p>
+                      <strong>错题讲解</strong>
+                      <p>{reportDetailState.data.mistake_explanation.text}</p>
+                    </article>
+                  ) : (
+                    <TeacherEmptyState message="请选择一份报告。" compact />
+                  )}
+                </StateBlock>
+              </div>
+            ) : (
+              <TeacherEmptyState message="当前学生暂无测试报告。" compact />
+            )}
+          </StateBlock>
+        </div>
+      ) : null}
+    </TeacherModal>
   );
 }
