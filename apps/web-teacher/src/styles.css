@@ -1114,53 +1114,10 @@ p {
     opacity 180ms ease;
 }
 
-.legacy-flow-arrow {
-  position: relative;
-  display: block;
-  width: 15px;
-  height: 14px;
-  color: currentColor;
-}
-
-.legacy-flow-arrow::before,
-.legacy-flow-arrow::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  display: block;
-  transform: translateY(-50%);
-}
-
-.legacy-flow-arrow::before {
-  width: 14px;
-  height: 2px;
-  border-radius: 999px;
-  background: currentColor;
-}
-
-.legacy-flow-arrow::after {
-  width: 7px;
-  height: 7px;
-  border-top: 2px solid currentColor;
-  border-right: 2px solid currentColor;
-}
-
-.legacy-flow-arrow.right::before {
-  left: 0;
-}
-
-.legacy-flow-arrow.right::after {
-  right: 0;
-  transform: translateY(-50%) rotate(45deg);
-}
-
-.legacy-flow-arrow.left::before {
-  right: 0;
-}
-
-.legacy-flow-arrow.left::after {
-  left: 0;
-  transform: translateY(-50%) rotate(-135deg);
+.legacy-flow-icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.4;
 }
 
 .legacy-flow-loading {

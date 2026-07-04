@@ -1,5 +1,6 @@
 import { FormEvent, type CSSProperties, type DependencyList, type MouseEvent as ReactMouseEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import katex from "katex";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import "katex/dist/katex.min.css";
 
 import {
@@ -2569,7 +2570,7 @@ function DraftReviewCard({
             onPublish?.();
           }}
         >
-          {publishing ? <span className="legacy-flow-loading">…</span> : <span aria-hidden="true" className="legacy-flow-arrow right" />}
+          {publishing ? <span className="legacy-flow-loading">…</span> : <ArrowRight aria-hidden="true" className="legacy-flow-icon" />}
         </button>
       </div>
       <strong>{String(payload.stem || "待审题目")}</strong>
@@ -2655,7 +2656,7 @@ function QuestionRow({
             onRevoke?.();
           }}
         >
-          {revoking ? <span className="legacy-flow-loading">…</span> : <span aria-hidden="true" className="legacy-flow-arrow left" />}
+          {revoking ? <span className="legacy-flow-loading">…</span> : <ArrowLeft aria-hidden="true" className="legacy-flow-icon" />}
         </button>
       </div>
       <strong>{question.stem}</strong>
