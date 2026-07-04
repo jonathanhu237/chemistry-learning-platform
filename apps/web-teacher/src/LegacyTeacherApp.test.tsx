@@ -1463,6 +1463,7 @@ describe("LegacyTeacherApp", () => {
 
     expect(await screen.findByTestId("teacher-page-classes")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "班级管理" })).toBeNull();
+    expect(screen.queryByLabelText("班级概览")).toBeNull();
     expect((await screen.findAllByText("无机化学一班")).length).toBeGreaterThan(0);
     expect(await screen.findByText("张三")).toBeTruthy();
     expect(screen.getByText("李四")).toBeTruthy();

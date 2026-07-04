@@ -2755,8 +2755,6 @@ function ClassesPage() {
   const studentPageSize = 10;
   const studentPageCount = Math.max(1, Math.ceil(students.length / studentPageSize));
   const pagedStudents = students.slice((studentPage - 1) * studentPageSize, studentPage * studentPageSize);
-  const classStudentTotal = classes.reduce((total, item) => total + Number(item.student_count || 0), 0);
-  const activeStudentTotal = students.filter(studentIsActive).length;
   const defaultPasswordMode = registrationState.data?.default_password_mode === "shared" ? "shared" : "student_id";
   const initialPasswordLabel = defaultPasswordMode === "shared" ? "统一初始密码" : "使用学号";
 
@@ -2965,28 +2963,6 @@ function ClassesPage() {
       {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
       {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
       <StateBlock loading={classState.loading && !classState.data} error={classState.error}>
-        <section className="legacy-class-summary-strip" aria-label="班级概览">
-          <article>
-            <span>当前班级</span>
-            <strong>{selectedClass?.class_name || "未选择班级"}</strong>
-          </article>
-          <article>
-            <span>班级</span>
-            <strong>{classes.length}<small>个</small></strong>
-          </article>
-          <article>
-            <span>学生</span>
-            <strong>{classStudentTotal}<small>人</small></strong>
-          </article>
-          <article>
-            <span>当前班级</span>
-            <strong>{selectedClass?.student_count || students.length || 0}<small>人</small></strong>
-          </article>
-          <article>
-            <span>已激活</span>
-            <strong>{activeStudentTotal}<small>人</small></strong>
-          </article>
-        </section>
         <div className="legacy-class-dashboard-grid">
           <TeacherCard className="legacy-table-card legacy-class-list-panel">
             <div className="legacy-class-panel-head">
