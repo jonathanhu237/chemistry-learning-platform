@@ -1739,7 +1739,7 @@ describe("LegacyTeacherApp", () => {
     vi.stubGlobal("fetch", fetchMock);
     window.history.pushState({}, "", "/analytics");
 
-    render(<LegacyTeacherApp />);
+    const { container } = render(<LegacyTeacherApp />);
 
     expect(await screen.findByTestId("teacher-page-analytics")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "学情分析" })).toBeNull();
@@ -1760,6 +1760,7 @@ describe("LegacyTeacherApp", () => {
 
     expect(screen.getByRole("button", { name: "查看张三卤族元素点位得分详情" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "查看李四卤族元素点位得分详情" })).toBeTruthy();
+    expect(container.querySelector(".legacy-family-score-entry")?.getAttribute("title")).toBeNull();
     expect(within(analyticsTable).queryByText(/证据/)).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "查看张三卤族元素点位得分详情" }));

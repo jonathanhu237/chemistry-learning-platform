@@ -3441,13 +3441,9 @@ function AnalyticsPage() {
                           {columns.map((item) => {
                             const state = analyticsScoreCellForColumn(student, item);
                             const selected = scoreDetail?.student.student_id === student.student_id && scoreDetail.family.id === item.id;
-                            const pointScores = state?.points || [];
-                            const pointSummary = pointScores.length
-                              ? pointScores.map((point) => `${point.point_title || "未命名点位"}：${scoreLabel(point.score ?? point.mastery_score)}`).join("\n")
-                              : "暂无点位得分";
                             return (
                               <td key={item.id}>
-                                <div className={`legacy-family-score-entry${selected ? " selected" : ""}`} title={pointSummary}>
+                                <div className={`legacy-family-score-entry${selected ? " selected" : ""}`}>
                                   <div className="legacy-family-score-cell">
                                     <strong>{scoreLabel(state?.score ?? state?.mastery_score)}</strong>
                                   </div>
