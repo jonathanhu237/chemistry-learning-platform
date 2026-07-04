@@ -1204,8 +1204,10 @@ describe("LegacyTeacherApp", () => {
     expect(within(workbench).getByText("智能组卷策略")).toBeTruthy();
     expect(await within(workbench).findByText("当前班级继承默认策略")).toBeTruthy();
     expect(within(workbench).getByRole("img", { name: "tickets 公式" })).toBeTruthy();
-    expect(within(workbench).getByRole("img", { name: "抽题概率公式" })).toBeTruthy();
-    expect(within(workbench).getByText("T_i=tickets；p_i=抽中概率；s_i=掌握度分数；w_i=薄弱倾向；B=加权上限；γ=曲线。")).toBeTruthy();
+    expect(within(workbench).queryByRole("img", { name: "抽题概率公式" })).toBeNull();
+    expect(within(workbench).getByText("票数越高，抽中概率越大。")).toBeTruthy();
+    expect(within(workbench).getByText("w_i")).toBeTruthy();
+    expect(within(workbench).getAllByText("γ").length).toBeGreaterThan(0);
     expect(within(workbench).getByText("薄弱权重曲线")).toBeTruthy();
     expect(within(workbench).getByText("7.3 票")).toBeTruthy();
     expect(within(workbench).queryByText("当前班级预估")).toBeNull();

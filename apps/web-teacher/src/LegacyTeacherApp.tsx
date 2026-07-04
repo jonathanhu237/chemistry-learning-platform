@@ -667,7 +667,6 @@ const smartAssessmentDefaults: SmartAssessmentSettings = {
 };
 const smartQuestionCountOptions = [5, 10, 15, 20];
 const paperStrategyTicketsFormulaLatex = String.raw`T_i = 1 + w_i \cdot B \cdot \left(\frac{100-s_i}{100}\right)^\gamma`;
-const paperStrategyProbabilityFormulaLatex = String.raw`p_i = \frac{T_i}{\sum_{j=1}^{n} T_j}`;
 
 function normalizeSmartAssessmentSettings(value?: Partial<SmartAssessmentSettings> | null): SmartAssessmentSettings {
   return { ...smartAssessmentDefaults, ...(value || {}), enabled: true };
@@ -823,6 +822,7 @@ function PaperManagementPage() {
                         />
                         <PaperNumberField
                           label="薄弱点位倾向"
+                          symbol="w_i"
                           value={settings.weak_tendency_percent}
                           min={0}
                           max={100}
@@ -840,6 +840,7 @@ function PaperManagementPage() {
                         />
                         <PaperNumberField
                           label="薄弱曲线"
+                          symbol="γ"
                           value={settings.weak_curve}
                           min={0.5}
                           max={4}
@@ -849,6 +850,7 @@ function PaperManagementPage() {
                         />
                         <PaperNumberField
                           label="薄弱加权上限"
+                          symbol="B"
                           value={settings.weak_max_bonus}
                           min={1}
                           max={20}
@@ -864,15 +866,12 @@ function PaperManagementPage() {
                     <h3>薄弱权重曲线</h3>
                     <div className="legacy-paper-formula-panel" aria-label="策略参数公式">
                       <div className="legacy-paper-formula-expression">
-                        <span>tickets 与抽题概率</span>
+                        <span>票数公式</span>
                         <div className="legacy-paper-formula-lines">
                           <LatexFormula formula={paperStrategyTicketsFormulaLatex} label="tickets 公式" />
-                          <LatexFormula formula={paperStrategyProbabilityFormulaLatex} label="抽题概率公式" />
                         </div>
                       </div>
-                      <p>
-                        T_i=tickets；p_i=抽中概率；s_i=掌握度分数；w_i=薄弱倾向；B=加权上限；γ=曲线。
-                      </p>
+                      <p>票数越高，抽中概率越大。</p>
                     </div>
                     <PaperWeakCurve settings={settings} />
                   </section>
@@ -890,6 +889,7 @@ function PaperManagementPage() {
 
 function PaperNumberField({
   label,
+  symbol,
   value,
   min,
   max,
@@ -898,6 +898,7 @@ function PaperNumberField({
   onChange,
 }: {
   label: string;
+  symbol?: string;
   value: number;
   min: number;
   max: number;
@@ -908,7 +909,12 @@ function PaperNumberField({
   const update = (next: number) => onChange(Math.max(min, Math.min(max, Number.isFinite(next) ? next : min)));
   return (
     <tr>
-      <th scope="row">{label}</th>
+      <th scope="row">
+        <span className="legacy-paper-param-label">
+          <span>{label}</span>
+          {symbol ? <span className="legacy-paper-param-symbol">{symbol}</span> : null}
+        </span>
+      </th>
       <td>
         <strong>{value}</strong>
         {unit ? <em>{unit}</em> : null}
@@ -964,8 +970,12 @@ function PaperWeakCurve({ settings }: { settings: SmartAssessmentSettings }) {
     <table className="legacy-paper-mini-table" aria-label="薄弱权重曲线">
       <thead>
         <tr>
-          <th scope="col">掌握度</th>
-          <th scope="col">抽题权重</th>
+          <th scope="col">
+            掌握度 <span className="legacy-paper-param-symbol">s_i</span>
+          </th>
+          <th scope="col">
+            票数 <span className="legacy-paper-param-symbol">T_i</span>
+          </th>
         </tr>
       </thead>
       <tbody>

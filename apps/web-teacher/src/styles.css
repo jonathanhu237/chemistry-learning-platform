@@ -4010,6 +4010,21 @@ p {
   font-weight: 900;
 }
 
+.legacy-paper-param-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.legacy-paper-param-symbol {
+  color: var(--legacy-sysu-red);
+  font-family: "Times New Roman", serif;
+  font-size: 0.95em;
+  font-style: italic;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .legacy-paper-settings-table tbody td,
 .legacy-paper-mini-table tbody td {
   color: var(--legacy-ink);
