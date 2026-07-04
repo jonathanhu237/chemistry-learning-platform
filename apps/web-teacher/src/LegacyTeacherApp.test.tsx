@@ -1657,7 +1657,7 @@ describe("LegacyTeacherApp", () => {
 
     expect(await screen.findByTestId("teacher-page-analytics")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "学情分析" })).toBeNull();
-    expect(await screen.findByRole("heading", { name: "各族元素得分" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "学生报告与各元素得分" })).toBeTruthy();
     expect(await screen.findByText("张三")).toBeTruthy();
     expect(screen.getByText("李四")).toBeTruthy();
     expect(screen.getByText("第 1 / 1 页 · 共 2 名学生")).toBeTruthy();

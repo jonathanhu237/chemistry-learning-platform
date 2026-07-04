@@ -3315,11 +3315,11 @@ function AnalyticsPage() {
               />
               <TeacherCard className="legacy-table-card">
                 <header>
-                  <h2>各族元素得分</h2>
+                  <h2>学生报告与各元素得分</h2>
                   <span>{rows.length} 名学生 · 每页 {ANALYTICS_STUDENT_PAGE_SIZE} 人</span>
                 </header>
                 <div className="legacy-family-score-table-wrap">
-                  <table className="legacy-family-score-table" aria-label="各族元素得分">
+                  <table className="legacy-family-score-table" aria-label="学生报告与各元素得分">
                     <thead>
                       <tr>
                         <th scope="col">学生</th>
