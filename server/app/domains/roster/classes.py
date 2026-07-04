@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import secrets
 from datetime import datetime
 from typing import Any
@@ -15,6 +16,9 @@ from sqlalchemy.exc import IntegrityError
 from server.app.infrastructure.database import db_session
 from server.app.roster import parse_roster, roster_preview
 from server.app.security import hash_password
+
+
+_CLASS_NATURAL_PART_RE = re.compile(r"\d+")
 
 
 class ClassCreateRequest(BaseModel):
@@ -102,6 +106,20 @@ def _class_row_to_response(row: dict[str, Any]) -> ClassResponse:
         status=row["status"],
         student_count=int(row.get("student_count") or 0),
     )
+
+
+def _natural_class_sort_key(row: dict[str, Any]) -> tuple[list[tuple[int, int | str]], str]:
+    class_name = str(row.get("class_name") or "")
+    parts: list[tuple[int, int | str]] = []
+    cursor = 0
+    for match in _CLASS_NATURAL_PART_RE.finditer(class_name):
+        if match.start() > cursor:
+            parts.append((1, class_name[cursor : match.start()]))
+        parts.append((0, int(match.group(0))))
+        cursor = match.end()
+    if cursor < len(class_name):
+        parts.append((1, class_name[cursor:]))
+    return parts, str(row.get("id") or "")
 
 
 def _normalize_student_id(student_id: str) -> str:
@@ -286,7 +304,7 @@ def list_classes(user: Any) -> list[ClassResponse]:
             WHERE COALESCE(c.class_purpose, 'instructional') <> :preview_class_purpose
               AND COALESCE(c.hidden_from_teacher, false) IS false
             GROUP BY c.id
-            ORDER BY c.created_at DESC
+            ORDER BY c.class_name ASC, c.id ASC
         """
         params: dict[str, Any] = {
             "preview_account_purpose": TEACHER_PREVIEW_ACCOUNT_PURPOSE,
@@ -306,7 +324,7 @@ def list_classes(user: Any) -> list[ClassResponse]:
               AND COALESCE(c.class_purpose, 'instructional') <> :preview_class_purpose
               AND COALESCE(c.hidden_from_teacher, false) IS false
             GROUP BY c.id
-            ORDER BY c.created_at DESC
+            ORDER BY c.class_name ASC, c.id ASC
         """
         params = {
             "teacher_id": user.id,
@@ -315,6 +333,7 @@ def list_classes(user: Any) -> list[ClassResponse]:
         }
     with db_session() as session:
         rows = [dict(row) for row in session.execute(text(sql), params).mappings().all()]
+    rows.sort(key=_natural_class_sort_key)
     return [_class_row_to_response(row) for row in rows]
 
 
