@@ -610,7 +610,7 @@ function installStudentFetchMock() {
             experiment_id: "exp-1",
             experiment_title: "氯水漂白性实验",
             question_type: "fill_blank",
-            stem: "氯水中起漂白作用的主要物质是____。",
+            stem: "氯水与____反应可生成____。",
             options: [],
           },
         ],
@@ -1088,12 +1088,13 @@ describe("LegacyStudentApp", () => {
     expect(screen.getByText("题库可用题量不足，系统已按当前题库生成 3 题。")).toBeTruthy();
     expect(screen.getByText("氯水使试纸褪色的主要原因是什么？")).toBeTruthy();
     expect(screen.getByText("新制氯水具有氧化性。")).toBeTruthy();
-    expect(screen.getByText("氯水中起漂白作用的主要物质是____。")).toBeTruthy();
+    expect(screen.getByText("氯水与____反应可生成____。")).toBeTruthy();
     expect((screen.getByRole("button", { name: /请完成全部题目/ }) as HTMLButtonElement).disabled).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: /生成次氯酸/ }));
     fireEvent.click(screen.getByRole("button", { name: /正确/ }));
-    fireEvent.change(screen.getByPlaceholderText("请输入答案"), { target: { value: "HClO" } });
+    fireEvent.change(screen.getByPlaceholderText("第 1 空答案"), { target: { value: "水" } });
+    fireEvent.change(screen.getByPlaceholderText("第 2 空答案"), { target: { value: "HClO" } });
     expect(screen.getByText("已完成 3 题")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "提交答案" }));
 
@@ -1103,6 +1104,8 @@ describe("LegacyStudentApp", () => {
     resolveSubmit?.();
 
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some((call) => String(call[0]).includes("/api/student/legacy/smart-assessment/submit"))).toBe(true));
+    const submitCall = vi.mocked(fetch).mock.calls.find((call) => String(call[0]).includes("/api/student/legacy/smart-assessment/submit"));
+    expect(JSON.parse(String(submitCall?.[1]?.body)).answers).toContainEqual({ question_id: "smart-q3", answer: ["水", "HClO"] });
     expect(vi.mocked(fetch).mock.calls.some((call) => String(call[0]).includes("/api/student/smart-assessment/submit"))).toBe(false);
     expect(await screen.findByRole("heading", { name: "智能组卷测评完成" })).toBeTruthy();
     expect(screen.getByText("66.7")).toBeTruthy();

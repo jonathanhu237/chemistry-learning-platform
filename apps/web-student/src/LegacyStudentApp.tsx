@@ -1351,7 +1351,8 @@ function isEquationLike(value: string): boolean {
 }
 
 type AssessmentSetupMode = "smart" | "custom";
-type AnswerMap = Record<string, string>;
+type AnswerValue = string | string[];
+type AnswerMap = Record<string, AnswerValue>;
 
 const assessmentSetupModes: Array<{ id: AssessmentSetupMode; label: string; summary: string }> = [
   { id: "smart", label: "智能组卷", summary: "按老师设置的策略，结合掌握度自动出题。" },
@@ -1611,8 +1612,8 @@ function AssessmentSessionPage({ sessionId }: { sessionId: string }) {
   if (report) return <AssessmentResultPage report={report} reportId={resultReportId} />;
 
   const questions = assessment.questions || [];
-  const allAnswered = questions.length > 0 && questions.every((question) => isAnswered(answers[question.id]));
-  const answeredCount = questions.filter((question) => isAnswered(answers[question.id])).length;
+  const allAnswered = questions.length > 0 && questions.every((question) => isQuestionAnswered(question, answers[question.id]));
+  const answeredCount = questions.filter((question) => isQuestionAnswered(question, answers[question.id])).length;
   const modeLabel = isBaselineSession ? "首次摸底测评" : assessmentModeLabel(assessment.assessment_mode);
   const targetCount = assessment.composition?.requested_question_count || assessment.composition?.target_question_count || assessment.composition?.total_questions || questions.length;
   const actualCount = questions.length || assessment.composition?.total_questions || 0;
@@ -1628,7 +1629,7 @@ function AssessmentSessionPage({ sessionId }: { sessionId: string }) {
     try {
       const response = await submitSmartAssessment(
         assessment.session_id,
-        Object.entries(answers).map(([questionId, answer]) => ({ question_id: questionId, answer })),
+        questions.map((question) => ({ question_id: question.id, answer: answerForSubmit(question, answers[question.id]) })),
       );
       storeLegacyAssessmentReport(response.report);
       setResultReportId(response.assessment_report?.id || null);
@@ -1675,7 +1676,7 @@ function AssessmentSessionPage({ sessionId }: { sessionId: string }) {
               key={question.id}
               question={question}
               index={index}
-              answer={answers[question.id] || ""}
+              answer={answers[question.id]}
               onAnswer={(answer) => setAnswers((current) => ({ ...current, [question.id]: answer }))}
             />
           ))}
@@ -1697,8 +1698,8 @@ function AssessmentQuestionCard({
 }: {
   question: PublicSmartAssessmentQuestion;
   index: number;
-  answer: string;
-  onAnswer: (answer: string) => void;
+  answer?: AnswerValue;
+  onAnswer: (answer: AnswerValue) => void;
 }) {
   return (
     <article className="legacy-question-card">
@@ -1708,7 +1709,7 @@ function AssessmentQuestionCard({
       </div>
       <h2>{question.stem}</h2>
       {question.question_type === "fill_blank" ? (
-        <input className="legacy-fill-answer" value={answer} onChange={(event) => onAnswer(event.target.value)} placeholder="请输入答案" />
+        <FillBlankAnswerInputs question={question} answer={answer} onAnswer={onAnswer} />
       ) : (
         <div className="legacy-option-list">
           {assessmentOptions(question).map((option) => (
@@ -1720,6 +1721,43 @@ function AssessmentQuestionCard({
         </div>
       )}
     </article>
+  );
+}
+
+function FillBlankAnswerInputs({
+  question,
+  answer,
+  onAnswer,
+}: {
+  question: PublicSmartAssessmentQuestion;
+  answer?: AnswerValue;
+  onAnswer: (answer: AnswerValue) => void;
+}) {
+  const slotCount = fillBlankSlotCount(question.stem);
+  const values = fillBlankAnswerValues(answer, slotCount);
+
+  if (slotCount === 1) {
+    return <input className="legacy-fill-answer" value={values[0] || ""} onChange={(event) => onAnswer(event.target.value)} placeholder="请输入答案" />;
+  }
+
+  return (
+    <div className="legacy-fill-answer-list" aria-label="填空答案">
+      {values.map((value, index) => (
+        <label className="legacy-fill-answer-row" key={`${question.id}-blank-${index + 1}`}>
+          <span>第 {index + 1} 空</span>
+          <input
+            className="legacy-fill-answer"
+            value={value}
+            onChange={(event) => {
+              const next = [...values];
+              next[index] = event.target.value;
+              onAnswer(next);
+            }}
+            placeholder={`第 ${index + 1} 空答案`}
+          />
+        </label>
+      ))}
+    </div>
   );
 }
 
@@ -1825,8 +1863,34 @@ function assessmentScopeKindLabel(kind: CustomAssessmentScopeNode["kind"]): stri
   return "点位";
 }
 
-function isAnswered(value?: string): boolean {
-  return Boolean(String(value || "").trim());
+function isQuestionAnswered(question: PublicSmartAssessmentQuestion, value?: AnswerValue): boolean {
+  if (question.question_type !== "fill_blank") return Boolean(String(value || "").trim());
+  return fillBlankAnswerValues(value, fillBlankSlotCount(question.stem)).every((item) => item.trim());
+}
+
+function fillBlankSlotCount(stem: string): number {
+  const matches = stem.match(/_{2,}|＿{2,}|-{3,}|—{2,}|（\s*）|\(\s*\)/g);
+  return Math.max(1, matches?.length || 0);
+}
+
+function fillBlankAnswerValues(value: AnswerValue | undefined, slotCount: number): string[] {
+  if (Array.isArray(value)) {
+    return Array.from({ length: slotCount }, (_, index) => value[index] || "");
+  }
+  const text = String(value || "");
+  if (slotCount <= 1) return [text];
+  return Array.from({ length: slotCount }, (_, index) => (index === 0 ? text : ""));
+}
+
+function answerForSubmit(question: PublicSmartAssessmentQuestion, value?: AnswerValue): unknown {
+  if (question.question_type !== "fill_blank") return String(value || "").trim();
+  const values = fillBlankAnswerValues(value, fillBlankSlotCount(question.stem)).map((item) => item.trim());
+  return values.length > 1 ? values : values[0] || "";
+}
+
+function formatAnswerValue(value: unknown): string {
+  if (Array.isArray(value)) return value.map((item) => String(item || "").trim()).filter(Boolean).join(" / ");
+  return String(value ?? "");
 }
 
 function assessmentModeLabel(mode?: string): string {
@@ -2041,11 +2105,11 @@ function ReportDetailPage({ reportId }: { reportId: string }) {
                         <div className="legacy-answer-grid">
                           <div>
                             <span>你的答案</span>
-                            <strong>{question.submitted_answer}</strong>
+                            <strong>{formatAnswerValue(question.submitted_answer)}</strong>
                           </div>
                           <div>
                             <span>参考答案</span>
-                            <strong>{question.correct_answer}</strong>
+                            <strong>{formatAnswerValue(question.correct_answer)}</strong>
                           </div>
                         </div>
                         <section className="legacy-answer-explanation">

@@ -15,6 +15,7 @@ from server.app.domains.assessments.smart_assessment import (
     _strategy_from_value,
     _validate_submitted_answers,
 )
+from server.app.domains.assessments.student_experiment import _grade_answer
 from server.app.domains.errors import DomainHTTPException
 from server.app.domains.platform.settings import CustomAssessmentSettings, SmartAssessmentSettings
 from server.app.student_smart_assessment_schemas import (
@@ -389,3 +390,11 @@ def test_smart_assessment_answers_must_match_session_questions() -> None:
         assert exc.status_code == 400
     else:
         raise AssertionError("duplicate question ids should be rejected")
+
+
+def test_fill_blank_grading_accepts_multi_blank_answers() -> None:
+    assert _grade_answer("fill_blank", {"accepted_answers": ["H2", "可燃"]}, ["H2", "可燃"])
+    assert _grade_answer("fill_blank", {"accepted_answers": ["H2,Al(OH)3", "氢气,氢氧化铝"]}, ["H2", "Al(OH)3"])
+    assert _grade_answer("fill_blank", {"accepted_answers": ["氧化剂和有机物"]}, ["氧化剂", "有机物"])
+    assert not _grade_answer("fill_blank", {"accepted_answers": ["H2"]}, ["H2", ""])
+    assert not _grade_answer("fill_blank", {"accepted_answers": ["H2", "可燃"]}, ["可燃", "H2"])
