@@ -677,7 +677,7 @@ function smartAssessmentTickets(settings: SmartAssessmentSettings, mastery: numb
   return 1 + (settings.weak_tendency_percent / 100) * settings.weak_max_bonus * Math.pow(weakness, settings.weak_curve);
 }
 
-function LatexFormula({ formula, label }: { formula: string; label: string }) {
+function LatexFormula({ formula, label, className = "" }: { formula: string; label: string; className?: string }) {
   const html = useMemo(
     () =>
       katex.renderToString(formula, {
@@ -688,7 +688,7 @@ function LatexFormula({ formula, label }: { formula: string; label: string }) {
     [formula],
   );
 
-  return <span className="legacy-latex-formula" role="img" aria-label={label} dangerouslySetInnerHTML={{ __html: html }} />;
+  return <span className={`legacy-latex-formula ${className}`.trim()} role="img" aria-label={label} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 function PaperManagementPage() {
@@ -912,7 +912,7 @@ function PaperNumberField({
       <th scope="row">
         <span className="legacy-paper-param-label">
           <span>{label}</span>
-          {symbol ? <span className="legacy-paper-param-symbol">{symbol}</span> : null}
+          {symbol ? <LatexFormula formula={symbol} label={symbol} className="legacy-paper-param-symbol" /> : null}
         </span>
       </th>
       <td>
@@ -971,10 +971,10 @@ function PaperWeakCurve({ settings }: { settings: SmartAssessmentSettings }) {
       <thead>
         <tr>
           <th scope="col">
-            掌握度 <span className="legacy-paper-param-symbol">s_i</span>
+            掌握度 <LatexFormula formula="s_i" label="s_i" className="legacy-paper-param-symbol" />
           </th>
           <th scope="col">
-            票数 <span className="legacy-paper-param-symbol">T_i</span>
+            票数 <LatexFormula formula="T_i" label="T_i" className="legacy-paper-param-symbol" />
           </th>
         </tr>
       </thead>

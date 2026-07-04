@@ -4017,12 +4017,21 @@ p {
 }
 
 .legacy-paper-param-symbol {
+  display: inline-flex;
+  align-items: baseline;
   color: var(--legacy-sysu-red);
-  font-family: "Times New Roman", serif;
-  font-size: 0.95em;
-  font-style: italic;
   font-weight: 900;
+  line-height: 1;
   white-space: nowrap;
+}
+
+.legacy-latex-formula.legacy-paper-param-symbol {
+  display: inline-flex;
+}
+
+.legacy-latex-formula.legacy-paper-param-symbol .katex {
+  font-size: 1em;
+  line-height: 1;
 }
 
 .legacy-paper-settings-table tbody td,
