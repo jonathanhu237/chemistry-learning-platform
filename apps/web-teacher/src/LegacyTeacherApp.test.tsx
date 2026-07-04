@@ -1669,6 +1669,8 @@ describe("LegacyTeacherApp", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "张三 卤族元素 88 分" }));
     const zhangDialog = await screen.findByRole("dialog", { name: "张三 · 卤族元素" });
+    expect(within(zhangDialog).getByRole("table", { name: "点位得分明细" })).toBeTruthy();
+    expect(within(zhangDialog).getByText("第 1 / 1 页 · 共 2 个点位")).toBeTruthy();
     expect(within(zhangDialog).getByText("氯水漂白性实验")).toBeTruthy();
     expect(within(zhangDialog).getByText("92 分")).toBeTruthy();
 

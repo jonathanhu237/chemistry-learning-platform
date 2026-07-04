@@ -2860,58 +2860,56 @@ p {
   line-height: 1.2;
 }
 
-.legacy-point-score-list {
-  display: grid;
-  gap: 10px;
+.legacy-point-score-table-wrap {
+  overflow-x: auto;
 }
 
-.legacy-point-score-item {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.85fr) 72px 72px;
-  align-items: center;
-  gap: 12px;
+.legacy-point-score-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.legacy-point-score-table th,
+.legacy-point-score-table td {
   border: 1px solid var(--legacy-line);
-  background: #fffdfb;
   padding: 10px 12px;
+  text-align: left;
+  vertical-align: middle;
 }
 
-.legacy-point-score-item > div:first-child {
-  display: grid;
-  min-width: 0;
-  gap: 4px;
+.legacy-point-score-table thead th {
+  background: var(--legacy-red-050);
+  color: var(--legacy-sysu-red);
+  font-size: 13px;
+  font-weight: 900;
 }
 
-.legacy-point-score-item strong {
-  overflow: hidden;
+.legacy-point-score-table tbody th {
   color: var(--legacy-ink);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 900;
 }
 
-.legacy-point-score-item span,
-.legacy-point-score-item small {
+.legacy-point-score-table tbody td {
   color: var(--legacy-muted);
-  font-size: 12px;
   font-weight: 800;
 }
 
-.legacy-point-score-bar {
-  height: 10px;
-  overflow: hidden;
-  border: 1px solid #e1c8c2;
-  background: #f7ece8;
+.legacy-point-score-table th:nth-child(1) {
+  width: 40%;
 }
 
-.legacy-point-score-bar span {
-  display: block;
-  height: 100%;
-  background: var(--legacy-sysu-red);
+.legacy-point-score-table th:nth-child(2) {
+  width: 34%;
 }
 
-.legacy-point-score-item em {
-  color: var(--legacy-sysu-red);
-  font-style: normal;
-  font-weight: 900;
+.legacy-point-score-table th:nth-child(3),
+.legacy-point-score-table th:nth-child(4) {
+  width: 13%;
+}
+
+.legacy-point-score-pagination {
+  margin-top: 8px;
 }
 
 .legacy-band-list {

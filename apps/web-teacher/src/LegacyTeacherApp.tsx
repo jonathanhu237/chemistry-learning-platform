@@ -1065,6 +1065,7 @@ const elementFamilyTitleByChapter: Record<string, string> = {
 };
 const DEFAULT_ANALYTICS_SCORE = 50;
 const ANALYTICS_STUDENT_PAGE_SIZE = 8;
+const ANALYTICS_POINT_PAGE_SIZE = 8;
 
 function chapterIdFromText(value?: string | null): string {
   const textValue = String(value || "");
@@ -3410,6 +3411,13 @@ function AnalyticsPage() {
 function AnalyticsScoreDetail({ detail }: { detail: AnalyticsScoreDetailDialog }) {
   const points = detail.cell?.points || [];
   const score = detail.cell?.score ?? detail.cell?.mastery_score;
+  const [pointPage, setPointPage] = useState(1);
+  const pointPageCount = Math.max(1, Math.ceil(points.length / ANALYTICS_POINT_PAGE_SIZE));
+  const clampedPointPage = Math.min(pointPage, pointPageCount);
+  const pagedPoints = points.slice((clampedPointPage - 1) * ANALYTICS_POINT_PAGE_SIZE, clampedPointPage * ANALYTICS_POINT_PAGE_SIZE);
+  useEffect(() => {
+    setPointPage(1);
+  }, [detail.student.student_id, detail.family.id, points.length]);
   return (
     <div className="legacy-score-detail-content">
       <div className="legacy-score-detail-strip">
@@ -3426,31 +3434,66 @@ function AnalyticsScoreDetail({ detail }: { detail: AnalyticsScoreDetailDialog }
           <strong>{detail.cell?.evidence_count || 0}</strong>
         </article>
       </div>
-      {points.length ? <PointScoreList points={points} /> : <TeacherEmptyState message="当前学生在该族元素下暂无点位得分。" compact />}
+      {points.length ? (
+        <PointScoreTable points={pagedPoints} page={clampedPointPage} pageCount={pointPageCount} total={points.length} onPageChange={setPointPage} />
+      ) : (
+        <TeacherEmptyState message="当前族元素下暂无配置点位。" compact />
+      )}
     </div>
   );
 }
 
-function PointScoreList({ points }: { points: AnalyticsPointScore[] }) {
+function PointScoreTable({
+  points,
+  page,
+  pageCount,
+  total,
+  onPageChange,
+}: {
+  points: AnalyticsPointScore[];
+  page: number;
+  pageCount: number;
+  total: number;
+  onPageChange: (page: number) => void;
+}) {
   return (
-    <div className="legacy-point-score-list">
-      {points.map((point, index) => {
-        const score = normalizedScore(point.score ?? point.mastery_score) ?? 0;
-        return (
-          <article className="legacy-point-score-item" key={point.point_node_id || `${point.experiment_id || "point"}-${index}`}>
-            <div>
-              <strong>{point.point_title || "未命名点位"}</strong>
-              <span>{point.experiment_title || "未关联实验"}</span>
-            </div>
-            <div className="legacy-point-score-bar" aria-label={`${point.point_title} ${scoreLabel(score)}`}>
-              <span style={{ width: `${Math.max(0, Math.min(100, score))}%` }} />
-            </div>
-            <em>{scoreLabel(score)}</em>
-            <small>{point.evidence_count || 0} 条证据</small>
-          </article>
-        );
-      })}
-    </div>
+    <>
+      <div className="legacy-point-score-table-wrap">
+        <table className="legacy-point-score-table" aria-label="点位得分明细">
+          <thead>
+            <tr>
+              <th scope="col">点位</th>
+              <th scope="col">目录</th>
+              <th scope="col">得分</th>
+              <th scope="col">证据</th>
+            </tr>
+          </thead>
+          <tbody>
+            {points.map((point, index) => (
+              <tr key={point.point_node_id || `${point.experiment_id || "point"}-${index}`}>
+                <th scope="row">{point.point_title || "未命名点位"}</th>
+                <td>{point.directory_title || point.experiment_title || "未关联目录"}</td>
+                <td>{scoreLabel(point.score ?? point.mastery_score)}</td>
+                <td>{point.evidence_count || 0} 条</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="legacy-class-pagination legacy-point-score-pagination" aria-label="点位得分页">
+        <span>
+          第 {page} / {pageCount} 页 · 共 {total} 个点位
+        </span>
+        <div>
+          <button type="button" disabled={page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))}>
+            上一页
+          </button>
+          <button type="button" disabled={page >= pageCount} onClick={() => onPageChange(Math.min(pageCount, page + 1))}>
+            下一页
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 

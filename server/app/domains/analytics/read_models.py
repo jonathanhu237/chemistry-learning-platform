@@ -172,6 +172,50 @@ def _build_experiment_groups(experiments: list[dict[str, Any]]) -> list[dict[str
     return list(groups.values())
 
 
+def _catalog_points_by_chapter(chapter_ids: list[str]) -> dict[str, list[dict[str, Any]]]:
+    ids = sorted({str(chapter_id).strip() for chapter_id in chapter_ids if str(chapter_id).strip()})
+    if not ids:
+        return {}
+    with db_session() as session:
+        rows = [
+            dict(row)
+            for row in session.execute(
+                text(
+                    """
+                    SELECT
+                      n.id AS point_node_id,
+                      n.chapter_id,
+                      n.title AS point_title,
+                      n.canonical_point_id,
+                      n.display_order,
+                      parent.id AS directory_id,
+                      parent.title AS directory_title,
+                      parent.display_order AS directory_order
+                    FROM experiment_catalog_nodes n
+                    LEFT JOIN experiment_catalog_nodes parent ON parent.id = n.parent_id
+                    WHERE n.chapter_id = ANY(:chapter_ids)
+                      AND n.node_kind = 'point'
+                      AND n.status <> 'archived'
+                    ORDER BY
+                      n.chapter_id,
+                      parent.display_order NULLS LAST,
+                      parent.title NULLS LAST,
+                      n.display_order,
+                      n.title,
+                      n.id
+                    """
+                ),
+                {"chapter_ids": ids},
+            )
+            .mappings()
+            .all()
+        ]
+    by_chapter: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        by_chapter.setdefault(str(row["chapter_id"]), []).append(row)
+    return by_chapter
+
+
 def _teacher_can_access_class(user: Any, class_id: str) -> bool:
     if is_teacher_role(user.role):
         return True
@@ -458,7 +502,28 @@ def get_class_dashboard(
             .mappings()
             .all()
         ]
-        mastery_rows = (
+        point_mastery_rows = (
+            [
+                dict(row)
+                for row in session.execute(
+                    text(
+                        """
+                        SELECT student_id, class_id, point_node_id, experiment_id, canonical_point_id,
+                               mastery_score, evidence_count, updated_at
+                        FROM student_point_mastery
+                        WHERE student_id = ANY(:student_ids)
+                          AND (class_id = :class_id OR class_id IS NULL)
+                        """
+                    ),
+                    {"student_ids": student_ids, "class_id": class_id},
+                )
+                .mappings()
+                .all()
+            ]
+            if student_ids
+            else []
+        )
+        experiment_mastery_rows = (
             [
                 dict(row)
                 for row in session.execute(
@@ -501,11 +566,17 @@ def get_class_dashboard(
     progress_by_key = {(row["student_id"], row["experiment_id"]): row for row in progress_rows}
     attempts_by_key = {(row["student_id"], row["experiment_id"]): row for row in attempt_rows}
     mastery_by_experiment_key: dict[tuple[Any, Any], list[dict[str, Any]]] = {}
-    for row in mastery_rows:
+    for row in experiment_mastery_rows:
         mastery_by_experiment_key.setdefault((row["student_id"], row["experiment_id"]), []).append(row)
-    point_titles = _catalog_point_titles([str(row.get("point_node_id") or "") for row in mastery_rows])
+    point_titles = _catalog_point_titles([str(row.get("point_node_id") or "") for row in experiment_mastery_rows])
+    point_mastery_by_key = {
+        (str(row.get("student_id") or ""), str(row.get("point_node_id") or "")): row
+        for row in point_mastery_rows
+        if str(row.get("student_id") or "").strip() and str(row.get("point_node_id") or "").strip()
+    }
     experiments_by_id = {str(experiment["id"]): experiment for experiment in experiments}
     groups_by_id = {group["id"]: group for group in experiment_groups}
+    catalog_points_by_chapter = _catalog_points_by_chapter([str(group_id) for group_id in groups_by_id])
     matrix: list[dict[str, Any]] = []
     completed_cells = 0
     scored_cells: list[float] = []
@@ -551,7 +622,6 @@ def get_class_dashboard(
                 if point_scores
                 else DEFAULT_EXPERIMENT_MASTERY_SCORE
             )
-            scored_cells.append(mastery_score)
             student_scores.append(mastery_score)
             experiment_states[experiment["id"]] = {
                 "status": status_value,
@@ -564,25 +634,58 @@ def get_class_dashboard(
                 "attempt_count": int(attempt["attempt_count"]) if attempt else 0,
                 "points": point_scores,
             }
+        student_group_scores: list[float] = []
         for group_id, group in groups_by_id.items():
             experiment_ids = [str(item) for item in group["experiment_ids"]]
             states = [experiment_states[experiment_id] for experiment_id in experiment_ids if experiment_id in experiment_states]
-            scores = [float(state["mastery_score"]) for state in states]
+            catalog_points = catalog_points_by_chapter.get(group_id, [])
+            points = []
+            for point in catalog_points:
+                point_node_id = str(point.get("point_node_id") or "")
+                mastery = point_mastery_by_key.get((str(student["student_id"]), point_node_id))
+                point_score = (
+                    float(mastery["mastery_score"])
+                    if mastery and mastery.get("mastery_score") is not None
+                    else DEFAULT_EXPERIMENT_MASTERY_SCORE
+                )
+                evidence_value = int(mastery["evidence_count"]) if mastery and mastery.get("evidence_count") is not None else 0
+                points.append(
+                    {
+                        "point_node_id": point_node_id or None,
+                        "point_title": point.get("point_title") or point_node_id or "未命名点位",
+                        "canonical_point_id": point.get("canonical_point_id"),
+                        "directory_id": point.get("directory_id"),
+                        "directory_title": point.get("directory_title") or "",
+                        "experiment_id": mastery.get("experiment_id") if mastery else None,
+                        "experiment_title": point.get("directory_title") or "",
+                        "family_id": group_id,
+                        "family_title": group["title"],
+                        "mastery_score": point_score,
+                        "score": point_score,
+                        "evidence_count": evidence_value,
+                        "updated_at": mastery.get("updated_at") if mastery else None,
+                    }
+                )
+            if not points:
+                points = [
+                    {
+                        **point,
+                        "family_id": group_id,
+                        "family_title": group["title"],
+                        "experiment_title": point.get("experiment_title")
+                        or experiments_by_id.get(str(point.get("experiment_id") or ""), {}).get("title"),
+                    }
+                    for experiment_id in experiment_ids
+                    for point in experiment_states.get(experiment_id, {}).get("points", [])
+                ]
+            scores = [float(point["mastery_score"]) for point in points]
             mastery_score = round(sum(scores) / len(scores), 2) if scores else DEFAULT_EXPERIMENT_MASTERY_SCORE
             evidence_experiment_count = sum(1 for state in states if state["has_mastery"])
-            evidence_count = sum(int(state["evidence_count"]) for state in states)
+            evidence_point_count = sum(1 for point in points if int(point.get("evidence_count") or 0) > 0)
+            evidence_count = sum(int(point["evidence_count"]) for point in points)
+            if evidence_point_count > 0:
+                active_students.add(student["student_id"])
             attempt_count = sum(int(state["attempt_count"]) for state in states)
-            points = [
-                {
-                    **point,
-                    "family_id": group_id,
-                    "family_title": group["title"],
-                    "experiment_title": point.get("experiment_title")
-                    or experiments_by_id.get(str(point.get("experiment_id") or ""), {}).get("title"),
-                }
-                for experiment_id in experiment_ids
-                for point in experiment_states.get(experiment_id, {}).get("points", [])
-            ]
             lowest_experiment_id = None
             lowest_experiment_score = None
             if states:
@@ -597,12 +700,13 @@ def get_class_dashboard(
                 else "needs_attention"
                 if mastery_score < 60
                 else "completed"
-                if evidence_experiment_count == len(states)
+                if points and evidence_point_count == len(points)
                 else "in_progress",
                 "mastery_score": mastery_score,
                 "score": mastery_score,
-                "has_mastery": evidence_experiment_count > 0,
+                "has_mastery": evidence_point_count > 0 or evidence_experiment_count > 0,
                 "evidence_experiment_count": evidence_experiment_count,
+                "evidence_point_count": evidence_point_count,
                 "experiment_count": len(states),
                 "evidence_count": evidence_count,
                 "attempt_count": attempt_count,
@@ -610,10 +714,16 @@ def get_class_dashboard(
                 "lowest_experiment_score": lowest_experiment_score,
                 "points": points,
             }
+            student_group_scores.append(mastery_score)
+            scored_cells.append(mastery_score)
         matrix.append(
             {
                 **student,
-                "average_score": round(sum(student_scores) / len(student_scores), 2) if student_scores else 0,
+                "average_score": round(sum(student_group_scores) / len(student_group_scores), 2)
+                if student_group_scores
+                else round(sum(student_scores) / len(student_scores), 2)
+                if student_scores
+                else 0,
                 "experiments": experiment_states,
                 "experiment_groups": group_states,
             }

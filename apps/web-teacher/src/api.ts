@@ -653,6 +653,9 @@ export type ApiList<T> = {
 export type AnalyticsPointScore = {
   point_node_id?: string | null;
   point_title: string;
+  canonical_point_id?: string | null;
+  directory_id?: string | null;
+  directory_title?: string | null;
   experiment_id?: string | null;
   experiment_code?: string | null;
   experiment_title?: string | null;
