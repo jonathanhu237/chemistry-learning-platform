@@ -2569,7 +2569,7 @@ function DraftReviewCard({
             onPublish?.();
           }}
         >
-          {publishing ? "…" : "→"}
+          {publishing ? <span className="legacy-flow-loading">…</span> : <span aria-hidden="true" className="legacy-flow-arrow right" />}
         </button>
       </div>
       <strong>{String(payload.stem || "待审题目")}</strong>
@@ -2655,7 +2655,7 @@ function QuestionRow({
             onRevoke?.();
           }}
         >
-          {revoking ? "…" : "←"}
+          {revoking ? <span className="legacy-flow-loading">…</span> : <span aria-hidden="true" className="legacy-flow-arrow left" />}
         </button>
       </div>
       <strong>{question.stem}</strong>
