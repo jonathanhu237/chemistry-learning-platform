@@ -2007,7 +2007,7 @@ function AIConfigurationSettingsSection({ active }: { active: boolean }) {
                 aria-label="API 密钥"
                 autoComplete="off"
                 value={apiKey}
-                placeholder={state.data?.api_key_configured ? "留空则保留已保存密钥" : ""}
+                placeholder={state.data?.api_key_configured ? "****" : ""}
                 onChange={(event) => setApiKey(event.target.value)}
               />
             </label>

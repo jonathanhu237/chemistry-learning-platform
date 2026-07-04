@@ -506,6 +506,39 @@ function installTeacherFetchMock() {
       must_change_password: true,
     },
   ];
+  let aiConfiguration = {
+    provider: "openai",
+    base_url: "https://api.deepseek.com",
+    model: "deepseek-v4-flash",
+    connection_check_interval_minutes: 30,
+    api_key_configured: false,
+    api_key_fingerprint: null as string | null,
+    can_edit: true,
+    enabled_features: {
+      rag_access_enabled: true,
+      student_ai_assistant: true,
+      student_learning_analytics: true,
+      question_bank_assistant: true,
+      teacher_learning_analytics: true,
+    },
+    status: {
+      ready: false,
+      message: "请先保存模型名称和 API Key。",
+      effective_mode: "fallback",
+      connectivity_status: "not_configured",
+      recent_request_count: 0,
+      recent_error_count: 0,
+      last_checked_at: null as string | null,
+    },
+    chat_provider: {
+      role: "chat_completion",
+      provider: "openai",
+      base_url: "https://api.deepseek.com",
+      model: "deepseek-v4-flash",
+      api_key_configured: false,
+      api_key_fingerprint: null as string | null,
+    },
+  };
 
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = requestUrl(input);
@@ -557,16 +590,22 @@ function installTeacherFetchMock() {
     if (path === "/api/teacher/ai-configuration") {
       if (method === "PUT") {
         const body = JSON.parse(String(init?.body || "{}"));
-        return jsonResponse({
-          ...body,
-          api_key_configured: Boolean(body.api_key),
-          api_key_fingerprint: body.api_key ? "sk-...test" : null,
+        const nextBaseUrl = body.base_url || body.chat_provider?.base_url || aiConfiguration.base_url;
+        const nextModel = body.model || body.chat_provider?.model || aiConfiguration.model;
+        const nextApiKeyConfigured = Boolean(body.api_key) || aiConfiguration.api_key_configured;
+        aiConfiguration = {
+          ...aiConfiguration,
+          provider: "openai",
+          base_url: nextBaseUrl,
+          model: nextModel,
+          api_key_configured: nextApiKeyConfigured,
+          api_key_fingerprint: nextApiKeyConfigured ? (body.api_key ? "sk-...test" : aiConfiguration.api_key_fingerprint || "sk-...saved") : null,
           can_edit: true,
           status: {
-            ready: Boolean(body.model && body.api_key),
-            message: body.api_key ? `模型 ${body.model} 可访问。` : "请先保存模型名称和 API Key。",
-            effective_mode: body.api_key ? "ai" : "fallback",
-            connectivity_status: body.api_key ? "connected" : "not_configured",
+            ready: Boolean(nextModel && nextApiKeyConfigured),
+            message: nextApiKeyConfigured ? `模型 ${nextModel} 可访问。` : "请先保存模型名称和 API Key。",
+            effective_mode: nextApiKeyConfigured ? "ai" : "fallback",
+            connectivity_status: nextApiKeyConfigured ? "connected" : "not_configured",
             recent_request_count: 0,
             recent_error_count: 0,
             last_checked_at: "2026-07-03T08:00:00Z",
@@ -574,47 +613,16 @@ function installTeacherFetchMock() {
           chat_provider: {
             role: "chat_completion",
             provider: "openai",
-            base_url: body.base_url,
-            model: body.model,
-            api_key_configured: Boolean(body.api_key),
-            api_key_fingerprint: body.api_key ? "sk-...test" : null,
+            base_url: nextBaseUrl,
+            model: nextModel,
+            api_key_configured: nextApiKeyConfigured,
+            api_key_fingerprint: nextApiKeyConfigured ? (body.api_key ? "sk-...test" : aiConfiguration.api_key_fingerprint || "sk-...saved") : null,
           },
-        });
+        };
+        return jsonResponse(aiConfiguration);
       }
 
-      return jsonResponse({
-        provider: "openai",
-        base_url: "https://api.deepseek.com",
-        model: "deepseek-v4-flash",
-        connection_check_interval_minutes: 30,
-        api_key_configured: false,
-        api_key_fingerprint: null,
-        can_edit: true,
-        enabled_features: {
-          rag_access_enabled: true,
-          student_ai_assistant: true,
-          student_learning_analytics: true,
-          question_bank_assistant: true,
-          teacher_learning_analytics: true,
-        },
-        status: {
-          ready: false,
-          message: "请先保存模型名称和 API Key。",
-          effective_mode: "fallback",
-          connectivity_status: "not_configured",
-          recent_request_count: 0,
-          recent_error_count: 0,
-          last_checked_at: null,
-        },
-        chat_provider: {
-          role: "chat_completion",
-          provider: "openai",
-          base_url: "https://api.deepseek.com",
-          model: "deepseek-v4-flash",
-          api_key_configured: false,
-          api_key_fingerprint: null,
-        },
-      });
+      return jsonResponse(aiConfiguration);
     }
 
     if (path === "/api/teacher/question-banks/catalog") {
@@ -1223,6 +1231,7 @@ describe("LegacyTeacherApp", () => {
     expect(screen.queryByRole("heading", { name: "AI 模型配置" })).toBeNull();
     expect(await within(sidebar).findByDisplayValue("https://api.deepseek.com")).toBeTruthy();
     expect(within(sidebar).getByDisplayValue("deepseek-v4-flash")).toBeTruthy();
+    expect(within(sidebar).getByLabelText("API 密钥").getAttribute("placeholder")).toBe("");
     expect(within(sidebar).queryByText("模型服务")).toBeNull();
     expect(within(sidebar).queryByText("连接检测间隔")).toBeNull();
     expect(within(sidebar).queryByText("启用范围")).toBeNull();
@@ -1258,6 +1267,7 @@ describe("LegacyTeacherApp", () => {
     });
     expect(JSON.parse(String(updateCall?.[1]?.body))).not.toHaveProperty("enabled_features");
     expect(JSON.parse(String(updateCall?.[1]?.body))).not.toHaveProperty("connection_check_interval_minutes");
+    await waitFor(() => expect(within(sidebar).getByLabelText("API 密钥").getAttribute("placeholder")).toBe("****"));
   });
 
   it("uploads and binds a video from the catalog point editor", async () => {
