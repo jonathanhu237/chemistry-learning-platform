@@ -1025,6 +1025,17 @@ function ErrorBlock({ children, compact = false }: { children: ReactNode; compac
   return <TeacherAlert className={`legacy-error${compact ? " compact" : ""}`} type="error" message={children} />;
 }
 
+function ReportIcon() {
+  return (
+    <svg className="legacy-student-report-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+      <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7Z" />
+      <path d="M14 2v5h5" />
+      <path d="M9 12h6" />
+      <path d="M9 16h4" />
+    </svg>
+  );
+}
+
 function normalizedScore(value?: number | string | null): number | null {
   if (value === null || value === undefined || value === "") return null;
   const numeric = Number(value);
@@ -3368,12 +3379,13 @@ function AnalyticsPage() {
                                 type="button"
                                 className="legacy-student-report-button"
                                 aria-label={`查看${student.student_name}测试报告`}
+                                title="查看测试报告"
                                 onClick={() => {
                                   setSelectedStudentId(student.student_id);
                                   setReportDetail({ classId: selectedClassId, student });
                                 }}
                               >
-                                报告
+                                <ReportIcon />
                               </button>
                             </div>
                           </th>

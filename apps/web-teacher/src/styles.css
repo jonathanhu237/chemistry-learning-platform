@@ -2761,9 +2761,9 @@ p {
 
 .legacy-family-student-entry {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px;
-  align-items: stretch;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 4px;
   width: 100%;
   min-height: 44px;
   background: #fff;
@@ -2786,15 +2786,19 @@ p {
 }
 
 .legacy-student-report-button {
-  width: 44px;
-  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
   border: 1px solid var(--legacy-line);
   border-radius: 0;
   background: #fff8f4;
   color: var(--legacy-sysu-red);
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 900;
+  padding: 0;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
 }
 
 .legacy-student-report-button:hover,
@@ -2802,6 +2806,15 @@ p {
   border-color: var(--legacy-sysu-red);
   background: var(--legacy-sysu-red);
   color: #fff;
+}
+
+.legacy-student-report-icon {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .legacy-family-student-cell strong,
