@@ -303,6 +303,7 @@ def list_classes(user: Any) -> list[ClassResponse]:
             LEFT JOIN roster_entries re ON re.class_id = c.id
             WHERE COALESCE(c.class_purpose, 'instructional') <> :preview_class_purpose
               AND COALESCE(c.hidden_from_teacher, false) IS false
+              AND c.status <> 'archived'
             GROUP BY c.id
             ORDER BY c.class_name ASC, c.id ASC
         """
@@ -323,6 +324,7 @@ def list_classes(user: Any) -> list[ClassResponse]:
             WHERE tc.teacher_user_id = CAST(:teacher_id AS uuid)
               AND COALESCE(c.class_purpose, 'instructional') <> :preview_class_purpose
               AND COALESCE(c.hidden_from_teacher, false) IS false
+              AND c.status <> 'archived'
             GROUP BY c.id
             ORDER BY c.class_name ASC, c.id ASC
         """
@@ -613,6 +615,10 @@ def update_class(payload: ClassUpdateRequest, class_id: str, user: Any) -> Class
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
     return _class_row_to_response(dict(row))
+
+
+def delete_class(class_id: str, user: Any) -> ClassResponse:
+    return update_class(ClassUpdateRequest(status="archived"), class_id, user)
 
 
 def assign_teacher_to_class(payload: TeacherClassAssignRequest, class_id: str) -> dict[str, bool]:

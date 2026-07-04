@@ -30,6 +30,7 @@ ADMIN_ROUTE_CONTRACTS = [
     ("POST", "/api/teacher/classes"),
     ("GET", "/api/teacher/classes/{class_id}"),
     ("PATCH", "/api/teacher/classes/{class_id}"),
+    ("DELETE", "/api/teacher/classes/{class_id}"),
     ("POST", "/api/teacher/classes/{class_id}/teachers"),
     ("GET", "/api/teacher/registration-settings"),
     ("PUT", "/api/teacher/registration-settings"),

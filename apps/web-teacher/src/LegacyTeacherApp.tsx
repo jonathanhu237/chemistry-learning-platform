@@ -10,6 +10,7 @@ import {
   createTeacherAccount,
   createTeacherClass,
   createTeacherClassStudent,
+  deleteTeacherClass,
   deleteTeacherClassStudent,
   generateLegacyPointQuestions,
   getAIConfiguration,
@@ -2658,13 +2659,6 @@ function answerSummary(answer: unknown): string {
   return String(answer || "-");
 }
 
-function classStatusLabel(status?: string | null): string {
-  if (status === "active") return "启用";
-  if (status === "archived") return "已归档";
-  if (status === "disabled") return "已停用";
-  return status || "未知";
-}
-
 function studentStatusLabel(status?: string | null): string {
   if (status === "pending") return "待激活";
   if (status === "active") return "已激活";
@@ -2702,6 +2696,7 @@ function ClassesPage() {
   const [studentId, setStudentId] = useState("");
   const [studentName, setStudentName] = useState("");
   const [classDialogOpen, setClassDialogOpen] = useState(false);
+  const [classDeleteDialogOpen, setClassDeleteDialogOpen] = useState(false);
   const [studentDialogOpen, setStudentDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<TeacherStudentSummary | null>(null);
@@ -2717,6 +2712,7 @@ function ClassesPage() {
   const [notice, setNotice] = useState("");
   const [actionError, setActionError] = useState("");
   const [creatingClass, setCreatingClass] = useState(false);
+  const [deletingClass, setDeletingClass] = useState(false);
   const [creatingStudent, setCreatingStudent] = useState(false);
   const [importingRoster, setImportingRoster] = useState(false);
   const [savingStudentName, setSavingStudentName] = useState(false);
@@ -2771,6 +2767,26 @@ function ClassesPage() {
       setActionError(legacyTeacherErrorMessage(caught));
     } finally {
       setCreatingClass(false);
+    }
+  };
+
+  const deleteClass = async () => {
+    if (!selectedClass?.id) return;
+    setDeletingClass(true);
+    setNotice("");
+    setActionError("");
+    try {
+      await deleteTeacherClass(selectedClass.id);
+      setClassDeleteDialogOpen(false);
+      setSelectedClassId("");
+      setStudentReloadKey((value) => value + 1);
+      setRegistrationReloadKey((value) => value + 1);
+      setReloadKey((value) => value + 1);
+      setNotice("已删除班级。");
+    } catch (caught) {
+      setActionError(legacyTeacherErrorMessage(caught));
+    } finally {
+      setDeletingClass(false);
     }
   };
 
@@ -2945,105 +2961,100 @@ function ClassesPage() {
       {notice ? <NoticeBlock>{notice}</NoticeBlock> : null}
       {actionError ? <ErrorBlock>{actionError}</ErrorBlock> : null}
       <StateBlock loading={classState.loading && !classState.data} error={classState.error}>
-        <div className="legacy-class-dashboard-grid">
-          <TeacherCard className="legacy-table-card legacy-class-list-panel">
-            <div className="legacy-class-panel-head">
-              <div>
-                <h2>班级</h2>
-                <span>{classes.length} 个班级</span>
-              </div>
+        <TeacherCard className="legacy-card legacy-class-control-card">
+          <div className="legacy-class-control-row">
+            <label className="legacy-select-label">
+              当前班级
+              <select value={selectedClass?.id || ""} onChange={(event) => setSelectedClassId(event.target.value)} disabled={!classes.length}>
+                {classes.length ? (
+                  classes.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.class_name}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">暂无班级</option>
+                )}
+              </select>
+            </label>
+            <div className="legacy-class-control-actions">
               <TeacherButton type="primary" className="primary-button compact" onClick={() => setClassDialogOpen(true)}>
                 新增班级
               </TeacherButton>
+              <TeacherButton className="legacy-secondary-button legacy-danger-button" disabled={!selectedClass || deletingClass} onClick={() => setClassDeleteDialogOpen(true)}>
+                删除班级
+              </TeacherButton>
             </div>
-            <div className="legacy-class-compact-list" aria-label="班级列表">
-              {classes.length ? (
-                classes.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`legacy-class-compact-row${item.id === selectedClass?.id ? " selected" : ""}`}
-                    onClick={() => setSelectedClassId(item.id)}
-                  >
-                    <strong>{item.class_name}</strong>
-                    <span>{item.student_count || 0} 人</span>
-                    <em>{classStatusLabel(item.status)}</em>
-                  </button>
-                ))
-              ) : (
-                <TeacherEmptyState message="暂无班级，请先新增班级。" compact />
-              )}
+          </div>
+        </TeacherCard>
+        <TeacherCard className="legacy-table-card legacy-roster-panel legacy-roster-panel-full">
+          <div className="legacy-class-panel-head">
+            <div>
+              <h2>学生名单</h2>
+              <span>{selectedClass?.class_name || "未选择班级"} · 初始密码：{initialPasswordLabel}</span>
             </div>
-          </TeacherCard>
-          <TeacherCard className="legacy-table-card legacy-roster-panel">
-            <div className="legacy-class-panel-head">
-              <div>
-                <h2>学生名单</h2>
-                <span>{selectedClass?.class_name || "未选择班级"} · 初始密码：{initialPasswordLabel}</span>
-              </div>
-              <div className="legacy-class-toolbar">
-                <TeacherButton className="legacy-secondary-button" disabled={!selectedClass} onClick={() => setStudentDialogOpen(true)}>
-                  添加学生
-                </TeacherButton>
-                <TeacherButton type="primary" className="primary-button compact" disabled={!selectedClass} onClick={() => setImportDialogOpen(true)}>
-                  导入名单
-                </TeacherButton>
-              </div>
+            <div className="legacy-class-toolbar">
+              <TeacherButton className="legacy-secondary-button" disabled={!selectedClass} onClick={() => setStudentDialogOpen(true)}>
+                添加学生
+              </TeacherButton>
+              <TeacherButton type="primary" className="primary-button compact" disabled={!selectedClass} onClick={() => setImportDialogOpen(true)}>
+                导入名单
+              </TeacherButton>
             </div>
-            <StateBlock loading={studentsState.loading && !studentsState.data} error={studentsState.error}>
-              {selectedClass ? (
-                students.length ? (
-                  <div className="legacy-student-table legacy-student-table-management compact" aria-label="学生名单">
-                    <article className="legacy-student-table-head">
-                      <span>学号</span>
-                      <strong>姓名</strong>
-                      <span>状态</span>
-                      <span>操作</span>
+          </div>
+          <StateBlock loading={studentsState.loading && !studentsState.data} error={studentsState.error}>
+            {selectedClass ? (
+              students.length ? (
+                <div className="legacy-student-table legacy-student-table-management compact" aria-label="学生名单">
+                  <article className="legacy-student-table-head">
+                    <span>学号</span>
+                    <strong>姓名</strong>
+                    <span>状态</span>
+                    <span>操作</span>
+                  </article>
+                  {pagedStudents.map((student) => (
+                    <article key={`${student.student_id}-${student.id || student.class_id || selectedClass.id}`}>
+                      <span>{student.student_id}</span>
+                      <strong>{studentDisplayName(student)}</strong>
+                      <span className={`legacy-status-pill status-${studentIsActive(student) ? "active" : student.status}`}>
+                        {studentIsActive(student) ? "已激活" : studentStatusLabel(student.status)}
+                      </span>
+                      <span className="legacy-student-actions">
+                        <button type="button" onClick={() => openEditStudent(student)}>
+                          编辑
+                        </button>
+                        <button type="button" onClick={() => openResetStudentPassword(student)}>
+                          重置密码
+                        </button>
+                        <button type="button" disabled={togglingStudentId === student.student_id} onClick={() => toggleStudentStatus(student)}>
+                          {student.status === "disabled" ? "启用" : "停用"}
+                        </button>
+                        <button type="button" className="danger" disabled={deletingStudentId === student.student_id} onClick={() => setDeletingStudent(student)}>
+                          删除
+                        </button>
+                      </span>
                     </article>
-                    {pagedStudents.map((student) => (
-                      <article key={`${student.student_id}-${student.id || student.class_id || selectedClass.id}`}>
-                        <span>{student.student_id}</span>
-                        <strong>{studentDisplayName(student)}</strong>
-                        <span className={`legacy-status-pill status-${studentIsActive(student) ? "active" : student.status}`}>
-                          {studentIsActive(student) ? "已激活" : studentStatusLabel(student.status)}
-                        </span>
-                        <span className="legacy-student-actions">
-                          <button type="button" onClick={() => openEditStudent(student)}>
-                            编辑
-                          </button>
-                          <button type="button" onClick={() => openResetStudentPassword(student)}>
-                            重置密码
-                          </button>
-                          <button type="button" disabled={togglingStudentId === student.student_id} onClick={() => toggleStudentStatus(student)}>
-                            {student.status === "disabled" ? "启用" : "停用"}
-                          </button>
-                          <button type="button" className="danger" disabled={deletingStudentId === student.student_id} onClick={() => setDeletingStudent(student)}>
-                            删除
-                          </button>
-                        </span>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <TeacherEmptyState message="当前班级暂无学生。" compact />
-                )
+                  ))}
+                </div>
               ) : (
-                <TeacherEmptyState message="请选择或新增班级。" compact />
-              )}
-            </StateBlock>
-            <div className="legacy-class-pagination" aria-label="学生分页">
-              <span>第 {studentPage} / {studentPageCount} 页 · 共 {students.length} 人</span>
-              <div>
-                <button type="button" disabled={studentPage <= 1} onClick={() => setStudentPage((value) => Math.max(1, value - 1))}>
-                  上一页
-                </button>
-                <button type="button" disabled={studentPage >= studentPageCount} onClick={() => setStudentPage((value) => Math.min(studentPageCount, value + 1))}>
-                  下一页
-                </button>
-              </div>
+                <TeacherEmptyState message="当前班级暂无学生。" compact />
+              )
+            ) : (
+              <TeacherEmptyState message="请选择或新增班级。" compact />
+            )}
+          </StateBlock>
+          <div className="legacy-class-pagination" aria-label="学生分页">
+            <span>第 {studentPage} / {studentPageCount} 页 · 共 {students.length} 人</span>
+            <div>
+              <button type="button" disabled={studentPage <= 1} onClick={() => setStudentPage((value) => Math.max(1, value - 1))}>
+                上一页
+              </button>
+              <button type="button" disabled={studentPage >= studentPageCount} onClick={() => setStudentPage((value) => Math.min(studentPageCount, value + 1))}>
+                下一页
+              </button>
             </div>
-          </TeacherCard>
-        </div>
+          </div>
+        </TeacherCard>
       </StateBlock>
       <TeacherModal
         open={classDialogOpen}
@@ -3067,6 +3078,29 @@ function ClassesPage() {
             </TeacherButton>
           </div>
         </form>
+      </TeacherModal>
+      <TeacherModal
+        open={classDeleteDialogOpen}
+        className="legacy-create-dialog"
+        title="删除班级"
+        onCancel={() => setClassDeleteDialogOpen(false)}
+        footer={null}
+        maskClosable={!deletingClass}
+      >
+        <div className="legacy-dialog-form compact">
+          <div className="legacy-dialog-warning danger">
+            <strong>{selectedClass?.class_name || ""}</strong>
+            <span>删除后该班级不再出现在后台列表中，已存在的学习和测评数据会保留。</span>
+          </div>
+          <div className="legacy-create-dialog-actions">
+            <TeacherButton type="default" className="legacy-secondary-button" onClick={() => setClassDeleteDialogOpen(false)} disabled={deletingClass}>
+              取消
+            </TeacherButton>
+            <TeacherButton type="primary" className="primary-button" onClick={deleteClass} disabled={!selectedClass || deletingClass}>
+              {deletingClass ? "删除中..." : "确认删除"}
+            </TeacherButton>
+          </div>
+        </div>
       </TeacherModal>
       <TeacherModal
         open={studentDialogOpen}

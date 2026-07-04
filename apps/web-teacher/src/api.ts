@@ -344,6 +344,12 @@ export function createTeacherClass(payload: { class_name: string; description?: 
   return postJson<TeacherClassSummary>("/api/teacher/classes", payload);
 }
 
+export function deleteTeacherClass(classId: string): Promise<TeacherClassSummary> {
+  return api<TeacherClassSummary>(`/api/teacher/classes/${encodeURIComponent(classId)}`, {
+    method: "DELETE",
+  });
+}
+
 export function listTeacherClassStudents(classId: string): Promise<TeacherStudentSummary[]> {
   return api<TeacherStudentSummary[]>(`/api/teacher/classes/${encodeURIComponent(classId)}/students`);
 }

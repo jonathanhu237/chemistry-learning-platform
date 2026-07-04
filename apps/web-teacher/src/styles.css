@@ -1328,19 +1328,45 @@ p {
   gap: 18px;
 }
 
-.legacy-class-dashboard-grid {
+.legacy-class-control-card {
+  margin-bottom: 18px;
+}
+
+.legacy-class-control-row {
   display: grid;
-  grid-template-columns: minmax(260px, 0.38fr) minmax(620px, 1fr);
-  align-items: start;
-  gap: 12px;
+  grid-template-columns: minmax(280px, 520px) auto;
+  align-items: end;
+  gap: 14px;
 }
 
-.legacy-class-dashboard-grid > .teacher-ui-card.legacy-table-card {
-  min-width: 0;
-  margin-bottom: 0;
+.legacy-class-control-row .legacy-select-label {
+  max-width: none;
 }
 
-.legacy-class-list-panel .ant-card-body,
+.legacy-class-control-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.legacy-class-control-actions .ant-btn,
+.legacy-class-control-actions .primary-button.compact.ant-btn,
+.legacy-class-control-actions .legacy-secondary-button.ant-btn {
+  min-width: 86px;
+  min-height: 38px;
+  height: 38px;
+  padding: 0 12px;
+  box-shadow: none;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.legacy-class-control-actions .legacy-danger-button.ant-btn {
+  border-color: rgba(132, 0, 6, 0.45);
+  background: #fff8f4;
+}
+
 .legacy-roster-panel .ant-card-body {
   padding: 14px;
 }
@@ -1399,53 +1425,6 @@ p {
 
 .legacy-class-toolbar .teacher-ui-button.ant-btn > span {
   line-height: 1;
-}
-
-.legacy-class-compact-list {
-  display: grid;
-  gap: 7px;
-}
-
-.legacy-class-compact-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 8px;
-  min-height: 42px;
-  border: 1px solid var(--legacy-line);
-  background: #fffdfb;
-  color: var(--legacy-ink);
-  cursor: pointer;
-  padding: 8px 10px;
-  text-align: left;
-}
-
-.legacy-class-compact-row:hover,
-.legacy-class-compact-row:focus-visible,
-.legacy-class-compact-row.selected {
-  border-color: var(--legacy-sysu-red);
-  background: #fff8f4;
-  outline: none;
-}
-
-.legacy-class-compact-row.selected {
-  box-shadow: inset 4px 0 0 var(--legacy-sysu-red);
-}
-
-.legacy-class-compact-row strong {
-  overflow: hidden;
-  font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.legacy-class-compact-row span,
-.legacy-class-compact-row em {
-  color: var(--legacy-muted);
-  font-size: 12px;
-  font-style: normal;
-  font-weight: 900;
-  white-space: nowrap;
 }
 
 .legacy-student-table-management.compact {
@@ -4228,9 +4207,9 @@ p {
     grid-template-columns: 96px minmax(0, 1fr);
   }
 
+  .legacy-class-control-row,
   .legacy-management-grid,
   .legacy-class-management-grid,
-  .legacy-class-dashboard-grid,
   .legacy-settings-page-grid,
   .legacy-account-create-grid,
   .legacy-paper-board-grid,

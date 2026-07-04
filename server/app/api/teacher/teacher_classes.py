@@ -36,6 +36,7 @@ from server.app.domains.roster.classes import (
     assign_teacher_to_class,
     create_class,
     create_roster_student,
+    delete_class,
     delete_roster_student,
     get_class,
     get_class_registration_settings,
@@ -228,6 +229,14 @@ async def teacher_update_class(
     user: AuthUser = Depends(require_teacher_user),
 ) -> ClassResponse:
     return update_class(payload, class_id, user)
+
+
+@router.delete("/classes/{class_id}", response_model=ClassResponse)
+async def teacher_delete_class(
+    class_id: str = Path(min_length=1),
+    user: AuthUser = Depends(require_teacher_user),
+) -> ClassResponse:
+    return delete_class(class_id, user)
 
 
 @router.post("/classes/{class_id}/teachers")

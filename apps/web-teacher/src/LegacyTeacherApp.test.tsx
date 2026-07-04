@@ -780,6 +780,16 @@ function installTeacherFetchMock() {
       });
     }
 
+    const classMatch = path.match(/^\/api\/teacher\/classes\/([^/]+)$/);
+    if (classMatch && method === "DELETE") {
+      const classId = decodeURIComponent(classMatch[1]);
+      const existing = classes.find((item) => item.id === classId) || classes[0];
+      return jsonResponse({
+        ...existing,
+        status: "archived",
+      });
+    }
+
     if (path === "/api/teacher/classes") {
       return jsonResponse(classes);
     }
@@ -1468,7 +1478,10 @@ describe("LegacyTeacherApp", () => {
     expect((await screen.findAllByText("无机化学一班")).length).toBeGreaterThan(0);
     expect(await screen.findByText("张三")).toBeTruthy();
     expect(screen.getByText("李四")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "班级" })).toBeTruthy();
+    expect((screen.getByLabelText("当前班级") as HTMLSelectElement).value).toBe("class-1");
+    expect(screen.queryByRole("heading", { name: "班级" })).toBeNull();
+    expect(screen.queryByLabelText("班级列表")).toBeNull();
+    expect(screen.getByRole("button", { name: "删除班级" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "学生名单" })).toBeTruthy();
     expect(screen.getByText("无机化学一班 · 初始密码：使用学号")).toBeTruthy();
     expect(screen.queryByText("登录方式")).toBeNull();
@@ -1554,6 +1567,26 @@ describe("LegacyTeacherApp", () => {
     expect(JSON.parse(String(createClassCall?.[1]?.body))).toEqual({
       class_name: "无机化学二班",
     });
+    expectNoForbiddenGenerationFlows(fetchMock);
+  });
+
+  it("deletes the selected class from the class page controls", async () => {
+    const fetchMock = await renderClassPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "删除班级" }));
+    const deleteDialog = await screen.findByRole("dialog", { name: "删除班级" });
+    expect(within(deleteDialog).getByText("无机化学一班")).toBeTruthy();
+    fireEvent.click(within(deleteDialog).getByRole("button", { name: "确认删除" }));
+
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          (call) => requestUrl(call[0]).pathname === "/api/teacher/classes/class-1" && String(call[1]?.method || "GET").toUpperCase() === "DELETE",
+        ),
+      ).toBe(true),
+    );
+    expect(screen.queryByText("已删除班级。")).toBeNull();
+
     expectNoForbiddenGenerationFlows(fetchMock);
   });
 
