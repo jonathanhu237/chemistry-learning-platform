@@ -1384,6 +1384,7 @@ describe("LegacyTeacherApp", () => {
     render(<LegacyTeacherApp />);
 
     expect(await screen.findByRole("heading", { name: "命题工作区" })).toBeTruthy();
+    expect(screen.queryByLabelText("AI 出题概览")).toBeNull();
     expect(await screen.findByText("新制氯水中的 HClO 具有强氧化性。")).toBeTruthy();
     expect(await screen.findByText("氯水使湿润有色布条褪色，最关键的微粒是什么？")).toBeTruthy();
     expect(screen.getByText("正式题库")).toBeTruthy();

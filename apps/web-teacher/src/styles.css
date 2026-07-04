@@ -671,7 +671,6 @@ p {
 
 .legacy-table-card .legacy-question-workbench-head {
   display: grid;
-  grid-template-columns: minmax(180px, 0.42fr) minmax(520px, 1fr);
   align-items: center;
   gap: 14px;
   margin-bottom: 0;
@@ -694,51 +693,6 @@ p {
   font-weight: 900;
   letter-spacing: 0.08em;
   line-height: 1.2;
-}
-
-.legacy-question-summary-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid rgba(132, 0, 6, 0.16);
-  background: #fff;
-}
-
-.legacy-question-summary-strip article {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
-  border-right: 1px solid rgba(132, 0, 6, 0.12);
-  padding: 7px 10px;
-}
-
-.legacy-question-summary-strip article:last-child {
-  border-right: 0;
-}
-
-.legacy-question-summary-strip span {
-  overflow: hidden;
-  color: var(--legacy-muted);
-  font-size: 12px;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.legacy-question-summary-strip strong {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  color: var(--legacy-sysu-red);
-  font-size: 18px;
-  line-height: 1;
-}
-
-.legacy-question-summary-strip small {
-  color: var(--legacy-muted);
-  font-size: 12px;
-  font-weight: 800;
 }
 
 .legacy-question-demo-grid {

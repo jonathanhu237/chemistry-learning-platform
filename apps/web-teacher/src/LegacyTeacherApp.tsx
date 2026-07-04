@@ -2172,13 +2172,6 @@ function QuestionsPage() {
       setRevokingQuestionId("");
     }
   };
-  const workbenchMetrics = [
-    { label: "题目总数", value: Number(catalog.data?.totals.question_count || 0), unit: "题" },
-    { label: "已发布", value: Number(catalog.data?.totals.published_count || 0), unit: "题" },
-    { label: "待审题", value: Number(draftsState.data?.items.filter((item) => item.status === "draft").length || 0), unit: "题" },
-    { label: "点位", value: points.length, unit: "项" },
-  ];
-
   return (
     <PageFrame
       title="AI 出题"
@@ -2192,17 +2185,6 @@ function QuestionsPage() {
             <div>
               <span className="legacy-section-kicker">点位资料直接命题</span>
               <h2>命题工作区</h2>
-            </div>
-            <div className="legacy-question-summary-strip" aria-label="AI 出题概览">
-              {workbenchMetrics.map((metric) => (
-                <article key={metric.label}>
-                  <span>{metric.label}</span>
-                  <strong>
-                    {metric.value}
-                    <small>{metric.unit}</small>
-                  </strong>
-                </article>
-              ))}
             </div>
           </header>
           <div className="legacy-question-demo-grid">
