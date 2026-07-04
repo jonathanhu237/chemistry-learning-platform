@@ -3409,12 +3409,17 @@ p {
 }
 
 .legacy-enable-switch.ant-switch {
-  min-width: 66px;
-  min-height: 26px;
-  height: 26px;
+  position: relative;
+  display: inline-block;
+  width: 76px;
+  min-width: 76px;
+  height: 30px;
+  min-height: 30px;
   border: 1px solid #d7b8b2;
   background: #d8c6c0;
   padding: 0;
+  border-radius: 999px;
+  overflow: hidden;
 }
 
 .legacy-enable-switch.ant-switch.ant-switch-checked,
@@ -3424,33 +3429,64 @@ p {
 }
 
 .legacy-enable-switch.ant-switch .ant-switch-inner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: absolute;
+  inset: 0;
+  display: block;
   height: 100%;
   color: #fff;
   font-size: 12px;
   font-weight: 900;
   line-height: 1;
+  padding: 0;
   text-align: center;
 }
 
 .legacy-enable-switch.ant-switch .ant-switch-inner-checked,
 .legacy-enable-switch.ant-switch .ant-switch-inner-unchecked {
+  position: absolute;
+  inset-block: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100%;
+  min-height: 0;
+  margin: 0 !important;
+  padding: 0;
+  line-height: 1;
+  transition: opacity 0.12s ease;
+}
+
+.legacy-enable-switch.ant-switch .ant-switch-inner-checked {
+  inset-inline-start: 10px;
+  inset-inline-end: 30px;
+  opacity: 0;
+}
+
+.legacy-enable-switch.ant-switch .ant-switch-inner-unchecked {
+  inset-inline-start: 30px;
+  inset-inline-end: 10px;
+  opacity: 1;
+}
+
+.legacy-enable-switch.ant-switch.ant-switch-checked .ant-switch-inner-checked,
+.legacy-enable-switch.ant-switch.is-on .ant-switch-inner-checked {
+  opacity: 1;
+}
+
+.legacy-enable-switch.ant-switch.ant-switch-checked .ant-switch-inner-unchecked,
+.legacy-enable-switch.ant-switch.is-on .ant-switch-inner-unchecked {
+  opacity: 0;
 }
 
 .legacy-enable-switch.ant-switch .ant-switch-handle {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   top: 2px;
+  inset-inline-start: 2px;
+  z-index: 1;
 }
 
 .legacy-enable-switch.ant-switch.ant-switch-checked .ant-switch-handle {
-  inset-inline-start: calc(100% - 22px);
+  inset-inline-start: calc(100% - 26px);
 }
 
 .legacy-create-dialog.ant-modal {
