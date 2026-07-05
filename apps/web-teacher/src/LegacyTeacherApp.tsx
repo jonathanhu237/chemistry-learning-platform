@@ -2991,6 +2991,10 @@ function ClassesPage() {
       setActionError("请填写统一初始密码，或改为使用学号。");
       return;
     }
+    if (passwordMode === "shared" && sharedPassword.trim() && sharedPassword.trim().length < 6) {
+      setActionError("统一初始密码至少需要 6 位。");
+      return;
+    }
     setImportingRoster(true);
     setNotice("");
     setActionError("");
@@ -3295,7 +3299,7 @@ function ClassesPage() {
           {passwordMode === "shared" ? (
             <label className="legacy-import-password-field">
               统一初始密码
-              <TeacherInput.Password value={sharedPassword} onChange={(event) => setSharedPassword(event.target.value)} placeholder={registrationState.data?.has_default_password ? "留空则沿用当前密码" : "至少 8 位"} />
+              <TeacherInput.Password value={sharedPassword} onChange={(event) => setSharedPassword(event.target.value)} placeholder={registrationState.data?.has_default_password ? "留空则沿用当前密码" : "至少 6 位"} />
             </label>
           ) : null}
           <TeacherUpload

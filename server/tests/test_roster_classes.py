@@ -3,7 +3,12 @@ from __future__ import annotations
 import pytest
 
 from server.app.domains.errors import DomainHTTPException
-from server.app.domains.roster.classes import _natural_class_sort_key, _raise_if_roster_import_has_cross_class_conflicts
+from server.app.domains.roster.classes import (
+    RegistrationSettingsUpdateRequest,
+    StudentPasswordResetRequest,
+    _natural_class_sort_key,
+    _raise_if_roster_import_has_cross_class_conflicts,
+)
 
 
 class _FakeExecuteResult:
@@ -53,3 +58,15 @@ def test_roster_import_cross_class_conflicts_are_reported_as_business_error() ->
 
     assert exc_info.value.status_code == 409
     assert "26320101（宋佳，26 级本科 2 班）" in str(exc_info.value.detail)
+
+
+def test_student_initial_password_allows_seed_style_six_character_password() -> None:
+    settings = RegistrationSettingsUpdateRequest(
+        mode="roster_only",
+        default_password_mode="shared",
+        default_password="123456",
+    )
+    reset = StudentPasswordResetRequest(initial_password="123456")
+
+    assert settings.default_password == "123456"
+    assert reset.initial_password == "123456"

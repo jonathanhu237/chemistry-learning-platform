@@ -260,8 +260,24 @@ export function legacyTeacherErrorMessage(error: unknown): string {
 
 function apiDetailMessage(detail: unknown): string {
   if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map(validationDetailMessage).filter(Boolean).join("；");
+  }
   if (detail && typeof detail === "object" && "message" in detail) return String((detail as { message?: unknown }).message || "");
   return "";
+}
+
+function validationDetailMessage(item: unknown): string {
+  if (!item || typeof item !== "object") return "";
+  const detail = item as { loc?: unknown; msg?: unknown; type?: unknown; ctx?: { min_length?: unknown } };
+  const loc = Array.isArray(detail.loc) ? detail.loc.map(String) : [];
+  if (detail.type === "string_too_short") {
+    const minLength = Number(detail.ctx?.min_length || 0);
+    if (loc.includes("default_password")) return `统一初始密码至少需要 ${minLength || 6} 位。`;
+    if (loc.includes("initial_password")) return `初始密码至少需要 ${minLength || 6} 位。`;
+    if (loc.includes("password")) return `密码至少需要 ${minLength || 6} 位。`;
+  }
+  return typeof detail.msg === "string" ? detail.msg : "";
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {

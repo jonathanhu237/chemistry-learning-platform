@@ -47,7 +47,7 @@ class TeacherClassAssignRequest(BaseModel):
 
 
 class StudentPasswordResetRequest(BaseModel):
-    initial_password: str | None = Field(default=None, min_length=8)
+    initial_password: str | None = Field(default=None, min_length=6)
     force_change: bool = True
 
 
@@ -91,7 +91,7 @@ class RegistrationSettingsUpdateRequest(BaseModel):
     mode: str = Field(pattern="^(roster_only|self_registration)$")
     default_password_policy: str = "student_id_name_activation"
     default_password_mode: str | None = Field(default=None, pattern="^(student_id|shared)$")
-    default_password: str | None = Field(default=None, min_length=8)
+    default_password: str | None = Field(default=None, min_length=6)
 
 
 def _new_class_id() -> str:
