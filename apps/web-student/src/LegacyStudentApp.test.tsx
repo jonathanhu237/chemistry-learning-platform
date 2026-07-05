@@ -845,6 +845,63 @@ describe("LegacyStudentApp", () => {
     assertNoForbiddenVisibleTerms(container);
   });
 
+  it("requires initial password change before loading student content", async () => {
+    const baseFetch = installStudentFetchMock();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/api/auth/me")) {
+        return jsonResponse({
+          id: "student-1",
+          username: "26320501",
+          display_name: "张三",
+          role: "student",
+          status: "active",
+          must_change_password: true,
+          password_version: 1,
+          student_id: "26320501",
+          class_id: "seed-class-6",
+          class_name: "26 级本科 6 班",
+        });
+      }
+      if (url.includes("/api/auth/student/password")) {
+        const payload = JSON.parse(String(init?.body || "{}")) as { new_password?: string };
+        expect(payload.new_password).toBe("newpass123");
+        return jsonResponse({
+          access_token: "new-student-token",
+          token_type: "bearer",
+          user: {
+            id: "student-1",
+            username: "26320501",
+            display_name: "张三",
+            role: "student",
+            status: "active",
+            must_change_password: false,
+            password_version: 2,
+            student_id: "26320501",
+            class_id: "seed-class-6",
+            class_name: "26 级本科 6 班",
+          },
+        });
+      }
+      return baseFetch(input);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<LegacyStudentApp />);
+
+    expect(await screen.findByRole("heading", { name: "修改初始密码" })).toBeTruthy();
+    expect(screen.getByText(/当前账号正在使用初始密码/)).toBeTruthy();
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/student/assessment/status"))).toBe(false);
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/student/legacy/video-points"))).toBe(false);
+
+    fireEvent.change(screen.getByLabelText("新密码"), { target: { value: "newpass123" } });
+    fireEvent.change(screen.getByLabelText("确认新密码"), { target: { value: "newpass123" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存并进入学习" }));
+
+    expect(await screen.findByRole("heading", { name: "实验视频库" })).toBeTruthy();
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/auth/student/password"))).toBe(true);
+  });
+
   it("auto-starts the first smart baseline assessment for a student with no answers", async () => {
     const baseFetch = installStudentFetchMock();
     vi.stubGlobal(

@@ -2,6 +2,7 @@ import { FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import { BookOpenCheck, ChevronRight, ClipboardList, FileText, Folder, Home, PlayCircle, Video, type LucideIcon } from "lucide-react";
 
 import {
+  changeStudentPassword,
   getAuthToken,
   legacyStudentErrorMessage,
   loadAssessmentStatus,
@@ -391,7 +392,7 @@ export function LegacyStudentApp() {
   const skipBaselineBootstrap = safePath.startsWith("/assessment/session/");
 
   useEffect(() => {
-    if (!user || skipBaselineBootstrap) return;
+    if (!user || user.must_change_password || skipBaselineBootstrap) return;
     let active = true;
     setBaselineBootstrapState("checking");
     loadAssessmentStatus()
@@ -433,6 +434,14 @@ export function LegacyStudentApp() {
     navigate("/");
   };
 
+  if (user.must_change_password) {
+    return (
+      <ShellFrame onLogout={logout}>
+        <PasswordChangeScreen user={user} onChanged={setUser} />
+      </ShellFrame>
+    );
+  }
+
   return (
     <ShellFrame onLogout={logout}>
       <LegacyBottomNav activeTab={activeTab} />
@@ -461,6 +470,78 @@ export function LegacyStudentApp() {
         <HomeVideoLibraryPage />
       )}
     </ShellFrame>
+  );
+}
+
+function PasswordChangeScreen({ user, onChanged }: { user: AuthUser; onChanged: (user: AuthUser) => void }) {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setError("");
+    const nextPassword = password.trim();
+    if (nextPassword.length < 8) {
+      setError("新密码至少需要 8 位。");
+      return;
+    }
+    if (nextPassword !== confirmPassword.trim()) {
+      setError("两次输入的新密码不一致。");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const response = await changeStudentPassword(nextPassword);
+      setAuthToken(response.access_token);
+      onChanged(response.user);
+      navigate("/");
+    } catch (caught) {
+      setError(legacyStudentErrorMessage(caught));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="legacy-password-page">
+      <div className="legacy-password-panel">
+        <div>
+          <span className="eyebrow">首次登录</span>
+          <h1>修改初始密码</h1>
+          <p>
+            {user.display_name || user.username}，当前账号正在使用初始密码。修改后即可进入学习、评测和报告页面。
+          </p>
+        </div>
+        <form onSubmit={submit}>
+          <label>
+            新密码
+            <input
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              type="password"
+              autoComplete="new-password"
+              placeholder="至少 8 位"
+            />
+          </label>
+          <label>
+            确认新密码
+            <input
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              type="password"
+              autoComplete="new-password"
+              placeholder="再次输入新密码"
+            />
+          </label>
+          {error ? <div className="legacy-error">{error}</div> : null}
+          <button className="primary-button" type="submit" disabled={submitting}>
+            {submitting ? "正在保存..." : "保存并进入学习"}
+          </button>
+        </form>
+      </div>
+    </section>
   );
 }
 

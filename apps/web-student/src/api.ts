@@ -4,6 +4,8 @@ export type AuthUser = {
   role: "admin" | "teacher" | "student";
   display_name: string;
   status: string;
+  must_change_password?: boolean;
+  password_version?: number;
   student_id?: string | null;
   class_id?: string | null;
   class_name?: string | null;
@@ -548,6 +550,7 @@ export function legacyStudentErrorMessage(error: unknown): string {
     const detail = apiErrorDetailText(error.detail);
     if (error.status === 401) return "登录状态已失效，请重新登录。";
     if (error.status === 404) return "暂未找到对应的实验学习内容。";
+    if (error.status === 403 && detail.includes("Password change required")) return "请先修改初始密码后再继续学习。";
     if (error.status === 400) {
       if (detail.includes("Submitted answers must match")) return "本轮题目状态已变化，请返回评测重新开始。";
       return "当前提交内容不完整，请检查题目后重试。";
@@ -586,6 +589,13 @@ function postJson<T>(path: string, body: unknown): Promise<T> {
 
 export function studentLogin(studentId: string, password: string): Promise<LoginResponse> {
   return postJson<LoginResponse>("/api/auth/student/login", { student_id: studentId, password });
+}
+
+export function changeStudentPassword(newPassword: string, currentPassword?: string): Promise<LoginResponse> {
+  return postJson<LoginResponse>("/api/auth/student/password", {
+    current_password: currentPassword || undefined,
+    new_password: newPassword,
+  });
 }
 
 export function loadCurrentUser(): Promise<AuthUser> {

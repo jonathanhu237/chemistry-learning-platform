@@ -470,6 +470,57 @@ p {
   background: #fff;
 }
 
+.legacy-password-page {
+  display: grid;
+  min-height: calc(100vh - var(--legacy-header-height));
+  place-items: center;
+  padding: 28px 18px 96px;
+}
+
+.legacy-password-panel {
+  width: min(620px, 100%);
+  border-top: 5px solid var(--legacy-sysu-red);
+  background: var(--legacy-paper);
+  padding: 28px;
+  box-shadow: 0 18px 36px rgba(75, 0, 2, 0.12);
+}
+
+.legacy-password-panel h1 {
+  margin: 8px 0 10px;
+  font-size: 38px;
+  line-height: 1.08;
+}
+
+.legacy-password-panel p {
+  margin: 0;
+  color: var(--legacy-muted);
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+.legacy-password-panel form {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid var(--legacy-line);
+}
+
+.legacy-password-panel label {
+  display: grid;
+  gap: 7px;
+  color: var(--legacy-sysu-red);
+  font-weight: 900;
+}
+
+.legacy-password-panel input {
+  min-height: 48px;
+  border: 1px solid #d8c8c8;
+  background: #fff;
+  color: var(--legacy-ink);
+  padding: 10px 12px;
+}
+
 .primary-button {
   min-height: 42px;
   border: 1px solid var(--legacy-sysu-red);
