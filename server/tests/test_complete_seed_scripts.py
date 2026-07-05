@@ -53,6 +53,19 @@ def test_demo_assessment_seed_builds_varied_student_score_targets() -> None:
     assert len({round(ratio, 3) for ratio in ratios}) > 20
 
 
+def test_demo_assessment_seed_gives_zhangsan_distinct_mastery_profile() -> None:
+    targets = assessment_seed.SHOWCASE_CHAPTER_MASTERY_TARGETS
+    sample_scores = [
+        assessment_seed.showcase_mastery_score(chapter_id, f"{chapter_id}-point-{index}")
+        for index, chapter_id in enumerate(targets)
+    ]
+
+    assert assessment_seed.SHOWCASE_STUDENT_ID == "26320001"
+    assert min(sample_scores) < 35
+    assert max(sample_scores) > 85
+    assert all(abs(score - 50) >= 5 for score in sample_scores)
+
+
 def test_demo_assessment_seed_generates_wrong_answers_by_question_type() -> None:
     single_choice = type(
         "Question",

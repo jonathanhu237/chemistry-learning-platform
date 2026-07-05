@@ -52,6 +52,28 @@ def test_experiment_group_info_falls_back_from_catalog_code_to_family() -> None:
     assert group["title"] == "氧族元素"
 
 
+def test_experiment_group_info_uses_catalog_chapter_metadata() -> None:
+    group = _experiment_group_info(
+        {
+            "id": "catalog-exp-f99cb352071bd2135071d30a",
+            "code": "CAT-CH13-f99cb352",
+            "title": "卤素单质在不同溶剂中的溶解性",
+            "metadata": {
+                "catalog_chapter_id": "CH13",
+                "catalog_root_title": "卤素单质在不同溶剂中的溶解性",
+            },
+            "chapter_bindings": [],
+        }
+    )
+
+    assert group == {
+        "id": "CH13",
+        "code": "CH13",
+        "title": "卤族元素",
+        "raw_title": "卤素单质在不同溶剂中的溶解性",
+    }
+
+
 def test_attempt_primary_points_prefers_stable_node_identity() -> None:
     points = _attempt_primary_points(
         {

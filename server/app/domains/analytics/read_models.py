@@ -118,6 +118,14 @@ def _primary_chapter_binding(experiment: dict[str, Any]) -> dict[str, Any] | Non
 
 def _experiment_group_info(experiment: dict[str, Any]) -> dict[str, str]:
     metadata = _metadata(experiment)
+    catalog_chapter_id = str(metadata.get("catalog_chapter_id") or "").strip()
+    if catalog_chapter_id and catalog_chapter_id in ELEMENT_FAMILY_TITLE_BY_CHAPTER:
+        return {
+            "id": catalog_chapter_id,
+            "code": catalog_chapter_id,
+            "title": ELEMENT_FAMILY_TITLE_BY_CHAPTER[catalog_chapter_id],
+            "raw_title": str(metadata.get("catalog_root_title") or metadata.get("catalog_chapter_title") or catalog_chapter_id),
+        }
     chapter_binding = _primary_chapter_binding(experiment)
     if chapter_binding:
         chapter_id = str(chapter_binding.get("chapter_id") or "").strip()

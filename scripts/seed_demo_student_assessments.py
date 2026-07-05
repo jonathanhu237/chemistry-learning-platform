@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import sys
 from dataclasses import dataclass
@@ -40,6 +41,19 @@ from server.app.student_smart_assessment_schemas import (
 
 SEED_SOURCE = "demo_student_assessments_v1"
 EXPECTED_STUDENTS = 150
+SHOWCASE_STUDENT_ID = "26320001"
+SHOWCASE_MASTERY_PROFILE_SOURCE = "demo_showcase_zhangsan_mastery_v1"
+SHOWCASE_CHAPTER_MASTERY_TARGETS = {
+    "CH13": 29.0,
+    "CH14": 84.0,
+    "CH15": 37.0,
+    "CH16": 76.0,
+    "CH17": 24.0,
+    "CH18": 88.0,
+    "CH19": 66.0,
+    "CH20": 41.0,
+    "CH22": 92.0,
+}
 
 
 @dataclass(frozen=True)
@@ -55,6 +69,10 @@ class DemoStudent:
 
 def _json_param(value: Any) -> str:
     return json.dumps(value if value is not None else {}, ensure_ascii=False, default=str)
+
+
+def _stable_int(value: str) -> int:
+    return int(hashlib.sha256(value.encode("utf-8")).hexdigest()[:8], 16)
 
 
 def _seed_classes(payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -149,6 +167,16 @@ def build_answers(student: DemoStudent, questions: list[Any]) -> list[StudentSma
         value = correct_answer(question) if should_answer_correct(student, index) else wrong_answer(question)
         answers.append(StudentSmartAssessmentAnswer(question_id=question.id, answer=value))
     return answers
+
+
+def showcase_mastery_score(chapter_id: str, point_node_id: str) -> float:
+    target = SHOWCASE_CHAPTER_MASTERY_TARGETS.get(chapter_id, 50.0)
+    jitter = (_stable_int(f"{chapter_id}:{point_node_id}:score") % 1301) / 100.0 - 6.5
+    return round(max(6.0, min(96.0, target + jitter)), 1)
+
+
+def showcase_evidence_count(chapter_id: str, point_node_id: str) -> int:
+    return 8 + (_stable_int(f"{chapter_id}:{point_node_id}:evidence") % 13)
 
 
 def _student_ids(students: list[DemoStudent]) -> list[str]:
@@ -380,6 +408,92 @@ def mark_seed_metadata(student: DemoStudent, session_id: str) -> None:
         )
 
 
+def seed_showcase_mastery_profile(student: DemoStudent) -> dict[str, Any]:
+    if student.student_id != SHOWCASE_STUDENT_ID:
+        return {"updated": False, "student_id": student.student_id}
+
+    with db_session() as session:
+        rows = [
+            dict(row)
+            for row in session.execute(
+                text(
+                    """
+                    SELECT n.id AS point_node_id,
+                           n.chapter_id,
+                           n.canonical_point_id
+                    FROM experiment_catalog_nodes n
+                    WHERE n.node_kind = 'point'
+                      AND n.status <> 'archived'
+                      AND n.chapter_id = ANY(:chapter_ids)
+                    ORDER BY n.chapter_id, n.display_order, n.title, n.id
+                    """
+                ),
+                {"chapter_ids": sorted(SHOWCASE_CHAPTER_MASTERY_TARGETS)},
+            )
+            .mappings()
+            .all()
+        ]
+        updated_by_chapter: dict[str, int] = {}
+        for row in rows:
+            chapter_id = str(row["chapter_id"])
+            point_node_id = str(row["point_node_id"])
+            score = showcase_mastery_score(chapter_id, point_node_id)
+            evidence_count = showcase_evidence_count(chapter_id, point_node_id)
+            updated_by_chapter[chapter_id] = updated_by_chapter.get(chapter_id, 0) + 1
+            session.execute(
+                text(
+                    """
+                    INSERT INTO student_point_mastery (
+                      student_id, class_id, point_node_id, canonical_point_id,
+                      mastery_prob, mastery_score, evidence_count,
+                      last_evidence_kind, metadata, updated_at
+                    )
+                    VALUES (
+                      :student_id, :class_id, :point_node_id, :canonical_point_id,
+                      :mastery_prob, :mastery_score, :evidence_count,
+                      :last_evidence_kind, CAST(:metadata AS jsonb), now()
+                    )
+                    ON CONFLICT (student_id, point_node_id)
+                    DO UPDATE SET
+                      class_id = EXCLUDED.class_id,
+                      canonical_point_id = COALESCE(EXCLUDED.canonical_point_id, student_point_mastery.canonical_point_id),
+                      mastery_prob = EXCLUDED.mastery_prob,
+                      mastery_score = EXCLUDED.mastery_score,
+                      evidence_count = EXCLUDED.evidence_count,
+                      last_evidence_kind = EXCLUDED.last_evidence_kind,
+                      metadata = EXCLUDED.metadata,
+                      updated_at = now()
+                    """
+                ),
+                {
+                    "student_id": student.student_id,
+                    "class_id": student.class_id,
+                    "point_node_id": point_node_id,
+                    "canonical_point_id": row.get("canonical_point_id"),
+                    "mastery_prob": round(score / 100.0, 4),
+                    "mastery_score": score,
+                    "evidence_count": evidence_count,
+                    "last_evidence_kind": "seed_showcase_assessment",
+                    "metadata": _json_param(
+                        {
+                            "seed_owned": True,
+                            "seed_source": SHOWCASE_MASTERY_PROFILE_SOURCE,
+                            "student_id": student.student_id,
+                            "chapter_id": chapter_id,
+                            "chapter_target_score": SHOWCASE_CHAPTER_MASTERY_TARGETS[chapter_id],
+                        }
+                    ),
+                },
+            )
+    return {
+        "updated": True,
+        "student_id": student.student_id,
+        "source": SHOWCASE_MASTERY_PROFILE_SOURCE,
+        "chapters": updated_by_chapter,
+        "points": sum(updated_by_chapter.values()),
+    }
+
+
 def create_local_seed_report(user: Any, report: Any) -> Any:
     payload = _model_dump(report)
     wrong_answers = _as_dict_list(payload.get("wrong_answers"))
@@ -443,11 +557,17 @@ async def import_database(
     results: list[dict[str, Any]] = []
     for student in students:
         results.append(await simulate_student(student))
+    showcase_profiles = [
+        seed_showcase_mastery_profile(student)
+        for student in students
+        if student.student_id == SHOWCASE_STUDENT_ID
+    ]
     scores = [float(item["score"]) for item in results]
     return {
         "ok": True,
         "seed_source": SEED_SOURCE,
         "cleanup": cleanup,
+        "showcase_profiles": showcase_profiles,
         "summary": {
             "students": len(results),
             "min_score": round(min(scores), 2) if scores else None,
