@@ -232,6 +232,52 @@ def _sync_disabled_student_account(session: Any, class_id: str, student_id: str)
     )
 
 
+def _disable_class_roster_entries(session: Any, class_id: str) -> int:
+    return int(
+        session.execute(
+            text(
+                """
+                WITH disabled_roster AS (
+                  UPDATE roster_entries
+                  SET status = 'disabled',
+                      updated_at = now()
+                  WHERE class_id = :class_id
+                    AND status <> 'disabled'
+                  RETURNING activated_user_id
+                ),
+                disabled_users AS (
+                  UPDATE app_users
+                  SET status = 'disabled',
+                      updated_at = now()
+                  WHERE id IN (
+                    SELECT activated_user_id
+                    FROM disabled_roster
+                    WHERE activated_user_id IS NOT NULL
+                  )
+                  RETURNING id
+                ),
+                revoked_sessions AS (
+                  UPDATE auth_sessions
+                  SET revoked_at = now()
+                  WHERE user_id IN (SELECT id FROM disabled_users)
+                    AND revoked_at IS NULL
+                  RETURNING id
+                ),
+                disabled_students AS (
+                  UPDATE students
+                  SET status = 'disabled',
+                      updated_at = now()
+                  WHERE user_id IN (SELECT id FROM disabled_users)
+                  RETURNING id
+                )
+                SELECT COUNT(*) FROM disabled_roster
+                """
+            ),
+            {"class_id": class_id},
+        ).scalar_one()
+    )
+
+
 def _teacher_can_access_class(user: Any, class_id: str) -> bool:
     if is_teacher_role(user.role):
         return True
@@ -618,7 +664,36 @@ def update_class(payload: ClassUpdateRequest, class_id: str, user: Any) -> Class
 
 
 def delete_class(class_id: str, user: Any) -> ClassResponse:
-    return update_class(ClassUpdateRequest(status="archived"), class_id, user)
+    require_class_access(class_id, user)
+    with db_session() as session:
+        _disable_class_roster_entries(session, class_id)
+        row = (
+            session.execute(
+                text(
+                    """
+                    UPDATE classes
+                    SET status = 'archived',
+                        updated_at = now()
+                    WHERE id = :class_id
+                    RETURNING id, class_name, description, status,
+                              (
+                                SELECT COUNT(*)
+                                FROM roster_entries
+                                WHERE class_id = classes.id
+                                  AND status <> 'disabled'
+                                  AND COALESCE(entry_purpose, 'instructional') <> :preview_account_purpose
+                              ) AS student_count
+                    """
+                ),
+                {"class_id": class_id, "preview_account_purpose": TEACHER_PREVIEW_ACCOUNT_PURPOSE},
+            )
+            .mappings()
+            .first()
+        )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
+    return _class_row_to_response(dict(row))
+
 
 
 def assign_teacher_to_class(payload: TeacherClassAssignRequest, class_id: str) -> dict[str, bool]:
