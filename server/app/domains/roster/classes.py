@@ -668,6 +668,40 @@ def preview_roster_import(class_id: str, filename: str | None, content: bytes, u
     return roster_preview(rows)
 
 
+def _raise_if_roster_import_has_cross_class_conflicts(session: Any, class_id: str, valid_student_ids: set[str]) -> None:
+    if not valid_student_ids:
+        return
+    conflict_rows = (
+        session.execute(
+            text(
+                """
+                SELECT re.student_id, re.student_name, c.class_name
+                FROM roster_entries re
+                JOIN classes c ON c.id = re.class_id
+                WHERE re.class_id <> :class_id
+                  AND re.status <> 'disabled'
+                  AND re.normalized_student_id IN (
+                    SELECT jsonb_array_elements_text(CAST(:student_ids AS jsonb))
+                  )
+                ORDER BY re.normalized_student_id
+                """
+            ),
+            {"class_id": class_id, "student_ids": json.dumps(sorted(valid_student_ids), ensure_ascii=False)},
+        )
+        .mappings()
+        .all()
+    )
+    if conflict_rows:
+        examples = "、".join(
+            f"{row['student_id']}（{row['student_name']}，{row['class_name']}）" for row in conflict_rows[:5]
+        )
+        suffix = "等" if len(conflict_rows) > 5 else ""
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"导入失败：{len(conflict_rows)} 个学号已存在于其他班级：{examples}{suffix}",
+        )
+
+
 def import_roster(
     class_id: str,
     filename: str | None,
@@ -683,6 +717,7 @@ def import_roster(
     preview = roster_preview(rows)
     valid_student_ids = {_normalize_student_id(row["student_id"]) for row in preview["rows"] if row["valid"]}
     with db_session() as session:
+        _raise_if_roster_import_has_cross_class_conflicts(session, class_id, valid_student_ids)
         import_id = (
             session.execute(
                 text(
