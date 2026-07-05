@@ -243,8 +243,8 @@
       "source_path": "demo seed manifest",
       "required": true,
       "kind": "json",
-      "size_bytes": 77734,
-      "sha256": "08c29e8b2a8862e6b0ab1458c001a10ce65aa55e248df8d6213f247f93b8deed",
+      "size_bytes": 77740,
+      "sha256": "04367347de6f9fdb079eb08d7d4c15d1fc0e79aab15342f1959423578dfbcf7c",
       "count": {
         "teachers": 1,
         "classes": 5,
@@ -268,7 +268,7 @@
       "required": true,
       "kind": "json",
       "size_bytes": 3006,
-      "sha256": "74cad4381099d77224466acfff063c4381f5ddbd88b2680c228f0548cf91a76f",
+      "sha256": "34f1318ecfbfd449f6877e7c2334d00aa47907b5379d4e14eb2ceae7aaabcc9f",
       "count": {
         "files": 5,
         "real_videos": 4,
@@ -290,7 +290,7 @@
       "required": true,
       "kind": "json",
       "size_bytes": 402440,
-      "sha256": "3f84154f860939ece9c8d8d6b914ebe5828c2a46863f06813bc239fac930cb79",
+      "sha256": "7da7089d87ec20ee971c658df2d787e53fd7187f633c1b80bb39731abca682b4",
       "count": {
         "assets": 5,
         "real_video_assets": 4,
@@ -359,8 +359,8 @@
       "source_path": "ffmpeg generated placeholder",
       "required": true,
       "kind": "binary",
-      "size_bytes": 35988,
-      "sha256": "7f610e398072067b9ed28f678cd72bb53320f485cdbbe531d0bf9a96c197372b"
+      "size_bytes": 22333,
+      "sha256": "98609f5098fd96c922b3ea2ddff38086e6f937b7aba4e89f5b38e7a36e2c12bb"
     },
     {
       "id": "chemical_search_aliases",

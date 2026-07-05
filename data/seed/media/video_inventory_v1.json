@@ -70,13 +70,13 @@
       "original_file_name": "no-video-placeholder.mp4",
       "title": "点位暂无真实视频（占位视频）",
       "kind": "placeholder_video",
-      "size_bytes": 35988,
-      "sha256": "7f610e398072067b9ed28f678cd72bb53320f485cdbbe531d0bf9a96c197372b",
+      "size_bytes": 22333,
+      "sha256": "98609f5098fd96c922b3ea2ddff38086e6f937b7aba4e89f5b38e7a36e2c12bb",
       "duration_seconds": 8.0,
       "width": 1280,
       "height": 720,
       "fps": 30.0,
-      "bitrate": 35988,
+      "bitrate": 22333,
       "video_codec": "h264",
       "audio_codec": "aac"
     }
