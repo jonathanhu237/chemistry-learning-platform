@@ -548,6 +548,7 @@ function apiErrorDetailText(detail: unknown): string {
 export function legacyStudentErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     const detail = apiErrorDetailText(error.detail);
+    if (detail.includes("Student not found")) return "学生不存在，请联系管理员添加。";
     if (error.status === 401) return "登录状态已失效，请重新登录。";
     if (error.status === 404) return "暂未找到对应的实验学习内容。";
     if (error.status === 403 && detail.includes("Password change required")) return "请先修改初始密码后再继续学习。";

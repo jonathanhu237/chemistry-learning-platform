@@ -902,6 +902,28 @@ describe("LegacyStudentApp", () => {
     expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/auth/student/password"))).toBe(true);
   });
 
+  it("shows a clear message when the student ID is not on the roster", async () => {
+    setAuthToken("");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/auth/student/login")) {
+          return jsonResponse({ detail: "Student not found" }, 401);
+        }
+        return jsonResponse({}, 404);
+      }),
+    );
+
+    render(<LegacyStudentApp />);
+
+    fireEvent.change(screen.getByLabelText("学号"), { target: { value: "99999999" } });
+    fireEvent.change(screen.getByLabelText("密码"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "进入学习" }));
+
+    expect(await screen.findByText("学生不存在，请联系管理员添加。")).toBeTruthy();
+  });
+
   it("auto-starts the first smart baseline assessment for a student with no answers", async () => {
     const baseFetch = installStudentFetchMock();
     vi.stubGlobal(
@@ -1175,6 +1197,7 @@ describe("LegacyStudentApp", () => {
     expect(legacyStudentErrorMessage(new ApiError(409, "No active assessment session"))).toBe(
       "本轮测评已经提交或已失效，请返回评测重新开始。",
     );
+    expect(legacyStudentErrorMessage(new ApiError(401, "Student not found"))).toBe("学生不存在，请联系管理员添加。");
   });
 
   it("starts custom range assessment with a selected directory scope", async () => {

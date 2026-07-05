@@ -3,7 +3,8 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 
 from server.app.app_runtime.main import app
-from server.app.auth import AuthUser, PasswordChangeRequest, StudentPasswordChangeRequest, require_roles
+from server.app import auth as auth_module
+from server.app.auth import AuthUser, PasswordChangeRequest, StudentLoginRequest, StudentPasswordChangeRequest, require_roles
 
 
 @pytest.fixture
@@ -25,6 +26,25 @@ def test_student_initial_password_change_does_not_require_current_password() -> 
 
     assert payload.current_password is None
     assert payload.new_password == "new-pass-123"
+
+
+def test_student_login_reports_missing_roster_student(monkeypatch: pytest.MonkeyPatch) -> None:
+    class DummySession:
+        def __enter__(self) -> "DummySession":
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(auth_module, "_load_user_with_hash", lambda _student_id: None)
+    monkeypatch.setattr(auth_module, "db_session", lambda: DummySession())
+    monkeypatch.setattr(auth_module, "_load_student_roster_for_login", lambda _session, _student_id: None)
+
+    with pytest.raises(HTTPException) as exc_info:
+        auth_module.student_login(StudentLoginRequest(student_id="99999999", password="123456"))
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail == auth_module.STUDENT_NOT_FOUND_DETAIL
 
 
 def test_teacher_password_change_still_requires_current_password() -> None:

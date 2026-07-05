@@ -13,6 +13,7 @@ from server.app.infrastructure.database import db_session
 from server.app.security import AuthError, create_access_token, hash_password, verify_password, decode_access_token
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+STUDENT_NOT_FOUND_DETAIL = "Student not found"
 bearer = HTTPBearer(auto_error=False)
 
 
@@ -352,7 +353,9 @@ def student_login(payload: StudentLoginRequest) -> LoginResponse:
 
     with db_session() as session:
         roster = _load_student_roster_for_login(session, normalized_student_id)
-        if not roster or roster.get("activated_user_id"):
+        if not roster:
+            raise _auth_error(STUDENT_NOT_FOUND_DETAIL)
+        if roster.get("activated_user_id"):
             raise _auth_error("Invalid student ID or password")
         if not _initial_password_matches(session, roster, normalized_student_id, payload.password):
             raise _auth_error("Invalid student ID or password")
