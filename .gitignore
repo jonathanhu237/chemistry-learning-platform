@@ -1,7 +1,9 @@
 .env
+.DS_Store
 apps/web-admin/.env.local
 apps/web-teacher/.env.local
 .tmp/
+tmp/
 .venv/
 venv/
 __pycache__/
