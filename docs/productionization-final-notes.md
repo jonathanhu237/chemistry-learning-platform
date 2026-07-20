@@ -39,7 +39,6 @@ Expected restored counts:
 
 ```powershell
 python scripts/validate_production_readiness.py --install-frontend
-openspec validate prune-seed-to-current-runtime-data --strict
 git status --short
 ```
 

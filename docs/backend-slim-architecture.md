@@ -128,11 +128,10 @@ Recommended backend gate:
 ```powershell
 python scripts/validate_backend_architecture.py
 python -m pytest server/tests -q
-openspec validate backend-slim-domain-architecture --strict
 ```
 
 Production readiness now includes architecture validation through:
 
 ```powershell
-python scripts/validate_production_readiness.py --change backend-slim-domain-architecture
+python scripts/validate_production_readiness.py
 ```

@@ -48,8 +48,5 @@ jobs:
         working-directory: apps/web-student
         run: npm ci
 
-      - name: Install OpenSpec CLI
-        run: npm install -g @fission-ai/openspec
-
       - name: Run production readiness validation
         run: python scripts/validate_production_readiness.py

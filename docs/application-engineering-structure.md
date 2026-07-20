@@ -15,7 +15,7 @@ chemistry-admin
   scripts/             Validation, migrations, imports, rebuilds, maintenance
 ```
 
-Structural work must name the surfaces it touches. If a change touches two or more surfaces, the OpenSpec proposal should explain which surface owns:
+Structural work must name the surfaces it touches. If a change touches two or more surfaces, the active Trellis task design should explain which surface owns:
 
 - user interaction
 - teacher/admin editing

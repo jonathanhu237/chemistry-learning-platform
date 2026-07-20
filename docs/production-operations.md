@@ -4,7 +4,7 @@ This document records the operational baseline for turning the admin platform in
 
 ## Application Structure Standard
 
-Whole-application structural changes are governed by `docs/application-engineering-structure.md` and the OpenSpec change `standardize-application-engineering-structure`.
+Whole-application structural changes are governed by `docs/application-engineering-structure.md` and the active task records under `.trellis/tasks/`.
 
 The current application is treated as three coupled engineering surfaces plus a validation/service graph:
 
@@ -15,7 +15,7 @@ The current application is treated as three coupled engineering surfaces plus a 
 - backend service: `server/app`
 - required Compose and validation scripts: `docker-compose.yml` and `scripts/`
 
-Before moving files across these surfaces, or before splitting a major shell/API/domain owner, create or update an OpenSpec change that names the touched surfaces, owner map, validation gate, and rollback posture. Destructive refactors are allowed when git history, OpenSpec scope, and validation output make rollback clear; do not preserve obsolete wrappers only for old internal compatibility.
+Before moving files across these surfaces, or before splitting a major shell/API/domain owner, record the touched surfaces, owner map, validation gate, and rollback posture in the active Trellis task design. Destructive refactors are allowed when git history, task scope, and validation output make rollback clear; do not preserve obsolete wrappers only for old internal compatibility.
 
 ## Protected Resources
 
@@ -296,8 +296,7 @@ Run the full local validation chain with frontend dependency installation:
 python scripts/validate_production_readiness.py --install-frontend
 ```
 
-The command checks protected resources, video-library ES/IK readiness, experiment point identity validation, OpenSpec strict validation, backend import smoke, backend tests, `web-admin` typecheck/build, `web-teacher` typecheck/tests/build, `web-student` typecheck/tests/build, and the teacher build chunk report.
-The default OpenSpec target is `prune-seed-to-current-runtime-data`; use `--change <name>` to validate a different active or historical change.
+The command checks protected resources, video-library ES/IK readiness, experiment point identity validation, backend import smoke, backend tests, `web-admin` typecheck/build, `web-teacher` typecheck/tests/build, `web-student` typecheck/tests/build, and the teacher build chunk report.
 The backend stage also runs:
 
 ```powershell
@@ -466,7 +465,6 @@ Before declaring a phase production-ready, run:
 
 ```powershell
 python scripts/validate_production_readiness.py --install-frontend
-openspec validate catalog-point-ai-platform-roadmap --strict
 git status --short
 ```
 
@@ -482,8 +480,7 @@ CI performs the same readiness gates as the local script:
 - checkout with Git LFS enabled so protected seed resources are present
 - Python dependency installation and backend tests
 - frontend `npm ci`, typecheck, tests, production build, and chunk report
-- OpenSpec strict validation for the active quality change
 - protected resource manifest validation
 - admin app import smoke
 
-If an environment-specific phase needs to skip a stage locally, use the explicit script flags such as `--skip-frontend`, `--skip-backend-tests`, `--skip-openspec`, or `--skip-resource-validation`. Use `--run-e2e` only when the local browser smoke prerequisites are running. Production release gates should run the full chain and may add `--run-e2e` when validating an interactive runtime.
+If an environment-specific phase needs to skip a stage locally, use the explicit script flags such as `--skip-frontend`, `--skip-backend-tests`, or `--skip-resource-validation`. Use `--run-e2e` only when the local browser smoke prerequisites are running. Production release gates should run the full chain and may add `--run-e2e` when validating an interactive runtime.

@@ -196,12 +196,6 @@ npm test
 npm run build
 ```
 
-Validate OpenSpec:
-
-```powershell
-openspec validate experiment-catalog-tree-point-architecture --strict
-```
-
 ## GitHub Publishing
 
 After the local repository has been created and committed, add the GitHub remote and push:

@@ -19,7 +19,6 @@ FRONTENDS = [
     ("web-teacher frontend", WEB_TEACHER_DIR, True),
     ("web-student frontend", WEB_STUDENT_DIR, True),
 ]
-DEFAULT_CHANGE = "prune-seed-to-current-runtime-data"
 
 
 @dataclass
@@ -174,13 +173,6 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
                 env=compose_host_env,
             )
         )
-    if not args.skip_openspec:
-        stages.append(
-            Stage(
-                "openspec strict validation",
-                ["openspec", "validate", args.change, "--strict"],
-            )
-        )
     stages.append(
         Stage(
             "admin app import smoke",
@@ -224,11 +216,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run the production-readiness validation chain for the admin platform."
     )
-    parser.add_argument("--change", default=DEFAULT_CHANGE, help="OpenSpec change to validate.")
     parser.add_argument("--install-frontend", action="store_true", help="Run npm ci before frontend checks.")
     parser.add_argument("--skip-frontend", action="store_true", help="Skip frontend typecheck, tests, and build.")
     parser.add_argument("--skip-backend-tests", action="store_true", help="Skip pytest backend checks.")
-    parser.add_argument("--skip-openspec", action="store_true", help="Skip OpenSpec strict validation.")
     parser.add_argument("--skip-resource-validation", action="store_true", help="Skip protected resource validation.")
     parser.add_argument(
         "--run-e2e",

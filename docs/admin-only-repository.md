@@ -138,12 +138,6 @@ npm run typecheck
 npm run build
 ```
 
-Validate OpenSpec:
-
-```powershell
-openspec validate production-hardening-iteration-two --strict
-```
-
 ## GitHub Publishing
 
 After the local repository has been created and committed, add the GitHub remote and push:
