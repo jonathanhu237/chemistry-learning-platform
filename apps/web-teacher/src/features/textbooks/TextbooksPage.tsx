@@ -116,6 +116,9 @@ const readinessIssueLabels: Record<string, string> = {
   embedding_credential_missing: "Embedding 凭证未配置",
   embedding_model_missing: "Embedding 模型未配置",
   embedding_dimension_invalid: "Embedding 维度无效",
+  embedding_protocol_unsupported: "Embedding 协议不受支持",
+  ocr_endpoint_invalid: "OCR Endpoint 为相对路径时必须配置 Base URL",
+  ocr_protocol_unsupported: "OCR 协议不受支持",
 };
 
 function uploadReadinessDescription(policy: TextbookUploadPolicy): string {
@@ -404,8 +407,8 @@ export function TextbooksPage() {
         <Alert
           type="warning"
           showIcon
-          title="MinerU 凭证尚未配置"
-          description="原生文字层不足的页面会停在“等待 OCR”。配置校内 MinerU 凭证后，可直接重试任务，无需重新上传。"
+          title={`${uploadPolicy.ocr.provider || "OCR"} 凭证尚未配置`}
+          description="原生文字层不足的页面会停在“等待 OCR”。配置 OCR 服务凭证后，可直接重试任务，无需重新上传。"
         />
       ) : null}
 
@@ -479,7 +482,7 @@ export function TextbooksPage() {
 function IngestionPipelineGuide({ policy, loading }: { policy?: TextbookUploadPolicy; loading: boolean }) {
   const stages = [
     ["01", "提取文字", "先读取 PDF 自带文字层"],
-    ["02", "按页 OCR", "仅把低质量页面送往 MinerU"],
+    ["02", "按页 OCR", "仅把低质量页面送往已配置的 OCR 服务"],
     ["03", "结构化分块", "保留章节、页码、表格与公式"],
     ["04", "向量与索引", "生成 Embedding 并校验写入数量"],
     ["05", "人工发布", "通过质量门禁后才进入 RAG"],
@@ -633,7 +636,7 @@ function UploadTextbookModal({
             <p className="ant-upload-drag-icon"><FilePdfOutlined /></p>
             <p className="ant-upload-text">拖入教材 PDF，或点击选择文件</p>
             <p className="ant-upload-hint">
-              最大 {policy?.max_upload_mb || "-"} MB、{policy?.max_pages || "-"} 页。系统会先尝试原文提取，只对低质量页调用校内 MinerU。
+              最大 {policy?.max_upload_mb || "-"} MB、{policy?.max_pages || "-"} 页。系统会先尝试原文提取，只对低质量页调用已配置的 OCR 服务。
             </p>
           </Dragger>
         </Form.Item>
@@ -796,7 +799,7 @@ function TextbookOverview({ document }: { document: TextbookDocument }) {
           <Progress type="dashboard" percent={qualityPercent(numericValue(report.average_page_quality))} size={108} />
           <Descriptions size="small" column={2} className="textbook-quality-descriptions">
             <Descriptions.Item label="原文提取页">{numericValue(report.native_page_count)}</Descriptions.Item>
-            <Descriptions.Item label="MinerU 页">{numericValue(report.ocr_page_count)}</Descriptions.Item>
+            <Descriptions.Item label="OCR 页">{numericValue(report.ocr_page_count)}</Descriptions.Item>
             <Descriptions.Item label="混合提取页">{numericValue(report.mixed_page_count)}</Descriptions.Item>
             <Descriptions.Item label="低质量页">{stringArray(report.low_quality_pages).length}</Descriptions.Item>
           </Descriptions>

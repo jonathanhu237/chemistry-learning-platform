@@ -83,7 +83,13 @@ class OnlineTextbookSearchProjector:
         self.batch_size = max(1, batch_size)
         self.progress_callback = progress_callback
 
-    def _source(self, chunk: StableChunk, embedding: Sequence[float], embedding_model: str) -> dict[str, Any]:
+    def _source(
+        self,
+        chunk: StableChunk,
+        embedding: Sequence[float],
+        embedding_model: str,
+        embedding_profile_fingerprint: str,
+    ) -> dict[str, Any]:
         metadata = dict(chunk.metadata)
         row = {
             **metadata,
@@ -120,6 +126,7 @@ class OnlineTextbookSearchProjector:
             source_file=f"online:{self.document.document_id}",
             embedding=[float(value) for value in embedding],
             embedding_model=embedding_model,
+            embedding_profile_fingerprint=embedding_profile_fingerprint,
         )
 
     def _index_id(self, chunk: StableChunk) -> str:
@@ -133,6 +140,7 @@ class OnlineTextbookSearchProjector:
         embeddings: Sequence[Sequence[float]],
         *,
         embedding_model: str,
+        embedding_profile_fingerprint: str = "",
     ) -> dict[str, object]:
         if not chunks:
             raise TextbookProjectionError("no_chunks", "A textbook projection cannot be created without chunks")
@@ -154,11 +162,14 @@ class OnlineTextbookSearchProjector:
                 details={"expected": self.embedding_dimension, "invalid_indexes": invalid_dimensions[:20]},
             )
 
-        self.es.ensure_index(
-            embedding_model=embedding_model,
-            embedding_dimension=self.embedding_dimension,
-            recreate=False,
-        )
+        ensure_contract: dict[str, Any] = {
+            "embedding_model": embedding_model,
+            "embedding_dimension": self.embedding_dimension,
+            "recreate": False,
+        }
+        if embedding_profile_fingerprint:
+            ensure_contract["embedding_profile_fingerprint"] = embedding_profile_fingerprint
+        self.es.ensure_index(**ensure_contract)
         # Only clear a partial projection owned by this exact lease generation.
         # Another worker may have reclaimed the job after our last database
         # fence; neither cleanup nor deterministic chunk ids may affect its run.
@@ -178,7 +189,14 @@ class OnlineTextbookSearchProjector:
             batch_embeddings = embeddings[start : start + self.batch_size]
             for chunk, embedding in zip(batch_chunks, batch_embeddings):
                 operations.append({"index": {"_index": self.es.index, "_id": self._index_id(chunk)}})
-                operations.append(self._source(chunk, embedding, embedding_model))
+                operations.append(
+                    self._source(
+                        chunk,
+                        embedding,
+                        embedding_model,
+                        embedding_profile_fingerprint,
+                    )
+                )
             response = self.es.bulk(operations)
             expected_ids = [self._index_id(chunk) for chunk in batch_chunks]
             successful, batch_failures = validate_bulk_index_response(response, expected_ids=expected_ids)
@@ -230,6 +248,7 @@ class OnlineTextbookSearchProjector:
             "indexed_chunks": actual_count,
             "embedding_model": embedding_model,
             "embedding_dimension": self.embedding_dimension,
+            "embedding_profile_fingerprint": embedding_profile_fingerprint,
             "removed_stale_chunks": int(cleanup.get("deleted") or 0),
         }
 

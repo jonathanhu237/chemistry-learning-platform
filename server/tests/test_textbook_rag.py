@@ -2,10 +2,19 @@ from __future__ import annotations
 
 from typing import Any
 
-from server.app.domains.textbook_rag.clients import QwenEmbeddingClient, QwenRerankClient, _extract_rerank_scores
+import pytest
+
+from server.app.domains.textbook_rag.clients import (
+    OpenAICompatibleEmbeddingClient,
+    OpenAICompatibleRerankClient,
+    QwenEmbeddingClient,
+    QwenRerankClient,
+    TextbookRAGClientError,
+    _extract_rerank_scores,
+)
 import server.app.domains.textbook_rag.clients as client_module
 from server.app.domains.textbook_rag.cache import retrieve_textbook_evidence_cached, textbook_evidence_cache_fingerprints
-from server.app.domains.textbook_rag.index import textbook_chunk_index_mapping
+from server.app.domains.textbook_rag.index import index_textbook_chunks, textbook_chunk_index_mapping
 from server.app.domains.textbook_rag.retrieval import build_section_queries, retrieve_textbook_evidence
 import server.app.domains.textbook_rag.retrieval as retrieval_module
 
@@ -15,8 +24,23 @@ def _settings() -> dict[str, Any]:
         "enabled": True,
         "elasticsearch_url": "http://localhost:9200",
         "index_name": "canonical-rag-chunks-qwen-v1",
-        "embedding": {"base_url": "http://qwen.example", "api_key": "key", "model": "embed-model"},
-        "rerank": {"base_url": "http://qwen.example", "api_key": "key", "model": "rerank-model"},
+        "embedding": {
+            "provider": "openai_compatible",
+            "protocol": "openai_embeddings",
+            "base_url": "http://qwen.example",
+            "endpoint": "",
+            "api_key": "key",
+            "model": "embed-model",
+            "send_dimensions": True,
+        },
+        "rerank": {
+            "provider": "openai_compatible",
+            "protocol": "auto",
+            "base_url": "http://qwen.example",
+            "endpoint": "",
+            "api_key": "key",
+            "model": "rerank-model",
+        },
         "embedding_dimension": 2,
         "keyword_top_k": 2,
         "vector_top_k": 2,
@@ -31,6 +55,30 @@ def test_extract_rerank_scores_supports_output_results_shape() -> None:
     response = {"output": {"results": [{"index": 1, "relevance_score": 0.2}, {"index": 0, "relevance_score": 0.9}]}}
 
     assert _extract_rerank_scores(response, 2) == [0.9, 0.2]
+
+
+def test_extract_rerank_scores_preserves_sequential_results_without_indexes() -> None:
+    response = {"results": [{"score": 0.9}, {"score": 0.2}]}
+
+    assert _extract_rerank_scores(response, 2) == [0.9, 0.2]
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        {"results": [{"index": 0, "score": 0.9}]},
+        {"results": [{"index": 0, "score": 0.9}, {"index": 0, "score": 0.2}]},
+        {"results": [{"index": -1, "score": 0.9}, {"index": 1, "score": 0.2}]},
+        [{"index": 0, "score": 0.9}, {"index": 2, "score": 0.2}],
+        {"results": [{"index": 0, "score": 0.9}, {"score": 0.2}]},
+    ],
+    ids=["partial", "duplicate", "negative", "out-of-range-tei", "mixed"],
+)
+def test_extract_rerank_scores_rejects_incomplete_or_invalid_indexes(
+    response: dict[str, Any] | list[Any],
+) -> None:
+    with pytest.raises(TextbookRAGClientError):
+        _extract_rerank_scores(response, 2)
 
 
 def test_qwen_embedding_client_sends_configured_dimensions(monkeypatch: Any) -> None:
@@ -54,6 +102,90 @@ def test_qwen_embedding_client_sends_configured_dimensions(monkeypatch: Any) -> 
     assert captured["payload"]["dimensions"] == 1024
 
 
+def test_embedding_client_orders_vectors_by_response_index(monkeypatch: Any) -> None:
+    def fake_request_json(**_kwargs: Any) -> dict[str, Any]:
+        return {
+            "data": [
+                {"index": 1, "embedding": [0.2, 0.21]},
+                {"index": 0, "embedding": [0.1, 0.11]},
+            ]
+        }
+
+    monkeypatch.setattr(client_module, "_request_json", fake_request_json)
+
+    vectors = OpenAICompatibleEmbeddingClient(
+        base_url="https://embedding.example.test/v1",
+        api_key="key",
+        model="bge-m3",
+        dimensions=2,
+    ).embed(["first", "second"])
+
+    assert vectors == [[0.1, 0.11], [0.2, 0.21]]
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        [{"index": 0, "embedding": [0.1, 0.11]}],
+        [
+            {"index": 0, "embedding": [0.1, 0.11]},
+            {"index": 0, "embedding": [0.2, 0.21]},
+        ],
+        [
+            {"index": -1, "embedding": [0.1, 0.11]},
+            {"index": 1, "embedding": [0.2, 0.21]},
+        ],
+        [
+            {"index": 0, "embedding": [0.1, 0.11]},
+            {"index": 2, "embedding": [0.2, 0.21]},
+        ],
+        [
+            {"index": 0, "embedding": [0.1, 0.11]},
+            {"embedding": [0.2, 0.21]},
+        ],
+    ],
+    ids=["partial", "duplicate", "negative", "out-of-range", "mixed"],
+)
+def test_embedding_client_rejects_incomplete_or_invalid_indexes(
+    monkeypatch: Any,
+    data: list[dict[str, Any]],
+) -> None:
+    monkeypatch.setattr(client_module, "_request_json", lambda **_kwargs: {"data": data})
+    client = OpenAICompatibleEmbeddingClient(
+        base_url="https://embedding.example.test/v1",
+        api_key="key",
+        model="bge-m3",
+        dimensions=2,
+    )
+
+    with pytest.raises(TextbookRAGClientError):
+        client.embed(["first", "second"])
+
+
+def test_embedding_client_can_use_explicit_endpoint_without_sending_dimensions(monkeypatch: Any) -> None:
+    captured: dict[str, Any] = {}
+
+    def fake_request_json(**kwargs: Any) -> dict[str, Any]:
+        captured.update(kwargs)
+        return {"data": [{"embedding": [0.1, 0.2]}]}
+
+    monkeypatch.setattr(client_module, "_request_json", fake_request_json)
+
+    vectors = OpenAICompatibleEmbeddingClient(
+        base_url="",
+        endpoint="https://embedding.example.test/v1/embeddings",
+        api_key="key",
+        model="bge-m3",
+        dimensions=1024,
+        protocol="openai_embeddings",
+        send_dimensions=False,
+    ).embed(["配位化学"])
+
+    assert vectors == [[0.1, 0.2]]
+    assert captured["url"] == "https://embedding.example.test/v1/embeddings"
+    assert "dimensions" not in captured["payload"]
+
+
 def test_qwen_rerank_client_supports_dashscope_native_payload(monkeypatch: Any) -> None:
     captured: dict[str, Any] = {}
 
@@ -74,6 +206,81 @@ def test_qwen_rerank_client_supports_dashscope_native_payload(monkeypatch: Any) 
     assert captured["payload"]["input"]["query"] == "卤素氧化性"
     assert captured["payload"]["input"]["documents"] == ["Cl2 oxidizes Br-", "unrelated"]
     assert captured["payload"]["parameters"]["top_n"] == 2
+
+
+def test_rerank_client_supports_tei_texts_and_top_level_array(monkeypatch: Any) -> None:
+    captured: dict[str, Any] = {}
+
+    def fake_request_json(**kwargs: Any) -> list[dict[str, Any]]:
+        captured.update(kwargs)
+        return [{"index": 1, "score": 0.25}, {"index": 0, "score": 0.85}]
+
+    monkeypatch.setattr(client_module, "_request_json", fake_request_json)
+
+    scores = OpenAICompatibleRerankClient(
+        base_url="https://tei.example.test",
+        endpoint="/rerank",
+        api_key="key",
+        model="bge-reranker-v2-m3",
+        protocol="tei",
+    ).rerank(query="配合物稳定性", documents=["相关", "不相关"])
+
+    assert scores == [0.85, 0.25]
+    assert captured["url"] == "https://tei.example.test/rerank"
+    assert captured["payload"] == {
+        "query": "配合物稳定性",
+        "texts": ["相关", "不相关"],
+    }
+
+
+def test_clients_reject_unsupported_protocols_before_request(monkeypatch: Any) -> None:
+    monkeypatch.setattr(
+        client_module,
+        "_request_json",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("request must not run")),
+    )
+
+    with pytest.raises(TextbookRAGClientError, match="unsupported embedding protocol"):
+        OpenAICompatibleEmbeddingClient(
+            base_url="https://embedding.example.test/v1",
+            api_key="key",
+            model="bge-m3",
+            protocol="unknown",
+        ).embed(["test"])
+    with pytest.raises(TextbookRAGClientError, match="unsupported rerank protocol"):
+        OpenAICompatibleRerankClient(
+            base_url="https://rerank.example.test/v1",
+            api_key="key",
+            model="bge-reranker",
+            protocol="unknown",
+        ).rerank(query="test", documents=["doc"])
+
+
+def test_canonical_indexing_validates_embedding_protocol_before_recreate() -> None:
+    class FakeES:
+        def ensure_index(self, **_kwargs: Any) -> None:
+            raise AssertionError("index must not be recreated for an invalid provider contract")
+
+    client = OpenAICompatibleEmbeddingClient(
+        base_url="https://embedding.example.test/v1",
+        api_key="key",
+        model="bge-m3",
+        protocol="unsupported",
+    )
+
+    with pytest.raises(TextbookRAGClientError, match="unsupported embedding protocol"):
+        index_textbook_chunks(
+            es=FakeES(),  # type: ignore[arg-type]
+            embedding_client=client,
+            chunk_paths=[],
+            embedding_dimension=1024,
+            recreate=True,
+        )
+
+
+def test_qwen_client_names_remain_backward_compatible_aliases() -> None:
+    assert QwenEmbeddingClient is OpenAICompatibleEmbeddingClient
+    assert QwenRerankClient is OpenAICompatibleRerankClient
 
 
 def test_textbook_chunk_mapping_records_model_metadata() -> None:
@@ -107,6 +314,45 @@ def test_textbook_evidence_cache_fingerprint_excludes_api_keys() -> None:
         point_node_id="point-1",
         canonical_point_id="canon-1",
     )
+
+
+def test_textbook_evidence_cache_fingerprint_includes_provider_protocol_and_endpoint() -> None:
+    point_context = {
+        "point_title": "配合物",
+        "content": {"principle_text": "比较稳定常数。"},
+    }
+    baseline = textbook_evidence_cache_fingerprints(
+        point_context=point_context,
+        settings=_settings(),
+        point_node_id="point-1",
+    )
+    changed = _settings()
+    changed["rerank"] = {
+        **changed["rerank"],
+        "provider": "tei",
+        "protocol": "tei",
+        "endpoint": "https://tei.example.test/rerank",
+    }
+
+    assert textbook_evidence_cache_fingerprints(
+        point_context=point_context,
+        settings=changed,
+        point_node_id="point-1",
+    )["config_fingerprint"] != baseline["config_fingerprint"]
+
+    changed_target = {**_settings(), "elasticsearch_url": "http://other-es.example.test:9200"}
+    assert textbook_evidence_cache_fingerprints(
+        point_context=point_context,
+        settings=changed_target,
+        point_node_id="point-1",
+    )["config_fingerprint"] != baseline["config_fingerprint"]
+
+    disabled = {**_settings(), "enabled": False}
+    assert textbook_evidence_cache_fingerprints(
+        point_context=point_context,
+        settings=disabled,
+        point_node_id="point-1",
+    )["config_fingerprint"] != baseline["config_fingerprint"]
 
 
 def test_cached_textbook_evidence_does_not_call_retriever_on_hit() -> None:
@@ -217,8 +463,8 @@ def test_retrieve_textbook_evidence_groups_section_sources(monkeypatch: Any) -> 
                 }
             }
 
-    monkeypatch.setattr(retrieval_module, "QwenEmbeddingClient", FakeEmbeddingClient)
-    monkeypatch.setattr(retrieval_module, "QwenRerankClient", FakeRerankClient)
+    monkeypatch.setattr(retrieval_module, "OpenAICompatibleEmbeddingClient", FakeEmbeddingClient)
+    monkeypatch.setattr(retrieval_module, "OpenAICompatibleRerankClient", FakeRerankClient)
     monkeypatch.setattr(retrieval_module, "TextbookElasticsearchClient", FakeES)
 
     package = retrieve_textbook_evidence(
@@ -268,8 +514,8 @@ def test_retrieve_textbook_evidence_fails_when_all_sections_have_no_sources(monk
         def request(self, method: str, path: str, payload: dict[str, Any]) -> dict[str, Any]:
             return {"hits": {"hits": []}}
 
-    monkeypatch.setattr(retrieval_module, "QwenEmbeddingClient", FakeEmbeddingClient)
-    monkeypatch.setattr(retrieval_module, "QwenRerankClient", FakeRerankClient)
+    monkeypatch.setattr(retrieval_module, "OpenAICompatibleEmbeddingClient", FakeEmbeddingClient)
+    monkeypatch.setattr(retrieval_module, "OpenAICompatibleRerankClient", FakeRerankClient)
     monkeypatch.setattr(retrieval_module, "TextbookElasticsearchClient", FakeES)
 
     package = retrieve_textbook_evidence(

@@ -98,7 +98,7 @@ export function ragStatus(aiConfig?: AIConfiguration, assistantRuntime?: Learnin
 
 export function ragRouteSummary(aiConfig?: AIConfiguration, assistantRuntime?: LearningAssistantRuntime) {
   const runtime = assistantRuntime?.rag_runtime || aiConfig?.rag_runtime;
-  if (runtime?.rag_enabled && runtime?.textbook_rag_enabled) return `外部教材 RAG · ${runtime.textbook_rag_index || "Qwen/ES"}`;
+  if (runtime?.rag_enabled && runtime?.textbook_rag_enabled) return `外部教材 RAG · ${runtime.textbook_rag_index || "Embedding/ES"}`;
   if (runtime?.rag_enabled) return "外部教材 RAG 未启用";
   return "RAG 已关闭";
 }

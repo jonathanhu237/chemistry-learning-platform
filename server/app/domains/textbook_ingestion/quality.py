@@ -6,6 +6,21 @@ from typing import Sequence
 from server.app.domains.textbook_ingestion.contracts import ExtractionMethod, NormalizedPage, StableChunk
 
 
+CONFIRMED_BLANK_PAGE_FLAG = "ocr_confirmed_blank_page"
+
+
+def _is_confirmed_blank_page(page: NormalizedPage) -> bool:
+    detection = page.diagnostics.get("blank_page_detection")
+    return bool(
+        not page.text.strip()
+        and page.extraction_method == ExtractionMethod.MINERU
+        and not page.quality.needs_ocr
+        and CONFIRMED_BLANK_PAGE_FLAG in page.quality.flags
+        and isinstance(detection, dict)
+        and detection.get("confirmed") is True
+    )
+
+
 def build_textbook_quality_report(
     pages: Sequence[NormalizedPage],
     chunks: Sequence[StableChunk],
@@ -16,7 +31,12 @@ def build_textbook_quality_report(
     expected_pages = list(range(1, max(page_numbers, default=0) + 1))
     missing_pages = sorted(set(expected_pages) - set(page_numbers))
     duplicate_pages = sorted(number for number, count in Counter(page_numbers).items() if count > 1)
-    empty_pages = sorted(page.page_number for page in pages if not page.text.strip())
+    confirmed_blank_pages = sorted(page.page_number for page in pages if _is_confirmed_blank_page(page))
+    empty_pages = sorted(
+        page.page_number
+        for page in pages
+        if not page.text.strip() and not _is_confirmed_blank_page(page)
+    )
     unresolved_ocr_pages = sorted(page.page_number for page in pages if page.quality.needs_ocr)
     low_quality_pages = sorted(page.page_number for page in pages if page.quality.score < 0.55)
 
@@ -106,6 +126,7 @@ def build_textbook_quality_report(
         "average_page_quality": round(average_quality, 6),
         "missing_pages": missing_pages,
         "duplicate_pages": duplicate_pages,
+        "confirmed_blank_pages": confirmed_blank_pages,
         "empty_pages": empty_pages,
         "unresolved_ocr_pages": unresolved_ocr_pages,
         "low_quality_pages": low_quality_pages,

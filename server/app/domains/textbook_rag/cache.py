@@ -12,7 +12,7 @@ from server.app.domains.textbook_rag.active_corpus import settings_with_active_t
 from server.app.domains.textbook_rag.retrieval import retrieve_textbook_evidence
 
 
-TEXTBOOK_EVIDENCE_CACHE_SCHEMA_VERSION = 2
+TEXTBOOK_EVIDENCE_CACHE_SCHEMA_VERSION = 3
 
 
 def _stable_json(value: Any) -> str:
@@ -41,13 +41,22 @@ def _sanitized_config(settings: dict[str, Any]) -> dict[str, Any]:
     )
     return {
         "schema_version": TEXTBOOK_EVIDENCE_CACHE_SCHEMA_VERSION,
+        "enabled": bool(settings.get("enabled")),
+        "elasticsearch_url": str(settings.get("elasticsearch_url") or ""),
         "index_name": str(settings.get("index_name") or ""),
         "embedding": {
+            "provider": str(embedding.get("provider") or ""),
+            "protocol": str(embedding.get("protocol") or ""),
             "base_url": str(embedding.get("base_url") or ""),
+            "endpoint": str(embedding.get("endpoint") or ""),
             "model": str(embedding.get("model") or ""),
+            "send_dimensions": bool(embedding.get("send_dimensions", True)),
         },
         "rerank": {
+            "provider": str(rerank.get("provider") or ""),
+            "protocol": str(rerank.get("protocol") or ""),
             "base_url": str(rerank.get("base_url") or ""),
+            "endpoint": str(rerank.get("endpoint") or ""),
             "model": str(rerank.get("model") or ""),
         },
         "embedding_dimension": int(settings.get("embedding_dimension") or 0),

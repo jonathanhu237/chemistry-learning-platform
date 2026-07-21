@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+from dataclasses import replace
 from types import SimpleNamespace
 
 from server.app.domains.textbook_ingestion.config import (
@@ -54,6 +55,19 @@ def test_independent_heartbeat_runs_while_job_code_is_blocked(monkeypatch) -> No
         assert called.wait(0.5)
 
     assert runner.error is None
+
+
+def test_build_pipeline_uses_runtime_ocr_token_limit_and_embedding_batch_size() -> None:
+    settings = replace(
+        _settings(),
+        textbook_ocr_max_output_tokens=12288,
+        textbook_embedding_batch_size=24,
+    )
+
+    pipeline = worker.build_pipeline(settings)
+
+    assert pipeline.ocr_provider.max_output_tokens == 12288
+    assert pipeline.embedder.batch_size == 24
 
 
 def test_worker_rejects_claim_when_processing_snapshot_changed(monkeypatch) -> None:

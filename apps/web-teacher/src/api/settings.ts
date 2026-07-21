@@ -40,19 +40,55 @@ export type PlatformSettingsResponse = {
 
 export type AIProviderRole = {
   role: string;
-  provider: "openai";
+  provider: string;
+  protocol: string;
   base_url: string;
+  endpoint: string;
   model: string;
   api_key_configured: boolean;
   api_key_fingerprint?: string | null;
+};
+
+export type TextbookProviderRole = {
+  role: string;
+  provider: string;
+  protocol: string;
+  base_url: string;
+  endpoint: string;
+  model: string;
+  api_key_configured: boolean;
+  api_key_fingerprint?: string | null;
+};
+
+export type TextbookEmbeddingRole = TextbookProviderRole & {
+  send_dimensions: boolean;
+  batch_size: number;
+};
+
+export type TextbookOCRConfiguration = {
+  role: string;
+  enabled: boolean;
+  provider: string;
+  protocol: string;
+  base_url: string;
+  endpoint: string;
+  model: string;
+  api_key_configured: boolean;
+  api_key_fingerprint?: string | null;
+  timeout_seconds: number;
+  concurrency: number;
+  max_retries: number;
+  max_output_tokens: number;
+  render_dpi: number;
 };
 
 export type TextbookRAGConfiguration = {
   enabled: boolean;
   elasticsearch_url: string;
   index_name: string;
-  embedding: AIProviderRole;
-  rerank: AIProviderRole;
+  ocr: TextbookOCRConfiguration;
+  embedding: TextbookEmbeddingRole;
+  rerank: TextbookProviderRole;
   embedding_dimension: number;
   keyword_top_k: number;
   vector_top_k: number;
@@ -63,7 +99,7 @@ export type TextbookRAGConfiguration = {
 };
 
 export type AIConfiguration = {
-  provider: "openai";
+  provider: string;
   base_url: string;
   model: string;
   connection_check_interval_minutes: number;
@@ -154,14 +190,14 @@ export type AIConfiguration = {
 };
 
 export type AIConfigurationUpdate = {
-  provider: "openai";
+  provider: string;
   base_url: string;
   model: string;
   connection_check_interval_minutes: number;
   api_key?: string | null;
   enabled_features: AIConfiguration["enabled_features"];
   chat_provider?: {
-    provider: "openai";
+    provider: string;
     base_url: string;
     model: string;
     api_key?: string | null;
@@ -170,15 +206,35 @@ export type AIConfigurationUpdate = {
     enabled: boolean;
     elasticsearch_url: string;
     index_name: string;
-    embedding: {
-      provider: "openai";
+    ocr: {
+      enabled: boolean;
+      provider: string;
+      protocol: string;
       base_url: string;
+      endpoint: string;
       model: string;
       api_key?: string | null;
+      timeout_seconds: number;
+      concurrency: number;
+      max_retries: number;
+      max_output_tokens: number;
+      render_dpi: number;
+    };
+    embedding: {
+      provider: string;
+      protocol: string;
+      base_url: string;
+      endpoint: string;
+      model: string;
+      api_key?: string | null;
+      send_dimensions: boolean;
+      batch_size: number;
     };
     rerank: {
-      provider: "openai";
+      provider: string;
+      protocol: string;
       base_url: string;
+      endpoint: string;
       model: string;
       api_key?: string | null;
     };

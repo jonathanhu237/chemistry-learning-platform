@@ -290,6 +290,9 @@ class TextbookIngestionPipeline:
                 stage_metrics={"extracting": _duration_metric(started)},
                 message=f"Native extraction completed for {total_pages} page(s)",
             )
+            ocr_provider_label = str(
+                getattr(self.ocr_provider, "provider_label", "ocr") or "ocr"
+            )
 
             if pending_ocr_indexes and not self.ocr_provider.configured:
                 awaiting_report = build_textbook_quality_report(pages, [])
@@ -307,7 +310,7 @@ class TextbookIngestionPipeline:
                         "ocr_required_pages": [pages[index].page_number for index in pending_ocr_indexes],
                         "ocr_reused_pages": [pages[index].page_number for index in reused_ocr_indexes],
                     },
-                    message="OCR is required but the SYSU MinerU provider is not configured",
+                    message=f"OCR is required but provider {ocr_provider_label} is not configured",
                 )
                 return PipelineOutcome(
                     job_id=current.id,
@@ -331,7 +334,10 @@ class TextbookIngestionPipeline:
                         "ocr_required_pages": [pages[index].page_number for index in pending_ocr_indexes],
                         "ocr_reused_pages": [pages[index].page_number for index in reused_ocr_indexes],
                     },
-                    message=f"Queued {len(pending_ocr_indexes)} rejected page(s) for SYSU MinerU OCR",
+                    message=(
+                        f"Queued {len(pending_ocr_indexes)} rejected page(s) "
+                        f"for {ocr_provider_label} OCR"
+                    ),
                 )
                 ocr_started = time.monotonic()
                 pages = asyncio.run(
@@ -348,14 +354,14 @@ class TextbookIngestionPipeline:
                     **_duration_metric(ocr_started),
                     "page_count": ocr_page_count,
                     "reused_page_count": reused_ocr_count,
-                    "provider": "sysu_aigw_mineru",
+                    "provider": ocr_provider_label,
                 }
             else:
                 ocr_metric = {
                     "duration_ms": 0,
                     "page_count": ocr_page_count,
                     "reused_page_count": reused_ocr_count,
-                    "provider": "sysu_aigw_mineru" if reused_ocr_count else None,
+                    "provider": ocr_provider_label if reused_ocr_count else None,
                 }
 
             self._ensure_active(current)
@@ -442,10 +448,18 @@ class TextbookIngestionPipeline:
                 lambda completed, total: self._index_progress(current, completed, total),
                 current.lease_token,
             )
+            embedding_profile = str(
+                getattr(self.embedder, "profile_fingerprint", "") or ""
+            )
+            projection_kwargs: dict[str, Any] = {
+                "embedding_model": self.embedder.model,
+            }
+            if embedding_profile:
+                projection_kwargs["embedding_profile_fingerprint"] = embedding_profile
             projection = projector.project(
                 chunks,
                 embedding_result.vectors,
-                embedding_model=self.embedder.model,
+                **projection_kwargs,
             )
             if not bool(projection.get("index_verified")):
                 raise TextbookIngestionError(

@@ -9,6 +9,7 @@ from sqlalchemy import text
 
 from server.app.domains.textbook_ingestion.config import (
     effective_ingestion_settings,
+    ingestion_processing_readiness,
     processing_config_snapshot,
     processing_fingerprint,
 )
@@ -858,6 +859,14 @@ def request_cancellation(job_id: str, *, actor_id: str | None) -> dict[str, Any]
 
 def retry_job(job_id: str, *, actor_id: str | None) -> dict[str, Any]:
     settings = effective_ingestion_settings()
+    readiness = ingestion_processing_readiness(settings)
+    if not readiness["ready"]:
+        raise TextbookIngestionError(
+            "textbook_ingestion_not_ready",
+            "Online textbook processing dependencies are not configured",
+            status_code=503,
+            missing=readiness["missing"],
+        )
     snapshot = processing_config_snapshot(settings)
     fingerprint = processing_fingerprint(snapshot)
     with db_session() as session:

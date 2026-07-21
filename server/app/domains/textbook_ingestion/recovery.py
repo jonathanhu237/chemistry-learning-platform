@@ -15,7 +15,13 @@ from server.app.domains.textbook_ingestion.projection import (
     OnlineTextbookSearchProjector,
     ProjectionDocument,
 )
-from server.app.domains.textbook_rag.clients import QwenEmbeddingClient
+from server.app.domains.textbook_rag.clients import (
+    OpenAICompatibleEmbeddingClient,
+    TextbookRAGClientError,
+    embedding_profile_fingerprint,
+    endpoint_configured,
+    validate_embedding_protocol,
+)
 from server.app.domains.textbook_rag.index import TextbookElasticsearchClient
 from server.app.infrastructure.database import db_session
 from server.app.infrastructure.settings import Settings
@@ -36,6 +42,9 @@ class RecoveryEmbedder(Protocol):
     @property
     def model(self) -> str: ...
 
+    @property
+    def profile_fingerprint(self) -> str: ...
+
     def embed_chunks(self, chunks: Sequence[StableChunk], **kwargs: Any) -> Any: ...
 
 
@@ -46,6 +55,7 @@ class RecoveryProjector(Protocol):
         embeddings: Sequence[Sequence[float]],
         *,
         embedding_model: str,
+        embedding_profile_fingerprint: str = "",
     ) -> dict[str, object]: ...
 
     def delete_projection_run(
@@ -67,6 +77,7 @@ class RetainedOnlineTextbook:
     expected_embedding_model: str
     expected_embedding_dimension: int
     chunks: tuple[StableChunk, ...]
+    expected_embedding_profile_fingerprint: str = ""
 
 
 RecoveryProjectorFactory = Callable[[RetainedOnlineTextbook, str], RecoveryProjector]
@@ -117,7 +128,7 @@ def count_online_textbooks() -> int:
     return int(online_textbook_inventory()["documents"])
 
 
-def _embedding_contract(row: dict[str, Any]) -> tuple[str, int]:
+def _embedding_contract(row: dict[str, Any]) -> tuple[str, int, str]:
     config_snapshot = dict(row.get("config_snapshot") or {})
     snapshot_embedding = dict(config_snapshot.get("embedding") or {})
     outputs = dict(row.get("outputs") or {})
@@ -125,7 +136,22 @@ def _embedding_contract(row: dict[str, Any]) -> tuple[str, int]:
     dimension = int(
         snapshot_embedding.get("dimension") or outputs.get("embedding_dimension") or 0
     )
-    return model, dimension
+    profile = str(
+        snapshot_embedding.get("profile_fingerprint")
+        or outputs.get("embedding_profile_fingerprint")
+        or ""
+    ).strip()
+    if not profile and snapshot_embedding.get("protocol") and model and dimension > 0:
+        profile = embedding_profile_fingerprint(
+            provider=str(snapshot_embedding.get("provider") or "openai_compatible"),
+            protocol=str(snapshot_embedding.get("protocol") or "openai_embeddings"),
+            base_url=str(snapshot_embedding.get("base_url") or ""),
+            endpoint=str(snapshot_embedding.get("endpoint") or ""),
+            model=model,
+            dimensions=dimension,
+            send_dimensions=bool(snapshot_embedding.get("send_dimensions", True)),
+        )
+    return model, dimension, profile
 
 
 def _stable_chunk(
@@ -281,7 +307,7 @@ def load_online_textbooks_for_reprojection(
                 "online_textbook_chunks_missing",
                 f"Online textbook {document_id} has no PostgreSQL chunks to reproject",
             )
-        expected_model, expected_dimension = _embedding_contract(row)
+        expected_model, expected_dimension, expected_profile = _embedding_contract(row)
         documents.append(
             RetainedOnlineTextbook(
                 document_id=document_id,
@@ -298,6 +324,7 @@ def load_online_textbooks_for_reprojection(
                 expected_embedding_model=expected_model,
                 expected_embedding_dimension=expected_dimension,
                 chunks=chunks,
+                expected_embedding_profile_fingerprint=expected_profile,
             )
         )
     return documents
@@ -312,11 +339,13 @@ def reproject_online_textbooks(
     run_committer: RecoveryRunCommitter,
 ) -> dict[str, Any]:
     results: list[dict[str, Any]] = []
+    profile_fingerprint = str(getattr(embedder, "profile_fingerprint", "") or "")
     for document in documents:
         _validate_embedding_contract(
             document,
             embedding_model=embedder.model,
             embedding_dimension=embedding_dimension,
+            embedding_profile_fingerprint=profile_fingerprint,
         )
         embedding_result = embedder.embed_chunks(document.chunks)
         vectors = getattr(embedding_result, "vectors", None)
@@ -325,11 +354,10 @@ def reproject_online_textbooks(
         projection_run_id = f"recovery-{uuid.uuid4().hex}"
         projector = projector_factory(document, projection_run_id)
         try:
-            projection = projector.project(
-                document.chunks,
-                vectors,
-                embedding_model=embedder.model,
-            )
+            projection_kwargs: dict[str, Any] = {"embedding_model": embedder.model}
+            if profile_fingerprint:
+                projection_kwargs["embedding_profile_fingerprint"] = profile_fingerprint
+            projection = projector.project(document.chunks, vectors, **projection_kwargs)
             if not bool(projection.get("index_verified")) or int(
                 projection.get("indexed_chunks") or 0
             ) != len(document.chunks):
@@ -386,6 +414,7 @@ def reproject_online_textbooks(
         "chunks": sum(int(item["chunks"]) for item in results),
         "embedding_model": embedder.model,
         "embedding_dimension": embedding_dimension,
+        "embedding_profile_fingerprint": profile_fingerprint,
         "results": results,
     }
 
@@ -522,6 +551,7 @@ def _validate_embedding_contract(
     *,
     embedding_model: str,
     embedding_dimension: int,
+    embedding_profile_fingerprint: str = "",
 ) -> None:
     if document.expected_embedding_model and document.expected_embedding_model != embedding_model:
         raise TextbookRecoveryError(
@@ -542,6 +572,18 @@ def _validate_embedding_contract(
             expected=document.expected_embedding_dimension,
             configured=embedding_dimension,
         )
+    if (
+        document.expected_embedding_profile_fingerprint
+        and document.expected_embedding_profile_fingerprint
+        != embedding_profile_fingerprint
+    ):
+        raise TextbookRecoveryError(
+            "embedding_profile_changed",
+            "Configured embedding provider contract does not match the retained textbook processing contract",
+            document_id=document.document_id,
+            expected=document.expected_embedding_profile_fingerprint,
+            configured=embedding_profile_fingerprint or None,
+        )
 
 
 def validate_reprojection_configuration(
@@ -557,7 +599,10 @@ def validate_reprojection_configuration(
         missing.append("elasticsearch_url_missing")
     if not (index or settings.textbook_rag_elasticsearch_index):
         missing.append("elasticsearch_index_missing")
-    if not settings.textbook_rag_embedding_base_url:
+    if not endpoint_configured(
+        settings.textbook_rag_embedding_base_url,
+        settings.textbook_rag_embedding_endpoint,
+    ):
         missing.append("embedding_base_url_missing")
     if not settings.textbook_rag_embedding_api_key:
         missing.append("embedding_credential_missing")
@@ -565,12 +610,28 @@ def validate_reprojection_configuration(
         missing.append("embedding_model_missing")
     if settings.textbook_rag_embedding_dimension <= 0:
         missing.append("embedding_dimension_invalid")
+    try:
+        validate_embedding_protocol(settings.textbook_rag_embedding_protocol)
+    except TextbookRAGClientError:
+        missing.append("embedding_protocol_unsupported")
     if missing:
         raise TextbookRecoveryError(
             "online_textbook_reprojection_not_configured",
             "Online textbook reprojection dependencies are not configured",
             missing=missing,
         )
+
+
+def _settings_embedding_profile(settings: Settings) -> str:
+    return embedding_profile_fingerprint(
+        provider=settings.textbook_rag_embedding_provider,
+        protocol=settings.textbook_rag_embedding_protocol,
+        base_url=settings.textbook_rag_embedding_base_url,
+        endpoint=settings.textbook_rag_embedding_endpoint,
+        model=settings.textbook_rag_embedding_model,
+        dimensions=settings.textbook_rag_embedding_dimension,
+        send_dimensions=settings.textbook_rag_embedding_send_dimensions,
+    )
 
 
 def preflight_configured_online_reprojection(
@@ -593,17 +654,20 @@ def preflight_configured_online_reprojection(
         publication_statuses=publication_statuses,
         document_ids=document_ids,
     )
+    profile_fingerprint = _settings_embedding_profile(effective)
     for document in documents:
         _validate_embedding_contract(
             document,
             embedding_model=effective.textbook_rag_embedding_model,
             embedding_dimension=effective.textbook_rag_embedding_dimension,
+            embedding_profile_fingerprint=profile_fingerprint,
         )
     return {
         "documents": len(documents),
         "chunks": sum(len(document.chunks) for document in documents),
         "embedding_model": effective.textbook_rag_embedding_model,
         "embedding_dimension": effective.textbook_rag_embedding_dimension,
+        "embedding_profile_fingerprint": profile_fingerprint,
     }
 
 
@@ -632,12 +696,16 @@ def reproject_configured_online_textbooks(
         index=index or effective.textbook_rag_elasticsearch_index,
         timeout=effective.textbook_rag_timeout_seconds,
     )
-    client = QwenEmbeddingClient(
+    client = OpenAICompatibleEmbeddingClient(
         base_url=effective.textbook_rag_embedding_base_url,
         api_key=effective.textbook_rag_embedding_api_key,
         model=effective.textbook_rag_embedding_model,
         dimensions=effective.textbook_rag_embedding_dimension,
         timeout_seconds=effective.textbook_rag_timeout_seconds,
+        provider=effective.textbook_rag_embedding_provider,
+        protocol=effective.textbook_rag_embedding_protocol,
+        endpoint=effective.textbook_rag_embedding_endpoint,
+        send_dimensions=effective.textbook_rag_embedding_send_dimensions,
     )
     # ES is the only vector store. Recovery intentionally does not use the ES
     # reuse store: after index loss every vector is recomputed by the configured

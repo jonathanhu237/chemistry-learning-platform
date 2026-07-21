@@ -291,7 +291,7 @@ export function questionWorkbenchGateFromRuntime(runtime?: LearningAssistantRunt
   const ragRuntime = runtime?.rag_runtime;
   const textbookStatus = runtime?.textbook_rag_status || ragRuntime?.textbook_rag_status || "disabled";
   const route = ragRuntime?.textbook_rag_enabled
-    ? `教材 RAG · ${ragRuntime.textbook_rag_index || "Qwen/ES"}`
+    ? `教材 RAG · ${ragRuntime.textbook_rag_index || "Embedding/ES"}`
     : ragRuntime?.rag_enabled
       ? "教材 RAG 未启用"
       : "来源检索关闭";
@@ -314,7 +314,7 @@ export function questionWorkbenchGateFromRuntime(runtime?: LearningAssistantRunt
     message:
       textbookStatus === "healthy"
         ? "出题会读取已绑定教材证据；需要更新证据时可刷新本章或当前点位。"
-        : "出题只读取已绑定教材证据；刷新证据前需先检查 Qwen/ES 配置。",
+        : "出题只读取已绑定教材证据；刷新证据前需先检查 Embedding、Rerank 与 Elasticsearch 配置。",
     tagColor: "#005826",
     alertType: "success",
     textbookStatus,

@@ -26,6 +26,7 @@ import server.app.domains.textbook_rag.retrieval as retrieval
 import server.app.infrastructure.database as database
 import server.app.workers.textbook_ingestion_worker as textbook_worker
 from server.app.domains.textbook_ingestion.contracts import IngestionStage
+from server.app.domains.textbook_rag.clients import embedding_profile_fingerprint
 from server.app.domains.textbook_rag.index import (
     TextbookElasticsearchClient,
     chunk_document,
@@ -64,13 +65,35 @@ class _DeterministicEmbeddingClient:
     def __init__(
         self,
         *,
+        base_url: str,
         model: str,
         dimensions: int | None = None,
+        provider: str = "openai_compatible",
+        protocol: str = "openai_embeddings",
+        endpoint: str = "",
+        send_dimensions: bool = True,
         **_: Any,
     ) -> None:
+        self.base_url = base_url
         self.model = model
         self.dimensions = int(dimensions or _EMBEDDING_DIMENSION)
+        self.provider = provider
+        self.protocol = protocol
+        self.endpoint = endpoint
+        self.send_dimensions = send_dimensions
         self.calls: list[list[str]] = []
+
+    @property
+    def profile_fingerprint(self) -> str:
+        return embedding_profile_fingerprint(
+            provider=self.provider,
+            protocol=self.protocol,
+            base_url=self.base_url,
+            endpoint=self.endpoint,
+            model=self.model,
+            dimensions=self.dimensions,
+            send_dimensions=self.send_dimensions,
+        )
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         self.calls.append(list(texts))
@@ -227,10 +250,10 @@ def integration_context(
     for module in (database, repository, queue, persistence, lifecycle, active_corpus):
         monkeypatch.setattr(module, "get_settings", lambda: settings)
     monkeypatch.setattr(lifecycle, "effective_ingestion_settings", lambda: settings)
-    monkeypatch.setattr(textbook_worker, "QwenEmbeddingClient", _DeterministicEmbeddingClient)
-    monkeypatch.setattr(recovery, "QwenEmbeddingClient", _DeterministicEmbeddingClient)
-    monkeypatch.setattr(retrieval, "QwenEmbeddingClient", _DeterministicEmbeddingClient)
-    monkeypatch.setattr(retrieval, "QwenRerankClient", _DeterministicRerankClient)
+    monkeypatch.setattr(textbook_worker, "OpenAICompatibleEmbeddingClient", _DeterministicEmbeddingClient)
+    monkeypatch.setattr(recovery, "OpenAICompatibleEmbeddingClient", _DeterministicEmbeddingClient)
+    monkeypatch.setattr(retrieval, "OpenAICompatibleEmbeddingClient", _DeterministicEmbeddingClient)
+    monkeypatch.setattr(retrieval, "OpenAICompatibleRerankClient", _DeterministicRerankClient)
 
     _dispose_database_caches()
     try:

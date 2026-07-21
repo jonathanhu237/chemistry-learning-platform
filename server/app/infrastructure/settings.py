@@ -49,6 +49,13 @@ def _split_csv(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _endpoint_configured(base_url: str, endpoint: str) -> bool:
+    """A relative endpoint is usable only when a base URL is also present."""
+
+    explicit = endpoint.strip()
+    return bool(base_url.strip() or explicit.startswith(("http://", "https://")))
+
+
 @dataclass(frozen=True)
 class Settings:
     app_env: str = "development"
@@ -105,12 +112,16 @@ class Settings:
     textbook_native_min_chars: int = 80
     textbook_native_min_printable_ratio: float = 0.85
     textbook_ocr_enabled: bool = False
-    textbook_ocr_base_url: str = "https://aigw.sysu.edu.cn/v1"
+    textbook_ocr_provider: str = "mineru"
+    textbook_ocr_protocol: str = "openai_chat_completions"
+    textbook_ocr_base_url: str = ""
+    textbook_ocr_endpoint: str = ""
     textbook_ocr_api_key: str = ""
-    textbook_ocr_model: str = "mineru"
+    textbook_ocr_model: str = ""
     textbook_ocr_timeout_seconds: float = 90.0
     textbook_ocr_concurrency: int = 2
     textbook_ocr_max_retries: int = 3
+    textbook_ocr_max_output_tokens: int = 4096
     textbook_ocr_render_dpi: int = 160
     textbook_max_render_pixels: int = 40_000_000
     agent_llm_provider: str = "disabled"
@@ -128,15 +139,22 @@ class Settings:
     textbook_rag_enabled: bool = False
     textbook_rag_elasticsearch_url: str = ""
     textbook_rag_elasticsearch_index: str = "canonical-rag-chunks-qwen-v1"
+    textbook_rag_embedding_provider: str = "openai_compatible"
+    textbook_rag_embedding_protocol: str = "openai_embeddings"
     textbook_rag_embedding_base_url: str = ""
+    textbook_rag_embedding_endpoint: str = ""
     textbook_rag_embedding_api_key: str = ""
     textbook_rag_embedding_model: str = ""
     textbook_rag_embedding_dimension: int = 1024
+    textbook_rag_embedding_send_dimensions: bool = True
     textbook_rag_keyword_top_k: int = 16
     textbook_rag_vector_top_k: int = 24
     textbook_rag_rerank_top_k: int = 9
     textbook_rag_final_top_k: int = 5
+    textbook_rag_rerank_provider: str = "openai_compatible"
+    textbook_rag_rerank_protocol: str = "auto"
     textbook_rag_rerank_base_url: str = ""
+    textbook_rag_rerank_endpoint: str = ""
     textbook_rag_rerank_api_key: str = ""
     textbook_rag_rerank_model: str = ""
     textbook_rag_min_rerank_score: float = 0.0
@@ -184,8 +202,8 @@ class Settings:
             errors.append("TEXTBOOK_CHUNK_MAX_CHARS must be positive")
         if not 0 <= self.textbook_chunk_overlap_chars < self.textbook_chunk_max_chars:
             errors.append("TEXTBOOK_CHUNK_OVERLAP_CHARS must be non-negative and smaller than TEXTBOOK_CHUNK_MAX_CHARS")
-        if self.textbook_embedding_batch_size <= 0:
-            errors.append("TEXTBOOK_EMBEDDING_BATCH_SIZE must be positive")
+        if not 1 <= self.textbook_embedding_batch_size <= 256:
+            errors.append("TEXTBOOK_EMBEDDING_BATCH_SIZE must be in [1, 256]")
         if self.textbook_index_batch_size <= 0:
             errors.append("TEXTBOOK_INDEX_BATCH_SIZE must be positive")
         if not 0 < self.textbook_native_min_printable_ratio <= 1:
@@ -198,6 +216,8 @@ class Settings:
             errors.append("TEXTBOOK_OCR_CONCURRENCY must be positive")
         if self.textbook_ocr_max_retries < 0:
             errors.append("TEXTBOOK_OCR_MAX_RETRIES must be non-negative")
+        if not 1 <= self.textbook_ocr_max_output_tokens <= 32768:
+            errors.append("TEXTBOOK_OCR_MAX_OUTPUT_TOKENS must be in [1, 32768]")
         if self.textbook_ocr_render_dpi <= 0:
             errors.append("TEXTBOOK_OCR_RENDER_DPI must be positive")
         if self.textbook_max_render_pixels <= 0:
@@ -229,10 +249,26 @@ class Settings:
             if self.textbook_rag_enabled:
                 if not self.textbook_rag_elasticsearch_url:
                     errors.append("TEXTBOOK_RAG_ELASTICSEARCH_URL is required when textbook RAG is enabled")
+                if not _endpoint_configured(
+                    self.textbook_rag_embedding_base_url,
+                    self.textbook_rag_embedding_endpoint,
+                ):
+                    errors.append(
+                        "TEXTBOOK_RAG_EMBEDDING_BASE_URL or TEXTBOOK_RAG_EMBEDDING_ENDPOINT "
+                        "is required when textbook RAG is enabled"
+                    )
                 if not self.textbook_rag_embedding_api_key:
                     errors.append("TEXTBOOK_RAG_EMBEDDING_API_KEY is required when textbook RAG is enabled")
                 if not self.textbook_rag_embedding_model:
                     errors.append("TEXTBOOK_RAG_EMBEDDING_MODEL is required when textbook RAG is enabled")
+                if not _endpoint_configured(
+                    self.textbook_rag_rerank_base_url,
+                    self.textbook_rag_rerank_endpoint,
+                ):
+                    errors.append(
+                        "TEXTBOOK_RAG_RERANK_BASE_URL or TEXTBOOK_RAG_RERANK_ENDPOINT "
+                        "is required when textbook RAG is enabled"
+                    )
                 if not self.textbook_rag_rerank_api_key:
                     errors.append("TEXTBOOK_RAG_RERANK_API_KEY is required when textbook RAG is enabled")
                 if not self.textbook_rag_rerank_model:
@@ -244,15 +280,26 @@ class Settings:
                     errors.append("TEXTBOOK_RAG_ELASTICSEARCH_URL is required when textbook ingestion is enabled")
                 if not self.textbook_rag_elasticsearch_index:
                     errors.append("TEXTBOOK_RAG_ELASTICSEARCH_INDEX is required when textbook ingestion is enabled")
-                if not self.textbook_rag_embedding_base_url:
-                    errors.append("TEXTBOOK_RAG_EMBEDDING_BASE_URL is required when textbook ingestion is enabled")
+                if not _endpoint_configured(
+                    self.textbook_rag_embedding_base_url,
+                    self.textbook_rag_embedding_endpoint,
+                ):
+                    errors.append(
+                        "TEXTBOOK_RAG_EMBEDDING_BASE_URL or TEXTBOOK_RAG_EMBEDDING_ENDPOINT "
+                        "is required when textbook ingestion is enabled"
+                    )
                 if not self.textbook_rag_embedding_api_key:
                     errors.append("TEXTBOOK_RAG_EMBEDDING_API_KEY is required when textbook ingestion is enabled")
                 if not self.textbook_rag_embedding_model:
                     errors.append("TEXTBOOK_RAG_EMBEDDING_MODEL is required when textbook ingestion is enabled")
             if self.textbook_ocr_enabled:
-                if not self.textbook_ocr_base_url:
-                    errors.append("TEXTBOOK_OCR_BASE_URL is required when textbook OCR is enabled")
+                if not _endpoint_configured(
+                    self.textbook_ocr_base_url,
+                    self.textbook_ocr_endpoint,
+                ):
+                    errors.append(
+                        "TEXTBOOK_OCR_BASE_URL or TEXTBOOK_OCR_ENDPOINT is required when textbook OCR is enabled"
+                    )
                 if not self.textbook_ocr_api_key:
                     errors.append("TEXTBOOK_OCR_API_KEY is required when textbook OCR is enabled")
                 if not self.textbook_ocr_model:
@@ -399,7 +446,10 @@ def get_settings() -> Settings:
             "TEXTBOOK_OCR_ENABLED",
             bool(_getenv("TEXTBOOK_OCR_API_KEY")),
         ),
+        textbook_ocr_provider=_getenv("TEXTBOOK_OCR_PROVIDER", Settings.textbook_ocr_provider),
+        textbook_ocr_protocol=_getenv("TEXTBOOK_OCR_PROTOCOL", Settings.textbook_ocr_protocol).lower(),
         textbook_ocr_base_url=_getenv("TEXTBOOK_OCR_BASE_URL", Settings.textbook_ocr_base_url).rstrip("/"),
+        textbook_ocr_endpoint=_getenv("TEXTBOOK_OCR_ENDPOINT"),
         textbook_ocr_api_key=_getenv("TEXTBOOK_OCR_API_KEY"),
         textbook_ocr_model=_getenv("TEXTBOOK_OCR_MODEL", Settings.textbook_ocr_model),
         textbook_ocr_timeout_seconds=_get_float(
@@ -408,6 +458,10 @@ def get_settings() -> Settings:
         ),
         textbook_ocr_concurrency=_get_int("TEXTBOOK_OCR_CONCURRENCY", Settings.textbook_ocr_concurrency),
         textbook_ocr_max_retries=_get_int("TEXTBOOK_OCR_MAX_RETRIES", Settings.textbook_ocr_max_retries),
+        textbook_ocr_max_output_tokens=_get_int(
+            "TEXTBOOK_OCR_MAX_OUTPUT_TOKENS",
+            Settings.textbook_ocr_max_output_tokens,
+        ),
         textbook_ocr_render_dpi=_get_int("TEXTBOOK_OCR_RENDER_DPI", Settings.textbook_ocr_render_dpi),
         textbook_max_render_pixels=_get_int(
             "TEXTBOOK_MAX_RENDER_PIXELS",
@@ -443,12 +497,25 @@ def get_settings() -> Settings:
             "TEXTBOOK_RAG_ELASTICSEARCH_INDEX",
             Settings.textbook_rag_elasticsearch_index,
         ),
+        textbook_rag_embedding_provider=_getenv(
+            "TEXTBOOK_RAG_EMBEDDING_PROVIDER",
+            Settings.textbook_rag_embedding_provider,
+        ),
+        textbook_rag_embedding_protocol=_getenv(
+            "TEXTBOOK_RAG_EMBEDDING_PROTOCOL",
+            Settings.textbook_rag_embedding_protocol,
+        ).lower(),
         textbook_rag_embedding_base_url=_getenv("TEXTBOOK_RAG_EMBEDDING_BASE_URL").rstrip("/"),
+        textbook_rag_embedding_endpoint=_getenv("TEXTBOOK_RAG_EMBEDDING_ENDPOINT"),
         textbook_rag_embedding_api_key=_getenv("TEXTBOOK_RAG_EMBEDDING_API_KEY"),
         textbook_rag_embedding_model=_getenv("TEXTBOOK_RAG_EMBEDDING_MODEL"),
         textbook_rag_embedding_dimension=_get_int(
             "TEXTBOOK_RAG_EMBEDDING_DIMENSION",
             Settings.textbook_rag_embedding_dimension,
+        ),
+        textbook_rag_embedding_send_dimensions=_get_bool(
+            "TEXTBOOK_RAG_EMBEDDING_SEND_DIMENSIONS",
+            Settings.textbook_rag_embedding_send_dimensions,
         ),
         textbook_rag_keyword_top_k=_get_int(
             "TEXTBOOK_RAG_KEYWORD_TOP_K",
@@ -466,7 +533,16 @@ def get_settings() -> Settings:
             "TEXTBOOK_RAG_FINAL_TOP_K",
             Settings.textbook_rag_final_top_k,
         ),
+        textbook_rag_rerank_provider=_getenv(
+            "TEXTBOOK_RAG_RERANK_PROVIDER",
+            Settings.textbook_rag_rerank_provider,
+        ),
+        textbook_rag_rerank_protocol=_getenv(
+            "TEXTBOOK_RAG_RERANK_PROTOCOL",
+            Settings.textbook_rag_rerank_protocol,
+        ).lower(),
         textbook_rag_rerank_base_url=_getenv("TEXTBOOK_RAG_RERANK_BASE_URL").rstrip("/"),
+        textbook_rag_rerank_endpoint=_getenv("TEXTBOOK_RAG_RERANK_ENDPOINT"),
         textbook_rag_rerank_api_key=_getenv("TEXTBOOK_RAG_RERANK_API_KEY"),
         textbook_rag_rerank_model=_getenv("TEXTBOOK_RAG_RERANK_MODEL"),
         textbook_rag_min_rerank_score=_get_float(

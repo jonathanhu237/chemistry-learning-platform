@@ -19,6 +19,8 @@ from scripts.seed_experiment_videos import DEFAULT_MANIFEST_PATH as MEDIA_SEED_P
 from scripts.seed_experiment_videos import load_manifest as load_media_seed
 from scripts.seed_experiment_videos import validate_database as validate_media_database
 from scripts.validate_production_resources import EXPECTED_DATABASE_COUNTS, validate_manifest
+from server.app.domains.platform.settings import effective_textbook_rag_settings
+from server.app.domains.textbook_rag.clients import endpoint_configured
 from server.app.infrastructure.database import db_session
 from server.app.infrastructure.settings import get_settings
 
@@ -190,6 +192,9 @@ def _compare_counts(counts: dict[str, int]) -> list[str]:
 
 def _runtime_config_status() -> dict[str, Any]:
     settings = get_settings()
+    textbook_rag = effective_textbook_rag_settings()
+    embedding = dict(textbook_rag.get("embedding") or {})
+    rerank = dict(textbook_rag.get("rerank") or {})
     return {
         "agent_llm_provider": settings.agent_llm_provider or "disabled",
         "agent_llm_configured": bool(
@@ -198,17 +203,23 @@ def _runtime_config_status() -> dict[str, Any]:
             and settings.agent_llm_api_key
             and settings.agent_llm_model
         ),
-        "textbook_rag_enabled": settings.textbook_rag_enabled,
-        "textbook_rag_es_configured": bool(settings.textbook_rag_elasticsearch_url),
+        "textbook_rag_enabled": bool(textbook_rag.get("enabled")),
+        "textbook_rag_es_configured": bool(textbook_rag.get("elasticsearch_url")),
         "textbook_rag_embedding_configured": bool(
-            settings.textbook_rag_embedding_base_url
-            and settings.textbook_rag_embedding_api_key
-            and settings.textbook_rag_embedding_model
+            endpoint_configured(
+                str(embedding.get("base_url") or ""),
+                str(embedding.get("endpoint") or ""),
+            )
+            and embedding.get("api_key")
+            and embedding.get("model")
         ),
         "textbook_rag_rerank_configured": bool(
-            settings.textbook_rag_rerank_base_url
-            and settings.textbook_rag_rerank_api_key
-            and settings.textbook_rag_rerank_model
+            endpoint_configured(
+                str(rerank.get("base_url") or ""),
+                str(rerank.get("endpoint") or ""),
+            )
+            and rerank.get("api_key")
+            and rerank.get("model")
         ),
         "video_library_search_backend": settings.video_library_search_backend,
         "teacher_catalog_search_backend": settings.teacher_catalog_search_backend,

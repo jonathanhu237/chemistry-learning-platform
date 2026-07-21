@@ -12,8 +12,16 @@ def _base_config(**overrides: Any) -> dict[str, Any]:
         "enabled": True,
         "elasticsearch_url": "http://es.local:9200",
         "index_name": "canonical-rag-chunks-qwen-v1",
-        "embedding": {"model": "qwen-embedding", "api_key": "embedding-key"},
-        "rerank": {"model": "qwen-rerank", "api_key": "rerank-key"},
+        "embedding": {
+            "base_url": "https://embedding.test/v1",
+            "model": "qwen-embedding",
+            "api_key": "embedding-key",
+        },
+        "rerank": {
+            "endpoint": "https://rerank.test/v1/rerank",
+            "model": "qwen-rerank",
+            "api_key": "rerank-key",
+        },
         "embedding_dimension": 1024,
         "timeout_seconds": 1.0,
     }
@@ -58,6 +66,17 @@ def test_textbook_rag_runtime_status_requires_rerank_config() -> None:
     status = _textbook_rag_runtime_status(_base_config(rerank={"model": "", "api_key": ""}), rag_enabled=True)
 
     assert status["status"] == "rerank_not_configured"
+
+
+def test_textbook_rag_runtime_status_rejects_unsupported_provider_protocol() -> None:
+    embedding = {**_base_config()["embedding"], "protocol": "unsupported"}
+
+    status = _textbook_rag_runtime_status(
+        _base_config(embedding=embedding),
+        rag_enabled=True,
+    )
+
+    assert status["status"] == "embedding_protocol_unsupported"
 
 
 def test_textbook_rag_runtime_status_reports_missing_index(monkeypatch) -> None:

@@ -5,8 +5,10 @@ from server.app.domains.questions.duplicate_risk import (
     apply_duplicate_risk_metadata,
     build_duplicate_risk,
     duplicate_point_node_ids,
+    _embedding_cache_model,
     _embedding_client,
 )
+from server.app.domains.textbook_rag.clients import OpenAICompatibleEmbeddingClient
 from server.app.infrastructure.settings import Settings
 
 
@@ -102,9 +104,13 @@ def test_embedding_client_uses_backend_textbook_rag_configuration(monkeypatch) -
         "server.app.domains.questions.duplicate_risk.effective_textbook_rag_settings",
         lambda: {
             "embedding": {
+                "provider": "campus_bge",
+                "protocol": "openai_embeddings",
                 "base_url": "https://dashscope.example.test/compatible-mode/v1",
+                "endpoint": "/embeddings",
                 "api_key": "configured-key",
                 "model": "qwen3-embedding",
+                "send_dimensions": False,
             },
             "embedding_dimension": 1024,
             "timeout_seconds": 3.5,
@@ -119,3 +125,26 @@ def test_embedding_client_uses_backend_textbook_rag_configuration(monkeypatch) -
     assert client.model == "qwen3-embedding"
     assert client.dimensions == 1024
     assert client.timeout_seconds == 3.5
+    assert client.provider == "campus_bge"
+    assert client.protocol == "openai_embeddings"
+    assert client.endpoint == "/embeddings"
+    assert client.send_dimensions is False
+
+
+def test_duplicate_embedding_cache_profile_changes_with_endpoint_and_protocol() -> None:
+    first = OpenAICompatibleEmbeddingClient(
+        base_url="https://embedding.example.test/v1",
+        api_key="key",
+        model="bge-m3",
+        dimensions=1024,
+        protocol="openai_embeddings",
+    )
+    second = OpenAICompatibleEmbeddingClient(
+        base_url="https://other-embedding.example.test/v1",
+        api_key="other-key",
+        model="bge-m3",
+        dimensions=1024,
+        protocol="openai_embeddings",
+    )
+
+    assert _embedding_cache_model(first) != _embedding_cache_model(second)

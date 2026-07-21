@@ -11,7 +11,11 @@ from server.app.domains.textbook_ingestion.public_metadata import (
     public_source_name,
 )
 from server.app.domains.textbook_rag.active_corpus import active_textbook_filter, corpus_from_settings
-from server.app.domains.textbook_rag.clients import QwenEmbeddingClient, QwenRerankClient, TextbookRAGClientError
+from server.app.domains.textbook_rag.clients import (
+    OpenAICompatibleEmbeddingClient,
+    OpenAICompatibleRerankClient,
+    TextbookRAGClientError,
+)
 from server.app.domains.textbook_rag.index import TextbookElasticsearchClient
 
 
@@ -245,19 +249,33 @@ def retrieve_textbook_evidence(
             index=str(config.get("index_name") or ""),
             timeout=float(config.get("timeout_seconds") or 8.0),
         )
-        embedder = QwenEmbeddingClient(
+        embedder = OpenAICompatibleEmbeddingClient(
             base_url=str((config.get("embedding") or {}).get("base_url") or ""),
             api_key=str((config.get("embedding") or {}).get("api_key") or ""),
             model=str((config.get("embedding") or {}).get("model") or ""),
             dimensions=int(config.get("embedding_dimension") or 0) or None,
             timeout_seconds=float(config.get("timeout_seconds") or 8.0),
+            provider=str((config.get("embedding") or {}).get("provider") or "openai_compatible"),
+            protocol=str((config.get("embedding") or {}).get("protocol") or "openai_embeddings"),
+            endpoint=str((config.get("embedding") or {}).get("endpoint") or ""),
+            send_dimensions=bool((config.get("embedding") or {}).get("send_dimensions", True)),
         )
-        reranker = QwenRerankClient(
+        reranker = OpenAICompatibleRerankClient(
             base_url=str((config.get("rerank") or {}).get("base_url") or ""),
             api_key=str((config.get("rerank") or {}).get("api_key") or ""),
             model=str((config.get("rerank") or {}).get("model") or ""),
             timeout_seconds=float(config.get("timeout_seconds") or 8.0),
+            provider=str((config.get("rerank") or {}).get("provider") or "openai_compatible"),
+            protocol=str((config.get("rerank") or {}).get("protocol") or "auto"),
+            endpoint=str((config.get("rerank") or {}).get("endpoint") or ""),
         )
+        validate_contract = getattr(es, "validate_embedding_contract", None)
+        if callable(validate_contract):
+            validate_contract(
+                embedding_model=embedder.model,
+                embedding_dimension=int(config.get("embedding_dimension") or 0),
+                embedding_profile_fingerprint=embedder.profile_fingerprint,
+            )
         queries = build_section_queries(point_context)
         if not queries:
             return _failure_package("point_description_missing", "点位缺少可用于检索的三段式描述。", diagnostics)
@@ -310,8 +328,8 @@ def retrieve_textbook_evidence(
 def _retrieve_section(
     *,
     es: TextbookElasticsearchClient,
-    embedder: QwenEmbeddingClient,
-    reranker: QwenRerankClient,
+    embedder: OpenAICompatibleEmbeddingClient,
+    reranker: OpenAICompatibleRerankClient,
     section_query: PointEvidenceQuery,
     point_context: dict[str, Any],
     config: dict[str, Any],

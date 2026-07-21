@@ -33,7 +33,7 @@ from server.app.domains.textbook_ingestion.queue import (
     heartbeat,
 )
 from server.app.domains.textbook_ingestion.contracts import IngestionStage
-from server.app.domains.textbook_rag.clients import QwenEmbeddingClient
+from server.app.domains.textbook_rag.clients import OpenAICompatibleEmbeddingClient
 from server.app.domains.textbook_rag.index import TextbookElasticsearchClient
 from server.app.infrastructure.settings import Settings
 
@@ -45,12 +45,16 @@ def build_pipeline(settings: Settings | None = None) -> TextbookIngestionPipelin
         index=effective.textbook_rag_elasticsearch_index,
         timeout=effective.textbook_rag_timeout_seconds,
     )
-    embedding_client = QwenEmbeddingClient(
+    embedding_client = OpenAICompatibleEmbeddingClient(
         base_url=effective.textbook_rag_embedding_base_url,
         api_key=effective.textbook_rag_embedding_api_key,
         model=effective.textbook_rag_embedding_model,
         dimensions=effective.textbook_rag_embedding_dimension,
         timeout_seconds=effective.textbook_rag_timeout_seconds,
+        provider=effective.textbook_rag_embedding_provider,
+        protocol=effective.textbook_rag_embedding_protocol,
+        endpoint=effective.textbook_rag_embedding_endpoint,
+        send_dimensions=effective.textbook_rag_embedding_send_dimensions,
     )
     embedder = BatchTextbookEmbedder(
         embedding_client,
@@ -82,13 +86,17 @@ def build_pipeline(settings: Settings | None = None) -> TextbookIngestionPipelin
     return TextbookIngestionPipeline(
         extractor=PyMuPDFExtractor(settings=effective),
         ocr_provider=MinerUHTTPProvider(
+            provider_label=effective.textbook_ocr_provider,
+            protocol=effective.textbook_ocr_protocol,
             base_url=effective.textbook_ocr_base_url,
+            endpoint=effective.textbook_ocr_endpoint,
             api_key=effective.textbook_ocr_api_key,
             model=effective.textbook_ocr_model,
             enabled=effective.textbook_ocr_enabled,
             timeout_seconds=effective.textbook_ocr_timeout_seconds,
             concurrency=effective.textbook_ocr_concurrency,
             max_retries=effective.textbook_ocr_max_retries,
+            max_output_tokens=effective.textbook_ocr_max_output_tokens,
         ),
         chunker=StructureAwareChunker(settings=effective),
         embedder=embedder,

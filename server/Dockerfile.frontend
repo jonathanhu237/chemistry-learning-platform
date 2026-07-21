@@ -15,6 +15,7 @@ FROM nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef
 
 ENV BACKEND_UPSTREAM=http://backend:8000
 ENV FRAME_ANCESTORS="'self'"
+ENV CLIENT_MAX_BODY_SIZE=1m
 
 COPY server/nginx/frontend.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html

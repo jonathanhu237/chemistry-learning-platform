@@ -22,6 +22,8 @@ from server.app.domains.textbook_ingestion.contracts import (
     PageQuality,
 )
 from server.app.domains.textbook_ingestion.ports import RenderedPage
+from server.app.domains.textbook_ingestion.quality import CONFIRMED_BLANK_PAGE_FLAG
+from server.app.domains.textbook_rag.clients import endpoint_configured
 
 
 LAYOUT_PROMPT = "\nLayout Detection:"
@@ -32,6 +34,31 @@ SYSTEM_PROMPT = "You are a helpful assistant."
 LAYOUT_IMAGE_SIZE = (1036, 1036)
 MIN_CROP_EDGE = 28
 MAX_CROP_EDGE_RATIO = 50.0
+# False negatives are safer than accepting an empty response for real content.
+# The known blank book page stays well inside these bounds from 72 through
+# 300 DPI (mean ~= 254.97, deviation < 0.4, off-white ratio < 0.0014,
+# dark ratio < 0.000007).
+BLANK_PAGE_MIN_MEAN_LUMA = 254.9
+BLANK_PAGE_MAX_LUMA_STANDARD_DEVIATION = 1.0
+BLANK_PAGE_OFF_WHITE_LUMA_THRESHOLD = 250
+BLANK_PAGE_MAX_OFF_WHITE_PIXEL_RATIO = 0.0015
+BLANK_PAGE_DARK_LUMA_THRESHOLD = 235
+BLANK_PAGE_MAX_DARK_PIXEL_RATIO = 0.00002
+SUPPORTED_MINERU_PROTOCOLS = {
+    "openai_chat_completions",
+    "openai_compatible",
+    "openai",
+}
+
+
+def validate_mineru_protocol(protocol: str) -> str:
+    normalized = protocol.strip().lower().replace("-", "_")
+    if normalized not in SUPPORTED_MINERU_PROTOCOLS:
+        raise MinerUProviderError(
+            "ocr_protocol_unsupported",
+            f"Unsupported MinerU OCR protocol: {normalized or '<empty>'}",
+        )
+    return normalized
 
 _OFFICIAL_LAYOUT_RE = re.compile(
     r"<\|box_start\|>(\d+)\s+(\d+)\s+(\d+)\s+(\d+)"
@@ -41,7 +68,12 @@ _OFFICIAL_LAYOUT_RE = re.compile(
     re.DOTALL,
 )
 _STRIPPED_LAYOUT_RE = re.compile(
-    r"^\s*(\d{1,4})\s+(\d{1,4})\s+(\d{1,4})\s+(\d{1,4})\s+([A-Za-z_]+)(?:\s+(.*?))?\s*$"
+    r"^\s*(\d{1,4})\s+(\d{1,4})\s+(\d{1,4})\s+(\d{1,4})\s+([A-Za-z_]+)"
+    r"((?:\s*<\|(?:txt_contd_tgt|txt_contd_src)\|>)*)\s*$"
+)
+_FUSED_STRIPPED_LAYOUT_RE = re.compile(
+    r"^\s*(\d{1,4})\s+(\d{1,4})\s+(\d{1,4})\s+(\d{1,4})([A-Za-z_]+)"
+    r"((?:\s*<\|(?:txt_contd_tgt|txt_contd_src)\|>)*)\s*$"
 )
 _OFFICIAL_LAYOUT_TAIL_RE = re.compile(
     r"\s*(?:<\|(?:txt_contd_tgt|txt_contd_src)\|>\s*)*",
@@ -87,6 +119,33 @@ class _Completion:
     model: str
     request_id: str | None
     latency_ms: int
+    request_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class _BlankPageAssessment:
+    confirmed: bool
+    mean_luma: float
+    luma_standard_deviation: float
+    off_white_pixel_ratio: float
+    dark_pixel_ratio: float
+    pixel_count: int
+
+    def diagnostics(self) -> dict[str, float | int | bool]:
+        return {
+            "confirmed": self.confirmed,
+            "mean_luma": round(self.mean_luma, 6),
+            "minimum_mean_luma": BLANK_PAGE_MIN_MEAN_LUMA,
+            "luma_standard_deviation": round(self.luma_standard_deviation, 6),
+            "maximum_luma_standard_deviation": BLANK_PAGE_MAX_LUMA_STANDARD_DEVIATION,
+            "off_white_luma_threshold": BLANK_PAGE_OFF_WHITE_LUMA_THRESHOLD,
+            "off_white_pixel_ratio": round(self.off_white_pixel_ratio, 8),
+            "maximum_off_white_pixel_ratio": BLANK_PAGE_MAX_OFF_WHITE_PIXEL_RATIO,
+            "dark_luma_threshold": BLANK_PAGE_DARK_LUMA_THRESHOLD,
+            "dark_pixel_ratio": round(self.dark_pixel_ratio, 8),
+            "maximum_dark_pixel_ratio": BLANK_PAGE_MAX_DARK_PIXEL_RATIO,
+            "pixel_count": self.pixel_count,
+        }
 
 
 def _block_type(value: str) -> BlockType | None:
@@ -185,7 +244,11 @@ def parse_layout_output(output: str) -> ParsedLayout:
                 continue
             match = _STRIPPED_LAYOUT_RE.fullmatch(line)
             if not match:
-                raise MinerULayoutError("malformed_layout_line", f"Malformed MinerU layout line: {line[:160]}")
+                match = _FUSED_STRIPPED_LAYOUT_RE.fullmatch(line)
+                if not match:
+                    raise MinerULayoutError("malformed_layout_line", f"Malformed MinerU layout line: {line[:160]}")
+                if "aigw_layout_type_delimiter_missing" not in warnings:
+                    warnings.append("aigw_layout_type_delimiter_missing")
             candidates.append((match.groups()[0:4], match.group(5), None, match.group(6) or ""))
         warnings.append("aigw_special_tokens_stripped")
 
@@ -227,6 +290,41 @@ def _prepare_layout_image(image: Image.Image) -> bytes:
     return _png_bytes(image.convert("RGB").resize(LAYOUT_IMAGE_SIZE, Image.Resampling.BICUBIC))
 
 
+def _assess_blank_page(image: Image.Image) -> _BlankPageAssessment:
+    histogram = image.convert("L").histogram()
+    pixel_count = sum(histogram)
+    if pixel_count <= 0:
+        return _BlankPageAssessment(
+            confirmed=False,
+            mean_luma=0.0,
+            luma_standard_deviation=0.0,
+            off_white_pixel_ratio=1.0,
+            dark_pixel_ratio=1.0,
+            pixel_count=0,
+        )
+    mean_luma = sum(luma * count for luma, count in enumerate(histogram)) / pixel_count
+    variance = sum(
+        ((luma - mean_luma) ** 2) * count
+        for luma, count in enumerate(histogram)
+    ) / pixel_count
+    standard_deviation = variance**0.5
+    off_white_pixel_ratio = sum(histogram[:BLANK_PAGE_OFF_WHITE_LUMA_THRESHOLD]) / pixel_count
+    dark_pixel_ratio = sum(histogram[:BLANK_PAGE_DARK_LUMA_THRESHOLD]) / pixel_count
+    return _BlankPageAssessment(
+        confirmed=(
+            mean_luma >= BLANK_PAGE_MIN_MEAN_LUMA
+            and standard_deviation <= BLANK_PAGE_MAX_LUMA_STANDARD_DEVIATION
+            and off_white_pixel_ratio <= BLANK_PAGE_MAX_OFF_WHITE_PIXEL_RATIO
+            and dark_pixel_ratio <= BLANK_PAGE_MAX_DARK_PIXEL_RATIO
+        ),
+        mean_luma=mean_luma,
+        luma_standard_deviation=standard_deviation,
+        off_white_pixel_ratio=off_white_pixel_ratio,
+        dark_pixel_ratio=dark_pixel_ratio,
+        pixel_count=pixel_count,
+    )
+
+
 def _prepare_crop(image: Image.Image, bbox: tuple[int, int, int, int], rotation: int | None) -> bytes:
     x1, y1, x2, y2 = bbox
     width, height = image.size
@@ -255,6 +353,26 @@ def _prepare_crop(image: Image.Image, bbox: tuple[int, int, int, int], rotation:
         scale = MIN_CROP_EDGE / min(crop.size)
         crop = crop.resize((max(1, round(crop.width * scale)), max(1, round(crop.height * scale))), Image.Resampling.BICUBIC)
     return _png_bytes(crop)
+
+
+def _split_long_crop(image_bytes: bytes) -> list[bytes]:
+    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    width, height = image.size
+    if width >= height:
+        midpoint = max(1, width // 2)
+        overlap = max(4, min(64, round(width * 0.02)))
+        boxes = [
+            (0, 0, min(width, midpoint + overlap), height),
+            (max(0, midpoint - overlap), 0, width, height),
+        ]
+    else:
+        midpoint = max(1, height // 2)
+        overlap = max(4, min(64, round(height * 0.02)))
+        boxes = [
+            (0, 0, width, min(height, midpoint + overlap)),
+            (0, max(0, midpoint - overlap), width, height),
+        ]
+    return [_png_bytes(image.crop(box).convert("RGB")) for box in boxes]
 
 
 def _prompt_for(block_type: BlockType) -> str:
@@ -304,31 +422,51 @@ class MinerUHTTPProvider:
         base_url: str,
         api_key: str,
         model: str = "mineru",
+        provider_label: str = "mineru",
+        protocol: str = "openai_chat_completions",
+        endpoint: str = "",
         enabled: bool = True,
         timeout_seconds: float = 90.0,
         concurrency: int = 2,
         max_retries: int = 3,
+        max_output_tokens: int = 4096,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
+        self.endpoint = endpoint.strip()
         self.api_key = api_key.strip()
         self.model = model.strip()
+        self.provider_label = provider_label.strip() or "mineru"
+        self.protocol = protocol.strip().lower().replace("-", "_")
         self.enabled = enabled
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
+        self.max_output_tokens = max(1, int(max_output_tokens))
         self._semaphore = asyncio.Semaphore(max(1, concurrency))
         self._client = client
         self._owns_client = client is None
 
     @property
     def configured(self) -> bool:
-        return bool(self.enabled and self.base_url and self.api_key and self.model)
+        return bool(
+            self.enabled
+            and endpoint_configured(self.base_url, self.endpoint)
+            and self.api_key
+            and self.model
+        )
 
     @property
     def chat_url(self) -> str:
+        if self.endpoint.startswith(("http://", "https://")):
+            return self.endpoint.rstrip("/")
+        if self.endpoint:
+            return f"{self.base_url}/{self.endpoint.lstrip('/')}"
         if self.base_url.endswith("/v1"):
             return f"{self.base_url}/chat/completions"
         return f"{self.base_url}/v1/chat/completions"
+
+    def _validate_protocol(self) -> None:
+        validate_mineru_protocol(self.protocol)
 
     def _http_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -352,7 +490,8 @@ class MinerUHTTPProvider:
         content_kind: str,
     ) -> _Completion:
         if not self.configured:
-            raise MinerUProviderError("ocr_not_configured", "SYSU MinerU OCR is not configured")
+            raise MinerUProviderError("ocr_not_configured", "MinerU OCR provider is not configured")
+        self._validate_protocol()
         presence_penalty = 0.0 if content_kind == "layout" else 1.0
         frequency_penalty = 0.0 if content_kind == "layout" else (0.005 if content_kind == "table" else 0.05)
         payload = {
@@ -374,6 +513,8 @@ class MinerUHTTPProvider:
             "frequency_penalty": frequency_penalty,
             "repetition_penalty": 1.0,
             "vllm_xargs": {"no_repeat_ngram_size": 100, "debug": False},
+            "max_completion_tokens": self.max_output_tokens,
+            "max_tokens": self.max_output_tokens,
             "skip_special_tokens": False,
         }
         headers = {
@@ -389,25 +530,40 @@ class MinerUHTTPProvider:
                     response = await self._http_client().post(self.chat_url, headers=headers, json=payload)
                 latency_ms = round((time.monotonic() - started) * 1000)
                 if response.status_code in {401, 403}:
-                    raise MinerUProviderError("ocr_authentication_failed", "SYSU MinerU authentication failed")
+                    raise MinerUProviderError("ocr_authentication_failed", "MinerU OCR authentication failed")
                 if response.status_code == 429 or response.status_code >= 500:
                     raise MinerUProviderError(
                         "ocr_temporarily_unavailable",
-                        f"SYSU MinerU returned HTTP {response.status_code}",
+                        f"MinerU OCR provider returned HTTP {response.status_code}",
                         retryable=True,
                     )
                 if response.status_code >= 400:
-                    raise MinerUProviderError("ocr_request_rejected", f"SYSU MinerU returned HTTP {response.status_code}")
+                    raise MinerUProviderError(
+                        "ocr_request_rejected",
+                        f"MinerU OCR provider returned HTTP {response.status_code}",
+                    )
                 try:
                     body = response.json()
                 except ValueError as exc:
-                    raise MinerUProviderError("ocr_invalid_response", "SYSU MinerU returned invalid JSON", retryable=True) from exc
+                    raise MinerUProviderError(
+                        "ocr_invalid_response",
+                        "MinerU OCR provider returned invalid JSON",
+                        retryable=True,
+                    ) from exc
                 choices = body.get("choices") if isinstance(body, dict) else None
                 if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
-                    raise MinerUProviderError("ocr_invalid_response", "SYSU MinerU response has no choices", retryable=True)
+                    raise MinerUProviderError(
+                        "ocr_invalid_response",
+                        "MinerU OCR response has no choices",
+                        retryable=True,
+                    )
                 finish_reason = choices[0].get("finish_reason")
                 if finish_reason == "length":
-                    raise MinerUProviderError("ocr_response_truncated", "SYSU MinerU response was truncated")
+                    raise MinerUProviderError(
+                        "ocr_response_truncated",
+                        "MinerU OCR response was truncated",
+                        retryable=True,
+                    )
                 message = choices[0].get("message")
                 content = message.get("content") if isinstance(message, dict) else None
                 if isinstance(content, list):
@@ -415,17 +571,23 @@ class MinerUHTTPProvider:
                         str(item.get("text") or "") for item in content if isinstance(item, dict)
                     )
                 if not isinstance(content, str):
-                    raise MinerUProviderError("ocr_invalid_response", "SYSU MinerU response content is missing", retryable=True)
+                    raise MinerUProviderError(
+                        "ocr_invalid_response",
+                        "MinerU OCR response content is missing",
+                        retryable=True,
+                    )
+                request_id = response.headers.get("x-request-id") or str(body.get("id") or "") or None
                 return _Completion(
                     content=content,
                     model=str(body.get("model") or self.model),
-                    request_id=response.headers.get("x-request-id") or str(body.get("id") or "") or None,
+                    request_id=request_id,
                     latency_ms=latency_ms,
+                    request_ids=(request_id,) if request_id else (),
                 )
             except (httpx.TimeoutException, httpx.TransportError) as exc:
                 last_error = MinerUProviderError(
                     "ocr_transport_error",
-                    f"SYSU MinerU request failed: {exc.__class__.__name__}",
+                    f"MinerU OCR request failed: {exc.__class__.__name__}",
                     retryable=True,
                 )
             except MinerUProviderError as exc:
@@ -436,11 +598,39 @@ class MinerUHTTPProvider:
                 await asyncio.sleep(min(0.5 * (2**attempt), 4.0))
         if isinstance(last_error, MinerUProviderError):
             raise last_error
-        raise MinerUProviderError("ocr_unknown_error", "SYSU MinerU request failed")
+        raise MinerUProviderError("ocr_unknown_error", "MinerU OCR request failed")
+
+    async def _recognize_tiled_table(self, crop: bytes, *, idempotency_key: str) -> _Completion:
+        completions = await asyncio.gather(
+            *(
+                self._complete(
+                    tile,
+                    TEXT_PROMPT,
+                    idempotency_key=f"{idempotency_key}:tile:{tile_index}",
+                    content_kind="text",
+                )
+                for tile_index, tile in enumerate(_split_long_crop(crop), start=1)
+            )
+        )
+        content = "\n".join(completion.content.strip() for completion in completions if completion.content.strip())
+        if not content:
+            raise MinerUProviderError(
+                "ocr_empty_table",
+                "MinerU OCR returned no searchable text for a tiled table",
+            )
+        request_ids = tuple(request_id for completion in completions for request_id in completion.request_ids)
+        return _Completion(
+            content=content,
+            model=next((completion.model for completion in reversed(completions) if completion.model), self.model),
+            request_id=request_ids[0] if request_ids else None,
+            latency_ms=sum(completion.latency_ms for completion in completions),
+            request_ids=request_ids,
+        )
 
     async def recognize(self, page: RenderedPage, *, idempotency_key: str) -> OCRPageResult:
         if not self.configured:
-            raise MinerUProviderError("ocr_not_configured", "SYSU MinerU OCR is not configured")
+            raise MinerUProviderError("ocr_not_configured", "MinerU OCR provider is not configured")
+        self._validate_protocol()
         started = time.monotonic()
         try:
             page_image = Image.open(io.BytesIO(page.image_bytes)).convert("RGB")
@@ -452,7 +642,58 @@ class MinerUHTTPProvider:
             idempotency_key=f"{idempotency_key}:layout",
             content_kind="layout",
         )
-        parsed = parse_layout_output(layout_completion.content)
+        try:
+            parsed = parse_layout_output(layout_completion.content)
+        except MinerULayoutError as exc:
+            if exc.reason != "empty_layout":
+                raise
+            blank_assessment = _assess_blank_page(page_image)
+            if not blank_assessment.confirmed:
+                raise
+            warnings = [CONFIRMED_BLANK_PAGE_FLAG]
+            blank_diagnostics = blank_assessment.diagnostics()
+            normalized_page = NormalizedPage(
+                page_number=page.page_number,
+                text="",
+                markdown="",
+                blocks=[],
+                extraction_method=ExtractionMethod.MINERU,
+                quality=PageQuality(
+                    score=1.0,
+                    needs_ocr=False,
+                    flags=warnings,
+                    metrics={
+                        "non_whitespace_chars": 0,
+                        "layout_block_count": 0,
+                        "layout_format": "empty",
+                        "blank_page_mean_luma": blank_diagnostics["mean_luma"],
+                        "blank_page_luma_standard_deviation": blank_diagnostics[
+                            "luma_standard_deviation"
+                        ],
+                        "blank_page_off_white_pixel_ratio": blank_diagnostics[
+                            "off_white_pixel_ratio"
+                        ],
+                        "blank_page_dark_pixel_ratio": blank_diagnostics["dark_pixel_ratio"],
+                    },
+                ),
+                content_hash=hashlib.sha256(b"").hexdigest(),
+                ocr_provider=self.provider_label,
+                ocr_model=layout_completion.model,
+                diagnostics={
+                    "layout_format": "empty",
+                    "request_ids": list(layout_completion.request_ids),
+                    "warnings": warnings,
+                    "blank_page_detection": blank_diagnostics,
+                },
+            )
+            return OCRPageResult(
+                page=normalized_page,
+                provider=self.provider_label,
+                model=layout_completion.model,
+                latency_ms=round((time.monotonic() - started) * 1000),
+                request_id=layout_completion.request_id,
+                warnings=warnings,
+            )
 
         async def recognize_block(index: int, block: NormalizedBlock) -> tuple[int, _Completion | None, list[str]]:
             if block.block_type in _SKIP_RECOGNITION_TYPES or block.metadata.get("covered_by_table"):
@@ -461,13 +702,20 @@ class MinerUHTTPProvider:
                 return index, None, ["missing_block_bbox"]
             crop = _prepare_crop(page_image, block.bbox, block.metadata.get("rotation"))
             prompt = _prompt_for(block.block_type)
-            result = await self._complete(
-                crop,
-                prompt,
-                idempotency_key=f"{idempotency_key}:block:{index}:{block.block_type.value}",
-                content_kind=block.block_type.value,
-            )
             warnings: list[str] = []
+            block_key = f"{idempotency_key}:block:{index}:{block.block_type.value}"
+            try:
+                result = await self._complete(
+                    crop,
+                    prompt,
+                    idempotency_key=block_key,
+                    content_kind=block.block_type.value,
+                )
+            except MinerUProviderError as exc:
+                if block.block_type != BlockType.TABLE or exc.reason != "ocr_response_truncated":
+                    raise
+                result = await self._recognize_tiled_table(crop, idempotency_key=f"{block_key}:text-fallback")
+                warnings.append("table_tiled_text_recognition_fallback")
             if block.block_type == BlockType.TABLE and not result.content.strip():
                 result = await self._complete(
                     crop,
@@ -476,13 +724,18 @@ class MinerUHTTPProvider:
                     content_kind="text",
                 )
                 warnings.append("table_text_recognition_fallback")
+                if not result.content.strip():
+                    raise MinerUProviderError(
+                        "ocr_empty_table",
+                        "MinerU OCR returned no searchable text for a table",
+                    )
             return index, result, warnings
 
         recognized = await asyncio.gather(
             *(recognize_block(index, block) for index, block in enumerate(parsed.blocks, start=1))
         )
         warnings = list(parsed.warnings)
-        request_ids = [layout_completion.request_id] if layout_completion.request_id else []
+        request_ids = list(layout_completion.request_ids)
         actual_model = layout_completion.model
         for index, completion, block_warnings in recognized:
             warnings.extend(block_warnings)
@@ -494,8 +747,7 @@ class MinerUHTTPProvider:
             block.markdown = _content_markdown(block)
             block.metadata["recognition_model"] = completion.model
             block.metadata["recognition_latency_ms"] = completion.latency_ms
-            if completion.request_id:
-                request_ids.append(completion.request_id)
+            request_ids.extend(completion.request_ids)
             actual_model = completion.model or actual_model
             if block.block_type == BlockType.TABLE and raw_content:
                 structured = bool(re.search(r"<\s*(?:table|tr|td|th)\b", raw_content, re.IGNORECASE))
@@ -510,7 +762,10 @@ class MinerUHTTPProvider:
             (block.markdown or block.text).strip() for block in visible_blocks if (block.markdown or block.text).strip()
         )
         if not text_content:
-            raise MinerUProviderError("ocr_empty_page", "SYSU MinerU returned no searchable text for the page")
+            raise MinerUProviderError(
+                "ocr_empty_page",
+                "MinerU OCR returned no searchable text for the page",
+            )
         content_hash = hashlib.sha256(text_content.encode("utf-8")).hexdigest()
         quality_flags = list(dict.fromkeys(flag for block in parsed.blocks for flag in block.quality_flags))
         non_whitespace_chars = len(re.sub(r"\s+", "", text_content))
@@ -532,7 +787,7 @@ class MinerUHTTPProvider:
                 },
             ),
             content_hash=content_hash,
-            ocr_provider="sysu_aigw_mineru",
+            ocr_provider=self.provider_label,
             ocr_model=actual_model,
             diagnostics={
                 "layout_format": parsed.format,
@@ -542,7 +797,7 @@ class MinerUHTTPProvider:
         )
         return OCRPageResult(
             page=normalized_page,
-            provider="sysu_aigw_mineru",
+            provider=self.provider_label,
             model=actual_model,
             latency_ms=round((time.monotonic() - started) * 1000),
             request_id=layout_completion.request_id,

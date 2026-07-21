@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import urllib.error
 import urllib.request
@@ -11,11 +12,19 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from server.app.infrastructure.settings import Settings, get_settings
+from server.app.domains.textbook_rag.clients import (
+    TextbookRAGClientError,
+    embedding_profile_fingerprint,
+    endpoint_configured,
+    validate_embedding_protocol,
+    validate_rerank_protocol,
+)
 from server.app.infrastructure.database import db_session
+from server.app.infrastructure.settings import Settings, get_settings
 
 LEARNING_SETTINGS_KEY = "learning_behavior"
 AI_CONFIGURATION_KEY = "ai_configuration"
+SAFE_PROVIDER_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
 
 
 class SmartAssessmentSettings(BaseModel):
@@ -115,8 +124,10 @@ class RAGRuntimeStatus(BaseModel):
 
 
 class AIProviderRoleUpdate(BaseModel):
-    provider: str = Field(default="openai", pattern="^openai$")
+    provider: str = Field(default="openai", pattern=SAFE_PROVIDER_PATTERN)
+    protocol: str = ""
     base_url: str = ""
+    endpoint: str = ""
     model: str = ""
     api_key: str | None = None
 
@@ -124,18 +135,58 @@ class AIProviderRoleUpdate(BaseModel):
 class AIProviderRoleResponse(BaseModel):
     role: str
     provider: str = "openai"
+    protocol: str = ""
     base_url: str = ""
+    endpoint: str = ""
     model: str = ""
     api_key_configured: bool = False
     api_key_fingerprint: str | None = None
+
+
+class TextbookEmbeddingProviderUpdate(AIProviderRoleUpdate):
+    provider: str = Field(default="openai_compatible", pattern=SAFE_PROVIDER_PATTERN)
+    protocol: str = "openai_embeddings"
+    send_dimensions: bool = True
+    batch_size: int = Field(default=16, ge=1, le=256)
+
+
+class TextbookEmbeddingProviderResponse(AIProviderRoleResponse):
+    send_dimensions: bool = True
+    batch_size: int = 16
+
+
+class TextbookRerankProviderUpdate(AIProviderRoleUpdate):
+    provider: str = Field(default="openai_compatible", pattern=SAFE_PROVIDER_PATTERN)
+    protocol: str = "auto"
+
+
+class TextbookOCRProviderUpdate(AIProviderRoleUpdate):
+    enabled: bool = False
+    provider: str = Field(default="mineru", pattern=SAFE_PROVIDER_PATTERN)
+    protocol: str = "openai_chat_completions"
+    timeout_seconds: float = Field(default=90.0, ge=0.5, le=600.0)
+    concurrency: int = Field(default=2, ge=1, le=32)
+    max_retries: int = Field(default=3, ge=0, le=20)
+    max_output_tokens: int = Field(default=4096, ge=1, le=32768)
+    render_dpi: int = Field(default=160, ge=72, le=600)
+
+
+class TextbookOCRProviderResponse(AIProviderRoleResponse):
+    enabled: bool = False
+    timeout_seconds: float = 90.0
+    concurrency: int = 2
+    max_retries: int = 3
+    max_output_tokens: int = 4096
+    render_dpi: int = 160
 
 
 class TextbookRAGConfigurationUpdate(BaseModel):
     enabled: bool = False
     elasticsearch_url: str = ""
     index_name: str = "canonical-rag-chunks-qwen-v1"
-    embedding: AIProviderRoleUpdate = Field(default_factory=AIProviderRoleUpdate)
-    rerank: AIProviderRoleUpdate = Field(default_factory=AIProviderRoleUpdate)
+    ocr: TextbookOCRProviderUpdate = Field(default_factory=TextbookOCRProviderUpdate)
+    embedding: TextbookEmbeddingProviderUpdate = Field(default_factory=TextbookEmbeddingProviderUpdate)
+    rerank: TextbookRerankProviderUpdate = Field(default_factory=TextbookRerankProviderUpdate)
     embedding_dimension: int = Field(default=1024, ge=1)
     keyword_top_k: int = Field(default=16, ge=1, le=100)
     vector_top_k: int = Field(default=24, ge=1, le=100)
@@ -149,7 +200,8 @@ class TextbookRAGConfigurationResponse(BaseModel):
     enabled: bool = False
     elasticsearch_url: str = ""
     index_name: str = "canonical-rag-chunks-qwen-v1"
-    embedding: AIProviderRoleResponse
+    ocr: TextbookOCRProviderResponse
+    embedding: TextbookEmbeddingProviderResponse
     rerank: AIProviderRoleResponse
     embedding_dimension: int = 1024
     keyword_top_k: int = 16
@@ -161,7 +213,7 @@ class TextbookRAGConfigurationResponse(BaseModel):
 
 
 class AIConfigurationUpdate(BaseModel):
-    provider: str = Field(default="openai", pattern="^openai$")
+    provider: str = Field(default="openai", pattern=SAFE_PROVIDER_PATTERN)
     base_url: str = ""
     model: str = ""
     api_key: str | None = None
@@ -259,12 +311,33 @@ def _defaults_for_key(key: str) -> dict[str, Any]:
                     enabled=settings.textbook_rag_enabled,
                     elasticsearch_url=settings.textbook_rag_elasticsearch_url or settings.video_library_search_url,
                     index_name=settings.textbook_rag_elasticsearch_index,
-                    embedding=AIProviderRoleUpdate(
-                        base_url=settings.textbook_rag_embedding_base_url,
-                        model=settings.textbook_rag_embedding_model,
+                    ocr=TextbookOCRProviderUpdate(
+                        enabled=settings.textbook_ocr_enabled,
+                        provider=settings.textbook_ocr_provider,
+                        protocol=settings.textbook_ocr_protocol,
+                        base_url=settings.textbook_ocr_base_url,
+                        endpoint=settings.textbook_ocr_endpoint,
+                        model=settings.textbook_ocr_model,
+                        timeout_seconds=settings.textbook_ocr_timeout_seconds,
+                        concurrency=settings.textbook_ocr_concurrency,
+                        max_retries=settings.textbook_ocr_max_retries,
+                        max_output_tokens=settings.textbook_ocr_max_output_tokens,
+                        render_dpi=settings.textbook_ocr_render_dpi,
                     ),
-                    rerank=AIProviderRoleUpdate(
+                    embedding=TextbookEmbeddingProviderUpdate(
+                        provider=settings.textbook_rag_embedding_provider,
+                        protocol=settings.textbook_rag_embedding_protocol,
+                        base_url=settings.textbook_rag_embedding_base_url,
+                        endpoint=settings.textbook_rag_embedding_endpoint,
+                        model=settings.textbook_rag_embedding_model,
+                        send_dimensions=settings.textbook_rag_embedding_send_dimensions,
+                        batch_size=settings.textbook_embedding_batch_size,
+                    ),
+                    rerank=TextbookRerankProviderUpdate(
+                        provider=settings.textbook_rag_rerank_provider,
+                        protocol=settings.textbook_rag_rerank_protocol,
                         base_url=settings.textbook_rag_rerank_base_url,
+                        endpoint=settings.textbook_rag_rerank_endpoint,
                         model=settings.textbook_rag_rerank_model,
                     ),
                     embedding_dimension=settings.textbook_rag_embedding_dimension,
@@ -390,27 +463,111 @@ def _as_float(value: Any, default: float, *, minimum: float | None = None, maxim
     return parsed
 
 
-def _role_payload(stored: Any, *, base_url: str = "", model: str = "", api_key: str = "") -> dict[str, Any]:
+def _role_payload(
+    stored: Any,
+    *,
+    provider: str = "openai",
+    protocol: str = "",
+    base_url: str = "",
+    endpoint: str = "",
+    model: str = "",
+    api_key: str = "",
+    send_dimensions: bool | None = None,
+) -> dict[str, Any]:
     payload = stored if isinstance(stored, dict) else {}
-    return {
-        "provider": "openai",
-        "base_url": str(payload.get("base_url") or base_url or "").strip().rstrip("/"),
-        "model": str(payload.get("model") or model or "").strip(),
+    resolved_base_url = payload["base_url"] if "base_url" in payload else base_url
+    resolved_endpoint = payload["endpoint"] if "endpoint" in payload else endpoint
+    resolved_model = payload["model"] if "model" in payload else model
+    result: dict[str, Any] = {
+        "provider": str(payload.get("provider") or provider or "openai").strip(),
+        "protocol": str(payload.get("protocol") or protocol or "").strip().lower(),
+        "base_url": str(resolved_base_url or "").strip().rstrip("/"),
+        "endpoint": str(resolved_endpoint or "").strip(),
+        "model": str(resolved_model or "").strip(),
         "api_key": str(payload.get("api_key") or api_key or "").strip(),
+    }
+    if send_dimensions is not None:
+        result["send_dimensions"] = _as_bool(
+            payload.get("send_dimensions"),
+            send_dimensions,
+        )
+    return result
+
+
+def _textbook_ocr_payload(stored: Any, base: Settings) -> dict[str, Any]:
+    payload = stored if isinstance(stored, dict) else {}
+    role = _role_payload(
+        payload,
+        provider=base.textbook_ocr_provider,
+        protocol=base.textbook_ocr_protocol,
+        base_url=base.textbook_ocr_base_url,
+        endpoint=base.textbook_ocr_endpoint,
+        model=base.textbook_ocr_model,
+        api_key=base.textbook_ocr_api_key,
+    )
+    return {
+        **role,
+        "enabled": _as_bool(payload.get("enabled"), base.textbook_ocr_enabled),
+        "timeout_seconds": _as_float(
+            payload.get("timeout_seconds"),
+            base.textbook_ocr_timeout_seconds,
+            minimum=0.5,
+            maximum=600.0,
+        ),
+        "concurrency": _as_int(
+            payload.get("concurrency"),
+            base.textbook_ocr_concurrency,
+            minimum=1,
+            maximum=32,
+        ),
+        "max_retries": _as_int(
+            payload.get("max_retries"),
+            base.textbook_ocr_max_retries,
+            minimum=0,
+            maximum=20,
+        ),
+        "max_output_tokens": _as_int(
+            payload.get("max_output_tokens"),
+            base.textbook_ocr_max_output_tokens,
+            minimum=1,
+            maximum=32768,
+        ),
+        "render_dpi": _as_int(
+            payload.get("render_dpi"),
+            base.textbook_ocr_render_dpi,
+            minimum=72,
+            maximum=600,
+        ),
     }
 
 
 def _textbook_rag_payload(stored: Any, base: Settings) -> dict[str, Any]:
     payload = stored if isinstance(stored, dict) else {}
+    ocr = _textbook_ocr_payload(payload.get("ocr"), base)
     embedding = _role_payload(
         payload.get("embedding"),
+        provider=base.textbook_rag_embedding_provider,
+        protocol=base.textbook_rag_embedding_protocol,
         base_url=base.textbook_rag_embedding_base_url,
+        endpoint=base.textbook_rag_embedding_endpoint,
         model=base.textbook_rag_embedding_model,
         api_key=base.textbook_rag_embedding_api_key,
+        send_dimensions=base.textbook_rag_embedding_send_dimensions,
+    )
+    embedding["batch_size"] = _as_int(
+        (payload.get("embedding") or {}).get("batch_size")
+        if isinstance(payload.get("embedding"), dict)
+        else None,
+        base.textbook_embedding_batch_size,
+        minimum=1,
+        maximum=256,
     )
     rerank = _role_payload(
         payload.get("rerank"),
+        provider=base.textbook_rag_rerank_provider,
+        protocol=base.textbook_rag_rerank_protocol,
         base_url=base.textbook_rag_rerank_base_url,
+        endpoint=base.textbook_rag_rerank_endpoint,
         model=base.textbook_rag_rerank_model,
         api_key=base.textbook_rag_rerank_api_key,
     )
@@ -423,6 +580,7 @@ def _textbook_rag_payload(stored: Any, base: Settings) -> dict[str, Any]:
             or ""
         ).strip().rstrip("/"),
         "index_name": str(payload.get("index_name") or base.textbook_rag_elasticsearch_index).strip(),
+        "ocr": ocr,
         "embedding": embedding,
         "rerank": rerank,
         "embedding_dimension": _as_int(
@@ -452,6 +610,7 @@ def _effective_ai_configuration_payload() -> dict[str, Any]:
     stored = _load_setting_value(AI_CONFIGURATION_KEY)
     chat = _role_payload(
         stored.get("chat_provider"),
+        provider=str(stored.get("provider") or base.agent_llm_provider or "openai"),
         base_url=str(stored.get("base_url") or base.agent_llm_base_url),
         model=str(stored.get("model") or base.agent_llm_model),
         api_key=str(stored.get("api_key") or base.agent_llm_api_key or ""),
@@ -460,7 +619,7 @@ def _effective_ai_configuration_payload() -> dict[str, Any]:
     features = stored.get("enabled_features") or {}
     textbook_rag = _textbook_rag_payload(stored.get("textbook_rag"), base)
     return {
-        "provider": "openai",
+        "provider": chat["provider"],
         "base_url": chat["base_url"],
         "model": chat["model"],
         "api_key": chat["api_key"],
@@ -475,20 +634,42 @@ def _effective_ai_configuration_payload() -> dict[str, Any]:
 def _api_key_fingerprint(api_key: str) -> str | None:
     if not api_key:
         return None
-    if len(api_key) <= 8:
-        return "********"
-    return f"{api_key[:3]}...{api_key[-4:]}"
+    return hashlib.sha256(api_key.encode("utf-8")).hexdigest()[:16]
 
 
 def _role_response(role: str, payload: dict[str, Any]) -> AIProviderRoleResponse:
     api_key = str(payload.get("api_key") or "")
     return AIProviderRoleResponse(
         role=role,
-        provider="openai",
+        provider=str(payload.get("provider") or "openai"),
+        protocol=str(payload.get("protocol") or ""),
         base_url=str(payload.get("base_url") or ""),
+        endpoint=str(payload.get("endpoint") or ""),
         model=str(payload.get("model") or ""),
         api_key_configured=bool(api_key),
         api_key_fingerprint=_api_key_fingerprint(api_key),
+    )
+
+
+def _embedding_role_response(payload: dict[str, Any]) -> TextbookEmbeddingProviderResponse:
+    role = _role_response("textbook_embedding", payload)
+    return TextbookEmbeddingProviderResponse(
+        **_model_dump(role),
+        send_dimensions=bool(payload.get("send_dimensions", True)),
+        batch_size=int(payload.get("batch_size") or 16),
+    )
+
+
+def _ocr_role_response(payload: dict[str, Any]) -> TextbookOCRProviderResponse:
+    role = _role_response("textbook_ocr", payload)
+    return TextbookOCRProviderResponse(
+        **_model_dump(role),
+        enabled=bool(payload.get("enabled")),
+        timeout_seconds=float(payload.get("timeout_seconds") or 90.0),
+        concurrency=int(payload.get("concurrency") or 2),
+        max_retries=int(payload.get("max_retries") or 0),
+        max_output_tokens=int(payload.get("max_output_tokens") or 4096),
+        render_dpi=int(payload.get("render_dpi") or 160),
     )
 
 
@@ -497,7 +678,8 @@ def _textbook_rag_response(payload: dict[str, Any]) -> TextbookRAGConfigurationR
         enabled=bool(payload.get("enabled")),
         elasticsearch_url=str(payload.get("elasticsearch_url") or ""),
         index_name=str(payload.get("index_name") or ""),
-        embedding=_role_response("textbook_embedding", payload.get("embedding") or {}),
+        ocr=_ocr_role_response(payload.get("ocr") or {}),
+        embedding=_embedding_role_response(payload.get("embedding") or {}),
         rerank=_role_response("textbook_rerank", payload.get("rerank") or {}),
         embedding_dimension=int(payload.get("embedding_dimension") or 1024),
         keyword_top_k=int(payload.get("keyword_top_k") or 16),
@@ -615,13 +797,25 @@ def _student_ai_policy_status(effective: dict[str, Any], log_summary: dict[str, 
 
 
 def _textbook_rag_runtime_status(textbook_rag: dict[str, Any], *, rag_enabled: bool) -> dict[str, Any]:
+    embedding = textbook_rag.get("embedding") or {}
+    rerank = textbook_rag.get("rerank") or {}
     diagnostics: dict[str, Any] = {
         "enabled": bool(textbook_rag.get("enabled")),
         "elasticsearch_url_configured": bool(textbook_rag.get("elasticsearch_url")),
-        "embedding_configured": bool((textbook_rag.get("embedding") or {}).get("model"))
-        and bool((textbook_rag.get("embedding") or {}).get("api_key")),
-        "rerank_configured": bool((textbook_rag.get("rerank") or {}).get("model"))
-        and bool((textbook_rag.get("rerank") or {}).get("api_key")),
+        "embedding_configured": endpoint_configured(
+            str(embedding.get("base_url") or ""),
+            str(embedding.get("endpoint") or ""),
+        )
+        and bool(embedding.get("model"))
+        and bool(embedding.get("api_key")),
+        "rerank_configured": endpoint_configured(
+            str(rerank.get("base_url") or ""),
+            str(rerank.get("endpoint") or ""),
+        )
+        and bool(rerank.get("model"))
+        and bool(rerank.get("api_key")),
+        "embedding_protocol": str(embedding.get("protocol") or ""),
+        "rerank_protocol": str(rerank.get("protocol") or ""),
     }
     models = {
         "embedding": str((textbook_rag.get("embedding") or {}).get("model") or ""),
@@ -668,6 +862,36 @@ def _textbook_rag_runtime_status(textbook_rag: dict[str, Any], *, rag_enabled: b
             "diagnostics": diagnostics,
         }
     try:
+        validate_embedding_protocol(str(embedding.get("protocol") or "openai_embeddings"))
+    except TextbookRAGClientError:
+        return {
+            "enabled": True,
+            "status": "embedding_protocol_unsupported",
+            "message": "教材 RAG Embedding 协议不受支持。",
+            "models": models,
+            "diagnostics": diagnostics,
+        }
+    expected_embedding_profile = embedding_profile_fingerprint(
+        provider=str(embedding.get("provider") or "openai_compatible"),
+        protocol=str(embedding.get("protocol") or "openai_embeddings"),
+        base_url=str(embedding.get("base_url") or ""),
+        endpoint=str(embedding.get("endpoint") or ""),
+        model=str(embedding.get("model") or ""),
+        dimensions=int(textbook_rag.get("embedding_dimension") or 0),
+        send_dimensions=bool(embedding.get("send_dimensions", True)),
+    )
+    diagnostics["expected_embedding_profile_fingerprint"] = expected_embedding_profile
+    try:
+        validate_rerank_protocol(str(rerank.get("protocol") or "auto"))
+    except TextbookRAGClientError:
+        return {
+            "enabled": True,
+            "status": "rerank_protocol_unsupported",
+            "message": "教材 RAG Rerank 协议不受支持。",
+            "models": models,
+            "diagnostics": diagnostics,
+        }
+    try:
         request = urllib.request.Request(
             f"{str(textbook_rag['elasticsearch_url']).rstrip('/')}/{textbook_rag['index_name']}",
             method="GET",
@@ -702,6 +926,8 @@ def _textbook_rag_runtime_status(textbook_rag: dict[str, Any], *, rag_enabled: b
     expected_model = str((textbook_rag.get("embedding") or {}).get("model") or "")
     expected_dim = int(textbook_rag.get("embedding_dimension") or 0)
     indexed_model = str(meta.get("embedding_model") or "")
+    indexed_profile = str(meta.get("embedding_profile_fingerprint") or "")
+    diagnostics["indexed_embedding_profile_fingerprint"] = indexed_profile or None
     indexed_dim = int(meta.get("embedding_dimension") or 0) if str(meta.get("embedding_dimension") or "").isdigit() else 0
     if meta and (indexed_model != expected_model or (indexed_dim and indexed_dim != expected_dim)):
         return {
@@ -711,6 +937,26 @@ def _textbook_rag_runtime_status(textbook_rag: dict[str, Any], *, rag_enabled: b
             "models": models,
             "diagnostics": diagnostics,
         }
+    legacy_profile_compatible = str(textbook_rag.get("index_name") or "").startswith(
+        "canonical-rag-chunks-qwen-"
+    )
+    if indexed_profile and indexed_profile != expected_embedding_profile:
+        return {
+            "enabled": True,
+            "status": "index_stale",
+            "message": "教材 RAG 索引向量空间与当前 Embedding provider 配置不一致。",
+            "models": models,
+            "diagnostics": diagnostics,
+        }
+    if meta and not indexed_profile and not legacy_profile_compatible:
+        return {
+            "enabled": True,
+            "status": "index_profile_missing",
+            "message": "教材 RAG 索引缺少 Embedding provider 指纹，需要重建。",
+            "models": models,
+            "diagnostics": diagnostics,
+        }
+    diagnostics["legacy_embedding_profile"] = bool(meta and not indexed_profile)
     return {
         "enabled": True,
         "status": "healthy",
@@ -978,7 +1224,7 @@ def get_ai_configuration_response(can_edit: bool = False, auto_check: bool = Tru
     connection = _connection_status(effective)
     log_summary = _agent_log_summary()
     return AIConfigurationResponse(
-        provider="openai",
+        provider=str(effective.get("provider") or "openai"),
         base_url=effective["base_url"],
         model=effective["model"],
         connection_check_interval_minutes=_normalized_check_interval(effective["connection_check_interval_minutes"]),
@@ -1027,14 +1273,13 @@ def save_ai_configuration(payload: AIConfigurationUpdate, user_id: str | None = 
     value = dict(existing)
     value.update(
         {
-            "provider": "openai",
+            "provider": str(incoming.get("provider") or existing.get("provider") or "openai"),
             "base_url": incoming.get("base_url") or "",
             "model": incoming.get("model") or "",
             "connection_check_interval_minutes": incoming.get("connection_check_interval_minutes"),
             "enabled_features": incoming.get("enabled_features") or _model_dump(AIEnabledFeatureScopes()),
         }
     )
-    value["provider"] = "openai"
     new_secret = (payload.api_key or "").strip()
     if new_secret:
         value["api_key"] = new_secret
@@ -1046,8 +1291,19 @@ def save_ai_configuration(payload: AIConfigurationUpdate, user_id: str | None = 
     if chat_incoming is not None:
         existing_chat = existing.get("chat_provider") if isinstance(existing.get("chat_provider"), dict) else {}
         chat_value = {
-            "provider": "openai",
+            "provider": str(
+                chat_incoming.get("provider")
+                or existing_chat.get("provider")
+                or value.get("provider")
+                or "openai"
+            ).strip(),
+            "protocol": str(
+                chat_incoming.get("protocol") or existing_chat.get("protocol") or ""
+            ).strip().lower(),
             "base_url": str(chat_incoming.get("base_url") or value.get("base_url") or "").strip().rstrip("/"),
+            "endpoint": str(
+                chat_incoming.get("endpoint") or existing_chat.get("endpoint") or ""
+            ).strip(),
             "model": str(chat_incoming.get("model") or value.get("model") or "").strip(),
         }
         chat_secret = str(chat_incoming.get("api_key") or "").strip()
@@ -1058,6 +1314,7 @@ def save_ai_configuration(payload: AIConfigurationUpdate, user_id: str | None = 
         elif value.get("api_key"):
             chat_value["api_key"] = value["api_key"]
         value["chat_provider"] = chat_value
+        value["provider"] = chat_value["provider"]
         value["base_url"] = chat_value["base_url"]
         value["model"] = chat_value["model"]
         if chat_value.get("api_key"):
@@ -1065,8 +1322,10 @@ def save_ai_configuration(payload: AIConfigurationUpdate, user_id: str | None = 
     else:
         existing_chat = existing.get("chat_provider") if isinstance(existing.get("chat_provider"), dict) else {}
         chat_value = {
-            "provider": "openai",
+            "provider": str(value.get("provider") or existing_chat.get("provider") or "openai"),
+            "protocol": str(existing_chat.get("protocol") or "").strip().lower(),
             "base_url": str(value.get("base_url") or "").strip().rstrip("/"),
+            "endpoint": str(existing_chat.get("endpoint") or "").strip(),
             "model": str(value.get("model") or "").strip(),
         }
         if new_secret:
@@ -1079,8 +1338,30 @@ def save_ai_configuration(payload: AIConfigurationUpdate, user_id: str | None = 
     textbook_incoming = incoming.get("textbook_rag") if isinstance(incoming.get("textbook_rag"), dict) else None
     if textbook_incoming is not None:
         existing_textbook = existing.get("textbook_rag") if isinstance(existing.get("textbook_rag"), dict) else {}
-        textbook_value = {**existing_textbook, **textbook_incoming}
-        for role_name in ("embedding", "rerank"):
+        role_names = {"ocr", "embedding", "rerank"}
+        textbook_value = {
+            **existing_textbook,
+            **{
+                key: item
+                for key, item in textbook_incoming.items()
+                if key not in role_names
+            },
+        }
+        textbook_model = payload.textbook_rag
+        fields_set = getattr(textbook_model, "model_fields_set", None)
+        if fields_set is None and textbook_model is not None:
+            fields_set = getattr(textbook_model, "__fields_set__", set())
+        explicitly_set_roles = (
+            set(fields_set or set()) & role_names
+            if textbook_model is not None
+            else set()
+        )
+        for role_name in explicitly_set_roles:
+            role_model = getattr(textbook_model, role_name, None)
+            role_fields_set = getattr(role_model, "model_fields_set", None)
+            if role_fields_set is None and role_model is not None:
+                role_fields_set = getattr(role_model, "__fields_set__", set())
+            explicit_role_fields = set(role_fields_set or set())
             role_incoming = (
                 textbook_incoming.get(role_name)
                 if isinstance(textbook_incoming.get(role_name), dict)
@@ -1091,11 +1372,60 @@ def save_ai_configuration(payload: AIConfigurationUpdate, user_id: str | None = 
                 if isinstance(existing_textbook.get(role_name), dict)
                 else {}
             )
-            role_value = {
-                "provider": "openai",
-                "base_url": str(role_incoming.get("base_url") or existing_role.get("base_url") or "").strip().rstrip("/"),
-                "model": str(role_incoming.get("model") or existing_role.get("model") or "").strip(),
-            }
+            role_value = dict(existing_role)
+
+            def should_update(field_name: str) -> bool:
+                # A pre-provider client only sends base_url/model/api_key. Keep
+                # newer fields from the stored role unless the client actually
+                # supplied them; a brand-new role still receives Pydantic's
+                # provider/protocol defaults.
+                return field_name in explicit_role_fields or not existing_role
+
+            if should_update("provider"):
+                role_value["provider"] = str(
+                    role_incoming.get("provider") or "openai"
+                ).strip()
+            if should_update("protocol"):
+                role_value["protocol"] = str(role_incoming.get("protocol") or "").strip().lower()
+            if should_update("base_url"):
+                role_value["base_url"] = str(role_incoming.get("base_url") or "").strip().rstrip("/")
+            if should_update("endpoint"):
+                # Unlike credentials, an explicitly blank endpoint means
+                # "clear the override and use the protocol default route".
+                role_value["endpoint"] = str(role_incoming.get("endpoint") or "").strip()
+            if should_update("model"):
+                role_value["model"] = str(role_incoming.get("model") or "").strip()
+            if role_name == "ocr":
+                ocr_defaults = {
+                    "enabled": False,
+                    "timeout_seconds": 90.0,
+                    "concurrency": 2,
+                    "max_retries": 3,
+                    "max_output_tokens": 4096,
+                    "render_dpi": 160,
+                }
+                for field_name, default in ocr_defaults.items():
+                    if should_update(field_name):
+                        raw_value = role_incoming.get(field_name)
+                        if field_name == "enabled":
+                            role_value[field_name] = bool(raw_value)
+                        elif field_name == "timeout_seconds":
+                            role_value[field_name] = float(
+                                raw_value if raw_value is not None else default
+                            )
+                        else:
+                            role_value[field_name] = int(
+                                raw_value if raw_value is not None else default
+                            )
+            elif role_name == "embedding":
+                if should_update("send_dimensions"):
+                    role_value["send_dimensions"] = bool(
+                        role_incoming.get("send_dimensions", True)
+                    )
+                if should_update("batch_size"):
+                    role_value["batch_size"] = int(
+                        role_incoming.get("batch_size") or 16
+                    )
             role_secret = str(role_incoming.get("api_key") or "").strip()
             if role_secret:
                 role_value["api_key"] = role_secret

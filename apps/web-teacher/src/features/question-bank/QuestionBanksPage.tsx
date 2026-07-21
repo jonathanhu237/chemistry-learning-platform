@@ -471,7 +471,7 @@ export function QuestionBanksPage() {
     onSuccess: (result) => {
       message.success(
         result.queued_count
-          ? `已开始刷新 ${result.queued_count} 个点位证据，预估 ${result.qwen_call_estimate} 次 Qwen 调用`
+          ? `已开始刷新 ${result.queued_count} 个点位证据，预估 ${result.qwen_call_estimate} 次模型调用`
           : `没有新点位需要刷新，已跳过 ${result.skipped_count} 个点位`,
       );
       refreshQuestionBank();
@@ -689,8 +689,8 @@ export function QuestionBanksPage() {
       title: scope === "chapter" ? "刷新本章教材证据？" : "刷新当前点位教材证据？",
       content:
         scope === "chapter"
-          ? "系统会为本章缺失、失败或过期的点位调用 Qwen Embedding 与 Rerank，并把命中的教材 chunk 绑定到点位。已有可用证据默认不会重复付费检索。"
-          : "系统会调用 Qwen Embedding 与 Rerank，为当前点位的实验原理、现象解释和安全提示绑定教材依据。",
+          ? "系统会为本章缺失、失败或过期的点位调用已配置的 Embedding 与 Rerank 服务，并把命中的教材 chunk 绑定到点位。已有可用证据默认不会重复检索。"
+          : "系统会调用已配置的 Embedding 与 Rerank 服务，为当前点位的实验原理、现象解释和安全提示绑定教材依据。",
       okText: "开始刷新",
       cancelText: "取消",
       onOk: () =>

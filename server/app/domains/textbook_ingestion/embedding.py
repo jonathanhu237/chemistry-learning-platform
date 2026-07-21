@@ -28,6 +28,7 @@ class EmbeddingReuseStore(Protocol):
         *,
         embedding_model: str,
         embedding_dimension: int,
+        embedding_profile_fingerprint: str,
     ) -> dict[str, list[float]]: ...
 
 
@@ -50,6 +51,7 @@ class ElasticsearchEmbeddingReuseStore:
         *,
         embedding_model: str,
         embedding_dimension: int,
+        embedding_profile_fingerprint: str,
     ) -> dict[str, list[float]]:
         hashes = [value for value in dict.fromkeys(str(item) for item in content_hashes) if value]
         results: dict[str, list[float]] = {}
@@ -61,13 +63,24 @@ class ElasticsearchEmbeddingReuseStore:
                     f"/{self.es.index}/_search",
                     {
                         "size": len(batch),
-                        "_source": ["content_hash", "embedding", "embedding_model", "embedding_dimension"],
+                        "_source": [
+                            "content_hash",
+                            "embedding",
+                            "embedding_model",
+                            "embedding_dimension",
+                            "embedding_profile_fingerprint",
+                        ],
                         "query": {
                             "bool": {
                                 "filter": [
                                     {"terms": {"content_hash": batch}},
                                     {"term": {"embedding_model": embedding_model}},
                                     {"term": {"embedding_dimension": embedding_dimension}},
+                                    {
+                                        "term": {
+                                            "embedding_profile_fingerprint": embedding_profile_fingerprint
+                                        }
+                                    },
                                 ]
                             }
                         },
@@ -107,6 +120,10 @@ class BatchTextbookEmbedder:
     def model(self) -> str:
         return self.client.model
 
+    @property
+    def profile_fingerprint(self) -> str:
+        return str(getattr(self.client, "profile_fingerprint", "") or "")
+
     def embed_chunks(
         self,
         chunks: Sequence[StableChunk],
@@ -132,6 +149,7 @@ class BatchTextbookEmbedder:
                 list(content_by_hash),
                 embedding_model=self.model,
                 embedding_dimension=self.embedding_dimension,
+                embedding_profile_fingerprint=self.profile_fingerprint,
             )
         for content_hash, vector in reused.items():
             if len(vector) != self.embedding_dimension:

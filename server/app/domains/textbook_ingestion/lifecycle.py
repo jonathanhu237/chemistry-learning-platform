@@ -13,6 +13,7 @@ from server.app.domains.textbook_ingestion.errors import TextbookIngestionError
 from server.app.domains.textbook_ingestion.projection import elasticsearch_operation_issues
 from server.app.domains.textbook_ingestion.repository import get_textbook_document
 from server.app.domains.textbook_ingestion.storage import LocalTextbookBlobStore
+from server.app.domains.textbook_rag.clients import embedding_profile_fingerprint
 from server.app.domains.textbook_rag.index import TextbookElasticsearchClient
 from server.app.infrastructure.database import db_session
 from server.app.infrastructure.settings import Settings, get_settings
@@ -138,7 +139,17 @@ def _expected_projection_contract(
     processing_fingerprint = ""
     projection_run_id = ""
     job_projection_run_id = str(outputs.get("projection_run_id") or "").strip()
+    embedding_profile = ""
     if not _is_seed_document(document):
+        embedding_profile = embedding_profile_fingerprint(
+            provider=settings.textbook_rag_embedding_provider,
+            protocol=settings.textbook_rag_embedding_protocol,
+            base_url=settings.textbook_rag_embedding_base_url,
+            endpoint=settings.textbook_rag_embedding_endpoint,
+            model=embedding_model,
+            dimensions=embedding_dimension,
+            send_dimensions=settings.textbook_rag_embedding_send_dimensions,
+        )
         processing_fingerprint = str(
             document.get("processing_fingerprint")
             or job.get("processing_fingerprint")
@@ -148,6 +159,7 @@ def _expected_projection_contract(
     return {
         "embedding_model": embedding_model,
         "embedding_dimension": embedding_dimension,
+        "embedding_profile_fingerprint": embedding_profile,
         "processing_fingerprint": processing_fingerprint,
         "projection_run_id": projection_run_id,
         "job_projection_run_id": job_projection_run_id,
@@ -185,6 +197,8 @@ def verify_live_elasticsearch_projection(
     if int(expected["embedding_dimension"] or 0) <= 0:
         blockers.append("embedding_dimension_unavailable")
     if not _is_seed_document(document):
+        if not expected["embedding_profile_fingerprint"]:
+            blockers.append("embedding_profile_unavailable")
         if not expected["processing_fingerprint"]:
             blockers.append("processing_fingerprint_unavailable")
         if not expected["projection_run_id"]:
@@ -210,6 +224,16 @@ def verify_live_elasticsearch_projection(
             filters.append({"term": {"embedding_model": expected["embedding_model"]}})
         if int(expected["embedding_dimension"] or 0) > 0:
             filters.append({"term": {"embedding_dimension": expected["embedding_dimension"]}})
+        if expected["embedding_profile_fingerprint"]:
+            filters.append(
+                {
+                    "term": {
+                        "embedding_profile_fingerprint": expected[
+                            "embedding_profile_fingerprint"
+                        ]
+                    }
+                }
+            )
         if expected["processing_fingerprint"]:
             filters.append(
                 {"term": {"processing_fingerprint": expected["processing_fingerprint"]}}
@@ -254,6 +278,7 @@ def verify_live_elasticsearch_projection(
         properties.get("embedding", {}) if isinstance(properties, dict) else {}
     )
     actual_model = str(mapping_metadata.get("embedding_model") or "")
+    actual_profile = str(mapping_metadata.get("embedding_profile_fingerprint") or "")
     actual_dimension = int(
         mapping_metadata.get("embedding_dimension")
         or (
@@ -287,6 +312,11 @@ def verify_live_elasticsearch_projection(
         expected["embedding_dimension"]
     ):
         blockers.append("embedding_dimension_mismatch")
+    if (
+        expected["embedding_profile_fingerprint"]
+        and actual_profile != expected["embedding_profile_fingerprint"]
+    ):
+        blockers.append("embedding_profile_mismatch")
     if contract_count != expected_chunk_count:
         blockers.append("live_active_projection_count_mismatch")
     stale_projection_count = max(actual_count - contract_count, 0)
@@ -308,6 +338,11 @@ def verify_live_elasticsearch_projection(
         "actual_embedding_model": actual_model,
         "expected_embedding_dimension": expected["embedding_dimension"],
         "actual_embedding_dimension": actual_dimension,
+        "expected_embedding_profile_fingerprint": expected[
+            "embedding_profile_fingerprint"
+        ]
+        or None,
+        "actual_embedding_profile_fingerprint": actual_profile or None,
         "processing_fingerprint": expected["processing_fingerprint"] or None,
         "active_projection_run_id": expected["projection_run_id"] or None,
         "job_projection_run_id": expected["job_projection_run_id"] or None,

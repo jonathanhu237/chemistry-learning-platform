@@ -8,14 +8,18 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Iterable
 
-from server.app.domains.textbook_rag.clients import QwenEmbeddingClient
+from server.app.domains.textbook_rag.clients import (
+    OpenAICompatibleEmbeddingClient,
+    TextbookRAGClientError,
+    validate_embedding_protocol,
+)
 
 
 DEFAULT_CHUNK_PATHS = (
     Path("data/seed/canonical_rag/chunks/textbook_experiment_chunks_v1.jsonl"),
     Path("data/seed/canonical_rag/chunks/textbook_inorganic_lower_chunks_v1.jsonl"),
 )
-TEXTBOOK_RAG_INDEX_SCHEMA = "canonical-rag-chunks-qwen-v2"
+TEXTBOOK_RAG_INDEX_SCHEMA = "textbook-rag-chunks-v2"
 ONLINE_MAPPING_PROPERTIES: dict[str, Any] = {
     "document_id": {"type": "keyword"},
     "logical_textbook_key": {"type": "keyword"},
@@ -24,6 +28,7 @@ ONLINE_MAPPING_PROPERTIES: dict[str, Any] = {
     "projection_run_id": {"type": "keyword"},
     "extraction_method": {"type": "keyword"},
     "quality_flags": {"type": "keyword"},
+    "embedding_profile_fingerprint": {"type": "keyword"},
 }
 
 
@@ -45,7 +50,14 @@ class TextbookElasticsearchClient:
             raw = response.read().decode("utf-8")
         return json.loads(raw) if raw else {}
 
-    def ensure_index(self, *, embedding_model: str, embedding_dimension: int, recreate: bool = False) -> None:
+    def ensure_index(
+        self,
+        *,
+        embedding_model: str,
+        embedding_dimension: int,
+        embedding_profile_fingerprint: str = "",
+        recreate: bool = False,
+    ) -> None:
         if recreate:
             try:
                 self.request("DELETE", f"/{self.index}")
@@ -63,6 +75,7 @@ class TextbookElasticsearchClient:
                 textbook_chunk_index_mapping(
                     embedding_model=embedding_model,
                     embedding_dimension=embedding_dimension,
+                    embedding_profile_fingerprint=embedding_profile_fingerprint,
                 ),
             )
             return
@@ -72,6 +85,7 @@ class TextbookElasticsearchClient:
         metadata = mappings.get("_meta", {}) if isinstance(mappings, dict) else {}
         properties = mappings.get("properties", {}) if isinstance(mappings, dict) else {}
         actual_model = str(metadata.get("embedding_model") or "")
+        actual_profile = str(metadata.get("embedding_profile_fingerprint") or "")
         actual_dimension = int(
             metadata.get("embedding_dimension")
             or ((properties.get("embedding") or {}).get("dims") if isinstance(properties, dict) else 0)
@@ -86,6 +100,17 @@ class TextbookElasticsearchClient:
                 "Elasticsearch textbook index embedding dimension mismatch: "
                 f"expected {embedding_dimension}, got {actual_dimension}"
             )
+        if embedding_profile_fingerprint:
+            if not actual_profile:
+                raise ValueError(
+                    "Elasticsearch textbook index has no embedding profile metadata; "
+                    "rebuild it before writing provider-configured vectors"
+                )
+            if actual_profile != embedding_profile_fingerprint:
+                raise ValueError(
+                    "Elasticsearch textbook index embedding profile mismatch: "
+                    f"expected {embedding_profile_fingerprint}, got {actual_profile}"
+                )
         self.request(
             "PUT",
             f"/{self.index}/_mapping",
@@ -94,11 +119,43 @@ class TextbookElasticsearchClient:
                     **(metadata if isinstance(metadata, dict) else {}),
                     "embedding_model": embedding_model,
                     "embedding_dimension": embedding_dimension,
+                    "embedding_profile_fingerprint": embedding_profile_fingerprint,
                     "schema": TEXTBOOK_RAG_INDEX_SCHEMA,
                 },
                 "properties": ONLINE_MAPPING_PROPERTIES,
             },
         )
+
+    def validate_embedding_contract(
+        self,
+        *,
+        embedding_model: str,
+        embedding_dimension: int,
+        embedding_profile_fingerprint: str,
+    ) -> dict[str, Any]:
+        mapping_response = self.request("GET", f"/{self.index}/_mapping")
+        index_mapping = mapping_response.get(self.index, {}) if isinstance(mapping_response, dict) else {}
+        mappings = index_mapping.get("mappings", {}) if isinstance(index_mapping, dict) else {}
+        metadata = mappings.get("_meta", {}) if isinstance(mappings, dict) else {}
+        properties = mappings.get("properties", {}) if isinstance(mappings, dict) else {}
+        embedding_property = properties.get("embedding", {}) if isinstance(properties, dict) else {}
+        actual_model = str(metadata.get("embedding_model") or "")
+        actual_dimension = int(
+            metadata.get("embedding_dimension")
+            or (embedding_property.get("dims") if isinstance(embedding_property, dict) else 0)
+            or 0
+        )
+        actual_profile = str(metadata.get("embedding_profile_fingerprint") or "")
+        if actual_model != embedding_model or actual_dimension != embedding_dimension:
+            raise ValueError("Elasticsearch textbook index embedding model/dimension mismatch")
+        if actual_profile and actual_profile != embedding_profile_fingerprint:
+            raise ValueError("Elasticsearch textbook index embedding profile mismatch")
+        if (
+            not actual_profile
+            and not self.index.startswith("canonical-rag-chunks-qwen-")
+        ):
+            raise ValueError("Elasticsearch textbook index embedding profile metadata is missing")
+        return dict(metadata) if isinstance(metadata, dict) else {}
 
     def bulk(self, operations: list[dict[str, Any]]) -> dict[str, Any]:
         body = "\n".join(json.dumps(item, ensure_ascii=False) for item in operations) + "\n"
@@ -113,7 +170,12 @@ class TextbookElasticsearchClient:
         return json.loads(raw) if raw else {}
 
 
-def textbook_chunk_index_mapping(*, embedding_model: str, embedding_dimension: int) -> dict[str, Any]:
+def textbook_chunk_index_mapping(
+    *,
+    embedding_model: str,
+    embedding_dimension: int,
+    embedding_profile_fingerprint: str = "",
+) -> dict[str, Any]:
     return {
         "settings": {
             "analysis": {
@@ -137,6 +199,7 @@ def textbook_chunk_index_mapping(*, embedding_model: str, embedding_dimension: i
             "_meta": {
                 "embedding_model": embedding_model,
                 "embedding_dimension": embedding_dimension,
+                "embedding_profile_fingerprint": embedding_profile_fingerprint,
                 "schema": TEXTBOOK_RAG_INDEX_SCHEMA,
             },
             "properties": {
@@ -182,7 +245,14 @@ def iter_chunk_rows(paths: Iterable[str | Path]) -> Iterable[tuple[Path, dict[st
                 yield path, json.loads(line)
 
 
-def chunk_document(row: dict[str, Any], *, source_file: str, embedding: list[float], embedding_model: str) -> dict[str, Any]:
+def chunk_document(
+    row: dict[str, Any],
+    *,
+    source_file: str,
+    embedding: list[float],
+    embedding_model: str,
+    embedding_profile_fingerprint: str = "",
+) -> dict[str, Any]:
     text = str(row.get("clean_text_for_embedding") or row.get("raw_markdown") or "")
     return {
         "chunk_id": str(row.get("chunk_id") or ""),
@@ -216,6 +286,7 @@ def chunk_document(row: dict[str, Any], *, source_file: str, embedding: list[flo
         "indexed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "embedding_model": embedding_model,
         "embedding_dimension": len(embedding),
+        "embedding_profile_fingerprint": embedding_profile_fingerprint,
         "embedding": embedding,
         "metadata": {
             key: value
@@ -236,15 +307,22 @@ def chunk_document(row: dict[str, Any], *, source_file: str, embedding: list[flo
 def index_textbook_chunks(
     *,
     es: TextbookElasticsearchClient,
-    embedding_client: QwenEmbeddingClient,
+    embedding_client: OpenAICompatibleEmbeddingClient,
     chunk_paths: Iterable[str | Path] = DEFAULT_CHUNK_PATHS,
     embedding_dimension: int,
     batch_size: int = 16,
     recreate: bool = False,
 ) -> dict[str, Any]:
+    # Validate the provider contract before a requested index recreation can
+    # mutate Elasticsearch. This also keeps the operator script's preflight
+    # aligned with online ingestion readiness.
+    if not embedding_client.ready:
+        raise TextbookRAGClientError("embedding client is not configured")
+    validate_embedding_protocol(embedding_client.protocol)
     es.ensure_index(
         embedding_model=embedding_client.model,
         embedding_dimension=embedding_dimension,
+        embedding_profile_fingerprint=embedding_client.profile_fingerprint,
         recreate=recreate,
     )
     indexed = 0
@@ -262,7 +340,7 @@ def index_textbook_chunks(
 
 def _flush_batch(
     es: TextbookElasticsearchClient,
-    embedding_client: QwenEmbeddingClient,
+    embedding_client: OpenAICompatibleEmbeddingClient,
     batch: list[tuple[Path, dict[str, Any]]],
     failures: list[str],
 ) -> int:
@@ -275,7 +353,15 @@ def _flush_batch(
             failures.append(f"{path}: missing chunk_id")
             continue
         operations.append({"index": {"_index": es.index, "_id": chunk_id}})
-        operations.append(chunk_document(row, source_file=str(path), embedding=embedding, embedding_model=embedding_client.model))
+        operations.append(
+            chunk_document(
+                row,
+                source_file=str(path),
+                embedding=embedding,
+                embedding_model=embedding_client.model,
+                embedding_profile_fingerprint=embedding_client.profile_fingerprint,
+            )
+        )
     if not operations:
         return 0
     response = es.bulk(operations)

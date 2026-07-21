@@ -34,6 +34,11 @@ import {
 import { api, putJson } from "../../api/http";
 import { PageTitle } from "../../components/PageTitle";
 import { QueryState } from "../../components/QueryState";
+import {
+  aiConfigurationFormValues,
+  aiConfigurationUpdateFromForm,
+  type AIConfigurationFormValues,
+} from "./aiConfigurationForm";
 import "./settings.css";
 
 const { Text } = Typography;
@@ -174,35 +179,7 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (aiConfig.data) {
-      aiConfigForm.setFieldsValue({
-        provider: aiConfig.data.provider,
-        base_url: aiConfig.data.base_url,
-        model: aiConfig.data.model,
-        connection_check_interval_minutes: aiConfig.data.connection_check_interval_minutes,
-        api_key: "",
-        textbook_rag: {
-          enabled: aiConfig.data.textbook_rag?.enabled || false,
-          elasticsearch_url: aiConfig.data.textbook_rag?.elasticsearch_url || "",
-          index_name: aiConfig.data.textbook_rag?.index_name || "canonical-rag-chunks-qwen-v1",
-          embedding_dimension: aiConfig.data.textbook_rag?.embedding_dimension || 1024,
-          keyword_top_k: aiConfig.data.textbook_rag?.keyword_top_k || 16,
-          vector_top_k: aiConfig.data.textbook_rag?.vector_top_k || 24,
-          rerank_top_k: aiConfig.data.textbook_rag?.rerank_top_k || 9,
-          final_top_k: aiConfig.data.textbook_rag?.final_top_k || 5,
-          min_rerank_score: aiConfig.data.textbook_rag?.min_rerank_score || 0,
-          timeout_seconds: aiConfig.data.textbook_rag?.timeout_seconds || 8,
-          embedding: {
-            base_url: aiConfig.data.textbook_rag?.embedding?.base_url || "",
-            model: aiConfig.data.textbook_rag?.embedding?.model || "",
-            api_key: "",
-          },
-          rerank: {
-            base_url: aiConfig.data.textbook_rag?.rerank?.base_url || "",
-            model: aiConfig.data.textbook_rag?.rerank?.model || "",
-            api_key: "",
-          },
-        },
-      });
+      aiConfigForm.setFieldsValue(aiConfigurationFormValues(aiConfig.data));
       aiFeatureForm.setFieldsValue({ enabled_features: aiConfig.data.enabled_features });
     }
   }, [aiConfig.data, aiConfigForm, aiFeatureForm]);
@@ -231,7 +208,7 @@ export function SettingsPage() {
         ...(values.enabled_features || {}),
       };
       const payload: AIConfigurationUpdate = {
-        provider: "openai",
+        provider: aiConfig.data.provider || "openai",
         base_url: aiConfig.data.base_url || "",
         model: aiConfig.data.model || "",
         connection_check_interval_minutes: aiConfig.data.connection_check_interval_minutes || 30,
@@ -247,66 +224,21 @@ export function SettingsPage() {
     onError: (error) => message.error(errorMessage(error)),
   });
   const saveAiConfig = useMutation({
-    mutationFn: (values: AIConfigurationUpdate & { api_key?: string; textbook_rag?: NonNullable<AIConfigurationUpdate["textbook_rag"]> }) => {
+    mutationFn: (values: AIConfigurationFormValues) => {
       if (!aiConfig.data) {
         throw new Error("AI 接入配置尚未加载");
       }
-      const textbookRag = values.textbook_rag || undefined;
-      const payload: AIConfigurationUpdate = {
-        provider: "openai",
-        base_url: values.base_url || "",
-        model: values.model || "",
-        connection_check_interval_minutes: values.connection_check_interval_minutes || 30,
-        enabled_features: aiConfig.data.enabled_features,
-        chat_provider: {
-          provider: "openai",
-          base_url: values.base_url || "",
-          model: values.model || "",
-        },
-      };
-      const newSecret = String(values.api_key || "").trim();
-      if (newSecret) {
-        payload.api_key = newSecret;
-        payload.chat_provider = { ...payload.chat_provider!, api_key: newSecret };
-      }
-      if (textbookRag) {
-        const embeddingApiKey = String(textbookRag.embedding?.api_key || "").trim();
-        const rerankApiKey = String(textbookRag.rerank?.api_key || "").trim();
-        payload.textbook_rag = {
-          enabled: Boolean(textbookRag.enabled),
-          elasticsearch_url: textbookRag.elasticsearch_url || "",
-          index_name: textbookRag.index_name || "canonical-rag-chunks-qwen-v1",
-          embedding_dimension: Number(textbookRag.embedding_dimension || 1024),
-          keyword_top_k: Number(textbookRag.keyword_top_k || 16),
-          vector_top_k: Number(textbookRag.vector_top_k || 24),
-          rerank_top_k: Number(textbookRag.rerank_top_k || 9),
-          final_top_k: Number(textbookRag.final_top_k || 5),
-          min_rerank_score: Number(textbookRag.min_rerank_score || 0),
-          timeout_seconds: Number(textbookRag.timeout_seconds || 8),
-          embedding: {
-            provider: "openai",
-            base_url: textbookRag.embedding?.base_url || "",
-            model: textbookRag.embedding?.model || "",
-            ...(embeddingApiKey ? { api_key: embeddingApiKey } : {}),
-          },
-          rerank: {
-            provider: "openai",
-            base_url: textbookRag.rerank?.base_url || "",
-            model: textbookRag.rerank?.model || "",
-            ...(rerankApiKey ? { api_key: rerankApiKey } : {}),
-          },
-        };
-      }
+      const payload = aiConfigurationUpdateFromForm(values, aiConfig.data);
       return putJson<AIConfiguration>("/api/admin/ai-configuration", payload);
     },
     onSuccess: () => {
-      message.success("OpenAI API 接入配置已保存");
+      message.success("AI 接入配置已保存");
       void queryClient.invalidateQueries({ queryKey: ["ai-configuration"] });
       void queryClient.invalidateQueries({ queryKey: ["ai-configuration", "settings"] });
       void queryClient.invalidateQueries({ queryKey: ["learning-assistant-runtime"] });
       aiConfigForm.setFieldsValue({
         api_key: "",
-        textbook_rag: { embedding: { api_key: "" }, rerank: { api_key: "" } },
+        textbook_rag: { ocr: { api_key: "" }, embedding: { api_key: "" }, rerank: { api_key: "" } },
       });
     },
     onError: (error) => message.error(errorMessage(error)),
@@ -353,7 +285,7 @@ export function SettingsPage() {
 
   return (
     <Space orientation="vertical" size={18} className="full">
-      <PageTitle title="系统设置" description="控制全体 H5/手机学习端功能、学生 AI 能力，以及 OpenAI API 接入配置。" />
+      <PageTitle title="系统设置" description="控制全体 H5/手机学习端功能、学生 AI 能力，以及 AI 与教材 RAG 接入配置。" />
       <QueryState loading={platformSettings.isLoading} error={platformSettings.error}>
         <Form form={form} layout="vertical" onFinish={(values) => save.mutate(values as LearningBehaviorSettings)}>
           <Space orientation="vertical" size={18} className="full">
@@ -598,30 +530,25 @@ export function SettingsPage() {
           form={aiConfigForm}
           layout="vertical"
           onFinish={(values) =>
-            saveAiConfig.mutate(
-              values as AIConfigurationUpdate & {
-                api_key?: string;
-                textbook_rag?: NonNullable<AIConfigurationUpdate["textbook_rag"]>;
-              },
-            )
+            saveAiConfig.mutate(values as AIConfigurationFormValues)
           }
         >
-          <Card title="OpenAI API 接入" className="settings-ai-config-card">
-            {!canEditAiFeatures ? <Alert type="info" showIcon title="当前账号可查看 OpenAI API 配置，只有管理员可以修改。" className="section-alert" /> : null}
+          <Card title="AI 与教材 RAG 接入" className="settings-ai-config-card">
+            {!canEditAiFeatures ? <Alert type="info" showIcon title="当前账号可查看 AI 接入配置，只有管理员可以修改。" className="section-alert" /> : null}
             <Text type="secondary" className="block-text ai-card-description">
-              配置模型、Base URL、API Key 和自动检测间隔；AI接入页只展示运行状态监控。
+              对话模型与教材 OCR、Embedding、Rerank 可分别选择服务和协议；AI接入页只展示运行状态监控。
             </Text>
             <div className="ai-provider-fixed compact">
               <div>
-                <Text type="secondary">供应商</Text>
+                <Text type="secondary">接口协议</Text>
                 <Text strong className="block-text">
-                  OpenAI API
+                  OpenAI-compatible API
                 </Text>
               </div>
               <div>
                 <Text type="secondary">说明</Text>
                 <Text type="secondary" className="block-text">
-                  使用 OpenAI API 格式；代理网关可填写 Base URL。保存模型、Base URL 或密钥后会进入新的自动检测周期。
+                  Provider 选择运行时适配器；兼容网关可填写 Base URL。保存 Provider、模型、Base URL 或密钥后会进入新的自动检测周期。
                 </Text>
               </div>
             </div>
@@ -645,6 +572,15 @@ export function SettingsPage() {
               />
             ) : null}
             <div className="settings-grid">
+              <Form.Item name="provider" label="对话 Provider" rules={[{ required: true, message: "请选择对话 Provider" }]}>
+                <Select
+                  disabled={!canEditAiFeatures}
+                  options={[
+                    { label: "OpenAI", value: "openai" },
+                    { label: "OpenAI-compatible", value: "openai_compatible" },
+                  ]}
+                />
+              </Form.Item>
               <Form.Item name="model" label="模型名称" rules={[{ required: true, message: "请填写模型名称" }]}>
                 <Input disabled={!canEditAiFeatures} placeholder="此处填写模型名称" />
               </Form.Item>
@@ -677,73 +613,204 @@ export function SettingsPage() {
                 <div>
                   <Text strong>教材 RAG 检索</Text>
                   <Text type="secondary" className="block-text">
-                    用 Elasticsearch + Qwen Embedding/Rerank 为教师出题工作台提供教材证据。
+                    在线教材处理使用可配置的 OCR、Embedding、Rerank 与 Elasticsearch，不绑定具体模型厂商。
                   </Text>
                 </div>
                 <Form.Item name={["textbook_rag", "enabled"]} valuePropName="checked" noStyle>
                   <Switch disabled={!canEditAiFeatures} />
                 </Form.Item>
               </Flex>
-              <div className="settings-grid">
-                <Form.Item name={["textbook_rag", "elasticsearch_url"]} label="Elasticsearch URL">
-                  <Input disabled={!canEditAiFeatures} placeholder="http://elasticsearch:9200" />
-                </Form.Item>
-                <Form.Item name={["textbook_rag", "index_name"]} label="教材 chunk 索引">
-                  <Input disabled={!canEditAiFeatures} placeholder="canonical-rag-chunks-qwen-v1" />
-                </Form.Item>
-                <Form.Item name={["textbook_rag", "embedding", "model"]} label="Embedding 模型">
-                  <Input disabled={!canEditAiFeatures} placeholder="Qwen embedding model" />
-                </Form.Item>
-                <Form.Item name={["textbook_rag", "embedding", "base_url"]} label="Embedding Base URL">
-                  <Input disabled={!canEditAiFeatures} placeholder="Embedding API 地址" />
-                </Form.Item>
-                <Form.Item
-                  name={["textbook_rag", "embedding", "api_key"]}
-                  label={`Embedding API Key${
-                    aiConfig.data?.textbook_rag?.embedding?.api_key_configured
-                      ? `（已配置 ${aiConfig.data.textbook_rag.embedding.api_key_fingerprint || ""}）`
-                      : ""
-                  }`}
-                >
-                  <Input.Password disabled={!canEditAiFeatures} placeholder="留空则保留已有密钥" autoComplete="new-password" />
-                </Form.Item>
-                <Form.Item name={["textbook_rag", "embedding_dimension"]} label="向量维度">
-                  <InputNumber min={1} precision={0} disabled={!canEditAiFeatures} className="full" />
-                </Form.Item>
-                <Form.Item name={["textbook_rag", "rerank", "model"]} label="Rerank 模型">
-                  <Input disabled={!canEditAiFeatures} placeholder="Qwen rerank model" />
-                </Form.Item>
-                <Form.Item name={["textbook_rag", "rerank", "base_url"]} label="Rerank Base URL">
-                  <Input disabled={!canEditAiFeatures} placeholder="Rerank API 地址" />
-                </Form.Item>
-                <Form.Item
-                  name={["textbook_rag", "rerank", "api_key"]}
-                  label={`Rerank API Key${
-                    aiConfig.data?.textbook_rag?.rerank?.api_key_configured
-                      ? `（已配置 ${aiConfig.data.textbook_rag.rerank.api_key_fingerprint || ""}）`
-                      : ""
-                  }`}
-                >
-                  <Input.Password disabled={!canEditAiFeatures} placeholder="留空则保留已有密钥" autoComplete="new-password" />
-                </Form.Item>
-                <Form.Item name={["textbook_rag", "keyword_top_k"]} label="关键词召回 TopK">
-                  <InputNumber min={1} max={100} precision={0} disabled={!canEditAiFeatures} className="full" />
-                </Form.Item>
-                <Form.Item name={["textbook_rag", "vector_top_k"]} label="向量召回 TopK">
-                  <InputNumber min={1} max={100} precision={0} disabled={!canEditAiFeatures} className="full" />
-                </Form.Item>
-                <Form.Item name={["textbook_rag", "rerank_top_k"]} label="重排 TopK">
-                  <InputNumber min={1} max={100} precision={0} disabled={!canEditAiFeatures} className="full" />
-                </Form.Item>
-                <Form.Item name={["textbook_rag", "final_top_k"]} label="最终证据 TopK">
-                  <InputNumber min={1} max={30} precision={0} disabled={!canEditAiFeatures} className="full" />
-                </Form.Item>
-                <Form.Item name={["textbook_rag", "min_rerank_score"]} label="最小重排分">
-                  <InputNumber step={0.05} disabled={!canEditAiFeatures} className="full" />
-                </Form.Item>
-                <Form.Item name={["textbook_rag", "timeout_seconds"]} label="超时（秒）">
-                  <InputNumber min={0.5} max={60} step={0.5} disabled={!canEditAiFeatures} className="full" />
-                </Form.Item>
+              <div className="settings-subsection">
+                <Text strong>索引存储</Text>
+                <Text type="secondary" className="block-text">
+                  两本教材的 chunk 与向量统一写入这个 Elasticsearch 索引。
+                </Text>
+                <div className="settings-grid">
+                  <Form.Item name={["textbook_rag", "elasticsearch_url"]} label="Elasticsearch URL">
+                    <Input disabled={!canEditAiFeatures} placeholder="http://elasticsearch:9200" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "index_name"]} label="教材 chunk 索引">
+                    <Input disabled={!canEditAiFeatures} placeholder="textbook-rag-chunks-v1" />
+                  </Form.Item>
+                </div>
+              </div>
+              <div className="settings-subsection">
+                <Flex justify="space-between" align="center" gap={12}>
+                  <div>
+                    <Text strong>OCR 提取</Text>
+                    <Text type="secondary" className="block-text">
+                      原生文字层不足的页面才会调用此服务；可配置校内 MinerU 或其他兼容接口。
+                    </Text>
+                  </div>
+                  <Form.Item name={["textbook_rag", "ocr", "enabled"]} valuePropName="checked" noStyle>
+                    <Switch disabled={!canEditAiFeatures} />
+                  </Form.Item>
+                </Flex>
+                <div className="settings-grid">
+                  <Form.Item name={["textbook_rag", "ocr", "provider"]} label="OCR Provider">
+                    <Input disabled={!canEditAiFeatures} placeholder="mineru" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "ocr", "protocol"]} label="OCR 协议">
+                    <Input disabled={!canEditAiFeatures} placeholder="openai_chat_completions" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "ocr", "model"]} label="OCR 模型">
+                    <Input disabled={!canEditAiFeatures} placeholder="模型名称或网关别名" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "ocr", "base_url"]} label="OCR Base URL">
+                    <Input disabled={!canEditAiFeatures} placeholder="OCR API 地址" />
+                  </Form.Item>
+                  <Form.Item
+                    name={["textbook_rag", "ocr", "endpoint"]}
+                    label="OCR Endpoint"
+                    help="留空则使用协议默认路由，也可填写相对路径或完整 URL。"
+                  >
+                    <Input disabled={!canEditAiFeatures} placeholder="留空使用协议默认路由" />
+                  </Form.Item>
+                  <Form.Item
+                    name={["textbook_rag", "ocr", "api_key"]}
+                    label={`OCR API Key${
+                      aiConfig.data?.textbook_rag?.ocr?.api_key_configured
+                        ? `（已配置 ${aiConfig.data.textbook_rag.ocr.api_key_fingerprint || ""}）`
+                        : ""
+                    }`}
+                  >
+                    <Input.Password disabled={!canEditAiFeatures} placeholder="留空则保留已有密钥" autoComplete="new-password" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "ocr", "timeout_seconds"]} label="单页超时（秒）">
+                    <InputNumber min={0.5} max={600} step={0.5} disabled={!canEditAiFeatures} className="full" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "ocr", "concurrency"]} label="并发页数">
+                    <InputNumber min={1} max={32} precision={0} disabled={!canEditAiFeatures} className="full" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "ocr", "max_retries"]} label="最大重试次数">
+                    <InputNumber min={0} max={20} precision={0} disabled={!canEditAiFeatures} className="full" />
+                  </Form.Item>
+                  <Form.Item
+                    name={["textbook_rag", "ocr", "max_output_tokens"]}
+                    label="单次最大输出 Tokens"
+                    help="版面复杂或正文较长时可提高；服务端仍可能有自己的上限。"
+                  >
+                    <InputNumber min={1} max={32768} precision={0} disabled={!canEditAiFeatures} className="full" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "ocr", "render_dpi"]} label="PDF 渲染 DPI">
+                    <InputNumber min={72} max={600} precision={0} disabled={!canEditAiFeatures} className="full" />
+                  </Form.Item>
+                </div>
+              </div>
+              <div className="settings-subsection">
+                <Text strong>Embedding</Text>
+                <Text type="secondary" className="block-text">
+                  选择协议并填写模型别名；更换模型或维度后需要重建对应索引。
+                </Text>
+                <div className="settings-grid">
+                  <Form.Item name={["textbook_rag", "embedding", "provider"]} label="Embedding Provider">
+                    <Input disabled={!canEditAiFeatures} placeholder="openai_compatible" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "embedding", "protocol"]} label="Embedding 协议">
+                    <Input disabled={!canEditAiFeatures} placeholder="openai_embeddings" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "embedding", "model"]} label="Embedding 模型">
+                    <Input disabled={!canEditAiFeatures} placeholder="模型名称或网关别名" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "embedding", "base_url"]} label="Embedding Base URL">
+                    <Input disabled={!canEditAiFeatures} placeholder="Embedding API 地址" />
+                  </Form.Item>
+                  <Form.Item
+                    name={["textbook_rag", "embedding", "endpoint"]}
+                    label="Embedding Endpoint"
+                    help="留空则使用协议默认路由，也可填写相对路径或完整 URL。"
+                  >
+                    <Input disabled={!canEditAiFeatures} placeholder="留空使用协议默认路由" />
+                  </Form.Item>
+                  <Form.Item
+                    name={["textbook_rag", "embedding", "api_key"]}
+                    label={`Embedding API Key${
+                      aiConfig.data?.textbook_rag?.embedding?.api_key_configured
+                        ? `（已配置 ${aiConfig.data.textbook_rag.embedding.api_key_fingerprint || ""}）`
+                        : ""
+                    }`}
+                  >
+                    <Input.Password disabled={!canEditAiFeatures} placeholder="留空则保留已有密钥" autoComplete="new-password" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "embedding_dimension"]} label="向量维度">
+                    <InputNumber min={1} precision={0} disabled={!canEditAiFeatures} className="full" />
+                  </Form.Item>
+                  <Form.Item
+                    name={["textbook_rag", "embedding", "send_dimensions"]}
+                    label="发送 dimensions 参数"
+                    valuePropName="checked"
+                    help="部分兼容服务不接受 dimensions 字段，可在此关闭。"
+                  >
+                    <Switch disabled={!canEditAiFeatures} />
+                  </Form.Item>
+                  <Form.Item
+                    name={["textbook_rag", "embedding", "batch_size"]}
+                    label="Embedding 批大小"
+                    help="应不超过模型服务的单次输入上限；text-embedding-v4 建议设为 10。"
+                  >
+                    <InputNumber min={1} max={256} precision={0} disabled={!canEditAiFeatures} className="full" />
+                  </Form.Item>
+                </div>
+              </div>
+              <div className="settings-subsection">
+                <Text strong>Rerank</Text>
+                <Text type="secondary" className="block-text">
+                  支持由协议自动判断路由，也可显式指定服务 Endpoint。
+                </Text>
+                <div className="settings-grid">
+                  <Form.Item name={["textbook_rag", "rerank", "provider"]} label="Rerank Provider">
+                    <Input disabled={!canEditAiFeatures} placeholder="openai_compatible" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "rerank", "protocol"]} label="Rerank 协议">
+                    <Input disabled={!canEditAiFeatures} placeholder="auto" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "rerank", "model"]} label="Rerank 模型">
+                    <Input disabled={!canEditAiFeatures} placeholder="模型名称或网关别名" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "rerank", "base_url"]} label="Rerank Base URL">
+                    <Input disabled={!canEditAiFeatures} placeholder="Rerank API 地址" />
+                  </Form.Item>
+                  <Form.Item
+                    name={["textbook_rag", "rerank", "endpoint"]}
+                    label="Rerank Endpoint"
+                    help="留空则使用协议默认路由，也可填写相对路径或完整 URL。"
+                  >
+                    <Input disabled={!canEditAiFeatures} placeholder="留空使用协议默认路由" />
+                  </Form.Item>
+                  <Form.Item
+                    name={["textbook_rag", "rerank", "api_key"]}
+                    label={`Rerank API Key${
+                      aiConfig.data?.textbook_rag?.rerank?.api_key_configured
+                        ? `（已配置 ${aiConfig.data.textbook_rag.rerank.api_key_fingerprint || ""}）`
+                        : ""
+                    }`}
+                  >
+                    <Input.Password disabled={!canEditAiFeatures} placeholder="留空则保留已有密钥" autoComplete="new-password" />
+                  </Form.Item>
+                </div>
+              </div>
+              <div className="settings-subsection">
+                <Text strong>检索参数</Text>
+                <div className="settings-grid">
+                  <Form.Item name={["textbook_rag", "keyword_top_k"]} label="关键词召回 TopK">
+                    <InputNumber min={1} max={100} precision={0} disabled={!canEditAiFeatures} className="full" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "vector_top_k"]} label="向量召回 TopK">
+                    <InputNumber min={1} max={100} precision={0} disabled={!canEditAiFeatures} className="full" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "rerank_top_k"]} label="重排 TopK">
+                    <InputNumber min={1} max={100} precision={0} disabled={!canEditAiFeatures} className="full" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "final_top_k"]} label="最终证据 TopK">
+                    <InputNumber min={1} max={30} precision={0} disabled={!canEditAiFeatures} className="full" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "min_rerank_score"]} label="最小重排分">
+                    <InputNumber step={0.05} disabled={!canEditAiFeatures} className="full" />
+                  </Form.Item>
+                  <Form.Item name={["textbook_rag", "timeout_seconds"]} label="检索超时（秒）">
+                    <InputNumber min={0.5} max={60} step={0.5} disabled={!canEditAiFeatures} className="full" />
+                  </Form.Item>
+                </div>
               </div>
             </div>
             <div className="settings-card-actions">
@@ -753,7 +820,7 @@ export function SettingsPage() {
                 loading={saveAiConfig.isPending}
                 disabled={!canEditAiFeatures}
               >
-                保存 OpenAI API 接入
+                保存 AI 接入配置
               </Button>
             </div>
           </Card>
@@ -770,7 +837,7 @@ export function SettingsPage() {
           >
             {!canEditAiFeatures ? <Alert type="info" showIcon title="当前账号可查看学生 AI 能力开关，只有管理员可以修改。" className="section-alert" /> : null}
             <Text type="secondary" className="block-text ai-card-description">
-              这里控制学生端 Agent 能力范围；OpenAI API 接入配置在上方维护，AI接入页只读展示运行状态监控。
+              这里控制学生端 Agent 能力范围；AI 接入配置在上方维护，AI接入页只读展示运行状态监控。
             </Text>
             <div className="settings-grid settings-ai-feature-grid">
               <div className="settings-section compact">

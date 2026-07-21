@@ -71,11 +71,11 @@ services:
       VIDEO_LIBRARY_SEARCH_ANALYZER: ik_max_word
       VIDEO_LIBRARY_SEARCH_LOCAL_FALLBACK: "false"
     ports:
-      - "8000:8000"
+      - "${BACKEND_HOST_BIND:-127.0.0.1}:${BACKEND_HOST_PORT:-8000}:8000"
     volumes:
       - ./data/media:/app/data/media
       - ./data/textbooks:/app/data/textbooks
-      - E:/chemistry-rag:/chemistry-rag:ro
+      - ${CHEMISTRY_RAG_HOST_ROOT:-./data}:/chemistry-rag/data:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -118,6 +118,7 @@ services:
     environment:
       BACKEND_UPSTREAM: http://backend:8000
       FRAME_ANCESTORS: "'self'"
+      CLIENT_MAX_BODY_SIZE: "${TEXTBOOK_UPLOAD_PROXY_MAX_MB:-210}m"
     ports:
       - "${WEB_TEACHER_HOST_BIND:-127.0.0.1}:${WEB_TEACHER_HOST_PORT:-15174}:80"
     depends_on:

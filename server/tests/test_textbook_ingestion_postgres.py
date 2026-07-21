@@ -46,6 +46,7 @@ def ingestion_settings(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(repository, "get_settings", lambda: settings)
     monkeypatch.setattr(queue, "get_settings", lambda: settings)
+    monkeypatch.setattr(queue, "effective_ingestion_settings", lambda: settings)
     monkeypatch.setattr(lifecycle, "get_settings", lambda: settings)
     monkeypatch.setattr(lifecycle, "effective_ingestion_settings", lambda: settings)
     apply_migrations()

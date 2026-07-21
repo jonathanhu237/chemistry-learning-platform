@@ -10,7 +10,10 @@ from typing import Any
 from sqlalchemy import text
 
 from server.app.domains.platform.settings import effective_textbook_rag_settings
-from server.app.domains.textbook_rag.clients import QwenEmbeddingClient, TextbookRAGClientError
+from server.app.domains.textbook_rag.clients import (
+    OpenAICompatibleEmbeddingClient,
+    TextbookRAGClientError,
+)
 from server.app.infrastructure.settings import Settings, get_settings
 
 
@@ -145,18 +148,57 @@ def _fingerprint_hash(text_value: str) -> str:
     return hashlib.sha256(text_value.encode("utf-8")).hexdigest()
 
 
-def _embedding_client(settings: Settings | None = None) -> QwenEmbeddingClient | None:
+def _embedding_client(settings: Settings | None = None) -> OpenAICompatibleEmbeddingClient | None:
     settings = settings or get_settings()
     effective_rag = effective_textbook_rag_settings()
     embedding_config = _as_dict(effective_rag.get("embedding"))
-    client = QwenEmbeddingClient(
-        base_url=_clean(embedding_config.get("base_url")) or settings.textbook_rag_embedding_base_url,
-        api_key=_clean(embedding_config.get("api_key")) or settings.textbook_rag_embedding_api_key,
-        model=_clean(embedding_config.get("model")) or settings.textbook_rag_embedding_model,
+    client = OpenAICompatibleEmbeddingClient(
+        base_url=(
+            _clean(embedding_config.get("base_url"))
+            if "base_url" in embedding_config
+            else settings.textbook_rag_embedding_base_url
+        ),
+        api_key=(
+            _clean(embedding_config.get("api_key"))
+            if "api_key" in embedding_config
+            else settings.textbook_rag_embedding_api_key
+        ),
+        model=(
+            _clean(embedding_config.get("model"))
+            if "model" in embedding_config
+            else settings.textbook_rag_embedding_model
+        ),
         dimensions=int(effective_rag.get("embedding_dimension") or settings.textbook_rag_embedding_dimension or 0) or None,
         timeout_seconds=float(effective_rag.get("timeout_seconds") or settings.textbook_rag_timeout_seconds),
+        provider=_clean(embedding_config.get("provider")) or settings.textbook_rag_embedding_provider,
+        protocol=_clean(embedding_config.get("protocol")) or settings.textbook_rag_embedding_protocol,
+        endpoint=(
+            _clean(embedding_config.get("endpoint"))
+            if "endpoint" in embedding_config
+            else settings.textbook_rag_embedding_endpoint
+        ),
+        send_dimensions=bool(
+            embedding_config.get(
+                "send_dimensions",
+                settings.textbook_rag_embedding_send_dimensions,
+            )
+        ),
     )
     return client if client.ready else None
+
+
+def _embedding_cache_model(client: OpenAICompatibleEmbeddingClient) -> str:
+    profile = {
+        "provider": client.provider,
+        "protocol": client.protocol,
+        "base_url": client.base_url,
+        "endpoint": client.endpoint,
+        "model": client.model,
+        "dimensions": client.dimensions,
+        "send_dimensions": client.send_dimensions,
+    }
+    digest = hashlib.sha256(_json_dumps(profile).encode("utf-8")).hexdigest()[:16]
+    return f"{client.model}#profile-{digest}"
 
 
 def _cached_embedding(
@@ -239,7 +281,7 @@ def _embedding_for_payload(
     owner_kind: str | None,
     owner_id: str | None,
     point_node_id: str,
-    client: QwenEmbeddingClient | None,
+    client: OpenAICompatibleEmbeddingClient | None,
 ) -> list[float] | None:
     if not client:
         return None
@@ -247,13 +289,14 @@ def _embedding_for_payload(
     if not text_value:
         return None
     text_hash = _fingerprint_hash(text_value)
+    cache_model = _embedding_cache_model(client)
     if owner_kind and owner_id:
         cached = _cached_embedding(
             session,
             owner_kind=owner_kind,
             owner_id=owner_id,
             point_node_id=point_node_id,
-            model=client.model,
+            model=cache_model,
             text_hash=text_hash,
         )
         if cached is not None:
@@ -268,7 +311,7 @@ def _embedding_for_payload(
             owner_kind=owner_kind,
             owner_id=owner_id,
             point_node_id=point_node_id,
-            model=client.model,
+            model=cache_model,
             text_hash=text_hash,
             embedding=embedding,
         )

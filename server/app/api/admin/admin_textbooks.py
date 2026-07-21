@@ -34,6 +34,7 @@ from server.app.domains.textbook_ingestion.views import (
     public_job,
     public_page,
 )
+from server.app.domains.textbook_rag.clients import endpoint_configured
 
 
 router = APIRouter(prefix="/api/admin/textbooks", tags=["admin-textbooks"])
@@ -57,7 +58,12 @@ def admin_textbook_upload_policy(
         "max_pages": settings.max_textbook_pages,
         "allowed_extensions": [".pdf"],
         "ocr": {
-            "provider": "sysu_aigw_mineru",
+            "provider": settings.textbook_ocr_provider,
+            "protocol": settings.textbook_ocr_protocol,
+            "endpoint_configured": endpoint_configured(
+                settings.textbook_ocr_base_url,
+                settings.textbook_ocr_endpoint,
+            ),
             "model": settings.textbook_ocr_model,
             "enabled": settings.textbook_ocr_enabled,
             "credential_configured": bool(settings.textbook_ocr_api_key),

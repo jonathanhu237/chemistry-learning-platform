@@ -15,7 +15,9 @@ from server.app.domains.textbook_ingestion.recovery import (
     RetainedOnlineTextbook,
     TextbookRecoveryError,
     reproject_online_textbooks,
+    validate_reprojection_configuration,
 )
+from server.app.infrastructure.settings import Settings
 
 
 def _chunk() -> StableChunk:
@@ -623,6 +625,27 @@ def test_compose_uses_one_container_safe_textbook_target_for_backend_and_worker(
         "${TEXTBOOK_RAG_ELASTICSEARCH_INDEX:-canonical-rag-chunks-qwen-v1}"
     ) == 2
     assert "TEXTBOOK_RAG_ELASTICSEARCH_URL: http://127.0.0.1:9200" not in compose
+    assert "${CHEMISTRY_RAG_HOST_ROOT:-./data}:/chemistry-rag/data:ro" in compose
+    assert "E:/chemistry-rag:/chemistry-rag:ro" not in compose
+
+
+def test_reprojection_preflight_rejects_an_unsupported_embedding_protocol() -> None:
+    settings = Settings(
+        data_backend="postgres",
+        textbook_rag_elasticsearch_url="http://elasticsearch.test:9200",
+        textbook_rag_elasticsearch_index="canonical-rag-chunks-qwen-v1",
+        textbook_rag_embedding_base_url="https://embedding.example.test/v1",
+        textbook_rag_embedding_api_key="secret",
+        textbook_rag_embedding_model="bge-m3",
+        textbook_rag_embedding_dimension=1024,
+        textbook_rag_embedding_protocol="unsupported",
+    )
+
+    with pytest.raises(TextbookRecoveryError) as raised:
+        validate_reprojection_configuration(settings)
+
+    assert raised.value.reason == "online_textbook_reprojection_not_configured"
+    assert "embedding_protocol_unsupported" in raised.value.details["missing"]
 
 
 def test_online_ingestion_runbook_requires_migrations_before_backend_and_worker() -> None:

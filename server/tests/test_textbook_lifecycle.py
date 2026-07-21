@@ -7,7 +7,19 @@ import pytest
 from server.app.domains.textbook_ingestion import lifecycle
 from server.app.domains.textbook_ingestion.lifecycle import publication_blockers
 from server.app.domains.textbook_ingestion.views import public_document
+from server.app.domains.textbook_rag.clients import embedding_profile_fingerprint
 from server.app.infrastructure.settings import Settings
+
+
+EMBEDDING_PROFILE = embedding_profile_fingerprint(
+    provider="openai_compatible",
+    protocol="openai_embeddings",
+    base_url="",
+    endpoint="",
+    model="embedding-v1",
+    dimensions=3,
+    send_dimensions=True,
+)
 
 
 def _online_document(status: str = "review_ready") -> dict[str, object]:
@@ -125,6 +137,7 @@ class _FakeElasticsearch:
                         "_meta": {
                             "embedding_model": "embedding-v1",
                             "embedding_dimension": 3,
+                            "embedding_profile_fingerprint": EMBEDDING_PROFILE,
                         },
                         "properties": {"embedding": {"type": "dense_vector", "dims": 3}},
                     }
@@ -169,6 +182,7 @@ def test_live_projection_verifies_mapping_count_and_online_fingerprint(
     assert {"term": {"processing_fingerprint": "fingerprint-v1"}} in filters
     assert {"term": {"embedding_model": "embedding-v1"}} in filters
     assert {"term": {"embedding_dimension": 3}} in filters
+    assert {"term": {"embedding_profile_fingerprint": EMBEDDING_PROFILE}} in filters
     assert {"term": {"projection_run_id": "run-1"}} in filters
 
 

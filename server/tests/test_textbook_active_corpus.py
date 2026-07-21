@@ -228,8 +228,8 @@ def test_retrieval_filters_both_paths_and_returns_document_traceability(monkeypa
                 }
             }
 
-    monkeypatch.setattr(retrieval_module, "QwenEmbeddingClient", EmbeddingClient)
-    monkeypatch.setattr(retrieval_module, "QwenRerankClient", RerankClient)
+    monkeypatch.setattr(retrieval_module, "OpenAICompatibleEmbeddingClient", EmbeddingClient)
+    monkeypatch.setattr(retrieval_module, "OpenAICompatibleRerankClient", RerankClient)
     monkeypatch.setattr(retrieval_module, "TextbookElasticsearchClient", Elasticsearch)
     corpus = ActiveTextbookCorpus(documents=(_online(),), revision=12)
 

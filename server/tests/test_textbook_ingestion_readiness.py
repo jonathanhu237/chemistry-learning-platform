@@ -91,6 +91,34 @@ def test_processing_readiness_accepts_complete_online_ingestion_configuration() 
     }
 
 
+def test_processing_readiness_rejects_unsupported_processing_protocols() -> None:
+    readiness = ingestion_processing_readiness(
+        _ready_settings(
+            textbook_rag_embedding_protocol="unsupported",
+            textbook_ocr_protocol="unsupported",
+        )
+    )
+
+    assert readiness["ready"] is False
+    assert "embedding_protocol_unsupported" in readiness["missing"]
+    assert "ocr_protocol_unsupported" in readiness["missing"]
+
+
+def test_processing_readiness_rejects_relative_endpoints_without_base_urls() -> None:
+    readiness = ingestion_processing_readiness(
+        _ready_settings(
+            textbook_rag_embedding_base_url="",
+            textbook_rag_embedding_endpoint="/embeddings",
+            textbook_ocr_base_url="",
+            textbook_ocr_endpoint="/chat/completions",
+        )
+    )
+
+    assert readiness["ready"] is False
+    assert "embedding_base_url_missing" in readiness["missing"]
+    assert "ocr_endpoint_invalid" in readiness["missing"]
+
+
 def test_effective_ingestion_settings_uses_the_runtime_rag_contract(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -107,13 +135,35 @@ def test_effective_ingestion_settings_uses_the_runtime_rag_contract(
             "enabled": True,
             "elasticsearch_url": "http://runtime-es.test:9200",
             "index_name": "runtime-index",
+            "ocr": {
+                "enabled": True,
+                "provider": "campus_mineru",
+                "protocol": "openai_chat_completions",
+                "base_url": "",
+                "endpoint": "https://runtime-ocr.test/v1/chat/completions",
+                "api_key": "runtime-ocr-secret",
+                "model": "runtime-mineru",
+                "timeout_seconds": 120,
+                "concurrency": 4,
+                "max_retries": 5,
+                "max_output_tokens": 12288,
+                "render_dpi": 180,
+            },
             "embedding": {
+                "provider": "campus_bge",
+                "protocol": "openai_embeddings",
                 "base_url": "http://runtime-embedding.test/v1",
+                "endpoint": "/embeddings",
                 "api_key": "runtime-secret",
                 "model": "runtime-model",
+                "send_dimensions": False,
+                "batch_size": 24,
             },
             "rerank": {
+                "provider": "campus_bge",
+                "protocol": "tei",
                 "base_url": "http://runtime-rerank.test/v1",
+                "endpoint": "/rerank",
                 "api_key": "runtime-rerank-secret",
                 "model": "runtime-rerank-model",
             },
@@ -134,7 +184,22 @@ def test_effective_ingestion_settings_uses_the_runtime_rag_contract(
     assert effective.textbook_rag_elasticsearch_index == "runtime-index"
     assert effective.textbook_rag_embedding_model == "runtime-model"
     assert effective.textbook_rag_embedding_dimension == 1536
+    assert effective.textbook_rag_embedding_provider == "campus_bge"
+    assert effective.textbook_rag_embedding_endpoint == "/embeddings"
+    assert effective.textbook_rag_embedding_send_dimensions is False
+    assert effective.textbook_embedding_batch_size == 24
+    assert effective.textbook_ocr_provider == "campus_mineru"
+    assert effective.textbook_ocr_endpoint == "https://runtime-ocr.test/v1/chat/completions"
+    assert effective.textbook_ocr_concurrency == 4
+    assert effective.textbook_ocr_max_output_tokens == 12288
     assert snapshot["embedding"]["model"] == "runtime-model"
+    assert snapshot["embedding"]["protocol"] == "openai_embeddings"
+    assert snapshot["embedding"]["send_dimensions"] is False
+    assert snapshot["embedding"]["batch_size"] == 24
+    assert snapshot["ocr"]["provider"] == "campus_mineru"
+    assert snapshot["ocr"]["endpoint"] == "https://runtime-ocr.test/v1/chat/completions"
+    assert snapshot["ocr"]["max_output_tokens"] == 12288
+    assert "rerank" not in snapshot
     assert snapshot["index"]["name"] == "runtime-index"
     assert "runtime-secret" not in json.dumps(snapshot, sort_keys=True)
 
@@ -164,11 +229,19 @@ def test_dependency_outage_blocks_new_uploads_but_not_existing_document_reads(
         ("textbook_rag_elasticsearch_url", "http://other-elasticsearch.test:9200"),
         ("textbook_rag_elasticsearch_index", "textbook-chunks-v2"),
         ("textbook_rag_embedding_base_url", "http://other-embedding.test/v1"),
+        ("textbook_rag_embedding_endpoint", "/custom/embeddings"),
+        ("textbook_rag_embedding_protocol", "openai_compatible"),
+        ("textbook_rag_embedding_send_dimensions", False),
         ("textbook_rag_embedding_model", "embedding-model-v2"),
         ("textbook_rag_embedding_dimension", 1536),
         ("textbook_rag_embedding_api_key", "embedding-secret-beta"),
+        ("textbook_embedding_batch_size", 32),
+        ("textbook_rag_timeout_seconds", 12.5),
         ("textbook_ocr_model", "mineru-v2"),
+        ("textbook_ocr_provider", "campus_mineru"),
+        ("textbook_ocr_endpoint", "https://ocr.test/custom"),
         ("textbook_ocr_api_key", "ocr-secret-beta"),
+        ("textbook_ocr_max_output_tokens", 8192),
         ("textbook_chunk_max_chars", 1600),
     ],
 )
