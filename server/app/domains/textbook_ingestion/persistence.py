@@ -207,6 +207,7 @@ def _page_parameters(
         "document_id": job.document_id,
         "page_number": page.page_number,
         "job_id": job.id,
+        "processing_fingerprint": job.processing_fingerprint,
         "width_points": page.width_points,
         "height_points": page.height_points,
         "extraction_method": page.extraction_method.value,
@@ -245,13 +246,13 @@ def upsert_normalized_pages(
                   document_id, page_number, last_job_id, width_points, height_points,
                   extraction_method, text, markdown, blocks, content_hash,
                   quality_score, quality_flags, needs_ocr, ocr_provider, ocr_model,
-                  diagnostics, updated_at
+                  diagnostics, processing_fingerprint, updated_at
                 )
                 VALUES (
                   :document_id, :page_number, CAST(:job_id AS uuid), :width_points, :height_points,
                   :extraction_method, :text, :markdown, CAST(:blocks AS jsonb), :content_hash,
                   :quality_score, :quality_flags, :needs_ocr, :ocr_provider, :ocr_model,
-                  CAST(:diagnostics AS jsonb), now()
+                  CAST(:diagnostics AS jsonb), :processing_fingerprint, now()
                 )
                 ON CONFLICT (document_id, page_number) DO UPDATE SET
                   last_job_id = EXCLUDED.last_job_id,
@@ -268,12 +269,67 @@ def upsert_normalized_pages(
                   ocr_provider = EXCLUDED.ocr_provider,
                   ocr_model = EXCLUDED.ocr_model,
                   diagnostics = EXCLUDED.diagnostics,
+                  processing_fingerprint = EXCLUDED.processing_fingerprint,
                   updated_at = now()
                 """
             ),
             [_page_parameters(job=job, page=page) for page in page_list],
         )
     return len(page_list)
+
+
+def load_reusable_ocr_pages(job: ClaimedIngestionJob) -> dict[int, NormalizedPage]:
+    """Load completed OCR checkpoints for this exact processing configuration."""
+
+    with db_session() as session:
+        _lock_leased_document(session, job)
+        rows = (
+            session.execute(
+                text(
+                    """
+                    SELECT page_number, width_points, height_points, extraction_method,
+                           text, markdown, blocks, content_hash, quality_score,
+                           quality_flags, needs_ocr, ocr_provider, ocr_model, diagnostics
+                    FROM textbook_document_pages
+                    WHERE document_id = :document_id
+                      AND processing_fingerprint = :processing_fingerprint
+                      AND extraction_method IN ('mineru', 'mixed')
+                      AND needs_ocr = false
+                    ORDER BY page_number
+                    """
+                ),
+                {
+                    "document_id": job.document_id,
+                    "processing_fingerprint": job.processing_fingerprint,
+                },
+            )
+            .mappings()
+            .all()
+        )
+    reusable: dict[int, NormalizedPage] = {}
+    for row in rows:
+        page = NormalizedPage.model_validate(
+            {
+                "page_number": int(row["page_number"]),
+                "width_points": row.get("width_points"),
+                "height_points": row.get("height_points"),
+                "text": str(row.get("text") or ""),
+                "markdown": str(row.get("markdown") or ""),
+                "blocks": list(row.get("blocks") or []),
+                "extraction_method": str(row["extraction_method"]),
+                "quality": {
+                    "score": float(row.get("quality_score") or 0),
+                    "needs_ocr": bool(row.get("needs_ocr")),
+                    "flags": list(row.get("quality_flags") or []),
+                },
+                "content_hash": str(row.get("content_hash") or ""),
+                "ocr_provider": row.get("ocr_provider"),
+                "ocr_model": row.get("ocr_model"),
+                "diagnostics": dict(row.get("diagnostics") or {}),
+            }
+        )
+        reusable[page.page_number] = page
+    return reusable
 
 
 def _validate_chunks(

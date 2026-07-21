@@ -4,6 +4,9 @@ from pathlib import Path
 
 
 MIGRATION = Path("server/migrations/041_online_textbook_ingestion.sql")
+SEED_IDENTITY_MIGRATION = Path("server/migrations/043_textbook_seed_index_identity.sql")
+PAGE_CHECKPOINT_MIGRATION = Path("server/migrations/044_textbook_page_processing_fingerprint.sql")
+ACTIVE_PROJECTION_MIGRATION = Path("server/migrations/045_textbook_active_projection_run.sql")
 
 
 def _sql() -> str:
@@ -39,3 +42,27 @@ def test_online_textbook_migration_does_not_remove_postgres_embeddings_yet() -> 
 
     assert "drop table chunk_embeddings" not in sql
     assert "insert into chunk_embeddings" not in sql
+
+
+def test_seed_identity_migration_registers_exact_es_generation_without_reindexing() -> None:
+    sql = SEED_IDENTITY_MIGRATION.read_text(encoding="utf-8")
+
+    assert "count(DISTINCT sc.metadata->>'doc_id') = 1" in sql
+    assert "jsonb_build_object('index_document_id'" in sql
+    assert "source_collection" in sql  # explanatory guard against the unsafe discriminator
+    assert "UPDATE source_documents" in sql
+
+
+def test_page_checkpoint_migration_keys_reusable_ocr_by_processing_fingerprint() -> None:
+    sql = PAGE_CHECKPOINT_MIGRATION.read_text(encoding="utf-8")
+
+    assert "ADD COLUMN IF NOT EXISTS processing_fingerprint text" in sql
+    assert "idx_textbook_document_pages_reusable_ocr" in sql
+    assert "extraction_method IN ('mineru', 'mixed')" in sql
+
+
+def test_active_projection_migration_persists_the_retrievable_lease_generation() -> None:
+    sql = ACTIVE_PROJECTION_MIGRATION.read_text(encoding="utf-8")
+
+    assert "ADD COLUMN IF NOT EXISTS active_projection_run_id text" in sql
+    assert "idx_source_documents_active_projection_run" in sql

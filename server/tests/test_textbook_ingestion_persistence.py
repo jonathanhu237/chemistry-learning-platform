@@ -10,10 +10,12 @@ from pathlib import Path
 from typing import Any, Iterator
 
 import pytest
+import pymupdf
 from sqlalchemy import text
 
 from server.app.domains.textbook_ingestion import persistence, queue, repository
 from server.app.domains.textbook_ingestion.contracts import (
+    ExtractionMethod,
     IngestionStage,
     NormalizedBlock,
     NormalizedPage,
@@ -27,6 +29,16 @@ from server.app.domains.textbook_ingestion.errors import (
 from server.app.domains.textbook_ingestion.queue import ClaimedIngestionJob
 from server.app.infrastructure.database import apply_migrations, db_session
 from server.app.infrastructure.settings import Settings
+
+
+def _pdf_bytes(label: str) -> bytes:
+    document = pymupdf.open()
+    page = document.new_page()
+    page.insert_text((72, 72), label)
+    try:
+        return document.tobytes()
+    finally:
+        document.close()
 
 
 class _FakeResult:
@@ -191,6 +203,7 @@ def test_page_upsert_is_batched_and_pydantic_json_safe(monkeypatch: pytest.Monke
     assert isinstance(parameters, list)
     page_parameters = parameters[0]
     assert page_parameters["document_id"] == job.document_id
+    assert page_parameters["processing_fingerprint"] == job.processing_fingerprint
     assert len(page_parameters["content_hash"]) == 64
     assert json.loads(page_parameters["blocks"])[0]["metadata"]["observed_at"].endswith("Z")
     assert json.loads(page_parameters["diagnostics"])["render_path"] == "page-4.png"
@@ -261,6 +274,11 @@ def test_persistence_round_trip_with_postgres(monkeypatch: pytest.MonkeyPatch, t
         textbook_ingestion_enabled=True,
         textbook_storage_root=tmp_path / "textbooks",
         textbook_ingestion_lease_seconds=30,
+        textbook_rag_elasticsearch_url="http://elasticsearch.test:9200",
+        textbook_rag_embedding_base_url="http://embedding.test/v1",
+        textbook_rag_embedding_api_key="test-key",
+        textbook_rag_embedding_model="test-embedding",
+        textbook_rag_embedding_dimension=2,
     )
     monkeypatch.setattr(repository, "get_settings", lambda: settings)
     monkeypatch.setattr(queue, "get_settings", lambda: settings)
@@ -271,7 +289,7 @@ def test_persistence_round_trip_with_postgres(monkeypatch: pytest.MonkeyPatch, t
         document = repository.create_textbook_upload(
             title="Persistence Integration Textbook",
             filename="persistence.pdf",
-            stream=BytesIO(b"%PDF-1.7\npersistence-test"),
+            stream=BytesIO(_pdf_bytes("persistence-test")),
             content_type="application/pdf",
             uploaded_by=None,
             logical_textbook_key=f"persistence-{uuid.uuid4().hex}",
@@ -283,8 +301,21 @@ def test_persistence_round_trip_with_postgres(monkeypatch: pytest.MonkeyPatch, t
 
         processing_input = persistence.load_processing_input(job)
         page = _page()
+        ocr_page = page.model_copy(
+            update={
+                "extraction_method": ExtractionMethod.MINERU,
+                "quality": PageQuality(score=0.98, needs_ocr=False, flags=["ocr_complete"]),
+                "ocr_provider": "mineru",
+                "ocr_model": "integration-test-model",
+            }
+        )
         chunk = _chunk(document_id=document_id, version=processing_input.document_version)
-        assert persistence.upsert_normalized_pages(job, [page]) == 1
+        assert persistence.upsert_normalized_pages(job, [ocr_page]) == 1
+        reusable_pages = persistence.load_reusable_ocr_pages(job)
+        assert list(reusable_pages) == [ocr_page.page_number]
+        assert reusable_pages[ocr_page.page_number].text == ocr_page.text
+        assert reusable_pages[ocr_page.page_number].extraction_method == ExtractionMethod.MINERU
+        assert reusable_pages[ocr_page.page_number].ocr_model == "integration-test-model"
         assert persistence.replace_document_chunks(job, [chunk]) == 1
 
         with db_session() as session:

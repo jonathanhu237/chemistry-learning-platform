@@ -280,6 +280,22 @@ function resolveMarkdownImageUrl(src: string) {
   return value;
 }
 
+const protectedRagAssetPath = "/api/admin/rag-assets";
+
+function isProtectedRagAssetUrl(value: string) {
+  if (!globalThis.location?.href) return false;
+  try {
+    const currentUrl = new URL(globalThis.location.href);
+    const expectedApiOrigin = new URL(apiBase || currentUrl.origin, currentUrl).origin;
+    const assetUrl = new URL(value, currentUrl);
+    const protectedPath =
+      assetUrl.pathname === protectedRagAssetPath || assetUrl.pathname.startsWith(`${protectedRagAssetPath}/`);
+    return assetUrl.origin === expectedApiOrigin && protectedPath;
+  } catch {
+    return false;
+  }
+}
+
 function cleanAssistantImageCaption(value: string) {
   let text = String(value || "").replace(/\s+/g, " ").trim();
   if (!text) return "";
@@ -304,7 +320,7 @@ function AssistantMarkdownImage({ alt, src }: { alt: string; src: string }) {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const resolvedSrc = resolveMarkdownImageUrl(src);
-  const protectedAsset = resolvedSrc.includes("/api/admin/rag-assets");
+  const protectedAsset = isProtectedRagAssetUrl(resolvedSrc);
   const caption = cleanAssistantImageCaption(alt);
 
   useEffect(() => {

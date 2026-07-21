@@ -169,3 +169,114 @@ def test_structure_aware_chunker_uses_children_once_for_overlapping_container() 
     assert chunks[0].text.count("Add acid slowly.") == 1
     assert chunks[0].text.count("Observe the color change.") == 1
     assert chunks[0].metadata["source_block_ids"] == ["step-1", "step-2"]
+
+
+def test_structure_aware_chunker_packs_short_equation_with_adjacent_explanation() -> None:
+    equation = "2 H2 + O2 = 2 H2O"
+    page = _page(
+        5,
+        [
+            NormalizedBlock(
+                block_id="heading",
+                block_type=BlockType.SECTION_HEADER,
+                text="3.2 Reaction Stoichiometry",
+                metadata={"heading_level": 2},
+            ),
+            NormalizedBlock(
+                block_id="body-before",
+                block_type=BlockType.TEXT,
+                text="Hydrogen reacts with oxygen in a fixed stoichiometric ratio.",
+            ),
+            NormalizedBlock(
+                block_id="equation",
+                block_type=BlockType.EQUATION,
+                text=equation,
+                markdown=f"$$\n{equation}\n$$",
+            ),
+            NormalizedBlock(
+                block_id="body-after",
+                block_type=BlockType.TEXT,
+                text="The coefficients preserve both hydrogen and oxygen atoms.",
+            ),
+        ],
+    )
+
+    chunks = StructureAwareChunker(max_chars=300, overlap_chars=0).chunk(
+        document_id="tbk-equation-context",
+        document_version=1,
+        pages=[page],
+        processing_fingerprint="fp",
+    )
+
+    assert len(chunks) == 1
+    assert chunks[0].text.count(equation) == 1
+    assert chunks[0].metadata["source_block_ids"] == ["heading", "body-before", "equation", "body-after"]
+    assert chunks[0].metadata["atomic"] is True
+    assert chunks[0].content_type == "text"
+
+
+def test_structure_aware_chunker_keeps_consecutive_hierarchy_with_body() -> None:
+    page = _page(
+        6,
+        [
+            NormalizedBlock(
+                block_id="chapter",
+                block_type=BlockType.TITLE,
+                text="Chapter 3 Reactions",
+                metadata={"heading_level": 1},
+            ),
+            NormalizedBlock(
+                block_id="section",
+                block_type=BlockType.SECTION_HEADER,
+                text="3.1 Stoichiometry",
+                metadata={"heading_level": 2},
+            ),
+            NormalizedBlock(
+                block_id="body",
+                block_type=BlockType.TEXT,
+                text="Balanced equations conserve every element in the reaction.",
+            ),
+        ],
+    )
+
+    chunks = StructureAwareChunker(max_chars=300, overlap_chars=0).chunk(
+        document_id="tbk-heading-context",
+        document_version=1,
+        pages=[page],
+        processing_fingerprint="fp",
+    )
+
+    assert len(chunks) == 1
+    assert chunks[0].section_path == ["Chapter 3 Reactions", "3.1 Stoichiometry"]
+    assert chunks[0].metadata["source_block_ids"] == ["chapter", "section", "body"]
+
+
+def test_structure_aware_chunker_deduplicates_same_content_at_same_location() -> None:
+    page = _page(
+        7,
+        [
+            NormalizedBlock(
+                block_id="heading-copy-1",
+                block_type=BlockType.SECTION_HEADER,
+                text="Exercises",
+                metadata={"heading_level": 3},
+            ),
+            NormalizedBlock(
+                block_id="heading-copy-2",
+                block_type=BlockType.SECTION_HEADER,
+                text="Exercises",
+                metadata={"heading_level": 3},
+            ),
+        ],
+    )
+
+    chunks = StructureAwareChunker(max_chars=200, overlap_chars=0).chunk(
+        document_id="tbk-dedup",
+        document_version=1,
+        pages=[page],
+        processing_fingerprint="fp",
+    )
+
+    assert len(chunks) == 1
+    assert chunks[0].chunk_index == 1
+    assert chunks[0].text == "Exercises"

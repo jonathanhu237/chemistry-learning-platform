@@ -30,6 +30,15 @@ def _sha256(value: Any) -> str:
 def _sanitized_config(settings: dict[str, Any]) -> dict[str, Any]:
     embedding = settings.get("embedding") if isinstance(settings.get("embedding"), dict) else {}
     rerank = settings.get("rerank") if isinstance(settings.get("rerank"), dict) else {}
+    corpus = settings.get("_active_textbook_corpus")
+    corpus_documents = sorted(
+        (
+            str(getattr(document, "index_document_id", "") or ""),
+            int(getattr(document, "document_version", 0) or 0),
+            str(getattr(document, "projection_run_id", "") or ""),
+        )
+        for document in (getattr(corpus, "documents", ()) or ())
+    )
     return {
         "schema_version": TEXTBOOK_EVIDENCE_CACHE_SCHEMA_VERSION,
         "index_name": str(settings.get("index_name") or ""),
@@ -48,6 +57,7 @@ def _sanitized_config(settings: dict[str, Any]) -> dict[str, Any]:
         "final_top_k": int(settings.get("final_top_k") or 0),
         "min_rerank_score": float(settings.get("min_rerank_score") or 0.0),
         "corpus_revision": max(0, int(settings.get("corpus_revision") or 0)),
+        "active_corpus_documents": corpus_documents,
     }
 
 

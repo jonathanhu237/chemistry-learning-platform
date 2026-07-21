@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
+from zipfile import ZipFile
 
 import server.app.domains.textbook_rag.retrieval as retrieval_module
 from server.app.domains.textbook_rag.active_corpus import (
@@ -25,6 +28,8 @@ def _online(document_id: str = "tbk-online") -> ActiveTextbookDocument:
         document_version=2,
         document_kind="textbook",
         source_collection="inorganic-lower",
+        index_document_id=document_id,
+        projection_run_id="run-online-2",
     )
 
 
@@ -35,6 +40,7 @@ def _legacy() -> ActiveTextbookDocument:
         document_version=1,
         document_kind="canonical_textbook",
         source_collection="textbook_inorganic_lower_v1",
+        index_document_id="inorganic_chemistry_lower_2nd",
     )
 
 
@@ -61,13 +67,57 @@ def test_active_filter_distinguishes_online_generation_from_legacy_seed() -> Non
     assert filter_query == {
         "bool": {
             "should": [
-                {"term": {"document_id": "tbk-online"}},
-                {"term": {"source_collection": "textbook_inorganic_lower_v1"}},
+                {
+                    "bool": {
+                        "filter": [
+                            {"term": {"doc_id": "tbk-online"}},
+                            {"term": {"document_version": 2}},
+                            {"term": {"projection_run_id": "run-online-2"}},
+                        ]
+                    }
+                },
+                {
+                    "bool": {
+                        "filter": [
+                            {"term": {"doc_id": "inorganic_chemistry_lower_2nd"}}
+                        ]
+                    }
+                },
             ],
             "minimum_should_match": 1,
         }
     }
     assert active_textbook_filter([]) == {"match_none": {}}
+
+
+def test_legacy_seed_without_registered_index_identity_fails_closed() -> None:
+    legacy = _legacy()
+    unregistered = ActiveTextbookDocument(
+        document_id=legacy.document_id,
+        logical_textbook_key=legacy.logical_textbook_key,
+        document_version=legacy.document_version,
+        document_kind=legacy.document_kind,
+        source_collection=legacy.source_collection,
+    )
+
+    assert active_textbook_filter([unregistered]) == {"match_none": {}}
+
+
+def test_committed_legacy_seed_bundle_is_activated_by_registered_doc_id() -> None:
+    bundle = Path(
+        "data/seed/textbook_rag_precomputed/"
+        "canonical-rag-chunks-qwen-v1.documents.jsonl.zip"
+    )
+    with ZipFile(bundle) as archive:
+        with archive.open(archive.namelist()[0]) as handle:
+            source = json.loads(handle.readline())["_source"]
+
+    assert source["doc_id"] == _legacy().index_document_id
+    assert "document_version" not in source
+    clause = active_textbook_filter([_legacy()])["bool"]["should"][0]
+    assert clause["bool"]["filter"] == [
+        {"term": {"doc_id": "inorganic_chemistry_lower_2nd"}}
+    ]
 
 
 def test_lexical_and_vector_recall_share_the_same_active_filter() -> None:
@@ -105,7 +155,7 @@ def test_active_corpus_loader_uses_published_documents_as_authority() -> None:
         def execute(self, statement: Any) -> Result:
             sql = str(statement)
             statements.append(sql)
-            if "FROM source_documents" in sql:
+            if "LEFT JOIN source_documents" in sql:
                 return Result(
                     [
                         {
@@ -113,19 +163,25 @@ def test_active_corpus_loader_uses_published_documents_as_authority() -> None:
                             "logical_textbook_key": "inorganic-lower",
                             "version_number": 2,
                             "document_kind": "textbook",
-                            "metadata": {"source_collection": "inorganic-lower"},
+                            "active_projection_run_id": "run-online-2",
+                            "revision": 9,
+                            "metadata": {
+                                "source_collection": "inorganic-lower",
+                                "index_document_id": "ignored-for-online",
+                            },
                         }
                     ]
                 )
-            if "to_regclass" in sql:
-                return Result([{"table_name": "textbook_corpus_state"}])
-            return Result([{"revision": 9}])
+            return Result([])
 
     corpus = load_active_textbook_corpus(Session())
 
     assert [document.document_id for document in corpus.documents] == ["tbk-online"]
+    assert corpus.documents[0].index_document_id == "tbk-online"
+    assert corpus.documents[0].projection_run_id == "run-online-2"
     assert corpus.revision == 9
-    assert "publication_status = 'published'" in statements[0]
+    assert "sd.publication_status = 'published'" in statements[0]
+    assert len(statements) == 1
 
 
 def test_retrieval_filters_both_paths_and_returns_document_traceability(monkeypatch: Any) -> None:
@@ -182,7 +238,22 @@ def test_retrieval_filters_both_paths_and_returns_document_traceability(monkeypa
         settings=_settings(corpus),
     )
 
-    active_filter = {"bool": {"should": [{"term": {"document_id": "tbk-online"}}], "minimum_should_match": 1}}
+    active_filter = {
+        "bool": {
+            "should": [
+                {
+                    "bool": {
+                        "filter": [
+                            {"term": {"doc_id": "tbk-online"}},
+                            {"term": {"document_version": 2}},
+                            {"term": {"projection_run_id": "run-online-2"}},
+                        ]
+                    }
+                }
+            ],
+            "minimum_should_match": 1,
+        }
+    }
     assert payloads[0]["query"]["bool"]["filter"] == [active_filter]
     assert payloads[1]["query"]["script_score"]["query"]["bool"]["filter"] == [active_filter]
     assert package["diagnostics"]["corpus_revision"] == 12
@@ -219,3 +290,24 @@ def test_cache_and_evidence_fingerprints_change_with_corpus_revision() -> None:
 
     assert cache_v1["config_fingerprint"] != cache_v2["config_fingerprint"]
     assert evidence_v1["config_fingerprint"] != evidence_v2["config_fingerprint"]
+
+
+def test_cache_fingerprint_changes_with_active_projection_generation() -> None:
+    point_context = {"point_title": "卤素", "content": {"principle_text": "Cl2氧化Br-。"}}
+    first = _online()
+    second = ActiveTextbookDocument(
+        **{**first.__dict__, "projection_run_id": "run-online-3"}
+    )
+
+    fingerprint_v2 = textbook_evidence_cache_fingerprints(
+        point_context=point_context,
+        settings=_settings(ActiveTextbookCorpus(documents=(first,), revision=12)),
+        point_node_id="point-1",
+    )
+    fingerprint_v3 = textbook_evidence_cache_fingerprints(
+        point_context=point_context,
+        settings=_settings(ActiveTextbookCorpus(documents=(second,), revision=12)),
+        point_node_id="point-1",
+    )
+
+    assert fingerprint_v2["config_fingerprint"] != fingerprint_v3["config_fingerprint"]

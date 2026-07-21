@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from server.app.domains.textbook_ingestion.contracts import IngestionStage
+from server.app.domains.textbook_ingestion.public_metadata import public_chunk_metadata
 
 
 def _job_actions(status: str) -> list[str]:
@@ -16,7 +17,6 @@ def _job_actions(status: str) -> list[str]:
         IngestionStage.CHUNKING.value,
         IngestionStage.EMBEDDING.value,
         IngestionStage.INDEXING.value,
-        IngestionStage.REVIEW_READY.value,
         IngestionStage.FAILED.value,
     }:
         actions.append("cancel")
@@ -90,6 +90,18 @@ def public_document(row: dict[str, Any]) -> dict[str, Any]:
             blockers.append("quality_not_publishable")
         if not bool(outputs.get("index_verified")):
             blockers.append("index_not_verified")
+        active_projection_run_id = str(row.get("active_projection_run_id") or "").strip()
+        job_projection_run_id = str(outputs.get("projection_run_id") or "").strip()
+        if not is_seed and not active_projection_run_id:
+            blockers.append("active_projection_run_id_missing")
+        if not is_seed and publication_status != "inactive" and not job_projection_run_id:
+            blockers.append("job_projection_run_id_missing")
+        if (
+            not is_seed
+            and job_projection_run_id
+            and job_projection_run_id != active_projection_run_id
+        ):
+            blockers.append("projection_run_id_mismatch")
         total_chunks = int((latest_job or {}).get("total_chunks") or 0)
         if (
             total_chunks <= 0
@@ -141,6 +153,7 @@ def public_document(row: dict[str, Any]) -> dict[str, Any]:
         "deactivated_at": row.get("deactivated_at"),
         "deleted_at": row.get("deleted_at"),
         "corpus_revision": row.get("corpus_revision"),
+        "active_projection_run_id": row.get("active_projection_run_id"),
         "latest_job": latest_job,
         "allowed_actions": list(dict.fromkeys(actions)),
         "can_publish": can_publish,
@@ -192,4 +205,6 @@ def public_chunk(row: dict[str, Any]) -> dict[str, Any]:
         "metadata",
         "updated_at",
     }
-    return {key: value for key, value in row.items() if key in allowed}
+    result = {key: value for key, value in row.items() if key in allowed}
+    result["metadata"] = public_chunk_metadata(row.get("metadata"))
+    return result

@@ -7,12 +7,17 @@ from typing import Any, BinaryIO
 
 from sqlalchemy import text
 
-from server.app.domains.textbook_ingestion.config import processing_config_snapshot, processing_fingerprint
+from server.app.domains.textbook_ingestion.config import (
+    effective_ingestion_settings as get_settings,
+    ingestion_processing_readiness,
+    processing_config_snapshot,
+    processing_fingerprint,
+)
 from server.app.domains.textbook_ingestion.errors import TextbookIngestionError
 from server.app.domains.textbook_ingestion.identity import normalize_logical_textbook_key
 from server.app.domains.textbook_ingestion.storage import LocalTextbookBlobStore, TextbookStorageError
 from server.app.infrastructure.database import db_session
-from server.app.infrastructure.settings import get_settings
+from server.app.infrastructure.settings import Settings
 
 
 def _json(value: Any) -> str:
@@ -27,8 +32,8 @@ def _job_id() -> str:
     return str(uuid.uuid4())
 
 
-def _require_postgres_feature() -> None:
-    settings = get_settings()
+def _require_postgres_feature(settings: Settings | None = None) -> None:
+    settings = settings or get_settings()
     if not settings.textbook_ingestion_enabled:
         raise TextbookIngestionError(
             "textbook_ingestion_disabled",
@@ -43,6 +48,19 @@ def _require_postgres_feature() -> None:
         )
 
 
+def _require_processing_ready(settings: Settings | None = None) -> None:
+    settings = settings or get_settings()
+    _require_postgres_feature(settings)
+    readiness = ingestion_processing_readiness(settings)
+    if not readiness["ready"]:
+        raise TextbookIngestionError(
+            "textbook_ingestion_not_ready",
+            "Online textbook processing dependencies are not configured",
+            status_code=503,
+            missing=readiness["missing"],
+        )
+
+
 def create_textbook_upload(
     *,
     title: str,
@@ -53,8 +71,8 @@ def create_textbook_upload(
     logical_textbook_key: str | None = None,
     version_label: str | None = None,
 ) -> dict[str, Any]:
-    _require_postgres_feature()
     settings = get_settings()
+    _require_processing_ready(settings)
     logical_key = normalize_logical_textbook_key(title, logical_textbook_key)
     document_id = _document_id()
     store = LocalTextbookBlobStore(settings.textbook_storage_root)
@@ -65,6 +83,9 @@ def create_textbook_upload(
             stream=stream,
             content_type=content_type,
             max_bytes=settings.max_textbook_upload_mb * 1024 * 1024,
+            max_pages=settings.max_textbook_pages,
+            render_dpi=settings.textbook_ocr_render_dpi,
+            max_render_pixels=settings.textbook_max_render_pixels,
         )
     except TextbookStorageError as exc:
         status_code = 413 if exc.reason == "file_too_large" else 422

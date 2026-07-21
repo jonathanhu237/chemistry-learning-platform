@@ -9,6 +9,7 @@ from server.app.domains.textbook_ingestion.contracts import BlockType, Normalize
 from server.app.domains.textbook_ingestion.extraction import (
     PDFExtractionError,
     PyMuPDFExtractor,
+    _classify_text_block,
     block_is_embeddable,
     normalize_structural_blocks,
 )
@@ -133,3 +134,84 @@ def test_structural_normalization_retains_container_but_deduplicates_its_text() 
     assert first_child.parent_id == container.block_id
     assert second_child.parent_id == container.block_id
     assert block_is_embeddable(first_child) is True
+
+
+def test_native_classification_rejects_formula_and_large_prose_as_headings() -> None:
+    equation_type, equation_metadata = _classify_text_block(
+        "2 H2 + O2 = 2 H2O",
+        max_font_size=18,
+        body_font_size=11,
+        bold=False,
+    )
+    prose_type, prose_metadata = _classify_text_block(
+        "这一段大字号正文仍然是完整陈述句，不应污染章节路径。",
+        max_font_size=18,
+        body_font_size=11,
+        bold=False,
+    )
+    numbered_prose_type, _ = _classify_text_block(
+        "1. 这是普通字号的编号正文。",
+        max_font_size=11,
+        body_font_size=11,
+        bold=False,
+    )
+    heading_type, heading_metadata = _classify_text_block(
+        "12.3 卤素及其化合物",
+        max_font_size=12,
+        body_font_size=11,
+        bold=True,
+    )
+
+    assert equation_type == BlockType.EQUATION
+    assert equation_metadata == {}
+    assert prose_type == BlockType.TEXT
+    assert prose_metadata == {}
+    assert numbered_prose_type not in {BlockType.TITLE, BlockType.SECTION_HEADER}
+    assert heading_type == BlockType.SECTION_HEADER
+    assert heading_metadata["heading_level"] == 2
+
+
+def test_pymupdf_extractor_removes_variable_running_headers_by_layout(tmp_path: Path) -> None:
+    pdf_path = tmp_path / "variable-running-headers.pdf"
+    document = pymupdf.open()
+    for index in range(6):
+        page = document.new_page(width=595, height=842)
+        page.insert_text((72, 35), f"{index + 1} Running topic {index + 1}", fontsize=9)
+        page.insert_text((72, 100), "12.3 Halogen Chemistry", fontsize=16)
+        page.insert_textbox(
+            pymupdf.Rect(72, 140, 520, 440),
+            ("Selectable native chemistry body text remains available for retrieval. " * 4),
+            fontsize=11,
+        )
+    document.save(pdf_path)
+    document.close()
+
+    pages = list(PyMuPDFExtractor(max_pages=10, min_chars=40).extract(pdf_path))
+
+    assert len(pages) == 6
+    assert all(any(block.block_type == BlockType.HEADER for block in page.blocks) for page in pages)
+    assert all("Running topic" not in page.text for page in pages)
+    assert all(not page.quality.needs_ocr for page in pages)
+
+
+def test_pymupdf_extractor_keeps_repeated_top_layout_when_it_uses_heading_typography(tmp_path: Path) -> None:
+    pdf_path = tmp_path / "top-content-headings.pdf"
+    document = pymupdf.open()
+    for index in range(6):
+        page = document.new_page(width=595, height=842)
+        page.insert_text((72, 35), f"{index + 1}. Major chemistry topic", fontsize=18)
+        page.insert_textbox(
+            pymupdf.Rect(72, 140, 520, 440),
+            ("Selectable body text provides the page-level native quality baseline. " * 4),
+            fontsize=11,
+        )
+    document.save(pdf_path)
+    document.close()
+
+    pages = list(PyMuPDFExtractor(max_pages=10, min_chars=40).extract(pdf_path))
+
+    assert all(not any(block.block_type == BlockType.HEADER for block in page.blocks) for page in pages)
+    assert all(
+        any(block.block_type in {BlockType.TITLE, BlockType.SECTION_HEADER} for block in page.blocks)
+        for page in pages
+    )

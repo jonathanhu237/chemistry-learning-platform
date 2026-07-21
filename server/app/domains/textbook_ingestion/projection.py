@@ -18,6 +18,43 @@ class TextbookProjectionError(RuntimeError):
         self.details = details or {}
 
 
+def elasticsearch_operation_issues(response: Any) -> list[str]:
+    """Return integrity issues that make an ES response unsafe to trust.
+
+    Elasticsearch can return HTTP 200 while a delete/count operation timed
+    out or only reached part of the index. Cleanup callers must not interpret
+    a zero count from a partial shard response as proof that a run is gone.
+    """
+
+    if not isinstance(response, dict):
+        return ["malformed_response"]
+
+    issues: list[str] = []
+    if bool(response.get("timed_out")):
+        issues.append("timed_out")
+    if response.get("failures"):
+        issues.append("failures_reported")
+
+    shards_value = response.get("_shards")
+    if shards_value is not None:
+        if not isinstance(shards_value, dict):
+            issues.append("malformed_shard_summary")
+        else:
+            try:
+                total = int(shards_value.get("total") or 0)
+                successful = int(shards_value.get("successful") or 0)
+                skipped = int(shards_value.get("skipped") or 0)
+                failed = int(shards_value.get("failed") or 0)
+            except (TypeError, ValueError):
+                issues.append("malformed_shard_summary")
+            else:
+                if failed:
+                    issues.append("shards_failed")
+                if total > successful + skipped + failed:
+                    issues.append("shards_incomplete")
+    return list(dict.fromkeys(issues))
+
+
 @dataclass(frozen=True)
 class ProjectionDocument:
     document_id: str
@@ -25,6 +62,7 @@ class ProjectionDocument:
     document_version: int
     title: str
     processing_fingerprint: str
+    projection_run_id: str
 
 
 class OnlineTextbookSearchProjector:
@@ -55,6 +93,7 @@ class OnlineTextbookSearchProjector:
             "logical_textbook_key": self.document.logical_textbook_key,
             "document_version": self.document.document_version,
             "processing_fingerprint": self.document.processing_fingerprint,
+            "projection_run_id": self.document.projection_run_id,
             "source_collection": self.document.logical_textbook_key,
             "source_role": "canonical_textbook",
             "authority_level": "primary",
@@ -82,6 +121,11 @@ class OnlineTextbookSearchProjector:
             embedding=[float(value) for value in embedding],
             embedding_model=embedding_model,
         )
+
+    def _index_id(self, chunk: StableChunk) -> str:
+        """Keep physical ES identities isolated between worker lease generations."""
+
+        return f"{self.document.projection_run_id}:{chunk.chunk_id}"
 
     def project(
         self,
@@ -115,10 +159,17 @@ class OnlineTextbookSearchProjector:
             embedding_dimension=self.embedding_dimension,
             recreate=False,
         )
-        # A retry may produce fewer/different stable chunk ids than an earlier
-        # partial run. Clear this unpublished document projection first so old
-        # chunks cannot survive as ES-only orphans.
-        cleanup = self.delete_document(self.document.document_id)
+        # Only clear a partial projection owned by this exact lease generation.
+        # Another worker may have reclaimed the job after our last database
+        # fence; neither cleanup nor deterministic chunk ids may affect its run.
+        if self.progress_callback is not None:
+            # Fence external side effects as close as possible to the first ES
+            # mutation. The worker heartbeat protects the lease during the call.
+            self.progress_callback(0, len(chunks))
+        cleanup = self.delete_projection_run(
+            self.document.document_id,
+            self.document.projection_run_id,
+        )
         indexed_ids: list[str] = []
         failures: list[str] = []
         for start in range(0, len(chunks), self.batch_size):
@@ -126,10 +177,10 @@ class OnlineTextbookSearchProjector:
             batch_chunks = chunks[start : start + self.batch_size]
             batch_embeddings = embeddings[start : start + self.batch_size]
             for chunk, embedding in zip(batch_chunks, batch_embeddings):
-                operations.append({"index": {"_index": self.es.index, "_id": chunk.chunk_id}})
+                operations.append({"index": {"_index": self.es.index, "_id": self._index_id(chunk)}})
                 operations.append(self._source(chunk, embedding, embedding_model))
             response = self.es.bulk(operations)
-            expected_ids = [chunk.chunk_id for chunk in batch_chunks]
+            expected_ids = [self._index_id(chunk) for chunk in batch_chunks]
             successful, batch_failures = validate_bulk_index_response(response, expected_ids=expected_ids)
             indexed_ids.extend(successful)
             failures.extend(batch_failures)
@@ -146,8 +197,24 @@ class OnlineTextbookSearchProjector:
         count_response = self.es.request(
             "POST",
             f"/{self.es.index}/_count",
-            {"query": {"term": {"document_id": self.document.document_id}}},
+            {
+                "query": {
+                    "bool": {
+                        "filter": [
+                            {"term": {"document_id": self.document.document_id}},
+                            {"term": {"projection_run_id": self.document.projection_run_id}},
+                        ]
+                    }
+                }
+            },
         )
+        count_issues = elasticsearch_operation_issues(count_response)
+        if count_issues:
+            raise TextbookProjectionError(
+                "elasticsearch_count_incomplete",
+                "Elasticsearch did not verify every shard for the textbook projection",
+                details={"issues": count_issues},
+            )
         actual_count = int(count_response.get("count") or 0) if isinstance(count_response, dict) else 0
         if actual_count != len(chunks):
             raise TextbookProjectionError(
@@ -159,6 +226,7 @@ class OnlineTextbookSearchProjector:
             "index_verified": True,
             "index_name": self.es.index,
             "document_id": self.document.document_id,
+            "projection_run_id": self.document.projection_run_id,
             "indexed_chunks": actual_count,
             "embedding_model": embedding_model,
             "embedding_dimension": self.embedding_dimension,
@@ -178,6 +246,17 @@ class OnlineTextbookSearchProjector:
             f"/{self.es.index}/_count",
             {"query": {"term": {"document_id": document_id}}},
         )
+        delete_issues = elasticsearch_operation_issues(response)
+        count_issues = elasticsearch_operation_issues(count_response)
+        if delete_issues or count_issues:
+            raise TextbookProjectionError(
+                "elasticsearch_delete_incomplete",
+                "Elasticsearch did not confirm complete textbook deletion across every shard",
+                details={
+                    "delete_issues": delete_issues,
+                    "count_issues": count_issues,
+                },
+            )
         remaining = int(count_response.get("count") or 0) if isinstance(count_response, dict) else 0
         if remaining:
             raise TextbookProjectionError(
@@ -188,5 +267,64 @@ class OnlineTextbookSearchProjector:
         return {
             "deleted": int(response.get("deleted") or 0) if isinstance(response, dict) else 0,
             "document_id": document_id,
+            "index_name": self.es.index,
+        }
+
+    def delete_projection_run(self, document_id: str, projection_run_id: str) -> dict[str, object]:
+        if document_id != self.document.document_id:
+            raise TextbookProjectionError("document_mismatch", "Cannot delete a different textbook projection")
+        if not projection_run_id or projection_run_id != self.document.projection_run_id:
+            raise TextbookProjectionError("projection_run_mismatch", "Cannot delete a different projection run")
+        response = self.es.request(
+            "POST",
+            f"/{self.es.index}/_delete_by_query?conflicts=proceed&refresh=true",
+            {
+                "query": {
+                    "bool": {
+                        "filter": [
+                            {"term": {"document_id": document_id}},
+                            {"term": {"projection_run_id": projection_run_id}},
+                        ]
+                    }
+                }
+            },
+        )
+        count_response = self.es.request(
+            "POST",
+            f"/{self.es.index}/_count",
+            {
+                "query": {
+                    "bool": {
+                        "filter": [
+                            {"term": {"document_id": document_id}},
+                            {"term": {"projection_run_id": projection_run_id}},
+                        ]
+                    }
+                }
+            },
+        )
+        delete_issues = elasticsearch_operation_issues(response)
+        count_issues = elasticsearch_operation_issues(count_response)
+        if delete_issues or count_issues:
+            raise TextbookProjectionError(
+                "elasticsearch_delete_incomplete",
+                "Elasticsearch did not confirm complete projection-run deletion across every shard",
+                details={
+                    "delete_issues": delete_issues,
+                    "count_issues": count_issues,
+                    "projection_run_id": projection_run_id,
+                },
+            )
+        remaining = int(count_response.get("count") or 0) if isinstance(count_response, dict) else 0
+        if remaining:
+            raise TextbookProjectionError(
+                "elasticsearch_delete_incomplete",
+                "Elasticsearch retained chunks from this projection run after deletion",
+                details={"remaining": remaining, "projection_run_id": projection_run_id},
+            )
+        return {
+            "deleted": int(response.get("deleted") or 0) if isinstance(response, dict) else 0,
+            "document_id": document_id,
+            "projection_run_id": projection_run_id,
             "index_name": self.es.index,
         }

@@ -112,6 +112,7 @@ class Settings:
     textbook_ocr_concurrency: int = 2
     textbook_ocr_max_retries: int = 3
     textbook_ocr_render_dpi: int = 160
+    textbook_max_render_pixels: int = 40_000_000
     agent_llm_provider: str = "disabled"
     agent_llm_base_url: str = ""
     agent_llm_api_key: str = ""
@@ -199,6 +200,8 @@ class Settings:
             errors.append("TEXTBOOK_OCR_MAX_RETRIES must be non-negative")
         if self.textbook_ocr_render_dpi <= 0:
             errors.append("TEXTBOOK_OCR_RENDER_DPI must be positive")
+        if self.textbook_max_render_pixels <= 0:
+            errors.append("TEXTBOOK_MAX_RENDER_PIXELS must be positive")
         if self.is_production:
             if self.data_backend != "postgres":
                 errors.append("DATA_BACKEND must be postgres in production")
@@ -236,6 +239,17 @@ class Settings:
                     errors.append("TEXTBOOK_RAG_RERANK_MODEL is required when textbook RAG is enabled")
             if self.textbook_ingestion_enabled and not _getenv("TEXTBOOK_STORAGE_ROOT"):
                 errors.append("TEXTBOOK_STORAGE_ROOT is required when textbook ingestion is enabled in production")
+            if self.textbook_ingestion_enabled:
+                if not self.textbook_rag_elasticsearch_url:
+                    errors.append("TEXTBOOK_RAG_ELASTICSEARCH_URL is required when textbook ingestion is enabled")
+                if not self.textbook_rag_elasticsearch_index:
+                    errors.append("TEXTBOOK_RAG_ELASTICSEARCH_INDEX is required when textbook ingestion is enabled")
+                if not self.textbook_rag_embedding_base_url:
+                    errors.append("TEXTBOOK_RAG_EMBEDDING_BASE_URL is required when textbook ingestion is enabled")
+                if not self.textbook_rag_embedding_api_key:
+                    errors.append("TEXTBOOK_RAG_EMBEDDING_API_KEY is required when textbook ingestion is enabled")
+                if not self.textbook_rag_embedding_model:
+                    errors.append("TEXTBOOK_RAG_EMBEDDING_MODEL is required when textbook ingestion is enabled")
             if self.textbook_ocr_enabled:
                 if not self.textbook_ocr_base_url:
                     errors.append("TEXTBOOK_OCR_BASE_URL is required when textbook OCR is enabled")
@@ -395,6 +409,10 @@ def get_settings() -> Settings:
         textbook_ocr_concurrency=_get_int("TEXTBOOK_OCR_CONCURRENCY", Settings.textbook_ocr_concurrency),
         textbook_ocr_max_retries=_get_int("TEXTBOOK_OCR_MAX_RETRIES", Settings.textbook_ocr_max_retries),
         textbook_ocr_render_dpi=_get_int("TEXTBOOK_OCR_RENDER_DPI", Settings.textbook_ocr_render_dpi),
+        textbook_max_render_pixels=_get_int(
+            "TEXTBOOK_MAX_RENDER_PIXELS",
+            Settings.textbook_max_render_pixels,
+        ),
         agent_llm_provider=_getenv("AGENT_LLM_PROVIDER", Settings.agent_llm_provider).lower(),
         agent_llm_base_url=_getenv("AGENT_LLM_BASE_URL"),
         agent_llm_api_key=_getenv("AGENT_LLM_API_KEY"),

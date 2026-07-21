@@ -21,6 +21,7 @@ ONLINE_MAPPING_PROPERTIES: dict[str, Any] = {
     "logical_textbook_key": {"type": "keyword"},
     "document_version": {"type": "integer"},
     "processing_fingerprint": {"type": "keyword"},
+    "projection_run_id": {"type": "keyword"},
     "extraction_method": {"type": "keyword"},
     "quality_flags": {"type": "keyword"},
 }
@@ -190,6 +191,7 @@ def chunk_document(row: dict[str, Any], *, source_file: str, embedding: list[flo
         "logical_textbook_key": str(row.get("logical_textbook_key") or row.get("source_collection") or ""),
         "document_version": int(row.get("document_version") or 1),
         "processing_fingerprint": str(row.get("processing_fingerprint") or ""),
+        "projection_run_id": str(row.get("projection_run_id") or ""),
         "extraction_method": str(row.get("extraction_method") or "seed"),
         "quality_flags": [str(item) for item in row.get("quality_flags") or []],
         "source_collection": str(row.get("source_collection") or ""),

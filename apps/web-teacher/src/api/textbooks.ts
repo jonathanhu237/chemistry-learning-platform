@@ -40,6 +40,12 @@ export type TextbookUploadPolicy = {
   max_upload_bytes: number;
   max_pages: number;
   allowed_extensions: string[];
+  processing_readiness?: {
+    ready: boolean;
+    missing: string[];
+    elasticsearch: { configured: boolean; index?: string | null };
+    embedding: { configured: boolean; model?: string | null; dimension?: number | null };
+  };
   ocr: TextbookOcrConfiguration;
 };
 
@@ -87,6 +93,7 @@ export type TextbookDocument = {
   deactivated_at?: string | null;
   deleted_at?: string | null;
   corpus_revision?: number | null;
+  active_projection_run_id?: string | null;
   latest_job?: TextbookIngestionJob | null;
   allowed_actions: string[];
   can_publish: boolean;

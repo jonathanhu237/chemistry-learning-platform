@@ -28,6 +28,7 @@ RETIRED_BGE_EMBEDDING_DIMENSION = 1024
 SOURCE_DOCUMENTS = {
     "textbook_inorganic_lower_v1": {
         "id": "DOC_CANONICAL_INORGANIC_LOWER_V1",
+        "index_document_id": "inorganic_chemistry_lower_2nd",
         "file_name": "无机化学（下册）（第二版）",
         "path": str(SEED_RAG_DIR / "chunks" / "textbook_inorganic_lower_chunks_v1.jsonl"),
         "type": "jsonl",
@@ -35,6 +36,7 @@ SOURCE_DOCUMENTS = {
     },
     "textbook_experiment_clean_v1": {
         "id": "DOC_CANONICAL_EXPERIMENT_V1",
+        "index_document_id": "inorganic_chemistry_experiment_4th",
         "file_name": "无机化学实验（第四版）",
         "path": str(SEED_RAG_DIR / "chunks" / "textbook_experiment_chunks_v1.jsonl"),
         "type": "jsonl",
@@ -250,6 +252,7 @@ def insert_source_documents(session: Any) -> int:
                 "metadata": _json(
                     {
                         "source_collection": source_collection,
+                        "index_document_id": doc["index_document_id"],
                         "source_role": "canonical_textbook",
                         "authority_level": "primary",
                     }

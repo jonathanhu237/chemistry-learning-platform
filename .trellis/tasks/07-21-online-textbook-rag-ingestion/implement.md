@@ -6,6 +6,7 @@
 - Add migrations for document version/lifecycle fields and `textbook_ingestion_jobs`, including claim/lease indexes and state constraints.
 - Define blob store, PDF extractor, OCR provider, chunker, embedder and ES projector interfaces.
 - Add configuration models for upload limits, storage root, quality thresholds and OCR HTTP settings.
+- Resolve one DB-backed effective textbook RAG contract across upload, worker, publication, recovery and retrieval; environment values remain bootstrap defaults.
 - Add migration/compatibility tests proving existing canonical source documents and chunks remain readable.
 
 ## Phase 2: Upload and job orchestration
@@ -38,6 +39,7 @@
 - Upsert `source_documents` and `source_chunks` idempotently in bounded transactions.
 - Implement document/chunk quality reports and publish-blocking thresholds.
 - Add admin APIs and UI for processing progress, chapter/chunk preview, diagnostics and retry.
+- Sanitize public chunk/evidence metadata and authenticate protected Markdown assets only on the trusted API origin.
 - Add unit and integration tests for unchanged, changed and removed chunks during reprocessing.
 
 ## Phase 5: Embedding and single ES vector projection
@@ -45,6 +47,7 @@
 - Extract the existing ES mapping/indexing code into a reusable application service.
 - Batch Embedding with retry, model/dimension validation and fingerprint-based reuse.
 - Bulk index staged document versions into the existing hybrid text/vector index.
+- Use run-scoped physical ES IDs, persist the verified projection run during the fenced `review_ready` transition, and make online retrieval require the exact active document/version/run tuple.
 - Ensure online ingestion never writes `chunk_embeddings`; add a regression check for this boundary.
 - Validate ES counts, failed items, index metadata and representative retrieval before marking the job `review_ready`.
 
@@ -53,7 +56,8 @@
 - Implement publish, deactivate, replace and explicit delete flows.
 - Make retrieval filter by active document versions so publishing can switch versions atomically.
 - Mark dependent catalog point evidence stale and enqueue refresh work after publication/deactivation.
-- Remove staged/orphan ES documents after failed, cancelled or superseded jobs.
+- Remove the current lease's staged ES run after ordinary failure/cancellation without touching another worker's generation.
+- Keep late/stale worker runs invisible by generation; explicit document deletion cleans all generations, and an operator recovery command rebuilds active runs from PostgreSQL after shared-index loss.
 - Add audit records and tests covering rollback, retry and partial ES/OCR failures.
 
 ## Phase 7: End-to-end UX and verification
@@ -71,9 +75,11 @@
 - No request waits for full-document processing.
 - No vectors are written to PostgreSQL by the new path.
 - Reprocessing is idempotent and does not leak ES documents.
+- A reclaimed worker cannot delete, overwrite, or expose the newer worker's active ES generation.
 - A partially processed version is never visible to retrieval.
 - Every retrieved chunk can be traced to document version, section and PDF page range.
 - OCR secrets are redacted and uploaded paths cannot escape the configured storage root.
+- Runtime PDFs are excluded from Git/Docker build contexts and no filesystem paths cross public API boundaries.
 
 ## Validation Commands
 

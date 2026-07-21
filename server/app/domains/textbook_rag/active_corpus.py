@@ -18,10 +18,8 @@ class ActiveTextbookDocument:
     document_version: int
     document_kind: str
     source_collection: str
-
-    @property
-    def is_legacy_seed(self) -> bool:
-        return self.document_kind == "canonical_textbook"
+    index_document_id: str = ""
+    projection_run_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -42,33 +40,6 @@ def _mapping_rows(result: Any) -> list[Any]:
         return [row] if row else []
 
 
-def _current_revision(session: Any) -> int:
-    registry_row = (
-        session.execute(
-            text("SELECT to_regclass('public.textbook_corpus_state')::text AS table_name")
-        )
-        .mappings()
-        .first()
-    )
-    if not registry_row or not registry_row.get("table_name"):
-        return 0
-    revision_row = (
-        session.execute(
-            text(
-                """
-                SELECT revision
-                FROM textbook_corpus_state
-                ORDER BY revision DESC
-                LIMIT 1
-                """
-            )
-        )
-        .mappings()
-        .first()
-    )
-    return max(0, int((revision_row or {}).get("revision") or 0))
-
-
 def load_active_textbook_corpus(session: Any | None = None) -> ActiveTextbookCorpus:
     """Load the published textbook projection allow-list from PostgreSQL.
 
@@ -86,17 +57,24 @@ def load_active_textbook_corpus(session: Any | None = None) -> ActiveTextbookCor
                 active_session.execute(
                     text(
                         """
-                        SELECT id, logical_textbook_key, version_number,
-                               document_kind, metadata
-                        FROM source_documents
-                        WHERE publication_status = 'published'
-                          AND document_kind IN ('textbook', 'canonical_textbook')
-                        ORDER BY logical_textbook_key, version_number, id
+                        SELECT sd.id, sd.logical_textbook_key, sd.version_number,
+                               sd.document_kind, sd.metadata,
+                               sd.active_projection_run_id, state.revision
+                        FROM textbook_corpus_state state
+                        LEFT JOIN source_documents sd
+                          ON sd.publication_status = 'published'
+                         AND sd.document_kind IN ('textbook', 'canonical_textbook')
+                        WHERE state.singleton_key = 1
+                        ORDER BY sd.logical_textbook_key, sd.version_number, sd.id
                         """
                     )
                 )
             )
             documents: list[ActiveTextbookDocument] = []
+            revision = max(
+                (max(0, int(row.get("revision") or 0)) for row in rows),
+                default=0,
+            )
             for row in rows:
                 document_id = str(row.get("id") or "").strip()
                 logical_key = str(row.get("logical_textbook_key") or "").strip()
@@ -105,6 +83,11 @@ def load_active_textbook_corpus(session: Any | None = None) -> ActiveTextbookCor
                     continue
                 metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
                 source_collection = str(metadata.get("source_collection") or logical_key).strip()
+                index_document_id = (
+                    str(metadata.get("index_document_id") or "").strip()
+                    if document_kind == "canonical_textbook"
+                    else document_id
+                )
                 documents.append(
                     ActiveTextbookDocument(
                         document_id=document_id,
@@ -112,11 +95,17 @@ def load_active_textbook_corpus(session: Any | None = None) -> ActiveTextbookCor
                         document_version=max(1, int(row.get("version_number") or 1)),
                         document_kind=document_kind,
                         source_collection=source_collection,
+                        index_document_id=index_document_id,
+                        projection_run_id=(
+                            str(row.get("active_projection_run_id") or "").strip()
+                            if document_kind == "textbook"
+                            else ""
+                        ),
                     )
                 )
             return ActiveTextbookCorpus(
                 documents=tuple(documents),
-                revision=_current_revision(active_session),
+                revision=revision,
             )
     except (SQLAlchemyError, AttributeError, TypeError, ValueError) as exc:
         return ActiveTextbookCorpus(load_error=exc.__class__.__name__)
@@ -124,19 +113,36 @@ def load_active_textbook_corpus(session: Any | None = None) -> ActiveTextbookCor
 
 def active_textbook_filter(documents: Iterable[ActiveTextbookDocument]) -> dict[str, Any]:
     clauses: list[dict[str, Any]] = []
-    seen: set[tuple[str, str]] = set()
+    seen: set[tuple[str, int]] = set()
     for document in documents:
-        if document.is_legacy_seed:
-            field, value = "source_collection", document.source_collection
-        else:
-            # Online generations share source_collection with the legacy seed.
-            # document_id is therefore the only safe discriminator for an upload.
-            field, value = "document_id", document.document_id
-        key = (field, value)
-        if not value or key in seen:
+        # ``source_collection`` is deliberately not an activation discriminator:
+        # staged online versions share it with the canonical seed. ``doc_id`` is
+        # the immutable ES generation identity (the upload document id for online
+        # versions, and an explicitly registered seed id for legacy documents).
+        index_document_id = document.index_document_id
+        key = (index_document_id, document.document_version)
+        if not index_document_id or key in seen:
             continue
         seen.add(key)
-        clauses.append({"term": {field: value}})
+        filters: list[dict[str, Any]] = [{"term": {"doc_id": index_document_id}}]
+        if document.document_kind == "textbook":
+            if not document.projection_run_id:
+                # A published online row without its durable generation is not
+                # safe to retrieve; recovery can rebuild and register it.
+                continue
+            filters.extend(
+                [
+                    {"term": {"document_version": document.document_version}},
+                    {"term": {"projection_run_id": document.projection_run_id}},
+                ]
+            )
+        clauses.append(
+            {
+                "bool": {
+                    "filter": filters
+                }
+            }
+        )
     if not clauses:
         return {"match_none": {}}
     return {"bool": {"should": clauses, "minimum_should_match": 1}}

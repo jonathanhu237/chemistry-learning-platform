@@ -6,6 +6,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from server.app.domains.platform.settings import effective_textbook_rag_settings
+from server.app.domains.textbook_ingestion.public_metadata import (
+    public_chunk_metadata,
+    public_source_name,
+)
 from server.app.domains.textbook_rag.active_corpus import active_textbook_filter, corpus_from_settings
 from server.app.domains.textbook_rag.clients import QwenEmbeddingClient, QwenRerankClient, TextbookRAGClientError
 from server.app.domains.textbook_rag.index import TextbookElasticsearchClient
@@ -157,11 +161,11 @@ def _source_from_hit(hit: dict[str, Any], *, recall_source: str) -> dict[str, An
         "logical_textbook_key": str(source.get("logical_textbook_key") or source.get("source_collection") or ""),
         "document_version": source.get("document_version"),
         "source_collection": str(source.get("source_collection") or ""),
-        "source_file": str(source.get("source_file") or ""),
+        "source_file": public_source_name(source.get("source_file")),
         "recall_source": recall_source,
         "recall_score": float(hit.get("_score") or 0.0),
         "rerank_score": None,
-        "metadata": source.get("metadata") if isinstance(source.get("metadata"), dict) else {},
+        "metadata": public_chunk_metadata(source.get("metadata")),
     }
 
 
@@ -206,7 +210,7 @@ def _candidate_summary(source: dict[str, Any], *, section: str, rank: int) -> di
         "recall_score": source.get("recall_score"),
         "rerank_score": source.get("rerank_score"),
         "text_preview": text_preview,
-        "metadata": source.get("metadata") if isinstance(source.get("metadata"), dict) else {},
+        "metadata": public_chunk_metadata(source.get("metadata")),
     }
 
 

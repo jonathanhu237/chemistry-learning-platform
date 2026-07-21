@@ -201,7 +201,16 @@ def test_retrieve_textbook_evidence_groups_section_sources(monkeypatch: Any) -> 
                                 "section_path": ["第7章", "实验 19-1 卤素"],
                                 "content_type": "experiment_protocol",
                                 "content_hash": "hash",
+                                "source_file": r"E:\\private\\canonical\\chapter-7.md",
                                 "use_for_question_generation": True,
+                                "metadata": {
+                                    "knowledge_unit": "卤素的氧化性",
+                                    "formulas": ["Cl2", "Br-"],
+                                    "import_source_file": "/srv/private/canonical/chunks.jsonl",
+                                    "source_md_files": ["/srv/private/pages/7.md"],
+                                    "asset_paths": ["/srv/private/assets/reaction.png"],
+                                    "internal_note": "not public",
+                                },
                             },
                         }
                     ]
@@ -225,6 +234,16 @@ def test_retrieve_textbook_evidence_groups_section_sources(monkeypatch: Any) -> 
     assert package["supported_sections"] == ["principle"]
     assert package["sections"]["principle"]["sources"][0]["chunk_id"] == "chunk-1"
     assert package["sections"]["principle"]["sources"][0]["rerank_score"] == 0.8
+    assert package["sections"]["principle"]["sources"][0]["source_file"] == "chapter-7.md"
+    assert package["sections"]["principle"]["candidates"][0]["source_file"] == "chapter-7.md"
+    assert package["sections"]["principle"]["sources"][0]["metadata"] == {
+        "knowledge_unit": "卤素的氧化性",
+        "formulas": ["Cl2", "Br-"],
+    }
+    assert package["sections"]["principle"]["candidates"][0]["metadata"] == {
+        "knowledge_unit": "卤素的氧化性",
+        "formulas": ["Cl2", "Br-"],
+    }
 
 
 def test_retrieve_textbook_evidence_fails_when_all_sections_have_no_sources(monkeypatch: Any) -> None:

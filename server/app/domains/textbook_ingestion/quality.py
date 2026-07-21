@@ -33,8 +33,25 @@ def build_textbook_quality_report(
     if not chunks:
         blocking_issues.append("no_chunks")
 
-    chunk_hash_counts = Counter(chunk.content_hash for chunk in chunks)
-    duplicate_chunk_hashes = sorted(content_hash for content_hash, count in chunk_hash_counts.items() if count > 1)
+    # Identical short headings or equations can legitimately recur in different
+    # chapters/pages. Only repeated content at the same structural location is
+    # a duplicated chunk artifact that should block publication.
+    chunk_location_counts = Counter(
+        (
+            chunk.content_hash,
+            chunk.page_start,
+            chunk.page_end,
+            tuple(chunk.section_path),
+        )
+        for chunk in chunks
+    )
+    duplicate_chunk_hashes = sorted(
+        {
+            content_hash
+            for (content_hash, _page_start, _page_end, _section_path), count in chunk_location_counts.items()
+            if count > 1
+        }
+    )
     if duplicate_chunk_hashes:
         blocking_issues.append("duplicate_chunk_content")
     invalid_chunk_pages = sorted(

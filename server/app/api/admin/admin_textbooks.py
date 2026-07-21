@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 
 from server.app.auth import AuthUser, require_teacher_console_user
 from server.app.domains.errors import DomainHTTPException
 from server.app.domains.textbook_ingestion.contracts import IngestionJobView, TextbookDocumentView
+from server.app.domains.textbook_ingestion.config import (
+    effective_ingestion_settings,
+    ingestion_processing_readiness,
+)
 from server.app.domains.textbook_ingestion.errors import TextbookIngestionError
 from server.app.domains.textbook_ingestion.lifecycle import (
     deactivate_textbook,
@@ -29,7 +34,6 @@ from server.app.domains.textbook_ingestion.views import (
     public_job,
     public_page,
 )
-from server.app.infrastructure.settings import get_settings
 
 
 router = APIRouter(prefix="/api/admin/textbooks", tags=["admin-textbooks"])
@@ -43,9 +47,11 @@ def _translate_error(exc: TextbookIngestionError) -> DomainHTTPException:
 def admin_textbook_upload_policy(
     _user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
-    settings = get_settings()
+    settings = effective_ingestion_settings()
+    readiness = ingestion_processing_readiness(settings)
     return {
-        "enabled": settings.textbook_ingestion_enabled and settings.data_backend == "postgres",
+        "enabled": readiness["ready"],
+        "processing_readiness": readiness,
         "max_upload_mb": settings.max_textbook_upload_mb,
         "max_upload_bytes": settings.max_textbook_upload_mb * 1024 * 1024,
         "max_pages": settings.max_textbook_pages,
@@ -99,45 +105,45 @@ def admin_list_textbooks(
 
 @router.get("/jobs/{job_id}", response_model=IngestionJobView)
 def admin_get_textbook_job(
-    job_id: str,
+    job_id: UUID,
     _user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     try:
-        return public_job(get_ingestion_job(job_id)) or {}
+        return public_job(get_ingestion_job(str(job_id))) or {}
     except TextbookIngestionError as exc:
         raise _translate_error(exc) from exc
 
 
 @router.get("/jobs/{job_id}/events")
 def admin_get_textbook_job_events(
-    job_id: str,
+    job_id: UUID,
     limit: int = Query(default=500, ge=1, le=2000),
     _user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     try:
-        return list_ingestion_job_events(job_id, limit=limit)
+        return list_ingestion_job_events(str(job_id), limit=limit)
     except TextbookIngestionError as exc:
         raise _translate_error(exc) from exc
 
 
 @router.post("/jobs/{job_id}/cancel", response_model=IngestionJobView)
 def admin_cancel_textbook_job(
-    job_id: str,
+    job_id: UUID,
     user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     try:
-        return public_job(request_cancellation(job_id, actor_id=user.id)) or {}
+        return public_job(request_cancellation(str(job_id), actor_id=user.id)) or {}
     except TextbookIngestionError as exc:
         raise _translate_error(exc) from exc
 
 
 @router.post("/jobs/{job_id}/retry", response_model=IngestionJobView)
 def admin_retry_textbook_job(
-    job_id: str,
+    job_id: UUID,
     user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     try:
-        return public_job(retry_job(job_id, actor_id=user.id)) or {}
+        return public_job(retry_job(str(job_id), actor_id=user.id)) or {}
     except TextbookIngestionError as exc:
         raise _translate_error(exc) from exc
 

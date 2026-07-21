@@ -53,7 +53,7 @@ The two online versions supersede the matching seed-derived canonical documents 
 
 Use the existing textbook RAG index contract and add document/version/publication fields needed for filtering. Elasticsearch remains the only location containing dense vectors. PostgreSQL `chunk_embeddings` is a retired compatibility artifact and receives no writes from the online pipeline.
 
-Index a new version before activation. Retrieval filters by the active document-version set so PostgreSQL can switch the active version atomically after ES validation. Failed staged data is invisible and can be deleted safely.
+Index a new version before activation. Every worker lease generation writes run-scoped physical ES IDs and a `projection_run_id`; the fenced `review_ready` transition persists that verified run in PostgreSQL. Retrieval filters online documents by the exact `(document_id, document_version, active_projection_run_id)` tuple so PostgreSQL can switch both version and generation atomically after ES validation. A late request from a reclaimed worker may leave an inert historical run, but it cannot overwrite or enter the active projection. Canonical seed documents retain their explicitly registered immutable ES `doc_id` because the legacy precomputed bundle has no version/run fields.
 
 ## Processing Contracts
 
@@ -79,7 +79,7 @@ Rejected pages are sent to OCR. Good native pages never incur OCR cost.
 
 Define a provider-neutral async HTTP client. The request carries document/job/page identity, an idempotency key and a rendered page image or provider-supported PDF page. The normalized response contains page number, text/Markdown, blocks with coordinates, confidence, warnings and optional asset references.
 
-Provider timeouts, rate limits and transient failures are retryable. Authentication errors, unsupported files and persistent low-confidence output are terminal or require administrator action. The MVP reads the OCR credential from a deployment secret/environment variable, while non-secret provider settings may use ordinary application configuration. The UI exposes only configured status/fingerprint, and jobs record a configuration fingerprint rather than the secret. This avoids adding another plaintext provider credential to the existing `platform_settings` JSON payload.
+Provider timeouts, rate limits and transient failures are retryable. Authentication errors, unsupported files and persistent low-confidence output are terminal or require administrator action. The OCR credential remains deployment-managed. The existing DB-backed textbook RAG settings are the authoritative runtime resolver for upload readiness, workers, publication/recovery and retrieval, with environment values as bootstrap defaults. The UI and job records expose only configured status/fingerprints, never raw credentials.
 
 #### Provider recommendation
 
@@ -125,7 +125,7 @@ uploaded
   -> ready
 ```
 
-Any running state can transition to `failed` or `cancelled`. A retry starts from the earliest invalidated artifact rather than blindly repeating all stages. Workers claim jobs using PostgreSQL row locking and leases; stale leases can be reclaimed. Stage outputs are committed in bounded transactions.
+Any running state can transition to `failed` or `cancelled`. A retry starts from the earliest invalidated artifact rather than blindly repeating all stages. Workers claim jobs using PostgreSQL row locking and leases; stale leases can be reclaimed. Stage outputs are committed in bounded transactions. OCR-complete pages are checkpointed by processing fingerprint, while ES side effects are isolated by lease generation. Publication validates the live run/model/dimension/fingerprint/count rather than trusting historical job counters.
 
 ## Publication and Downstream Consistency
 
@@ -139,6 +139,8 @@ Deactivation immediately removes the version from retrieval filters. ES physical
 - Validate MIME using content, not filename alone; set upload size/page limits and never execute embedded PDF content.
 - Keep uploaded files and generated assets under a configured root with path containment.
 - Do not expose storage paths, provider secrets or raw exception traces to the frontend.
+- Attach teacher authorization to Markdown assets only after exact trusted-origin and protected-path validation; textbook/OCR content is untrusted input.
+- Exclude the runtime textbook storage root from Git and Docker build contexts.
 - Emit structured metrics for stage latency, OCR use/cost, parser quality, Embedding batches, ES failures and retrieval smoke checks.
 
 ## Compatibility and Migration

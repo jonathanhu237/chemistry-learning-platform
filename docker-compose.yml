@@ -59,8 +59,10 @@ services:
       TUS_UPLOAD_DIR: tus
       TUS_PUBLIC_ENDPOINT: http://127.0.0.1:10980/files/
       CHEMISTRY_RAG_ROOT: /chemistry-rag
-      TEXTBOOK_INGESTION_ENABLED: ${TEXTBOOK_INGESTION_ENABLED:-true}
+      TEXTBOOK_INGESTION_ENABLED: ${TEXTBOOK_INGESTION_ENABLED:-false}
       TEXTBOOK_STORAGE_ROOT: /app/data/textbooks
+      TEXTBOOK_RAG_ELASTICSEARCH_URL: ${TEXTBOOK_RAG_ELASTICSEARCH_URL:-http://elasticsearch:9200}
+      TEXTBOOK_RAG_ELASTICSEARCH_INDEX: ${TEXTBOOK_RAG_ELASTICSEARCH_INDEX:-canonical-rag-chunks-qwen-v1}
       WEB_ADMIN_ACCESS_TOKEN: ${WEB_ADMIN_ACCESS_TOKEN:-dev-only-web-admin-token-change-me}
       VIDEO_LIBRARY_SEARCH_ENABLED: "true"
       VIDEO_LIBRARY_SEARCH_BACKEND: elasticsearch
@@ -243,11 +245,13 @@ services:
         condition: service_healthy
 
   textbook-ingestion-worker:
+    profiles: ["textbook-ingestion"]
     image: chemistry-admin-backend:4e6da1db8525
     build:
       context: .
       dockerfile: server/Dockerfile
     command: ["python", "-m", "server.app.workers.textbook_ingestion_worker"]
+    restart: unless-stopped
     env_file:
       - path: .env
         required: false
@@ -255,11 +259,12 @@ services:
       CHEMISTRY_APP_ENV: development
       DATA_BACKEND: postgres
       DATABASE_URL: postgresql+psycopg://chemistry:chemistry@postgres:5432/chemistry_exam
-      TEXTBOOK_INGESTION_ENABLED: ${TEXTBOOK_INGESTION_ENABLED:-true}
+      TEXTBOOK_INGESTION_ENABLED: ${TEXTBOOK_INGESTION_ENABLED:-false}
       TEXTBOOK_STORAGE_ROOT: /app/data/textbooks
       TEXTBOOK_INGESTION_WORKER_ID: local-textbook-ingestion-worker
       TEXTBOOK_INGESTION_WORKER_POLL_SECONDS: 5
-      TEXTBOOK_RAG_ELASTICSEARCH_URL: http://elasticsearch:9200
+      TEXTBOOK_RAG_ELASTICSEARCH_URL: ${TEXTBOOK_RAG_ELASTICSEARCH_URL:-http://elasticsearch:9200}
+      TEXTBOOK_RAG_ELASTICSEARCH_INDEX: ${TEXTBOOK_RAG_ELASTICSEARCH_INDEX:-canonical-rag-chunks-qwen-v1}
     volumes:
       - ./data/textbooks:/app/data/textbooks
     depends_on:

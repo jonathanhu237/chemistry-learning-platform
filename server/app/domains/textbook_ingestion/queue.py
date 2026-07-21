@@ -7,7 +7,11 @@ from typing import Any
 
 from sqlalchemy import text
 
-from server.app.domains.textbook_ingestion.config import processing_config_snapshot, processing_fingerprint
+from server.app.domains.textbook_ingestion.config import (
+    effective_ingestion_settings,
+    processing_config_snapshot,
+    processing_fingerprint,
+)
 from server.app.domains.textbook_ingestion.contracts import (
     ACTIVE_INGESTION_STAGES,
     IngestionStage,
@@ -63,12 +67,121 @@ def _claimed_job(row: Any) -> ClaimedIngestionJob:
     )
 
 
+def _reap_stale_jobs(session: Any) -> dict[str, int]:
+    cancelled = list(
+        session.execute(
+            text(
+                """
+                UPDATE textbook_ingestion_jobs
+                SET status = 'cancelled',
+                    worker_id = NULL,
+                    lease_token = NULL,
+                    lease_expires_at = NULL,
+                    finished_at = now(),
+                    updated_at = now()
+                WHERE cancellation_requested_at IS NOT NULL
+                  AND status IN ('uploaded', 'extracting', 'ocr', 'structuring', 'chunking', 'embedding', 'indexing')
+                  AND (worker_id IS NULL OR lease_expires_at IS NULL OR lease_expires_at <= now())
+                RETURNING id, document_id, progress
+                """
+            )
+        )
+        .mappings()
+        .all()
+    )
+    exhausted = list(
+        session.execute(
+            text(
+                """
+                UPDATE textbook_ingestion_jobs
+                SET status = 'failed',
+                    error_code = 'attempts_exhausted',
+                    error_message = 'Worker lease expired after the final permitted attempt',
+                    worker_id = NULL,
+                    lease_token = NULL,
+                    lease_expires_at = NULL,
+                    finished_at = now(),
+                    updated_at = now()
+                WHERE cancellation_requested_at IS NULL
+                  AND attempts >= max_attempts
+                  AND status IN ('uploaded', 'extracting', 'ocr', 'structuring', 'chunking', 'embedding', 'indexing')
+                  AND (worker_id IS NULL OR lease_expires_at IS NULL OR lease_expires_at <= now())
+                RETURNING id, document_id, progress
+                """
+            )
+        )
+        .mappings()
+        .all()
+    )
+    for row in cancelled:
+        session.execute(
+            text(
+                """
+                INSERT INTO textbook_ingestion_job_events (
+                  job_id, status, progress, event_type, message, details
+                ) VALUES (
+                  CAST(:job_id AS uuid), 'cancelled', :progress, 'cancelled',
+                  'Cancellation finalized after the worker lease ended',
+                  '{"reason":"stale_or_unclaimed_lease"}'::jsonb
+                )
+                """
+            ),
+            {"job_id": str(row["id"]), "progress": int(row["progress"] or 0)},
+        )
+        session.execute(
+            text(
+                """
+                UPDATE source_documents
+                SET processing_status = 'cancelled', publication_status = 'draft',
+                    active_projection_run_id = NULL, updated_at = now()
+                WHERE id = :document_id AND publication_status NOT IN ('published', 'deleted')
+                """
+            ),
+            {"document_id": str(row["document_id"])},
+        )
+    for row in exhausted:
+        session.execute(
+            text(
+                """
+                INSERT INTO textbook_ingestion_job_events (
+                  job_id, status, progress, event_type, message, details
+                ) VALUES (
+                  CAST(:job_id AS uuid), 'failed', :progress, 'failed',
+                  'Worker lease expired after the final permitted attempt',
+                  '{"error_code":"attempts_exhausted"}'::jsonb
+                )
+                """
+            ),
+            {"job_id": str(row["id"]), "progress": int(row["progress"] or 0)},
+        )
+        session.execute(
+            text(
+                """
+                UPDATE source_documents
+                SET processing_status = 'failed', publication_status = 'failed',
+                    active_projection_run_id = NULL, updated_at = now()
+                WHERE id = :document_id AND publication_status NOT IN ('published', 'deleted')
+                """
+            ),
+            {"document_id": str(row["document_id"])},
+        )
+    return {"cancelled": len(cancelled), "failed": len(exhausted)}
+
+
+def reap_stale_jobs() -> dict[str, int]:
+    """Finalize dead-worker cancellations and exhausted leases."""
+
+    with db_session() as session:
+        return _reap_stale_jobs(session)
+
+
 def claim_next_job(worker_id: str, *, lease_seconds: int | None = None) -> ClaimedIngestionJob | None:
     worker = worker_id.strip()
     if not worker:
         raise ValueError("worker_id is required")
     effective_lease_seconds = lease_seconds or get_settings().textbook_ingestion_lease_seconds
     with db_session() as session:
+        _reap_stale_jobs(session)
         row = (
             session.execute(
                 text(
@@ -166,15 +279,15 @@ def heartbeat(job: ClaimedIngestionJob, *, lease_seconds: int | None = None) -> 
                 WHERE id = CAST(:job_id AS uuid)
                   AND worker_id = :worker_id
                   AND lease_token = CAST(:lease_token AS uuid)
-                  AND status = :status
+                  AND status IN ('extracting', 'ocr', 'structuring', 'chunking', 'embedding', 'indexing')
                   AND lease_expires_at > now()
+                  AND cancellation_requested_at IS NULL
                 """
             ),
             {
                 "job_id": job.id,
                 "worker_id": job.worker_id,
                 "lease_token": job.lease_token,
-                "status": job.status.value,
                 "lease_seconds": effective_lease_seconds,
             },
         )
@@ -283,6 +396,13 @@ def advance_job(
         raise ValueError(f"Unsupported ingestion counters: {sorted(unknown_counters)}")
     if any(int(value) < 0 for value in counter_values.values()):
         raise ValueError("Ingestion counters must be non-negative")
+    output_values = outputs or {}
+    projection_run_id = str(output_values.get("projection_run_id") or "").strip()
+    if target_stage == IngestionStage.REVIEW_READY:
+        if not projection_run_id or projection_run_id != job.lease_token:
+            raise ValueError(
+                "review_ready requires the verified projection_run_id owned by the current lease"
+            )
     counter_sql = "".join(f", {name} = :{name}" for name in sorted(counter_values))
     releases_lease = target_stage not in ACTIVE_INGESTION_STAGES
     if releases_lease:
@@ -299,7 +419,8 @@ def advance_job(
         "progress": progress,
         "stage_metrics": _json(stage_metrics or {}),
         "quality_report": _json(quality_report or {}),
-        "outputs": _json(outputs or {}),
+        "outputs": _json(output_values),
+        "projection_run_id": projection_run_id or None,
         "lease_seconds": get_settings().textbook_ingestion_lease_seconds,
         **{name: int(value) for name, value in counter_values.items()},
     }
@@ -360,6 +481,10 @@ def advance_job(
                 UPDATE source_documents
                 SET processing_status = :processing_status,
                     publication_status = :publication_status,
+                    active_projection_run_id = CASE
+                      WHEN :processing_status = 'review_ready' THEN :projection_run_id
+                      ELSE active_projection_run_id
+                    END,
                     quality_summary = quality_summary || CAST(:quality_report AS jsonb),
                     updated_at = now()
                 WHERE id = :document_id
@@ -370,6 +495,7 @@ def advance_job(
                 "processing_status": target_stage.value,
                 "publication_status": publication_status,
                 "quality_report": _json(quality_report or {}),
+                "projection_run_id": projection_run_id or None,
             },
         )
     if releases_lease:
@@ -396,7 +522,9 @@ def fail_job(job: ClaimedIngestionJob, *, error_code: str, error_message: str) -
                     WHERE id = CAST(:job_id AS uuid)
                       AND worker_id = :worker_id
                       AND lease_token = CAST(:lease_token AS uuid)
+                      AND status = :status
                       AND lease_expires_at > now()
+                      AND cancellation_requested_at IS NULL
                     RETURNING document_id, progress
                     """
                 ),
@@ -404,6 +532,7 @@ def fail_job(job: ClaimedIngestionJob, *, error_code: str, error_message: str) -
                     "job_id": job.id,
                     "worker_id": job.worker_id,
                     "lease_token": job.lease_token,
+                    "status": job.status.value,
                     "error_code": error_code[:120],
                     "error_message": message,
                 },
@@ -437,6 +566,7 @@ def fail_job(job: ClaimedIngestionJob, *, error_code: str, error_message: str) -
                 UPDATE source_documents
                 SET processing_status = 'failed',
                     publication_status = 'failed',
+                    active_projection_run_id = NULL,
                     quality_summary = quality_summary || COALESCE(
                       (SELECT quality_report FROM textbook_ingestion_jobs WHERE id = CAST(:job_id AS uuid)),
                       '{}'::jsonb
@@ -531,6 +661,7 @@ def release_job_for_retry(
                 UPDATE source_documents
                 SET processing_status = 'uploaded',
                     publication_status = 'draft',
+                    active_projection_run_id = NULL,
                     updated_at = now()
                 WHERE id = :document_id
                   AND publication_status NOT IN ('published', 'deleted')
@@ -622,6 +753,7 @@ def acknowledge_cancellation(job: ClaimedIngestionJob) -> None:
                 UPDATE source_documents
                 SET processing_status = 'cancelled',
                     publication_status = 'draft',
+                    active_projection_run_id = NULL,
                     updated_at = now()
                 WHERE id = :document_id
                   AND publication_status NOT IN ('published', 'deleted')
@@ -637,7 +769,10 @@ def request_cancellation(job_id: str, *, actor_id: str | None) -> dict[str, Any]
             session.execute(
                 text(
                     """
-                    SELECT id, document_id, status, progress
+                    SELECT id, document_id, status, progress,
+                           worker_id IS NOT NULL
+                             AND lease_token IS NOT NULL
+                             AND lease_expires_at > now() AS lease_active
                     FROM textbook_ingestion_jobs
                     WHERE id = CAST(:job_id AS uuid)
                     FOR UPDATE
@@ -651,13 +786,17 @@ def request_cancellation(job_id: str, *, actor_id: str | None) -> dict[str, Any]
         if not row:
             raise TextbookIngestionError("ingestion_job_not_found", "Textbook ingestion job not found", status_code=404)
         current = IngestionStage(str(row["status"]))
-        if current in {IngestionStage.READY, IngestionStage.CANCELLED}:
+        if current in {
+            IngestionStage.READY,
+            IngestionStage.REVIEW_READY,
+            IngestionStage.CANCELLED,
+        }:
             raise TextbookIngestionError(
                 "job_not_cancellable",
                 f"A {current.value} ingestion job cannot be cancelled",
                 status_code=409,
             )
-        immediate = current not in ACTIVE_INGESTION_STAGES
+        immediate = current not in ACTIVE_INGESTION_STAGES or not bool(row.get("lease_active"))
         next_status = IngestionStage.CANCELLED.value if immediate else current.value
         session.execute(
             text(
@@ -695,6 +834,7 @@ def request_cancellation(job_id: str, *, actor_id: str | None) -> dict[str, Any]
                     UPDATE source_documents
                     SET processing_status = 'cancelled',
                         publication_status = 'draft',
+                        active_projection_run_id = NULL,
                         updated_at = now()
                     WHERE id = :document_id
                       AND publication_status NOT IN ('published', 'deleted')
@@ -717,7 +857,7 @@ def request_cancellation(job_id: str, *, actor_id: str | None) -> dict[str, Any]
 
 
 def retry_job(job_id: str, *, actor_id: str | None) -> dict[str, Any]:
-    settings = get_settings()
+    settings = effective_ingestion_settings()
     snapshot = processing_config_snapshot(settings)
     fingerprint = processing_fingerprint(snapshot)
     with db_session() as session:
@@ -788,6 +928,7 @@ def retry_job(job_id: str, *, actor_id: str | None) -> dict[str, Any]:
                 SET processing_status = 'uploaded',
                     publication_status = 'draft',
                     processing_fingerprint = :processing_fingerprint,
+                    active_projection_run_id = NULL,
                     updated_at = now()
                 WHERE id = :document_id
                 """

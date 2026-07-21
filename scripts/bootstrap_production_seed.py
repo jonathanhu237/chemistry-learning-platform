@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts.import_precomputed_textbook_rag import resolve_elasticsearch_target
+
 REDACT_VALUE_AFTER = {
     "--admin-password",
     "--teacher-password",
@@ -62,9 +64,17 @@ def main() -> None:
     parser.add_argument("--skip-media", action="store_true", help="Skip experiment video media restore/import.")
     parser.add_argument("--skip-es", action="store_true", help="Skip textbook RAG Elasticsearch import.")
     parser.add_argument("--skip-validation", action="store_true", help="Skip final complete seed validation.")
-    parser.add_argument("--es-url", default=os.getenv("TEXTBOOK_RAG_ELASTICSEARCH_URL") or os.getenv("ELASTICSEARCH_URL") or "http://127.0.0.1:9200")
-    parser.add_argument("--rag-index", default=os.getenv("TEXTBOOK_RAG_ELASTICSEARCH_INDEX") or "canonical-rag-chunks-qwen-v1")
+    parser.add_argument("--es-url", default=None)
+    parser.add_argument("--rag-index", default=None)
     parser.add_argument("--keep-rag-index", action="store_true", help="Do not delete/recreate the textbook RAG index first.")
+    parser.add_argument(
+        "--rebuild-online-projections",
+        action="store_true",
+        help=(
+            "When recreating the shared textbook index, recompute and restore retained online "
+            "textbook projections from PostgreSQL after the seed import."
+        ),
+    )
     parser.add_argument("--rebuild-search-indexes", action="store_true", help="Also rebuild teacher catalog and student video search indexes.")
     parser.add_argument("--teacher-username", default=os.getenv("SEED_TEACHER_USERNAME"))
     parser.add_argument("--teacher-password", default=os.getenv("SEED_TEACHER_PASSWORD"))
@@ -79,9 +89,42 @@ def main() -> None:
         help="Allow media seed import to archive non-seed active point-video bindings.",
     )
     args = parser.parse_args()
+    if args.keep_rag_index and args.rebuild_online_projections:
+        parser.error("--rebuild-online-projections requires shared-index recreation")
 
     if not args.skip_migrations:
         _run(["scripts/apply_migrations.py"], dry_run=args.dry_run)
+
+    es_step: list[str] | None = None
+    if not args.skip_es:
+        try:
+            target = resolve_elasticsearch_target(
+                es_url=args.es_url,
+                index=args.rag_index,
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
+        print(
+            f"Textbook RAG target: {target.display_url}/{target.index}",
+            flush=True,
+        )
+        es_step = [
+            "scripts/import_precomputed_textbook_rag.py",
+            "--es-url",
+            target.base_url,
+            "--index",
+            target.index,
+        ]
+        if not args.keep_rag_index:
+            es_step.append("--recreate")
+        if args.rebuild_online_projections:
+            es_step.append("--rebuild-online-projections")
+
+    # A shared-index recreate can erase online textbook projections. Perform
+    # the PostgreSQL inventory and embedding-contract preflight before any
+    # identity/canonical seed step mutates or resets PostgreSQL facts.
+    if es_step is not None and not args.keep_rag_index:
+        _run([*es_step, "--preflight-only"], dry_run=args.dry_run)
 
     if not args.skip_identities:
         identity_step = ["scripts/seed_demo_identities.py", "import", "--skip-migrations"]
@@ -117,16 +160,7 @@ def main() -> None:
             media_step.append("--replace-existing-bindings")
         _run(media_step, dry_run=False)
 
-    if not args.skip_es:
-        es_step = [
-            "scripts/import_precomputed_textbook_rag.py",
-            "--es-url",
-            args.es_url,
-            "--index",
-            args.rag_index,
-        ]
-        if not args.keep_rag_index:
-            es_step.append("--recreate")
+    if es_step is not None:
         _run(es_step, dry_run=args.dry_run)
 
     if args.rebuild_search_indexes:

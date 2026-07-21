@@ -19,6 +19,7 @@ from server.app.domains.textbook_ingestion.errors import (
 from server.app.domains.textbook_ingestion.persistence import (
     TextbookProcessingInput,
     load_processing_input,
+    load_reusable_ocr_pages,
     replace_document_chunks,
     upsert_normalized_pages,
 )
@@ -53,7 +54,7 @@ class ChunkEmbedder(Protocol):
 
 
 ProjectorFactory = Callable[
-    [TextbookProcessingInput, Callable[[int, int], None]],
+    [TextbookProcessingInput, Callable[[int, int], None], str],
     TextbookSearchProjector,
 ]
 
@@ -96,6 +97,7 @@ class TextbookIngestionPipeline:
         projector_factory: ProjectorFactory,
         ocr_page_concurrency: int = 2,
         input_loader: Callable[[ClaimedIngestionJob], TextbookProcessingInput] = load_processing_input,
+        page_reader: Callable[[ClaimedIngestionJob], dict[int, NormalizedPage]] = load_reusable_ocr_pages,
         page_writer: Callable[[ClaimedIngestionJob, Sequence[NormalizedPage]], int] = upsert_normalized_pages,
         chunk_writer: Callable[[ClaimedIngestionJob, Sequence[StableChunk]], int] = replace_document_chunks,
     ) -> None:
@@ -106,6 +108,7 @@ class TextbookIngestionPipeline:
         self.projector_factory = projector_factory
         self.ocr_page_concurrency = max(1, ocr_page_concurrency)
         self.input_loader = input_loader
+        self.page_reader = page_reader
         self.page_writer = page_writer
         self.chunk_writer = chunk_writer
 
@@ -139,10 +142,13 @@ class TextbookIngestionPipeline:
         processing_input: TextbookProcessingInput,
         pages: list[NormalizedPage],
         rejected_indexes: list[int],
+        *,
+        initial_completed: int,
+        total_ocr_pages: int,
     ) -> list[NormalizedPage]:
         semaphore = asyncio.Semaphore(self.ocr_page_concurrency)
-        completed = 0
-        native_good = len(pages) - len(rejected_indexes)
+        completed = initial_completed
+        native_good = len(pages) - total_ocr_pages
 
         async def process(index: int) -> tuple[int, NormalizedPage]:
             nonlocal completed
@@ -168,8 +174,9 @@ class TextbookIngestionPipeline:
                         },
                     }
                 )
+                await asyncio.to_thread(self.page_writer, job, [ocr_page])
                 completed += 1
-                progress = 20 + round(25 * completed / max(1, len(rejected_indexes)))
+                progress = 20 + round(25 * completed / max(1, total_ocr_pages))
                 await asyncio.to_thread(
                     update_job_progress,
                     job,
@@ -180,8 +187,8 @@ class TextbookIngestionPipeline:
                         "ocr_pages": completed,
                     },
                     message=(
-                        f"OCR processed {completed}/{len(rejected_indexes)} page(s)"
-                        if completed == len(rejected_indexes) or completed % 10 == 0
+                        f"OCR processed {completed}/{total_ocr_pages} page(s)"
+                        if completed == total_ocr_pages or completed % 10 == 0
                         else None
                     ),
                 )
@@ -222,16 +229,26 @@ class TextbookIngestionPipeline:
         projector: TextbookSearchProjector | None,
         *,
         document_id: str,
+        projection_run_id: str,
     ) -> None:
         if projector is None:
             return
         try:
-            projector.delete_document(document_id)
+            projector.delete_projection_run(document_id, projection_run_id)
         except Exception:
             # Preserve the original job/cancellation error. A later retry starts
             # with a delete-by-query, and explicit document deletion also cleans
             # the derived projection.
             return
+
+    @staticmethod
+    def _acknowledge_concurrent_cancellation(job: ClaimedIngestionJob) -> bool:
+        """Finish a cancellation that won the race with retry/failure fencing."""
+
+        if not cancellation_requested(job):
+            return False
+        acknowledge_cancellation(job)
+        return True
 
     def process(self, claimed_job: ClaimedIngestionJob) -> PipelineOutcome:
         current = claimed_job
@@ -248,23 +265,33 @@ class TextbookIngestionPipeline:
             total_pages = len(pages)
             if not pages:
                 raise TextbookIngestionError("pdf_has_no_pages", "The uploaded textbook PDF has no pages", status_code=422)
-            rejected_indexes = [index for index, page in enumerate(pages) if page.quality.needs_ocr]
-            ocr_page_count = len(rejected_indexes)
+            ocr_required_indexes = [index for index, page in enumerate(pages) if page.quality.needs_ocr]
+            ocr_page_count = len(ocr_required_indexes)
+            reusable_ocr_pages = self.page_reader(current) if ocr_required_indexes else {}
+            reused_ocr_indexes: list[int] = []
+            for index in ocr_required_indexes:
+                cached_page = reusable_ocr_pages.get(pages[index].page_number)
+                if cached_page is None:
+                    continue
+                pages[index] = cached_page
+                reused_ocr_indexes.append(index)
+            pending_ocr_indexes = [index for index in ocr_required_indexes if index not in reused_ocr_indexes]
+            reused_ocr_count = len(reused_ocr_indexes)
             native_processed = total_pages - ocr_page_count
+            self.page_writer(current, pages)
             update_job_progress(
                 current,
                 progress=20,
                 counters={
                     "total_pages": total_pages,
-                    "processed_pages": native_processed,
-                    "ocr_pages": 0,
+                    "processed_pages": native_processed + reused_ocr_count,
+                    "ocr_pages": reused_ocr_count,
                 },
                 stage_metrics={"extracting": _duration_metric(started)},
                 message=f"Native extraction completed for {total_pages} page(s)",
             )
 
-            if rejected_indexes and not self.ocr_provider.configured:
-                self.page_writer(current, pages)
+            if pending_ocr_indexes and not self.ocr_provider.configured:
                 awaiting_report = build_textbook_quality_report(pages, [])
                 current = advance_job(
                     current,
@@ -272,11 +299,14 @@ class TextbookIngestionPipeline:
                     progress=20,
                     counters={
                         "total_pages": total_pages,
-                        "processed_pages": native_processed,
-                        "ocr_pages": 0,
+                        "processed_pages": native_processed + reused_ocr_count,
+                        "ocr_pages": reused_ocr_count,
                     },
                     quality_report=awaiting_report,
-                    outputs={"ocr_required_pages": [pages[index].page_number for index in rejected_indexes]},
+                    outputs={
+                        "ocr_required_pages": [pages[index].page_number for index in pending_ocr_indexes],
+                        "ocr_reused_pages": [pages[index].page_number for index in reused_ocr_indexes],
+                    },
                     message="OCR is required but the SYSU MinerU provider is not configured",
                 )
                 return PipelineOutcome(
@@ -287,26 +317,46 @@ class TextbookIngestionPipeline:
                     ocr_pages=ocr_page_count,
                 )
 
-            if rejected_indexes:
+            if pending_ocr_indexes:
                 current = advance_job(
                     current,
                     IngestionStage.OCR,
                     progress=20,
-                    counters={"total_pages": total_pages, "processed_pages": native_processed, "ocr_pages": 0},
-                    outputs={"ocr_required_pages": [pages[index].page_number for index in rejected_indexes]},
-                    message=f"Queued {ocr_page_count} rejected page(s) for SYSU MinerU OCR",
+                    counters={
+                        "total_pages": total_pages,
+                        "processed_pages": native_processed + reused_ocr_count,
+                        "ocr_pages": reused_ocr_count,
+                    },
+                    outputs={
+                        "ocr_required_pages": [pages[index].page_number for index in pending_ocr_indexes],
+                        "ocr_reused_pages": [pages[index].page_number for index in reused_ocr_indexes],
+                    },
+                    message=f"Queued {len(pending_ocr_indexes)} rejected page(s) for SYSU MinerU OCR",
                 )
                 ocr_started = time.monotonic()
                 pages = asyncio.run(
-                    self._ocr_rejected_pages(current, processing_input, pages, rejected_indexes)
+                    self._ocr_rejected_pages(
+                        current,
+                        processing_input,
+                        pages,
+                        pending_ocr_indexes,
+                        initial_completed=reused_ocr_count,
+                        total_ocr_pages=ocr_page_count,
+                    )
                 )
                 ocr_metric = {
                     **_duration_metric(ocr_started),
                     "page_count": ocr_page_count,
+                    "reused_page_count": reused_ocr_count,
                     "provider": "sysu_aigw_mineru",
                 }
             else:
-                ocr_metric = {"duration_ms": 0, "page_count": 0, "provider": None}
+                ocr_metric = {
+                    "duration_ms": 0,
+                    "page_count": ocr_page_count,
+                    "reused_page_count": reused_ocr_count,
+                    "provider": "sysu_aigw_mineru" if reused_ocr_count else None,
+                }
 
             self._ensure_active(current)
             current = advance_job(
@@ -322,7 +372,6 @@ class TextbookIngestionPipeline:
                 message="Normalized textbook page structure",
             )
             structure_started = time.monotonic()
-            self.page_writer(current, pages)
 
             current = advance_job(
                 current,
@@ -391,6 +440,7 @@ class TextbookIngestionPipeline:
             projector = self.projector_factory(
                 processing_input,
                 lambda completed, total: self._index_progress(current, completed, total),
+                current.lease_token,
             )
             projection = projector.project(
                 chunks,
@@ -430,7 +480,11 @@ class TextbookIngestionPipeline:
                 total_chunks=total_chunks,
             )
         except PipelineCancelled:
-            self._cleanup_unpublished_projection(projector, document_id=current.document_id)
+            self._cleanup_unpublished_projection(
+                projector,
+                document_id=current.document_id,
+                projection_run_id=current.lease_token,
+            )
             acknowledge_cancellation(current)
             return PipelineOutcome(
                 job_id=current.id,
@@ -441,7 +495,8 @@ class TextbookIngestionPipeline:
                 total_chunks=total_chunks,
             )
         except TextbookJobLeaseLostError:
-            self._cleanup_unpublished_projection(projector, document_id=current.document_id)
+            # Never delete by document id after ownership is lost: another worker
+            # may already have reclaimed and replaced the projection.
             try:
                 if cancellation_requested(current):
                     acknowledge_cancellation(current)
@@ -457,19 +512,39 @@ class TextbookIngestionPipeline:
                 pass
             raise
         except Exception as exc:
-            self._cleanup_unpublished_projection(projector, document_id=current.document_id)
+            self._cleanup_unpublished_projection(
+                projector,
+                document_id=current.document_id,
+                projection_run_id=current.lease_token,
+            )
             reason, message, retryable = _error_details(exc)
-            if retryable and release_job_for_retry(current, error_code=reason, error_message=message):
-                return PipelineOutcome(
-                    job_id=current.id,
-                    document_id=current.document_id,
-                    status=IngestionStage.UPLOADED,
-                    total_pages=total_pages,
-                    ocr_pages=ocr_page_count,
-                    total_chunks=total_chunks,
-                    retry_scheduled=True,
-                )
-            fail_job(current, error_code=reason, error_message=message)
+            try:
+                if retryable and release_job_for_retry(
+                    current,
+                    error_code=reason,
+                    error_message=message,
+                ):
+                    return PipelineOutcome(
+                        job_id=current.id,
+                        document_id=current.document_id,
+                        status=IngestionStage.UPLOADED,
+                        total_pages=total_pages,
+                        ocr_pages=ocr_page_count,
+                        total_chunks=total_chunks,
+                        retry_scheduled=True,
+                    )
+                fail_job(current, error_code=reason, error_message=message)
+            except TextbookJobLeaseLostError:
+                if self._acknowledge_concurrent_cancellation(current):
+                    return PipelineOutcome(
+                        job_id=current.id,
+                        document_id=current.document_id,
+                        status=IngestionStage.CANCELLED,
+                        total_pages=total_pages,
+                        ocr_pages=ocr_page_count,
+                        total_chunks=total_chunks,
+                    )
+                raise
             return PipelineOutcome(
                 job_id=current.id,
                 document_id=current.document_id,

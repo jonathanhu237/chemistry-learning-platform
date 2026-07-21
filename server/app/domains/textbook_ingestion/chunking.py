@@ -21,10 +21,11 @@ from server.app.domains.textbook_ingestion.extraction import (
 from server.app.infrastructure.settings import Settings, get_settings
 
 
-CHUNKING_STRATEGY = "structure-aware-v1"
+CHUNKING_STRATEGY = "structure-aware-v2"
 
 _HEADING_TYPES = frozenset({BlockType.TITLE, BlockType.SECTION_HEADER})
 _ATOMIC_TYPES = frozenset({BlockType.TABLE, BlockType.EQUATION, BlockType.EQUATION_BLOCK})
+_PACKABLE_ATOMIC_TYPES = frozenset({BlockType.EQUATION, BlockType.EQUATION_BLOCK})
 _CAPTION_TYPES = frozenset({BlockType.TABLE_CAPTION, BlockType.IMAGE_CAPTION})
 _SENTENCE_BOUNDARY_RE = re.compile(r"[。！？；.!?;]\s*|\n+")
 _SAFETY_RE = re.compile(r"(?:安全|注意|警告|危险|防护|废液|有毒|腐蚀|易燃)")
@@ -261,9 +262,38 @@ def _build_drafts(units: Sequence[_Unit], *, max_chars: int, overlap_chars: int)
 
     for unit in units:
         if unit.heading and current.units:
-            flush()
+            if current.has_body:
+                flush()
+            else:
+                if any(
+                    candidate.heading
+                    and candidate.section_path == unit.section_path
+                    and _canonical_text(candidate.text) == _canonical_text(unit.text)
+                    for candidate in current.units
+                ):
+                    continue
+                current_path = current.section_path
+                extends_current_heading = bool(
+                    current_path
+                    and len(unit.section_path) > len(current_path)
+                    and unit.section_path[: len(current_path)] == current_path
+                )
+                if not extends_current_heading:
+                    flush()
 
         if unit.atomic:
+            # Atomic means the structural block cannot be split; it does not
+            # require every short formula to become a singleton chunk. Keeping
+            # equations with their adjacent explanation preserves retrieval
+            # context while tables and oversized formulae remain standalone.
+            if unit.block_type in _PACKABLE_ATOMIC_TYPES and len(unit.text) <= max_chars:
+                added_length = len(unit.text) + (2 if current.units else 0)
+                if current.units and current.length + added_length > max_chars:
+                    flush()
+                current.units.append(unit)
+                if current.length >= max_chars:
+                    flush()
+                continue
             context_units: list[_Unit] = []
             if current.units and not current.has_body:
                 context_units = current.units
@@ -308,7 +338,8 @@ def _content_type(draft: _Draft) -> str:
     types = {unit.block_type for unit in draft.units if not unit.heading and not unit.overlap}
     if BlockType.TABLE in types:
         return "table"
-    if types.intersection({BlockType.EQUATION, BlockType.EQUATION_BLOCK, BlockType.FORMULA_NUMBER}):
+    equation_types = {BlockType.EQUATION, BlockType.EQUATION_BLOCK, BlockType.FORMULA_NUMBER}
+    if types and types.issubset(equation_types):
         return "equation"
     if types and types.issubset({BlockType.IMAGE_CAPTION, BlockType.IMAGE_FOOTNOTE}):
         return "figure_caption"
@@ -410,19 +441,29 @@ class StructureAwareChunker:
             overlap_chars=self.overlap_chars,
         )
         chunks: list[StableChunk] = []
-        for chunk_index, draft in enumerate(drafts, start=1):
+        seen_content_locations: set[tuple[str, int, int, tuple[str, ...]]] = set()
+        for draft in drafts:
             text, markdown = _draft_text(draft)
             if not _canonical_text(text):
                 continue
             content_hash = hashlib.sha256(_canonical_text(text).encode("utf-8")).hexdigest()
             structural_locator = _locator(draft)
+            page_numbers_in_chunk = [unit.page_number for unit in draft.units]
+            content_location = (
+                content_hash,
+                min(page_numbers_in_chunk),
+                max(page_numbers_in_chunk),
+                draft.section_path,
+            )
+            if content_location in seen_content_locations:
+                continue
+            seen_content_locations.add(content_location)
             chunk_id = _stable_chunk_id(
                 document_id=normalized_document_id,
                 document_version=document_version,
                 structural_locator=structural_locator,
                 content_hash=content_hash,
             )
-            page_numbers_in_chunk = [unit.page_number for unit in draft.units]
             quality_flags = _ordered_unique(
                 flag for unit in draft.units for flag in unit.quality_flags
             )
@@ -433,7 +474,7 @@ class StructureAwareChunker:
                     chunk_id=chunk_id,
                     document_id=normalized_document_id,
                     document_version=document_version,
-                    chunk_index=chunk_index,
+                    chunk_index=len(chunks) + 1,
                     text=text,
                     markdown=markdown,
                     page_start=min(page_numbers_in_chunk),

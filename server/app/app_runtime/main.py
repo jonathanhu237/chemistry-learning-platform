@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from server.app.api.error_translation import domain_http_exception_handler
 from server.app.api.auth.routes import router as auth_router
 from server.app.domains.errors import DomainHTTPException
-from server.app.infrastructure.settings import get_settings
+from server.app.domains.textbook_ingestion.config import effective_ingestion_settings
 from server.app.infrastructure.database import check_database_connection
 from server.app.repositories import get_repositories
 from server.app.api.admin.admin_analytics import router as admin_analytics_router
@@ -51,7 +51,10 @@ from server.app.api.student.student_smart_assessment import router as student_sm
 from server.app.api.student.student_video_library import router as student_video_library_router
 
 
-settings = get_settings()
+# Validate the same DB-backed textbook RAG contract used by upload, workers,
+# publication, recovery, and retrieval. The resolver falls back to environment
+# defaults when PostgreSQL settings are unavailable.
+settings = effective_ingestion_settings()
 settings.validate_startup()
 repositories = get_repositories()
 

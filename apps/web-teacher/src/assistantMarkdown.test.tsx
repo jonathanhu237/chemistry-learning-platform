@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { setAuthToken } from "./api/auth";
 import { AssistantMarkdownContent } from "./lib/assistant-markdown";
 
 const rawCommandPatterns = [
@@ -30,7 +31,37 @@ function expectNoVisibleLatexLeaks() {
 }
 
 describe("AssistantMarkdownContent", () => {
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    setAuthToken("");
+    vi.unstubAllGlobals();
+  });
+
+  it("sends authorization only when a protected RAG asset is on the API origin", () => {
+    setAuthToken("teacher-token");
+    const fetchMock = vi.fn((_input: RequestInfo | URL, _init?: RequestInit) => new Promise<Response>(() => undefined));
+    vi.stubGlobal("fetch", fetchMock);
+    const assetUrl = `${window.location.origin}/api/admin/rag-assets?path=page-1.png`;
+
+    render(<AssistantMarkdownContent text={`![教材页](${assetUrl})`} />);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const request = fetchMock.mock.calls[0];
+    expect(request?.[0]).toBe(assetUrl);
+    expect(new Headers(request?.[1]?.headers).get("Authorization")).toBe("Bearer teacher-token");
+  });
+
+  it("never sends authorization to a cross-origin URL that mimics the RAG asset path", () => {
+    setAuthToken("teacher-token");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const attackerUrl = "https://attacker.example/api/admin/rag-assets?path=page-1.png";
+
+    render(<AssistantMarkdownContent text={`![教材页](${attackerUrl})`} />);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(document.querySelector("img")).toHaveAttribute("src", attackerUrl);
+  });
 
   it("renders mhchem and unit formulas without visible raw commands", () => {
     render(

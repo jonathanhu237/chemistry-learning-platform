@@ -17,6 +17,7 @@ apps/web-admin/dist/
 apps/web-teacher/dist/
 apps/web-student/dist/
 data/media/
+data/textbooks/
 *.log
 server/vendor/ffmpeg/*.tar.xz
 !server/vendor/ffmpeg/.gitkeep

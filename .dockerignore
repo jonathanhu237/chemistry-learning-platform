@@ -11,6 +11,7 @@ apps/web-teacher/node_modules
 
 data/media
 data/processed
+data/textbooks
 
 **/__pycache__
 **/*.pyc

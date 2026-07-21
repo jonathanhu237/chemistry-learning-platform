@@ -72,6 +72,9 @@ describe("textbook ingestion display contracts", () => {
   it("uses readable upload and quality language", () => {
     expect(formatTextbookBytes(20 * 1024 * 1024)).toBe("20 MB");
     expect(qualityIssueLabel("unresolved_ocr_pages")).toBe("仍有页面需要 OCR");
+    expect(qualityIssueLabel("active_projection_run_id_missing")).toBe("当前教材版本缺少有效索引批次");
+    expect(qualityIssueLabel("job_projection_run_id_missing")).toBe("处理任务缺少索引批次");
+    expect(qualityIssueLabel("projection_run_id_mismatch")).toBe("当前教材与处理任务的索引批次不一致");
     expect(qualityIssueLabel("custom_quality_flag")).toBe("custom_quality_flag");
   });
 });

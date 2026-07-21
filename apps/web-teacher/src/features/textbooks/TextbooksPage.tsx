@@ -107,6 +107,23 @@ const publicationFilterOptions = [
   { value: "failed", label: "处理失败" },
 ];
 
+const readinessIssueLabels: Record<string, string> = {
+  textbook_ingestion_disabled: "后台未启用在线教材处理",
+  postgres_required: "数据后端不是 PostgreSQL",
+  elasticsearch_url_missing: "Elasticsearch 地址未配置",
+  elasticsearch_index_missing: "Elasticsearch 索引未配置",
+  embedding_base_url_missing: "Embedding 服务地址未配置",
+  embedding_credential_missing: "Embedding 凭证未配置",
+  embedding_model_missing: "Embedding 模型未配置",
+  embedding_dimension_invalid: "Embedding 维度无效",
+};
+
+function uploadReadinessDescription(policy: TextbookUploadPolicy): string {
+  const missing = policy.processing_readiness?.missing || [];
+  if (!missing.length) return "请确认后台已启用教材处理并使用 PostgreSQL 数据后端。";
+  return missing.map((issue) => readinessIssueLabels[issue] || issue).join("；");
+}
+
 function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String) : [];
 }
@@ -382,7 +399,7 @@ export function TextbooksPage() {
       {policyQuery.isError ? (
         <Alert type="error" showIcon title="上传策略读取失败" description={errorMessage(policyQuery.error)} />
       ) : uploadPolicy && !uploadPolicy.enabled ? (
-        <Alert type="warning" showIcon title="在线教材处理尚未启用" description="请确认后台已启用教材处理并使用 PostgreSQL 数据后端。" />
+        <Alert type="warning" showIcon title="在线教材处理尚未就绪" description={uploadReadinessDescription(uploadPolicy)} />
       ) : uploadPolicy?.ocr.enabled && !uploadPolicy.ocr.credential_configured ? (
         <Alert
           type="warning"
@@ -478,6 +495,12 @@ function IngestionPipelineGuide({ policy, loading }: { policy?: TextbookUploadPo
           <Tag color="green">PDF</Tag>
           <Tag>{loading ? "读取上传策略…" : `最大 ${policy?.max_upload_mb || "-"} MB`}</Tag>
           <Tag>{loading ? "" : `最多 ${policy?.max_pages || "-"} 页`}</Tag>
+          {!loading && policy?.processing_readiness ? (
+            <Tag color={policy.processing_readiness.elasticsearch.configured ? "green" : "orange"}>ES</Tag>
+          ) : null}
+          {!loading && policy?.processing_readiness ? (
+            <Tag color={policy.processing_readiness.embedding.configured ? "green" : "orange"}>Embedding</Tag>
+          ) : null}
         </Space>
       </div>
       <div className="textbook-pipeline-track">

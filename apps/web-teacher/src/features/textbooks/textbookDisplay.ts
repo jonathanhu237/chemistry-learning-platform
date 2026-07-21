@@ -48,6 +48,9 @@ export const qualityIssueLabels: Record<string, string> = {
   ingestion_not_review_ready: "处理任务尚未进入待发布状态",
   quality_not_publishable: "质量门禁未通过",
   index_not_verified: "向量索引尚未校验",
+  active_projection_run_id_missing: "当前教材版本缺少有效索引批次",
+  job_projection_run_id_missing: "处理任务缺少索引批次",
+  projection_run_id_mismatch: "当前教材与处理任务的索引批次不一致",
   index_count_mismatch: "索引分块数量不一致",
 };
 

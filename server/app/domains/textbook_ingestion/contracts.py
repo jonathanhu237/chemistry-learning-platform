@@ -241,6 +241,7 @@ class TextbookDocumentView(BaseModel):
     deactivated_at: datetime | None = None
     deleted_at: datetime | None = None
     corpus_revision: int | None = Field(default=None, gt=0)
+    active_projection_run_id: str | None = None
     latest_job: IngestionJobView | None = None
     allowed_actions: list[str] = Field(default_factory=list)
     can_publish: bool = False

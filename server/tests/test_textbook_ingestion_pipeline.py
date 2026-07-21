@@ -15,6 +15,7 @@ from server.app.domains.textbook_ingestion.contracts import (
     StableChunk,
 )
 from server.app.domains.textbook_ingestion.embedding import BatchEmbeddingResult
+from server.app.domains.textbook_ingestion.errors import TextbookJobLeaseLostError
 from server.app.domains.textbook_ingestion.persistence import TextbookProcessingInput
 from server.app.domains.textbook_ingestion.pipeline import TextbookIngestionPipeline
 from server.app.domains.textbook_ingestion.ports import RenderedPage
@@ -159,6 +160,9 @@ class _Projector:
     def delete_document(self, _document_id: str) -> dict[str, Any]:
         return {}
 
+    def delete_projection_run(self, _document_id: str, _projection_run_id: str) -> dict[str, Any]:
+        return {}
+
 
 class _FailingProjector(_Projector):
     def __init__(self) -> None:
@@ -167,7 +171,8 @@ class _FailingProjector(_Projector):
     def project(self, chunks: list[StableChunk], embeddings: list[list[float]], *, embedding_model: str) -> dict[str, Any]:
         raise RuntimeError("partial index failure")
 
-    def delete_document(self, document_id: str) -> dict[str, Any]:
+    def delete_projection_run(self, document_id: str, projection_run_id: str) -> dict[str, Any]:
+        assert projection_run_id == _job().lease_token
         self.deleted_document_ids.append(document_id)
         return {"deleted": 1}
 
@@ -207,6 +212,7 @@ def _pipeline(
     pages_written: list[list[NormalizedPage]],
     chunks_written: list[list[StableChunk]],
     projector: _Projector | None = None,
+    cached_pages: dict[int, NormalizedPage] | None = None,
 ) -> TextbookIngestionPipeline:
     effective_projector = projector or _Projector()
     return TextbookIngestionPipeline(
@@ -214,10 +220,11 @@ def _pipeline(
         ocr_provider=ocr,
         chunker=_Chunker(chunks),
         embedder=_Embedder(),
-        projector_factory=lambda _input, callback: (
+        projector_factory=lambda _input, callback, _projection_run_id: (
             callback(len(chunks), len(chunks)) or effective_projector
         ),
         input_loader=lambda _job: _input(),
+        page_reader=lambda _job: dict(cached_pages or {}),
         page_writer=lambda _job, pages: pages_written.append(list(pages)) or len(pages),
         chunk_writer=lambda _job, values: chunks_written.append(list(values)) or len(values),
     )
@@ -251,6 +258,58 @@ def test_pipeline_runs_native_pdf_through_review_ready(monkeypatch: Any) -> None
     assert len(pages_written) == 1
     assert len(chunks_written) == 1
     assert events["failures"] == []
+
+
+def test_pipeline_preserves_cancellation_that_races_with_terminal_failure(
+    monkeypatch: Any,
+) -> None:
+    _install_queue_fakes(monkeypatch)
+    cancellation_won = False
+    acknowledgements: list[str] = []
+
+    def fail_after_cancel(_job: ClaimedIngestionJob, **_kwargs: Any) -> None:
+        nonlocal cancellation_won
+        cancellation_won = True
+        raise TextbookJobLeaseLostError("cancellation won the failure fence")
+
+    monkeypatch.setattr(
+        pipeline_module,
+        "cancellation_requested",
+        lambda _job: cancellation_won,
+    )
+    monkeypatch.setattr(pipeline_module, "fail_job", fail_after_cancel)
+    monkeypatch.setattr(
+        pipeline_module,
+        "acknowledge_cancellation",
+        lambda job: acknowledgements.append(job.id),
+    )
+
+    outcome = _pipeline(
+        extractor=_Extractor([_page(1)]),
+        ocr=_OCR(),
+        chunks=[],
+        pages_written=[],
+        chunks_written=[],
+    ).process(_job())
+
+    assert outcome.status == IngestionStage.CANCELLED
+    assert acknowledgements == [_job().id]
+
+
+def test_cleanup_unpublished_projection_deletes_only_the_owned_run() -> None:
+    calls: list[tuple[str, str]] = []
+
+    class _Projector:
+        def delete_projection_run(self, document_id: str, projection_run_id: str) -> None:
+            calls.append((document_id, projection_run_id))
+
+    TextbookIngestionPipeline._cleanup_unpublished_projection(
+        _Projector(),  # type: ignore[arg-type]
+        document_id="tbk-1",
+        projection_run_id="run-1",
+    )
+
+    assert calls == [("tbk-1", "run-1")]
 
 
 def test_pipeline_stops_at_awaiting_ocr_when_provider_is_not_configured(monkeypatch: Any) -> None:
@@ -292,7 +351,38 @@ def test_pipeline_ocr_only_replaces_rejected_pages(monkeypatch: Any) -> None:
     assert extractor.rendered == [2]
     assert ocr.calls == [2]
     assert pages_written[0][0].extraction_method == ExtractionMethod.NATIVE
-    assert pages_written[0][1].extraction_method == ExtractionMethod.MINERU
+    assert pages_written[-1][0].extraction_method == ExtractionMethod.MINERU
+
+
+def test_pipeline_reuses_persisted_ocr_page_for_same_processing_run(monkeypatch: Any) -> None:
+    events = _install_queue_fakes(monkeypatch)
+    pages_written: list[list[NormalizedPage]] = []
+    cached = _page(1, text="已持久化 OCR 正文").model_copy(
+        update={
+            "extraction_method": ExtractionMethod.MINERU,
+            "quality": PageQuality(score=0.95, needs_ocr=False),
+            "ocr_provider": "sysu_aigw_mineru",
+            "ocr_model": "mineru",
+        }
+    )
+    extractor = _Extractor([_page(1, needs_ocr=True, text="")])
+    ocr = _OCR(configured=False)
+
+    outcome = _pipeline(
+        extractor=extractor,
+        ocr=ocr,
+        chunks=[_chunk(1)],
+        pages_written=pages_written,
+        chunks_written=[],
+        cached_pages={1: cached},
+    ).process(_job())
+
+    assert outcome.status == IngestionStage.REVIEW_READY
+    assert IngestionStage.AWAITING_OCR not in events["transitions"]
+    assert IngestionStage.OCR not in events["transitions"]
+    assert extractor.rendered == []
+    assert ocr.calls == []
+    assert pages_written[0][0].extraction_method == ExtractionMethod.MINERU
 
 
 def test_pipeline_records_terminal_quality_failure(monkeypatch: Any) -> None:

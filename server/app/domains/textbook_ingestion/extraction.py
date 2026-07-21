@@ -54,6 +54,16 @@ _EQUATION_SIGNAL_RE = re.compile(
 )
 _CHEMICAL_FORMULA_RE = re.compile(r"(?:[A-Z][a-z]?\d*){2,}|[A-Z][a-z]?\d+[+-]?")
 _LIST_ITEM_RE = re.compile(r"^\s*(?:[-*•·]|\(?\d+[)）.、]|[（(][一二三四五六七八九十]+[）)])\s*")
+_NUMBERED_HEADING_RE = re.compile(
+    r"^(?P<number>\d{1,2}(?:\.\d{1,2}){0,3})[\s、.．]+(?P<title>\S.*)$"
+)
+_HEADING_SENTENCE_END_RE = re.compile(r"[，。！？；,.!?;]\s*$")
+_MARGIN_LEADING_PAGE_RE = re.compile(
+    r"^(?:[-—·•]\s*)?\d{1,4}(?:\s*[-—·•])?(?=\s|[\u3400-\u9fff])"
+)
+_MARGIN_TRAILING_PAGE_RE = re.compile(
+    r"(?:\s+\d{1,4}|(?<=[\u3400-\u9fff])\d{1,4})(?:\s*[-—·•])?$"
+)
 
 
 class PDFExtractionError(ValueError):
@@ -411,7 +421,16 @@ def score_page_quality(
 assess_page_quality = score_page_quality
 
 
-def _heading_level(text: str) -> int | None:
+def _heading_text_is_plausible(text: str, *, max_chars: int = 100) -> bool:
+    compact = normalize_content_text(text)
+    if not compact or len(compact) > max_chars:
+        return False
+    if _HEADING_SENTENCE_END_RE.search(compact) or _looks_like_equation(compact):
+        return False
+    return bool(re.search(r"[A-Za-z\u3400-\u9fff]", compact))
+
+
+def _heading_level(text: str, *, typographic_emphasis: bool = False) -> int | None:
     compact = text.strip()
     if re.match(r"^第[0-9一二三四五六七八九十百零〇两]+[篇编章]", compact):
         return 1
@@ -419,11 +438,11 @@ def _heading_level(text: str) -> int | None:
         return 2
     if re.match(r"^实验\s*\d+", compact):
         return 2
-    numbered = re.match(r"^(\d+(?:\.\d+){0,3})[\s、.．]+", compact)
-    if numbered:
-        return min(4, numbered.group(1).count(".") + 1)
     if _COMMON_SUBHEADING_RE.match(compact):
         return 3
+    numbered = _NUMBERED_HEADING_RE.match(compact)
+    if numbered and typographic_emphasis and _heading_text_is_plausible(compact):
+        return min(4, numbered.group("number").count(".") + 1)
     return None
 
 
@@ -444,12 +463,22 @@ def _classify_text_block(
     bold: bool,
 ) -> tuple[BlockType, dict[str, Any]]:
     metadata: dict[str, Any] = {}
-    heading_level = _heading_level(text)
+    if _TABLE_CAPTION_RE.match(text):
+        return BlockType.TABLE_CAPTION, metadata
+    if _IMAGE_CAPTION_RE.match(text):
+        return BlockType.IMAGE_CAPTION, metadata
+    if _looks_like_equation(text):
+        return BlockType.EQUATION, metadata
+    typographic_emphasis = bool(
+        body_font_size > 0
+        and (max_font_size >= body_font_size * 1.08 or (bold and max_font_size >= body_font_size * 0.95))
+    )
+    heading_level = _heading_level(text, typographic_emphasis=typographic_emphasis)
     if heading_level is not None:
         metadata["heading_level"] = heading_level
         return (BlockType.TITLE if heading_level == 1 else BlockType.SECTION_HEADER), metadata
     if (
-        len(text) <= 100
+        _heading_text_is_plausible(text, max_chars=80)
         and body_font_size > 0
         and (max_font_size >= body_font_size * 1.35 or (bold and max_font_size >= body_font_size * 1.1))
     ):
@@ -458,12 +487,6 @@ def _classify_text_block(
             BlockType.TITLE if metadata["heading_level"] == 1 else BlockType.SECTION_HEADER,
             metadata,
         )
-    if _TABLE_CAPTION_RE.match(text):
-        return BlockType.TABLE_CAPTION, metadata
-    if _IMAGE_CAPTION_RE.match(text):
-        return BlockType.IMAGE_CAPTION, metadata
-    if _looks_like_equation(text):
-        return BlockType.EQUATION, metadata
     lines = [line for line in text.splitlines() if line.strip()]
     if lines and sum(bool(_LIST_ITEM_RE.match(line)) for line in lines) >= max(1, len(lines) // 2):
         return BlockType.LIST, metadata
@@ -561,37 +584,80 @@ def _raw_text_blocks(page: pymupdf.Page) -> tuple[list[dict[str, Any]], float]:
     return result, body_font_size
 
 
-def _margin_signature(text: str) -> str:
-    return re.sub(r"\s+", " ", normalize_content_text(text)).strip().casefold()
+def _margin_signature(text: str, *, strip_page_token: bool = False) -> str:
+    signature = re.sub(r"\s+", " ", normalize_content_text(text)).strip().casefold()
+    if strip_page_token:
+        signature = _MARGIN_LEADING_PAGE_RE.sub("", signature).strip()
+        signature = _MARGIN_TRAILING_PAGE_RE.sub("", signature).strip()
+    return signature
 
 
-def _repeated_margin_text(document: pymupdf.Document) -> tuple[set[str], set[str]]:
+def _margin_layout_signature(
+    raw: dict[str, Any],
+    bbox: tuple[int, int, int, int],
+    *,
+    width: float,
+    height: float,
+) -> tuple[int, int, int, int, tuple[str, ...]]:
+    """Identify recurring margin slots even when the running text changes."""
+
+    return (
+        round(100 * bbox[0] / max(1.0, width)),
+        round(100 * bbox[1] / max(1.0, height)),
+        round(100 * bbox[3] / max(1.0, height)),
+        round(2 * float(raw.get("max_font_size") or 0.0)),
+        tuple(str(name).casefold() for name in raw.get("font_names") or []),
+    )
+
+
+def _repeated_margin_text(
+    document: pymupdf.Document,
+) -> tuple[
+    set[str],
+    set[str],
+    set[tuple[int, int, int, int, tuple[str, ...]]],
+    set[tuple[int, int, int, int, tuple[str, ...]]],
+]:
     if document.page_count < 2:
-        return set(), set()
+        return set(), set(), set(), set()
     headers: Counter[str] = Counter()
     footers: Counter[str] = Counter()
+    header_layouts: Counter[tuple[int, int, int, int, tuple[str, ...]]] = Counter()
+    footer_layouts: Counter[tuple[int, int, int, int, tuple[str, ...]]] = Counter()
     for page in document:
         height = float(page.rect.height)
-        raw_blocks, _body_font_size = _raw_text_blocks(page)
+        width = float(page.rect.width)
+        raw_blocks, body_font_size = _raw_text_blocks(page)
         for raw in raw_blocks:
             bbox, _ = _normalize_bbox(
                 raw.get("bbox"),
-                width_points=float(page.rect.width),
+                width_points=width,
                 height_points=height,
             )
             if bbox is None:
                 continue
-            signature = _margin_signature(str(raw.get("text") or ""))
+            signature = _margin_signature(str(raw.get("text") or ""), strip_page_token=True)
             if not signature or _PAGE_NUMBER_RE.fullmatch(signature):
                 continue
+            max_font_size = float(raw.get("max_font_size") or 0.0)
+            recurring_margin_style = bool(
+                body_font_size <= 0 or max_font_size <= body_font_size * 1.1
+            )
             if bbox[3] <= height * 0.10:
                 headers[signature] += 1
+                if recurring_margin_style:
+                    header_layouts[_margin_layout_signature(raw, bbox, width=width, height=height)] += 1
             elif bbox[1] >= height * 0.90:
                 footers[signature] += 1
-    threshold = max(2, math.ceil(document.page_count * 0.30))
+                if recurring_margin_style:
+                    footer_layouts[_margin_layout_signature(raw, bbox, width=width, height=height)] += 1
+    text_threshold = 2 if document.page_count <= 10 else max(3, math.ceil(document.page_count * 0.02))
+    layout_threshold = 3 if document.page_count <= 10 else max(6, math.ceil(document.page_count * 0.02))
     return (
-        {text for text, count in headers.items() if count >= threshold},
-        {text for text, count in footers.items() if count >= threshold},
+        {text for text, count in headers.items() if count >= text_threshold},
+        {text for text, count in footers.items() if count >= text_threshold},
+        {layout for layout, count in header_layouts.items() if count >= layout_threshold},
+        {layout for layout, count in footer_layouts.items() if count >= layout_threshold},
     )
 
 
@@ -643,6 +709,7 @@ class PyMuPDFExtractor:
         render_dpi: int | None = None,
         native_min_chars: int | None = None,
         native_min_printable_ratio: float | None = None,
+        max_render_pixels: int | None = None,
     ) -> None:
         effective = settings or get_settings()
         self.max_pages = max_pages if max_pages is not None else effective.max_textbook_pages
@@ -661,6 +728,11 @@ class PyMuPDFExtractor:
             else effective.textbook_native_min_printable_ratio
         )
         self.render_dpi = render_dpi if render_dpi is not None else effective.textbook_ocr_render_dpi
+        self.max_render_pixels = (
+            max_render_pixels
+            if max_render_pixels is not None
+            else effective.textbook_max_render_pixels
+        )
         if self.max_pages <= 0:
             raise ValueError("max_pages must be positive")
         if self.min_chars < 0:
@@ -669,6 +741,8 @@ class PyMuPDFExtractor:
             raise ValueError("min_printable_ratio must be in (0, 1]")
         if self.render_dpi <= 0:
             raise ValueError("render_dpi must be positive")
+        if self.max_render_pixels <= 0:
+            raise ValueError("max_render_pixels must be positive")
 
     def _open(self, pdf_path: Path) -> pymupdf.Document:
         path = Path(pdf_path)
@@ -697,7 +771,9 @@ class PyMuPDFExtractor:
     def extract(self, pdf_path: Path) -> Iterable[NormalizedPage]:
         document = self._open(pdf_path)
         try:
-            repeated_headers, repeated_footers = _repeated_margin_text(document)
+            repeated_headers, repeated_footers, repeated_header_layouts, repeated_footer_layouts = (
+                _repeated_margin_text(document)
+            )
             for page_index in range(document.page_count):
                 page = document.load_page(page_index)
                 yield self._extract_page(
@@ -705,6 +781,8 @@ class PyMuPDFExtractor:
                     page_number=page_index + 1,
                     repeated_headers=repeated_headers,
                     repeated_footers=repeated_footers,
+                    repeated_header_layouts=repeated_header_layouts,
+                    repeated_footer_layouts=repeated_footer_layouts,
                 )
         finally:
             document.close()
@@ -716,6 +794,8 @@ class PyMuPDFExtractor:
         page_number: int,
         repeated_headers: set[str],
         repeated_footers: set[str],
+        repeated_header_layouts: set[tuple[int, int, int, int, tuple[str, ...]]],
+        repeated_footer_layouts: set[tuple[int, int, int, int, tuple[str, ...]]],
     ) -> NormalizedPage:
         width = float(page.rect.width)
         height = float(page.rect.height)
@@ -734,18 +814,27 @@ class PyMuPDFExtractor:
                 "font_names": raw["font_names"],
             }
             flags: list[str] = ["invalid_bbox"] if invalid_bbox else []
-            signature = _margin_signature(text)
+            signature = _margin_signature(text, strip_page_token=True)
+            layout_signature = (
+                _margin_layout_signature(raw, bbox, width=width, height=height)
+                if bbox is not None
+                else None
+            )
             block_type: BlockType
-            if signature in repeated_headers:
-                block_type = BlockType.HEADER
-                metadata["exclude_from_embedding"] = True
-            elif signature in repeated_footers:
-                block_type = BlockType.FOOTER
-                metadata["exclude_from_embedding"] = True
-            elif bbox is not None and _PAGE_NUMBER_RE.fullmatch(text.strip()) and (
+            if bbox is not None and _PAGE_NUMBER_RE.fullmatch(text.strip()) and (
                 bbox[1] >= height * 0.85 or bbox[3] <= height * 0.15
             ):
                 block_type = BlockType.PAGE_NUMBER
+                metadata["exclude_from_embedding"] = True
+            elif bbox is not None and bbox[3] <= height * 0.10 and (
+                signature in repeated_headers or layout_signature in repeated_header_layouts
+            ):
+                block_type = BlockType.HEADER
+                metadata["exclude_from_embedding"] = True
+            elif bbox is not None and bbox[1] >= height * 0.90 and (
+                signature in repeated_footers or layout_signature in repeated_footer_layouts
+            ):
+                block_type = BlockType.FOOTER
                 metadata["exclude_from_embedding"] = True
             else:
                 block_type, classified_metadata = _classify_text_block(
@@ -859,6 +948,15 @@ class PyMuPDFExtractor:
                 )
             page = document.load_page(page_number - 1)
             scale = self.render_dpi / 72.0
+            pixel_count = math.ceil(float(page.rect.width) * scale) * math.ceil(float(page.rect.height) * scale)
+            if pixel_count > self.max_render_pixels:
+                raise PDFExtractionError(
+                    "page_render_limit_exceeded",
+                    "The requested PDF page exceeds the configured OCR render limit",
+                    page_number=page_number,
+                    pixel_count=pixel_count,
+                    max_render_pixels=self.max_render_pixels,
+                )
             pixmap = page.get_pixmap(
                 matrix=pymupdf.Matrix(scale, scale),
                 colorspace=pymupdf.csRGB,
