@@ -15,7 +15,17 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED_SERVICES = {"backend", "elasticsearch", "postgres", "tusd", "video-worker", "web-admin", "web-student", "web-teacher"}
+REQUIRED_SERVICES = {
+    "backend",
+    "elasticsearch",
+    "postgres",
+    "textbook-ingestion-worker",
+    "tusd",
+    "video-worker",
+    "web-admin",
+    "web-student",
+    "web-teacher",
+}
 LEGACY_SERVICES = {"web-student-old", "web-teacher-old"}
 RETIRED_SERVICES = {"bge-rag"}
 ES_ANALYZER_ASSET_PATHS = [

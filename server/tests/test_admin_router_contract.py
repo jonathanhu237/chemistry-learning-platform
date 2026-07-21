@@ -77,6 +77,16 @@ ADMIN_ROUTE_CONTRACTS = [
     ("POST", "/api/admin/media/bindings/{binding_id}/unpublish"),
     ("DELETE", "/api/admin/media/bindings/{binding_id}"),
     ("POST", "/api/admin/student-preview/session"),
+    ("GET", "/api/admin/textbooks/upload-policy"),
+    ("POST", "/api/admin/textbooks"),
+    ("GET", "/api/admin/textbooks"),
+    ("GET", "/api/admin/textbooks/jobs/{job_id}"),
+    ("GET", "/api/admin/textbooks/jobs/{job_id}/events"),
+    ("POST", "/api/admin/textbooks/jobs/{job_id}/cancel"),
+    ("POST", "/api/admin/textbooks/jobs/{job_id}/retry"),
+    ("GET", "/api/admin/textbooks/{document_id}"),
+    ("GET", "/api/admin/textbooks/{document_id}/pages"),
+    ("GET", "/api/admin/textbooks/{document_id}/chunks"),
 ]
 
 

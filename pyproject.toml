@@ -6,10 +6,12 @@ requires-python = ">=3.11"
 dependencies = [
   "beautifulsoup4",
   "fastapi",
+  "httpx",
   "lxml",
   "numpy",
   "pandas",
   "openpyxl",
+  "Pillow",
   "openai-agents",
   "pdfplumber",
   "pgvector",

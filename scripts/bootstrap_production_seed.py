@@ -98,7 +98,7 @@ def main() -> None:
     steps = [
         ["scripts/publish_reviewed_curriculum.py", "--skip-migrations"],
         ["scripts/seed_formal_experiments.py", "--skip-migrations"],
-        ["scripts/import_canonical_evidence.py", "--skip-migrations"],
+        ["scripts/import_canonical_evidence.py", "--skip-migrations", "--reset-dependent-content"],
         ["scripts/import_experiment_knowledge_framework.py", "--skip-migrations"],
         ["scripts/import_experiment_catalog_seed.py", "--skip-migrations"],
         ["scripts/seed_full_catalog_point_content.py", "import", "--skip-migrations"],

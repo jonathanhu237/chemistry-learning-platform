@@ -41,6 +41,7 @@ SOURCE_DOCUMENTS = {
         "document_kind": "canonical_textbook",
     },
 }
+SOURCE_DOCUMENT_IDS = [str(document["id"]) for document in SOURCE_DOCUMENTS.values()]
 
 
 def _json(value: Any) -> str:
@@ -139,26 +140,50 @@ def load_chunks(paths: list[Path]) -> list[dict[str, Any]]:
     return chunks
 
 
-def cleanup_legacy_rows(session: Any) -> dict[str, int]:
+def cleanup_legacy_rows(session: Any, *, reset_dependent_content: bool = False) -> dict[str, int]:
     session.execute(text("DROP INDEX IF EXISTS idx_chunk_embeddings_cosine"))
     statements = [
         (
             "review_items",
             """
             DELETE FROM review_items
-            WHERE target_type IN ('source_chunk', 'question', 'resource', 'link')
+            WHERE (
+              target_type = 'source_chunk'
+              AND target_id IN (
+                SELECT id FROM source_chunks
+                WHERE document_id = ANY(CAST(:source_document_ids AS text[]))
+              )
+            )
             """,
         ),
-        ("links", "DELETE FROM links"),
-        ("chunk_embeddings", "DELETE FROM chunk_embeddings"),
-        ("questions", "DELETE FROM questions"),
-        ("resources", "DELETE FROM resources"),
-        ("source_chunks", "DELETE FROM source_chunks"),
-        ("source_documents", "DELETE FROM source_documents"),
+        (
+            "chunk_embeddings",
+            """
+            DELETE FROM chunk_embeddings
+            WHERE chunk_id IN (
+              SELECT id FROM source_chunks
+              WHERE document_id = ANY(CAST(:source_document_ids AS text[]))
+            )
+            """,
+        ),
+        (
+            "source_chunks",
+            "DELETE FROM source_chunks WHERE document_id = ANY(CAST(:source_document_ids AS text[]))",
+        ),
     ]
+    if reset_dependent_content:
+        statements[1:1] = [
+            (
+                "dependent_review_items",
+                "DELETE FROM review_items WHERE target_type IN ('question', 'resource', 'link')",
+            ),
+            ("links", "DELETE FROM links"),
+            ("questions", "DELETE FROM questions"),
+            ("resources", "DELETE FROM resources"),
+        ]
     report: dict[str, int] = {}
     for label, statement in statements:
-        result = session.execute(text(statement))
+        result = session.execute(text(statement), {"source_document_ids": SOURCE_DOCUMENT_IDS})
         report[label] = max(int(result.rowcount or 0), 0)
     return report
 
@@ -181,26 +206,47 @@ def insert_source_documents(session: Any) -> int:
             text(
                 """
                 INSERT INTO source_documents (
-                  id, file_name, path, archive_path, type, document_kind,
+                  id, title, file_name, path, archive_path, type, document_kind,
                   size_bytes, chapter_id, chapter_number, processing_status,
-                  metadata, updated_at
+                  metadata, logical_textbook_key, version_number, version_label,
+                  publication_status, published_at, updated_at
                 )
                 VALUES (
-                  :id, :file_name, :path, NULL, :type, :document_kind,
-                  NULL, NULL, NULL, 'imported', CAST(:metadata AS jsonb), now()
+                  :id, :file_name, :file_name, :path, NULL, :type, :document_kind,
+                  NULL, NULL, NULL, 'imported', CAST(:metadata AS jsonb),
+                  :logical_textbook_key, 1, 'seed-v1',
+                  CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM source_documents active_document
+                    WHERE active_document.logical_textbook_key = :logical_textbook_key
+                      AND active_document.id <> :id
+                      AND active_document.publication_status = 'published'
+                  ) THEN 'inactive' ELSE 'published' END,
+                  now(), now()
                 )
                 ON CONFLICT (id) DO UPDATE SET
+                  title = EXCLUDED.title,
                   file_name = EXCLUDED.file_name,
                   path = EXCLUDED.path,
                   type = EXCLUDED.type,
                   document_kind = EXCLUDED.document_kind,
                   processing_status = EXCLUDED.processing_status,
                   metadata = EXCLUDED.metadata,
+                  logical_textbook_key = EXCLUDED.logical_textbook_key,
+                  version_number = EXCLUDED.version_number,
+                  version_label = EXCLUDED.version_label,
+                  publication_status = CASE
+                    WHEN source_documents.publication_status IN ('inactive', 'deleted')
+                      THEN source_documents.publication_status
+                    ELSE EXCLUDED.publication_status
+                  END,
+                  published_at = COALESCE(source_documents.published_at, EXCLUDED.published_at),
                   updated_at = now()
                 """
             ),
             {
                 **doc,
+                "logical_textbook_key": source_collection,
                 "metadata": _json(
                     {
                         "source_collection": source_collection,
@@ -337,12 +383,13 @@ def import_canonical_evidence(
     embedding_dir: Path,
     include_bge_embeddings: bool,
     skip_migrations: bool,
+    reset_dependent_content: bool = False,
 ) -> dict[str, Any]:
     if not skip_migrations:
         apply_migrations()
     chunks = load_chunks(chunk_files)
     with db_session() as session:
-        cleanup = cleanup_legacy_rows(session)
+        cleanup = cleanup_legacy_rows(session, reset_dependent_content=reset_dependent_content)
         document_count = insert_source_documents(session)
         chunk_count = insert_chunks(session, chunks)
         embedding_count = insert_embeddings(session, chunks, embedding_dir) if include_bge_embeddings else 0
@@ -369,6 +416,11 @@ def main() -> None:
     )
     parser.add_argument("--skip-embeddings", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--skip-migrations", action="store_true")
+    parser.add_argument(
+        "--reset-dependent-content",
+        action="store_true",
+        help="Bootstrap-only: also delete legacy links, questions, resources, and their review rows.",
+    )
     args = parser.parse_args()
 
     result = import_canonical_evidence(
@@ -376,6 +428,7 @@ def main() -> None:
         embedding_dir=args.embedding_dir,
         include_bge_embeddings=args.include_bge_embeddings and not args.skip_embeddings,
         skip_migrations=args.skip_migrations,
+        reset_dependent_content=args.reset_dependent_content,
     )
     sys.stdout.buffer.write((json.dumps(result, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
 

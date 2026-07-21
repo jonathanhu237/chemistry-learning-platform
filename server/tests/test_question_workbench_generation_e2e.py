@@ -183,11 +183,14 @@ def _insert_question_workbench_fixture(test_id: str) -> QuestionWorkbenchGenerat
             text(
                 """
                 INSERT INTO source_documents (
-                  id, file_name, path, type, document_kind, processing_status, metadata, updated_at
+                  id, title, file_name, path, type, document_kind, processing_status,
+                  metadata, logical_textbook_key, version_number, version_label,
+                  publication_status, published_at, updated_at
                 )
                 VALUES (
-                  :doc_id, 'E2E textbook', '/tmp/e2e-textbook.md', 'markdown',
-                  'canonical_textbook', 'imported', CAST(:metadata AS jsonb), now()
+                  :doc_id, 'E2E textbook', 'E2E textbook', '/tmp/e2e-textbook.md', 'markdown',
+                  'canonical_textbook', 'imported', CAST(:metadata AS jsonb),
+                  :doc_id, 1, 'e2e-v1', 'published', now(), now()
                 )
                 """
             ),

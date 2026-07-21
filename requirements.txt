@@ -1,9 +1,11 @@
 beautifulsoup4
 fastapi
+httpx
 lxml
 numpy
 pandas
 openpyxl
+Pillow
 openai-agents
 pdfplumber
 pgvector

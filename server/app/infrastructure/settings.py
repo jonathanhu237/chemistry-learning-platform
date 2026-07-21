@@ -91,6 +91,27 @@ class Settings:
     student_preview_session_expire_minutes: int = 240
     max_media_upload_mb: int = 1024
     max_media_subtitle_upload_mb: int = 10
+    textbook_ingestion_enabled: bool = False
+    textbook_storage_root: Path = ROOT / "data" / "textbooks"
+    max_textbook_upload_mb: int = 200
+    max_textbook_pages: int = 1000
+    textbook_ingestion_worker_id: str = "local-textbook-ingestion-worker"
+    textbook_ingestion_worker_poll_seconds: int = 5
+    textbook_ingestion_lease_seconds: int = 300
+    textbook_chunk_max_chars: int = 1800
+    textbook_chunk_overlap_chars: int = 180
+    textbook_embedding_batch_size: int = 16
+    textbook_index_batch_size: int = 64
+    textbook_native_min_chars: int = 80
+    textbook_native_min_printable_ratio: float = 0.85
+    textbook_ocr_enabled: bool = False
+    textbook_ocr_base_url: str = "https://aigw.sysu.edu.cn/v1"
+    textbook_ocr_api_key: str = ""
+    textbook_ocr_model: str = "mineru"
+    textbook_ocr_timeout_seconds: float = 90.0
+    textbook_ocr_concurrency: int = 2
+    textbook_ocr_max_retries: int = 3
+    textbook_ocr_render_dpi: int = 160
     agent_llm_provider: str = "disabled"
     agent_llm_base_url: str = ""
     agent_llm_api_key: str = ""
@@ -150,6 +171,34 @@ class Settings:
             errors.append("TEACHER_CATALOG_SEARCH_BACKEND must be elasticsearch or disabled")
         if self.video_transcode_acceleration not in {"auto", "cpu", "nvenc"}:
             errors.append("VIDEO_TRANSCODE_ACCELERATION must be auto, cpu, or nvenc")
+        if self.max_textbook_upload_mb <= 0:
+            errors.append("MAX_TEXTBOOK_UPLOAD_MB must be positive")
+        if self.max_textbook_pages <= 0:
+            errors.append("MAX_TEXTBOOK_PAGES must be positive")
+        if self.textbook_ingestion_worker_poll_seconds <= 0:
+            errors.append("TEXTBOOK_INGESTION_WORKER_POLL_SECONDS must be positive")
+        if self.textbook_ingestion_lease_seconds <= 0:
+            errors.append("TEXTBOOK_INGESTION_LEASE_SECONDS must be positive")
+        if self.textbook_chunk_max_chars <= 0:
+            errors.append("TEXTBOOK_CHUNK_MAX_CHARS must be positive")
+        if not 0 <= self.textbook_chunk_overlap_chars < self.textbook_chunk_max_chars:
+            errors.append("TEXTBOOK_CHUNK_OVERLAP_CHARS must be non-negative and smaller than TEXTBOOK_CHUNK_MAX_CHARS")
+        if self.textbook_embedding_batch_size <= 0:
+            errors.append("TEXTBOOK_EMBEDDING_BATCH_SIZE must be positive")
+        if self.textbook_index_batch_size <= 0:
+            errors.append("TEXTBOOK_INDEX_BATCH_SIZE must be positive")
+        if not 0 < self.textbook_native_min_printable_ratio <= 1:
+            errors.append("TEXTBOOK_NATIVE_MIN_PRINTABLE_RATIO must be in (0, 1]")
+        if self.textbook_native_min_chars < 0:
+            errors.append("TEXTBOOK_NATIVE_MIN_CHARS must be non-negative")
+        if self.textbook_ocr_timeout_seconds <= 0:
+            errors.append("TEXTBOOK_OCR_TIMEOUT_SECONDS must be positive")
+        if self.textbook_ocr_concurrency <= 0:
+            errors.append("TEXTBOOK_OCR_CONCURRENCY must be positive")
+        if self.textbook_ocr_max_retries < 0:
+            errors.append("TEXTBOOK_OCR_MAX_RETRIES must be non-negative")
+        if self.textbook_ocr_render_dpi <= 0:
+            errors.append("TEXTBOOK_OCR_RENDER_DPI must be positive")
         if self.is_production:
             if self.data_backend != "postgres":
                 errors.append("DATA_BACKEND must be postgres in production")
@@ -185,6 +234,15 @@ class Settings:
                     errors.append("TEXTBOOK_RAG_RERANK_API_KEY is required when textbook RAG is enabled")
                 if not self.textbook_rag_rerank_model:
                     errors.append("TEXTBOOK_RAG_RERANK_MODEL is required when textbook RAG is enabled")
+            if self.textbook_ingestion_enabled and not _getenv("TEXTBOOK_STORAGE_ROOT"):
+                errors.append("TEXTBOOK_STORAGE_ROOT is required when textbook ingestion is enabled in production")
+            if self.textbook_ocr_enabled:
+                if not self.textbook_ocr_base_url:
+                    errors.append("TEXTBOOK_OCR_BASE_URL is required when textbook OCR is enabled")
+                if not self.textbook_ocr_api_key:
+                    errors.append("TEXTBOOK_OCR_API_KEY is required when textbook OCR is enabled")
+                if not self.textbook_ocr_model:
+                    errors.append("TEXTBOOK_OCR_MODEL is required when textbook OCR is enabled")
             if self.video_library_search_enabled and self.video_library_search_require_es_in_production:
                 if self.video_library_search_backend != "elasticsearch":
                     errors.append("VIDEO_LIBRARY_SEARCH_BACKEND must be elasticsearch in production when video-library search is enabled")
@@ -286,6 +344,57 @@ def get_settings() -> Settings:
         ),
         max_media_upload_mb=_get_int("MAX_MEDIA_UPLOAD_MB", Settings.max_media_upload_mb),
         max_media_subtitle_upload_mb=_get_int("MAX_MEDIA_SUBTITLE_UPLOAD_MB", Settings.max_media_subtitle_upload_mb),
+        textbook_ingestion_enabled=_get_bool(
+            "TEXTBOOK_INGESTION_ENABLED",
+            Settings.textbook_ingestion_enabled,
+        ),
+        textbook_storage_root=Path(_getenv("TEXTBOOK_STORAGE_ROOT", str(Settings.textbook_storage_root))),
+        max_textbook_upload_mb=_get_int("MAX_TEXTBOOK_UPLOAD_MB", Settings.max_textbook_upload_mb),
+        max_textbook_pages=_get_int("MAX_TEXTBOOK_PAGES", Settings.max_textbook_pages),
+        textbook_ingestion_worker_id=_getenv(
+            "TEXTBOOK_INGESTION_WORKER_ID",
+            Settings.textbook_ingestion_worker_id,
+        ),
+        textbook_ingestion_worker_poll_seconds=_get_int(
+            "TEXTBOOK_INGESTION_WORKER_POLL_SECONDS",
+            Settings.textbook_ingestion_worker_poll_seconds,
+        ),
+        textbook_ingestion_lease_seconds=_get_int(
+            "TEXTBOOK_INGESTION_LEASE_SECONDS",
+            Settings.textbook_ingestion_lease_seconds,
+        ),
+        textbook_chunk_max_chars=_get_int("TEXTBOOK_CHUNK_MAX_CHARS", Settings.textbook_chunk_max_chars),
+        textbook_chunk_overlap_chars=_get_int(
+            "TEXTBOOK_CHUNK_OVERLAP_CHARS",
+            Settings.textbook_chunk_overlap_chars,
+        ),
+        textbook_embedding_batch_size=_get_int(
+            "TEXTBOOK_EMBEDDING_BATCH_SIZE",
+            Settings.textbook_embedding_batch_size,
+        ),
+        textbook_index_batch_size=_get_int(
+            "TEXTBOOK_INDEX_BATCH_SIZE",
+            Settings.textbook_index_batch_size,
+        ),
+        textbook_native_min_chars=_get_int("TEXTBOOK_NATIVE_MIN_CHARS", Settings.textbook_native_min_chars),
+        textbook_native_min_printable_ratio=_get_float(
+            "TEXTBOOK_NATIVE_MIN_PRINTABLE_RATIO",
+            Settings.textbook_native_min_printable_ratio,
+        ),
+        textbook_ocr_enabled=_get_bool(
+            "TEXTBOOK_OCR_ENABLED",
+            bool(_getenv("TEXTBOOK_OCR_API_KEY")),
+        ),
+        textbook_ocr_base_url=_getenv("TEXTBOOK_OCR_BASE_URL", Settings.textbook_ocr_base_url).rstrip("/"),
+        textbook_ocr_api_key=_getenv("TEXTBOOK_OCR_API_KEY"),
+        textbook_ocr_model=_getenv("TEXTBOOK_OCR_MODEL", Settings.textbook_ocr_model),
+        textbook_ocr_timeout_seconds=_get_float(
+            "TEXTBOOK_OCR_TIMEOUT_SECONDS",
+            Settings.textbook_ocr_timeout_seconds,
+        ),
+        textbook_ocr_concurrency=_get_int("TEXTBOOK_OCR_CONCURRENCY", Settings.textbook_ocr_concurrency),
+        textbook_ocr_max_retries=_get_int("TEXTBOOK_OCR_MAX_RETRIES", Settings.textbook_ocr_max_retries),
+        textbook_ocr_render_dpi=_get_int("TEXTBOOK_OCR_RENDER_DPI", Settings.textbook_ocr_render_dpi),
         agent_llm_provider=_getenv("AGENT_LLM_PROVIDER", Settings.agent_llm_provider).lower(),
         agent_llm_base_url=_getenv("AGENT_LLM_BASE_URL"),
         agent_llm_api_key=_getenv("AGENT_LLM_API_KEY"),

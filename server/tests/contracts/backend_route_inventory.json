@@ -898,6 +898,66 @@
     },
     {
       "method": "GET",
+      "path": "/api/admin/textbooks",
+      "name": "admin_list_textbooks",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/textbooks",
+      "name": "admin_upload_textbook",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/textbooks/jobs/{job_id}",
+      "name": "admin_get_textbook_job",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/textbooks/jobs/{job_id}/cancel",
+      "name": "admin_cancel_textbook_job",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/textbooks/jobs/{job_id}/events",
+      "name": "admin_get_textbook_job_events",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/textbooks/jobs/{job_id}/retry",
+      "name": "admin_retry_textbook_job",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/textbooks/upload-policy",
+      "name": "admin_textbook_upload_policy",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/textbooks/{document_id}",
+      "name": "admin_get_textbook",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/textbooks/{document_id}/chunks",
+      "name": "admin_get_textbook_chunks",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/textbooks/{document_id}/pages",
+      "name": "admin_get_textbook_pages",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
       "path": "/api/admin/video-library/index/diagnostics",
       "name": "admin_video_library_index_diagnostics",
       "owner": "admin-api"

@@ -15,6 +15,15 @@ DEFAULT_CHUNK_PATHS = (
     Path("data/seed/canonical_rag/chunks/textbook_experiment_chunks_v1.jsonl"),
     Path("data/seed/canonical_rag/chunks/textbook_inorganic_lower_chunks_v1.jsonl"),
 )
+TEXTBOOK_RAG_INDEX_SCHEMA = "canonical-rag-chunks-qwen-v2"
+ONLINE_MAPPING_PROPERTIES: dict[str, Any] = {
+    "document_id": {"type": "keyword"},
+    "logical_textbook_key": {"type": "keyword"},
+    "document_version": {"type": "integer"},
+    "processing_fingerprint": {"type": "keyword"},
+    "extraction_method": {"type": "keyword"},
+    "quality_flags": {"type": "keyword"},
+}
 
 
 class TextbookElasticsearchClient:
@@ -44,17 +53,50 @@ class TextbookElasticsearchClient:
                     raise
         try:
             self.request("HEAD", f"/{self.index}")
-            return
         except urllib.error.HTTPError as exc:
             if exc.code != 404:
                 raise
+            self.request(
+                "PUT",
+                f"/{self.index}",
+                textbook_chunk_index_mapping(
+                    embedding_model=embedding_model,
+                    embedding_dimension=embedding_dimension,
+                ),
+            )
+            return
+        mapping_response = self.request("GET", f"/{self.index}/_mapping")
+        index_mapping = mapping_response.get(self.index, {}) if isinstance(mapping_response, dict) else {}
+        mappings = index_mapping.get("mappings", {}) if isinstance(index_mapping, dict) else {}
+        metadata = mappings.get("_meta", {}) if isinstance(mappings, dict) else {}
+        properties = mappings.get("properties", {}) if isinstance(mappings, dict) else {}
+        actual_model = str(metadata.get("embedding_model") or "")
+        actual_dimension = int(
+            metadata.get("embedding_dimension")
+            or ((properties.get("embedding") or {}).get("dims") if isinstance(properties, dict) else 0)
+            or 0
+        )
+        if actual_model and actual_model != embedding_model:
+            raise ValueError(
+                f"Elasticsearch textbook index embedding model mismatch: expected {embedding_model}, got {actual_model}"
+            )
+        if actual_dimension and actual_dimension != embedding_dimension:
+            raise ValueError(
+                "Elasticsearch textbook index embedding dimension mismatch: "
+                f"expected {embedding_dimension}, got {actual_dimension}"
+            )
         self.request(
             "PUT",
-            f"/{self.index}",
-            textbook_chunk_index_mapping(
-                embedding_model=embedding_model,
-                embedding_dimension=embedding_dimension,
-            ),
+            f"/{self.index}/_mapping",
+            {
+                "_meta": {
+                    **(metadata if isinstance(metadata, dict) else {}),
+                    "embedding_model": embedding_model,
+                    "embedding_dimension": embedding_dimension,
+                    "schema": TEXTBOOK_RAG_INDEX_SCHEMA,
+                },
+                "properties": ONLINE_MAPPING_PROPERTIES,
+            },
         )
 
     def bulk(self, operations: list[dict[str, Any]]) -> dict[str, Any]:
@@ -94,7 +136,7 @@ def textbook_chunk_index_mapping(*, embedding_model: str, embedding_dimension: i
             "_meta": {
                 "embedding_model": embedding_model,
                 "embedding_dimension": embedding_dimension,
-                "schema": "canonical-rag-chunks-qwen-v1",
+                "schema": TEXTBOOK_RAG_INDEX_SCHEMA,
             },
             "properties": {
                 "chunk_id": {"type": "keyword"},
@@ -123,6 +165,7 @@ def textbook_chunk_index_mapping(*, embedding_model: str, embedding_dimension: i
                 "embedding_dimension": {"type": "integer"},
                 "embedding": {"type": "dense_vector", "dims": embedding_dimension, "index": True, "similarity": "cosine"},
                 "metadata": {"type": "object", "enabled": True},
+                **ONLINE_MAPPING_PROPERTIES,
             },
         },
     }
@@ -143,6 +186,12 @@ def chunk_document(row: dict[str, Any], *, source_file: str, embedding: list[flo
     return {
         "chunk_id": str(row.get("chunk_id") or ""),
         "doc_id": str(row.get("doc_id") or ""),
+        "document_id": str(row.get("document_id") or ""),
+        "logical_textbook_key": str(row.get("logical_textbook_key") or row.get("source_collection") or ""),
+        "document_version": int(row.get("document_version") or 1),
+        "processing_fingerprint": str(row.get("processing_fingerprint") or ""),
+        "extraction_method": str(row.get("extraction_method") or "seed"),
+        "quality_flags": [str(item) for item in row.get("quality_flags") or []],
         "source_collection": str(row.get("source_collection") or ""),
         "source_role": str(row.get("source_role") or ""),
         "authority_level": str(row.get("authority_level") or ""),
@@ -228,6 +277,38 @@ def _flush_batch(
     if not operations:
         return 0
     response = es.bulk(operations)
-    if response.get("errors"):
-        failures.append("Elasticsearch bulk request reported item errors")
-    return len(operations) // 2
+    expected_ids = [str(operation["index"]["_id"]) for operation in operations[::2]]
+    successful_ids, item_failures = validate_bulk_index_response(response, expected_ids=expected_ids)
+    failures.extend(item_failures)
+    return len(successful_ids)
+
+
+def validate_bulk_index_response(
+    response: dict[str, Any],
+    *,
+    expected_ids: list[str],
+) -> tuple[list[str], list[str]]:
+    items = response.get("items") if isinstance(response, dict) else None
+    if not isinstance(items, list):
+        return [], ["Elasticsearch bulk response is missing item results"]
+    successful: list[str] = []
+    failures: list[str] = []
+    for item in items:
+        result = item.get("index") if isinstance(item, dict) else None
+        if not isinstance(result, dict):
+            failures.append("Elasticsearch bulk response contains an invalid item")
+            continue
+        chunk_id = str(result.get("_id") or "")
+        status = int(result.get("status") or 0)
+        if status < 200 or status >= 300 or result.get("error"):
+            reason = result.get("error")
+            failures.append(f"Elasticsearch rejected chunk {chunk_id or '<unknown>'}: {str(reason)[:240]}")
+            continue
+        successful.append(chunk_id)
+    missing = sorted(set(expected_ids) - set(successful))
+    unexpected = sorted(set(successful) - set(expected_ids))
+    if missing:
+        failures.append(f"Elasticsearch bulk response omitted {len(missing)} expected chunk(s)")
+    if unexpected:
+        failures.append(f"Elasticsearch bulk response returned {len(unexpected)} unexpected chunk(s)")
+    return [chunk_id for chunk_id in expected_ids if chunk_id in set(successful)], failures

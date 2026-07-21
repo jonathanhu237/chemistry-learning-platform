@@ -30,6 +30,7 @@ from server.app.api.admin.admin_question_generation import router as admin_quest
 from server.app.api.admin.admin_question_workbench import router as admin_question_workbench_router
 from server.app.api.admin.admin_point_aware_questions import router as admin_point_aware_questions_router
 from server.app.api.admin.admin_student_preview import router as admin_student_preview_router
+from server.app.api.admin.admin_textbooks import router as admin_textbooks_router
 from server.app.api.web_admin.student_preview import router as web_admin_student_preview_router
 from server.app.api.web_admin.teacher_accounts import router as web_admin_teacher_accounts_router
 from server.app.api.student.student_catalog import router as student_catalog_router
@@ -66,6 +67,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     if settings.run_db_check_on_startup:
         check_database_connection()
     settings.media_root.mkdir(parents=True, exist_ok=True)
+    if settings.textbook_ingestion_enabled:
+        settings.textbook_storage_root.mkdir(parents=True, exist_ok=True)
     yield
 
 
@@ -97,6 +100,7 @@ app.include_router(admin_question_generation_router)
 app.include_router(admin_question_workbench_router)
 app.include_router(admin_point_aware_questions_router)
 app.include_router(admin_student_preview_router)
+app.include_router(admin_textbooks_router)
 app.include_router(web_admin_teacher_accounts_router)
 app.include_router(web_admin_student_preview_router)
 app.include_router(student_catalog_router)

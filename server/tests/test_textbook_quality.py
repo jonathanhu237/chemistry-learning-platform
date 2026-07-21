@@ -1,0 +1,53 @@
+from __future__ import annotations
+
+from server.app.domains.textbook_ingestion.contracts import (
+    ExtractionMethod,
+    NormalizedPage,
+    PageQuality,
+    StableChunk,
+)
+from server.app.domains.textbook_ingestion.quality import build_textbook_quality_report
+
+
+def _page(number: int, *, text: str = "有效教材正文", needs_ocr: bool = False) -> NormalizedPage:
+    return NormalizedPage(
+        page_number=number,
+        text=text,
+        markdown=text,
+        extraction_method=ExtractionMethod.NATIVE,
+        quality=PageQuality(score=0.9, needs_ocr=needs_ocr),
+        content_hash=f"page-{number}",
+    )
+
+
+def _chunk(number: int) -> StableChunk:
+    return StableChunk(
+        chunk_id=f"chunk-{number}",
+        document_id="tbk-1",
+        document_version=1,
+        chunk_index=number,
+        text=f"有效教材正文 {number}",
+        page_start=number,
+        page_end=number,
+        content_hash=f"chunk-hash-{number}",
+    )
+
+
+def test_quality_report_accepts_complete_traceable_text() -> None:
+    report = build_textbook_quality_report([_page(1), _page(2)], [_chunk(1), _chunk(2)])
+
+    assert report["publishable"] is True
+    assert report["blocking_issues"] == []
+    assert report["page_count"] == 2
+    assert report["chunk_count"] == 2
+
+
+def test_quality_report_blocks_empty_or_unresolved_pages() -> None:
+    report = build_textbook_quality_report(
+        [_page(1), _page(2, text="", needs_ocr=True)],
+        [_chunk(1)],
+    )
+
+    assert report["publishable"] is False
+    assert "empty_pages" in report["blocking_issues"]
+    assert "unresolved_ocr_pages" in report["blocking_issues"]
