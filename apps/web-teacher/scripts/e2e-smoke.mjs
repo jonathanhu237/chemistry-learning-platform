@@ -13,6 +13,7 @@ const shouldBootstrap = process.env.E2E_SKIP_BOOTSTRAP !== "1" && !process.env.E
 
 const smokePaths = [
   "/overview",
+  "/textbooks",
   "/experiments",
   "/videos",
   "/learning-assistant",

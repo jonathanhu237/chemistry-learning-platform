@@ -11,6 +11,7 @@ import { areaMeta } from "../lib/resourceUtils";
 
 const teacherWorkflowPaths = [
   "/overview",
+  "/textbooks",
   "/classes",
   "/experiments",
   "/videos",
@@ -31,6 +32,7 @@ describe("teacher console role boundaries", () => {
     expect(navSource).not.toContain("filter(");
     expect(navSource).not.toContain('role === "admin"');
     expect(selectedAdminNavKey("/learning-assistant", "teacher")).toBe("/learning-assistant");
+    expect(selectedAdminNavKey("/textbooks", "teacher")).toBe("/textbooks");
     expect(selectedAdminNavKey("/ai-config", "teacher")).toBe("/ai-config");
     expect(selectedAdminNavKey("/unknown", "teacher")).toBe(adminDefaultRoute);
   });

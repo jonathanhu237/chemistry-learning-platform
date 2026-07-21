@@ -7,6 +7,7 @@ import {
   MessageOutlined,
   MobileOutlined,
   QuestionCircleOutlined,
+  ReadOutlined,
   SafetyCertificateOutlined,
   SettingOutlined,
   TeamOutlined,
@@ -57,6 +58,10 @@ const StudentDevicePreviewPage = lazy(async () => {
   const module = await import("../features/student-preview/StudentDevicePreviewPage");
   return { default: module.StudentDevicePreviewPage };
 });
+const TextbooksPage = lazy(async () => {
+  const module = await import("../features/textbooks/TextbooksPage");
+  return { default: module.TextbooksPage };
+});
 
 export type AdminRole = "admin" | "teacher" | "student" | "platform_admin";
 
@@ -73,6 +78,7 @@ export const adminDefaultRoute = "/overview";
 
 export const adminRoutes: AdminRouteDefinition[] = [
   { path: "/overview", Component: LearningResourcesPage, nav: { icon: <BookOutlined />, label: "资源总览" } },
+  { path: "/textbooks", Component: TextbooksPage, nav: { icon: <ReadOutlined />, label: "教材知识库" } },
   { path: "/classes", Component: ClassesPage, nav: { icon: <TeamOutlined />, label: "班级与学生" } },
   { path: "/experiments", Component: ExperimentsPage, nav: { icon: <ExperimentOutlined />, label: "实验管理" } },
   { path: "/videos", Component: VideoResourcesPage, nav: { icon: <VideoCameraOutlined />, label: "视频资源" } },
