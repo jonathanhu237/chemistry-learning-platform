@@ -160,6 +160,18 @@ class _Projector:
         return {}
 
 
+class _FailingProjector(_Projector):
+    def __init__(self) -> None:
+        self.deleted_document_ids: list[str] = []
+
+    def project(self, chunks: list[StableChunk], embeddings: list[list[float]], *, embedding_model: str) -> dict[str, Any]:
+        raise RuntimeError("partial index failure")
+
+    def delete_document(self, document_id: str) -> dict[str, Any]:
+        self.deleted_document_ids.append(document_id)
+        return {"deleted": 1}
+
+
 def _install_queue_fakes(monkeypatch: Any) -> dict[str, Any]:
     events: dict[str, Any] = {"transitions": [], "progress": [], "failures": []}
 
@@ -194,14 +206,16 @@ def _pipeline(
     chunks: list[StableChunk],
     pages_written: list[list[NormalizedPage]],
     chunks_written: list[list[StableChunk]],
+    projector: _Projector | None = None,
 ) -> TextbookIngestionPipeline:
+    effective_projector = projector or _Projector()
     return TextbookIngestionPipeline(
         extractor=extractor,
         ocr_provider=ocr,
         chunker=_Chunker(chunks),
         embedder=_Embedder(),
         projector_factory=lambda _input, callback: (
-            callback(len(chunks), len(chunks)) or _Projector()
+            callback(len(chunks), len(chunks)) or effective_projector
         ),
         input_loader=lambda _job: _input(),
         page_writer=lambda _job, pages: pages_written.append(list(pages)) or len(pages),
@@ -295,3 +309,21 @@ def test_pipeline_records_terminal_quality_failure(monkeypatch: Any) -> None:
     assert outcome.status == IngestionStage.FAILED
     assert events["transitions"] == [IngestionStage.STRUCTURING, IngestionStage.CHUNKING]
     assert events["failures"][0][1]["error_code"] == "quality_gate_failed"
+
+
+def test_pipeline_removes_partial_es_projection_after_index_failure(monkeypatch: Any) -> None:
+    events = _install_queue_fakes(monkeypatch)
+    projector = _FailingProjector()
+
+    outcome = _pipeline(
+        extractor=_Extractor([_page(1)]),
+        ocr=_OCR(),
+        chunks=[_chunk(1)],
+        pages_written=[],
+        chunks_written=[],
+        projector=projector,
+    ).process(_job())
+
+    assert outcome.status == IngestionStage.FAILED
+    assert projector.deleted_document_ids == ["tbk-1"]
+    assert events["failures"][0][1]["error_code"] == "runtimeerror"

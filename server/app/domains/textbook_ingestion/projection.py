@@ -115,6 +115,10 @@ class OnlineTextbookSearchProjector:
             embedding_dimension=self.embedding_dimension,
             recreate=False,
         )
+        # A retry may produce fewer/different stable chunk ids than an earlier
+        # partial run. Clear this unpublished document projection first so old
+        # chunks cannot survive as ES-only orphans.
+        cleanup = self.delete_document(self.document.document_id)
         indexed_ids: list[str] = []
         failures: list[str] = []
         for start in range(0, len(chunks), self.batch_size):
@@ -158,6 +162,7 @@ class OnlineTextbookSearchProjector:
             "indexed_chunks": actual_count,
             "embedding_model": embedding_model,
             "embedding_dimension": self.embedding_dimension,
+            "removed_stale_chunks": int(cleanup.get("deleted") or 0),
         }
 
     def delete_document(self, document_id: str) -> dict[str, object]:

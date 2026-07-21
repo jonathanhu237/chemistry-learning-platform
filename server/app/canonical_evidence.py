@@ -80,9 +80,11 @@ def canonical_chunk_rows_by_ids(session: Any, chunk_ids: Iterable[str]) -> list[
                        sc.metadata,
                        sc.content_status
                 FROM source_chunks sc
-                LEFT JOIN source_documents sd ON sd.id = sc.document_id
+                JOIN source_documents sd ON sd.id = sc.document_id
                 WHERE sc.id = ANY(:chunk_ids)
                   AND COALESCE(sc.metadata->>'source_role', '') = :source_role
+                  AND COALESCE(sc.content_status, 'pending_review') = 'published'
+                  AND sd.publication_status = 'published'
                 """
             ),
             {"chunk_ids": ordered_ids, "source_role": CANONICAL_SOURCE_ROLE},
@@ -103,10 +105,13 @@ def missing_canonical_chunk_ids(session: Any, chunk_ids: Iterable[str]) -> list[
         for row in session.execute(
             text(
                 """
-                SELECT id
-                FROM source_chunks
-                WHERE id = ANY(:chunk_ids)
-                  AND COALESCE(metadata->>'source_role', '') = :source_role
+                SELECT sc.id
+                FROM source_chunks sc
+                JOIN source_documents sd ON sd.id = sc.document_id
+                WHERE sc.id = ANY(:chunk_ids)
+                  AND COALESCE(sc.metadata->>'source_role', '') = :source_role
+                  AND COALESCE(sc.content_status, 'pending_review') = 'published'
+                  AND sd.publication_status = 'published'
                 """
             ),
             {"chunk_ids": requested, "source_role": CANONICAL_SOURCE_ROLE},
@@ -131,6 +136,7 @@ def _load_candidate_rows(
 ) -> list[dict[str, Any]]:
     filters = [
         "COALESCE(sc.content_status, 'pending_review') = 'published'",
+        "sd.publication_status = 'published'",
         "COALESCE(sc.metadata->>'source_role', '') = :source_role",
     ]
     params: dict[str, Any] = {"source_role": CANONICAL_SOURCE_ROLE, "limit": limit}
@@ -165,7 +171,7 @@ def _load_candidate_rows(
                        sc.metadata,
                        sc.content_status
                 FROM source_chunks sc
-                LEFT JOIN source_documents sd ON sd.id = sc.document_id
+                JOIN source_documents sd ON sd.id = sc.document_id
                 WHERE {" AND ".join(filters)}
                 ORDER BY sc.document_id, sc.chunk_index, sc.id
                 LIMIT :limit
@@ -239,4 +245,3 @@ def load_evidence_source_refs(
 
     rows.sort(key=score, reverse=True)
     return [_source_ref_from_row(row) for row in rows[:limit]]
-

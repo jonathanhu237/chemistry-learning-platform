@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from server.app.domains.platform.settings import effective_textbook_rag_settings
+from server.app.domains.textbook_rag.active_corpus import active_textbook_filter, corpus_from_settings
 from server.app.domains.textbook_rag.clients import QwenEmbeddingClient, QwenRerankClient, TextbookRAGClientError
 from server.app.domains.textbook_rag.index import TextbookElasticsearchClient
 
@@ -63,7 +64,13 @@ def _es_search(es: TextbookElasticsearchClient, payload: dict[str, Any]) -> list
     return [hit for hit in hits if isinstance(hit, dict)]
 
 
-def _lexical_payload(query: str, *, size: int, point_context: dict[str, Any]) -> dict[str, Any]:
+def _lexical_payload(
+    query: str,
+    *,
+    size: int,
+    point_context: dict[str, Any],
+    active_filter: dict[str, Any],
+) -> dict[str, Any]:
     tokens = chemical_tokens(query)
     should: list[dict[str, Any]] = [
         {
@@ -100,6 +107,7 @@ def _lexical_payload(query: str, *, size: int, point_context: dict[str, Any]) ->
         "query": {
             "bool": {
                 "must": [{"term": {"use_for_question_generation": True}}],
+                "filter": [active_filter],
                 "should": should,
                 "minimum_should_match": 1,
             }
@@ -107,13 +115,23 @@ def _lexical_payload(query: str, *, size: int, point_context: dict[str, Any]) ->
     }
 
 
-def _vector_payload(query_vector: list[float], *, size: int) -> dict[str, Any]:
+def _vector_payload(
+    query_vector: list[float],
+    *,
+    size: int,
+    active_filter: dict[str, Any],
+) -> dict[str, Any]:
     return {
         "size": size,
         "_source": {"excludes": ["embedding"]},
         "query": {
             "script_score": {
-                "query": {"term": {"use_for_question_generation": True}},
+                "query": {
+                    "bool": {
+                        "must": [{"term": {"use_for_question_generation": True}}],
+                        "filter": [active_filter],
+                    }
+                },
                 "script": {
                     "source": "cosineSimilarity(params.query_vector, 'embedding') + 1.0",
                     "params": {"query_vector": query_vector},
@@ -135,6 +153,11 @@ def _source_from_hit(hit: dict[str, Any], *, recall_source: str) -> dict[str, An
         "page_start": source.get("page_start"),
         "page_end": source.get("page_end"),
         "content_hash": str(source.get("content_hash") or ""),
+        "document_id": str(source.get("document_id") or ""),
+        "logical_textbook_key": str(source.get("logical_textbook_key") or source.get("source_collection") or ""),
+        "document_version": source.get("document_version"),
+        "source_collection": str(source.get("source_collection") or ""),
+        "source_file": str(source.get("source_file") or ""),
         "recall_source": recall_source,
         "recall_score": float(hit.get("_score") or 0.0),
         "rerank_score": None,
@@ -147,7 +170,9 @@ def _merge_candidates(*candidate_lists: list[dict[str, Any]]) -> list[dict[str, 
     for candidates in candidate_lists:
         for candidate in candidates:
             chunk_id = candidate["chunk_id"]
-            if chunk_id not in merged or float(candidate.get("recall_score") or 0.0) > float(merged[chunk_id].get("recall_score") or 0.0):
+            if chunk_id not in merged or float(candidate.get("recall_score") or 0.0) > float(
+                merged[chunk_id].get("recall_score") or 0.0
+            ):
                 merged[chunk_id] = candidate
             elif candidate.get("recall_source") not in str(merged[chunk_id].get("recall_source")):
                 merged[chunk_id]["recall_source"] = f"{merged[chunk_id]['recall_source']}+{candidate['recall_source']}"
@@ -172,6 +197,11 @@ def _candidate_summary(source: dict[str, Any], *, section: str, rank: int) -> di
         "page_start": source.get("page_start"),
         "page_end": source.get("page_end"),
         "content_hash": source.get("content_hash"),
+        "document_id": source.get("document_id"),
+        "logical_textbook_key": source.get("logical_textbook_key"),
+        "document_version": source.get("document_version"),
+        "source_collection": source.get("source_collection"),
+        "source_file": source.get("source_file"),
         "recall_source": source.get("recall_source"),
         "recall_score": source.get("recall_score"),
         "rerank_score": source.get("rerank_score"),
@@ -196,6 +226,16 @@ def retrieve_textbook_evidence(
     if not config.get("enabled"):
         return _failure_package("textbook_rag_disabled", "教材 RAG 未启用。", diagnostics)
     try:
+        active_corpus = corpus_from_settings(config)
+        active_filter = active_textbook_filter(active_corpus.documents)
+        diagnostics.update(
+            {
+                "corpus_revision": active_corpus.revision,
+                "active_document_count": len(active_corpus.documents),
+                "active_document_ids": [document.document_id for document in active_corpus.documents],
+                "active_corpus_load_error": active_corpus.load_error,
+            }
+        )
         es = TextbookElasticsearchClient(
             base_url=str(config.get("elasticsearch_url") or ""),
             index=str(config.get("index_name") or ""),
@@ -227,6 +267,7 @@ def retrieve_textbook_evidence(
                 section_query=section_query,
                 point_context=point_context,
                 config=config,
+                active_filter=active_filter,
             )
             section_results[section_query.section] = section_package
             final_sources.extend(section_package["sources"])
@@ -270,6 +311,7 @@ def _retrieve_section(
     section_query: PointEvidenceQuery,
     point_context: dict[str, Any],
     config: dict[str, Any],
+    active_filter: dict[str, Any],
 ) -> dict[str, Any]:
     query_vector = embedder.embed([section_query.query])[0]
     lexical_hits = _es_search(
@@ -278,6 +320,7 @@ def _retrieve_section(
             section_query.query,
             size=int(config.get("keyword_top_k") or 16),
             point_context=point_context,
+            active_filter=active_filter,
         ),
     )
     vector_hits = _es_search(
@@ -285,6 +328,7 @@ def _retrieve_section(
         _vector_payload(
             query_vector,
             size=int(config.get("vector_top_k") or 24),
+            active_filter=active_filter,
         ),
     )
     candidates = _merge_candidates(

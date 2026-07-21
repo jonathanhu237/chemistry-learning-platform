@@ -95,6 +95,10 @@ class _FakeES:
 
     def request(self, method: str, path: str, payload: Any = None) -> dict[str, Any]:
         self.requests.append((method, path, payload))
+        if "_delete_by_query" in path:
+            deleted = len(self.bulk_sources)
+            self.bulk_sources.clear()
+            return {"deleted": deleted}
         if path.endswith("/_count"):
             return {"count": len(self.bulk_sources)}
         return {}
@@ -129,6 +133,7 @@ def test_online_projector_indexes_traceable_fields_and_verifies_count() -> None:
     assert [source["document_id"] for source in es.bulk_sources] == ["tbk-1", "tbk-1"]
     assert [source["document_version"] for source in es.bulk_sources] == [2, 2]
     assert all(source["logical_textbook_key"] == "textbook_inorganic_lower_v1" for source in es.bulk_sources)
+    assert es.requests[0][1].startswith("/rag-index/_delete_by_query")
     assert any(path.endswith("/_refresh") for _, path, _ in es.requests)
     assert any(path.endswith("/_count") for _, path, _ in es.requests)
 
@@ -141,3 +146,19 @@ def test_online_projector_rejects_partial_bulk_success() -> None:
 
     assert error.value.reason == "elasticsearch_bulk_failed"
     assert "bad vector" in str(error.value.details)
+
+
+def test_online_projector_reprocessing_removes_old_document_chunks_first() -> None:
+    es = _FakeES()
+    projector = _projector(es)
+    projector.project(
+        [_chunk(1), _chunk(2)],
+        [[0.1, 0.2], [0.3, 0.4]],
+        embedding_model="embedding-model",
+    )
+
+    result = projector.project([_chunk(1)], [[0.5, 0.6]], embedding_model="embedding-model")
+
+    assert result["indexed_chunks"] == 1
+    assert result["removed_stale_chunks"] == 2
+    assert len(es.bulk_sources) == 1

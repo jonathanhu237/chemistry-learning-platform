@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from typing import Any
 
 from server.app.domains.catalog_tree import ai_context
+from server.app.domains.questions.generation import _source_refs_from_static_payload
 
 
 class _Result:
@@ -81,11 +82,84 @@ def test_static_evidence_payload_marks_stale_binding_with_chunk_metadata() -> No
     )
 
     assert payload["status"] == "stale_catalog_node_evidence"
-    assert payload["selected_chunk_ids"] == ["chunk-1"]
-    assert payload["bindings"][0]["chunk_id"] == "chunk-1"
-    assert payload["bindings"][0]["source_title"] == "source.md"
-    assert payload["bindings"][0]["page_number"] == 3
-    assert payload["bindings"][0]["rerank_score"] == 0.91
+    assert payload["selected_chunk_ids"] == []
+    assert payload["bindings"] == []
+    assert payload["static_fallback_available"] is False
+    assert payload["static_fallback_missing"] is True
+    assert payload["binding_count"] == 0
+    assert payload["diagnostic_binding_count"] == 1
+    diagnostic = payload["binding_diagnostics"][0]
+    assert diagnostic["chunk_id"] == "chunk-1"
+    assert diagnostic["source_title"] == "source.md"
+    assert diagnostic["page_number"] == 3
+    assert diagnostic["rerank_score"] == 0.91
+
+
+def test_stale_state_is_authoritative_even_when_binding_was_not_yet_marked_stale() -> None:
+    payload = ai_context.build_static_evidence_payload(
+        _EvidenceSession(
+            state={
+                "node_id": "cat-point-1",
+                "evidence_status": "stale",
+                "diagnostics": {},
+                "stale_reason": "textbook_corpus_changed",
+            },
+            bindings=[
+                {
+                    "binding_id": "binding-1",
+                    "node_id": "cat-point-1",
+                    "chunk_id": "chunk-1",
+                    "evidence_role": "theory",
+                    "selection_status": "selected",
+                    "freshness_status": "fresh",
+                    "source_metadata": {"source_file": "source.md"},
+                }
+            ],
+        ),
+        node_id="cat-point-1",
+    )
+
+    assert payload["status"] == "stale_catalog_node_evidence"
+    assert payload["bindings"] == []
+    assert payload["selected_chunk_ids"] == []
+    assert payload["binding_count"] == 0
+    assert payload["diagnostic_binding_count"] == 1
+    assert payload["catalog_node_evidence_available"] is False
+    assert _source_refs_from_static_payload(payload, node_id="cat-point-1") == []
+
+
+def test_static_evidence_package_never_exposes_stale_chunks_for_assistant_hydration(monkeypatch) -> None:
+    session = _EvidenceSession(
+        state={"node_id": "cat-point-1", "evidence_status": "stale", "diagnostics": {}},
+        bindings=[
+            {
+                "binding_id": "binding-1",
+                "node_id": "cat-point-1",
+                "chunk_id": "chunk-1",
+                "selection_status": "selected",
+                "freshness_status": "fresh",
+                "source_metadata": {"source_file": "source.md"},
+            }
+        ],
+    )
+
+    @contextmanager
+    def session_scope():
+        yield session
+
+    monkeypatch.setattr(ai_context, "db_session", session_scope)
+    monkeypatch.setattr(ai_context, "get_node", _point_node)
+    monkeypatch.setattr(ai_context, "breadcrumbs", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(ai_context, "catalog_path_titles_with_chapter", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(ai_context, "get_content", lambda *_args, **_kwargs: {})
+
+    package = ai_context.catalog_point_static_evidence_package(point_node_id="cat-point-1")
+
+    assert package["static_evidence_status"] == "stale_catalog_node_evidence"
+    assert package["chunk_ids"] == []
+    assert package["bindings"] == []
+    assert package["source_count"] == 0
+    assert package["diagnostic_binding_count"] == 1
 
 
 def _point_node(*_args: Any, **_kwargs: Any) -> dict[str, Any]:

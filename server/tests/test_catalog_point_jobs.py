@@ -146,6 +146,19 @@ def test_mark_point_evidence_stale_does_not_block_or_auto_refresh_by_default(mon
     assert stale_call["canonical_point_id"] == "cat-point-1"
     assert stale_call["source_placement_node_id"] == "cat-point-1"
     assert stale_call["stale_reason"] == "point_content_edited"
+    binding_call = next(
+        call
+        for call in session.calls
+        if "UPDATE experiment_catalog_point_evidence_bindings" in call["sql"]
+    )
+    assert "freshness_status = 'stale'" in binding_call["sql"]
+    assert "selection_status = CASE" in binding_call["sql"]
+    assert "WHEN selection_status = 'selected' THEN 'stale'" in binding_call["sql"]
+    assert binding_call["params"] == {
+        "canonical_point_id": "cat-point-1",
+        "placement_node_id": "cat-point-1",
+        "owner_node_id": "cat-point-1",
+    }
 
 
 def test_worker_claim_uses_database_locking_to_avoid_duplicate_execution() -> None:

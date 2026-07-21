@@ -8,10 +8,11 @@ from typing import Any, Callable
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from server.app.domains.textbook_rag.active_corpus import settings_with_active_textbook_corpus
 from server.app.domains.textbook_rag.retrieval import retrieve_textbook_evidence
 
 
-TEXTBOOK_EVIDENCE_CACHE_SCHEMA_VERSION = 1
+TEXTBOOK_EVIDENCE_CACHE_SCHEMA_VERSION = 2
 
 
 def _stable_json(value: Any) -> str:
@@ -46,6 +47,7 @@ def _sanitized_config(settings: dict[str, Any]) -> dict[str, Any]:
         "rerank_top_k": int(settings.get("rerank_top_k") or 0),
         "final_top_k": int(settings.get("final_top_k") or 0),
         "min_rerank_score": float(settings.get("min_rerank_score") or 0.0),
+        "corpus_revision": max(0, int(settings.get("corpus_revision") or 0)),
     }
 
 
@@ -205,16 +207,17 @@ def retrieve_textbook_evidence_cached(
     canonical_point_id: str | None = None,
     retrieve_fn: Callable[..., dict[str, Any]] = retrieve_textbook_evidence,
 ) -> dict[str, Any]:
+    retrieval_settings = settings_with_active_textbook_corpus(settings, session=session)
     fingerprints = textbook_evidence_cache_fingerprints(
         point_context=point_context,
-        settings=settings,
+        settings=retrieval_settings,
         point_node_id=point_node_id,
         canonical_point_id=canonical_point_id,
     )
     cached = load_cached_textbook_evidence(session, cache_key=fingerprints["cache_key"])
     if cached:
         return cached
-    package = retrieve_fn(point_context=point_context, settings=settings)
+    package = retrieve_fn(point_context=point_context, settings=retrieval_settings)
     stored = store_textbook_evidence_cache(
         session,
         cache_key=fingerprints["cache_key"],

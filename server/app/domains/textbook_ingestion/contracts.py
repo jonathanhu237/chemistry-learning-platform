@@ -239,11 +239,9 @@ class TextbookDocumentView(BaseModel):
     updated_at: datetime | None = None
     published_at: datetime | None = None
     deactivated_at: datetime | None = None
+    deleted_at: datetime | None = None
+    corpus_revision: int | None = Field(default=None, gt=0)
     latest_job: IngestionJobView | None = None
-    allowed_actions: list[str] = Field(default_factory=list)
-    can_publish: bool = False
-    publish_blockers: list[str] = Field(default_factory=list)
-    ocr: dict[str, Any] = Field(default_factory=dict)
     allowed_actions: list[str] = Field(default_factory=list)
     can_publish: bool = False
     publish_blockers: list[str] = Field(default_factory=list)

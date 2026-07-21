@@ -8,6 +8,11 @@ from server.app.auth import AuthUser, require_teacher_console_user
 from server.app.domains.errors import DomainHTTPException
 from server.app.domains.textbook_ingestion.contracts import IngestionJobView, TextbookDocumentView
 from server.app.domains.textbook_ingestion.errors import TextbookIngestionError
+from server.app.domains.textbook_ingestion.lifecycle import (
+    deactivate_textbook,
+    delete_textbook,
+    publish_textbook,
+)
 from server.app.domains.textbook_ingestion.queue import request_cancellation, retry_job
 from server.app.domains.textbook_ingestion.repository import (
     create_textbook_upload,
@@ -133,6 +138,39 @@ def admin_retry_textbook_job(
 ) -> dict[str, Any]:
     try:
         return public_job(retry_job(job_id, actor_id=user.id)) or {}
+    except TextbookIngestionError as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post("/{document_id}/publish", response_model=TextbookDocumentView)
+def admin_publish_textbook(
+    document_id: str,
+    user: AuthUser = Depends(require_teacher_console_user),
+) -> dict[str, Any]:
+    try:
+        return public_document(publish_textbook(document_id, actor_id=user.id))
+    except TextbookIngestionError as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.post("/{document_id}/deactivate", response_model=TextbookDocumentView)
+def admin_deactivate_textbook(
+    document_id: str,
+    user: AuthUser = Depends(require_teacher_console_user),
+) -> dict[str, Any]:
+    try:
+        return public_document(deactivate_textbook(document_id, actor_id=user.id))
+    except TextbookIngestionError as exc:
+        raise _translate_error(exc) from exc
+
+
+@router.delete("/{document_id}", response_model=TextbookDocumentView)
+def admin_delete_textbook(
+    document_id: str,
+    user: AuthUser = Depends(require_teacher_console_user),
+) -> dict[str, Any]:
+    try:
+        return public_document(delete_textbook(document_id, actor_id=user.id))
     except TextbookIngestionError as exc:
         raise _translate_error(exc) from exc
 

@@ -460,12 +460,33 @@ def mark_point_evidence_stale(
     reason: str,
     trigger_source: str = "automatic",
 ) -> None:
+    identity = _point_identity(session, node_id)
     _upsert_evidence_state(
         session,
         node_id=node_id,
         evidence_status="stale",
         stale_reason=reason,
         diagnostics={"stale_trigger": {"reason": reason, "trigger_source": trigger_source}},
+    )
+    session.execute(
+        text(
+            """
+            UPDATE experiment_catalog_point_evidence_bindings
+            SET freshness_status = 'stale',
+                selection_status = CASE
+                  WHEN selection_status = 'selected' THEN 'stale'
+                  ELSE selection_status
+                END,
+                updated_at = now()
+            WHERE canonical_point_id = :canonical_point_id
+               OR node_id IN (:placement_node_id, :owner_node_id)
+            """
+        ),
+        {
+            "canonical_point_id": identity["canonical_point_id"],
+            "placement_node_id": identity["placement_node_id"],
+            "owner_node_id": identity["owner_node_id"],
+        },
     )
     if get_settings().catalog_point_evidence_auto_refresh:
         queue_rag_evidence_refresh_job(session, node_id=node_id, trigger_source=trigger_source, reason=reason)

@@ -64,8 +64,12 @@ def _load_chunk_links(session: Any) -> dict[str, set[str]]:
             SELECT l.node_id, l.chunk_id
             FROM experiment_framework_chunk_links l
             JOIN experiment_framework_nodes n ON n.id = l.node_id
+            JOIN source_chunks sc ON sc.id = l.chunk_id
+            JOIN source_documents sd ON sd.id = sc.document_id
             WHERE n.source_collection = :source_collection
               AND n.doc_id = :doc_id
+              AND COALESCE(sc.content_status, 'pending_review') = 'published'
+              AND sd.publication_status = 'published'
             """
         ),
         {"source_collection": SOURCE_COLLECTION, "doc_id": DOC_ID},
@@ -95,9 +99,17 @@ def _load_formal_links(session: Any) -> list[dict[str, Any]]:
                 JOIN experiment_framework_nodes n ON n.id = l.node_id
                 JOIN formal_experiments fe ON fe.id = l.experiment_id
                 LEFT JOIN source_chunks sc ON sc.id = l.evidence_chunk_id
+                LEFT JOIN source_documents sd ON sd.id = sc.document_id
                 WHERE n.source_collection = :source_collection
                   AND n.doc_id = :doc_id
                   AND fe.status <> 'archived'
+                  AND (
+                    l.evidence_chunk_id IS NULL
+                    OR (
+                      COALESCE(sc.content_status, 'pending_review') = 'published'
+                      AND sd.publication_status = 'published'
+                    )
+                  )
                 ORDER BY n.display_order, l.sort_order, fe.code, l.relation_type
                 """
             ),
@@ -148,9 +160,11 @@ def _count_source_chunks(session: Any) -> int:
             text(
                 """
                 SELECT COUNT(*)
-                FROM source_chunks
-                WHERE metadata->>'source_collection' = :source_collection
-                  AND COALESCE(content_status, 'published') = 'published'
+                FROM source_chunks sc
+                JOIN source_documents sd ON sd.id = sc.document_id
+                WHERE sc.metadata->>'source_collection' = :source_collection
+                  AND COALESCE(sc.content_status, 'pending_review') = 'published'
+                  AND sd.publication_status = 'published'
                 """
             ),
             {"source_collection": SOURCE_COLLECTION},

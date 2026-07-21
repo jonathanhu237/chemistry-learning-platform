@@ -397,7 +397,9 @@ class PostgresContentRepository:
                    sc.markdown, sc.related_knowledge_point_ids, sc.related_experiment_ids,
                    sc.tags, sc.metadata, sc.review_required, sc.content_status
             FROM source_chunks sc
-            LEFT JOIN source_documents sd ON sd.id = sc.document_id
+            JOIN source_documents sd ON sd.id = sc.document_id
+            WHERE COALESCE(sc.content_status, 'pending_review') = 'published'
+              AND sd.publication_status = 'published'
             ORDER BY sc.document_id, sc.chunk_index, sc.id
             """
         )
@@ -460,12 +462,13 @@ class PostgresContentRepository:
                    sc.tags, sc.metadata, sc.review_required, sc.content_status
             FROM links l
             JOIN source_chunks sc ON sc.id = l.from_id
-            LEFT JOIN source_documents sd ON sd.id = sc.document_id
+            JOIN source_documents sd ON sd.id = sc.document_id
             WHERE l.from_type = 'source_chunk'
               AND l.to_type = 'knowledge_point'
               AND l.to_id = :kp_id
               AND COALESCE(l.content_status, 'pending_review') = 'published'
               AND COALESCE(sc.content_status, 'pending_review') = 'published'
+              AND sd.publication_status = 'published'
             ORDER BY l.confidence DESC NULLS LAST, sc.id
             LIMIT :limit
             """,
@@ -480,9 +483,10 @@ class PostgresContentRepository:
                    sc.markdown, sc.related_knowledge_point_ids, sc.related_experiment_ids,
                    sc.tags, sc.metadata, sc.review_required, sc.content_status
             FROM source_chunks sc
-            LEFT JOIN source_documents sd ON sd.id = sc.document_id
+            JOIN source_documents sd ON sd.id = sc.document_id
             WHERE :kp_id = ANY(sc.related_knowledge_point_ids)
               AND COALESCE(sc.content_status, 'pending_review') = 'published'
+              AND sd.publication_status = 'published'
             ORDER BY sc.document_id, sc.chunk_index
             LIMIT :limit
             """,

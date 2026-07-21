@@ -84,7 +84,10 @@ ADMIN_ROUTE_CONTRACTS = [
     ("GET", "/api/admin/textbooks/jobs/{job_id}/events"),
     ("POST", "/api/admin/textbooks/jobs/{job_id}/cancel"),
     ("POST", "/api/admin/textbooks/jobs/{job_id}/retry"),
+    ("DELETE", "/api/admin/textbooks/{document_id}"),
     ("GET", "/api/admin/textbooks/{document_id}"),
+    ("POST", "/api/admin/textbooks/{document_id}/publish"),
+    ("POST", "/api/admin/textbooks/{document_id}/deactivate"),
     ("GET", "/api/admin/textbooks/{document_id}/pages"),
     ("GET", "/api/admin/textbooks/{document_id}/chunks"),
 ]

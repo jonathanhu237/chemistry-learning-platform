@@ -939,6 +939,12 @@
       "owner": "admin-api"
     },
     {
+      "method": "DELETE",
+      "path": "/api/admin/textbooks/{document_id}",
+      "name": "admin_delete_textbook",
+      "owner": "admin-api"
+    },
+    {
       "method": "GET",
       "path": "/api/admin/textbooks/{document_id}",
       "name": "admin_get_textbook",
@@ -951,9 +957,21 @@
       "owner": "admin-api"
     },
     {
+      "method": "POST",
+      "path": "/api/admin/textbooks/{document_id}/deactivate",
+      "name": "admin_deactivate_textbook",
+      "owner": "admin-api"
+    },
+    {
       "method": "GET",
       "path": "/api/admin/textbooks/{document_id}/pages",
       "name": "admin_get_textbook_pages",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/textbooks/{document_id}/publish",
+      "name": "admin_publish_textbook",
       "owner": "admin-api"
     },
     {

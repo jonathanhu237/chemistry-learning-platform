@@ -196,39 +196,58 @@ def build_static_evidence_payload(
     evidence_state: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     state = evidence_state or _evidence_state(session, node_id=node_id)
-    bindings = [_binding_payload(row) for row in _evidence_binding_rows(session, node_id=node_id)]
+    binding_diagnostics = [_binding_payload(row) for row in _evidence_binding_rows(session, node_id=node_id)]
     state_status = str(state.get("evidence_status") or "missing")
     fresh_selected_bindings = [
         item
-        for item in bindings
+        for item in binding_diagnostics
         if item.get("selection_status") == "selected" and item.get("freshness_status") == "fresh"
     ]
-    stale = not fresh_selected_bindings and (
-        state_status == "stale" or any(item.get("freshness_status") == "stale" for item in bindings)
+    state_stale = state_status == "stale"
+    bindings = [] if state_stale else fresh_selected_bindings
+    stale = state_stale or (
+        not bindings and any(item.get("freshness_status") == "stale" for item in binding_diagnostics)
     )
-    if not bindings:
-        status_value = "missing_catalog_node_evidence"
-        message = "教材证据尚未绑定；请先刷新该点位的教材证据。"
-    elif stale:
+    if stale:
         status_value = "stale_catalog_node_evidence"
         message = "教材证据已过期；请刷新后再出题。"
+    elif not binding_diagnostics:
+        status_value = "missing_catalog_node_evidence"
+        message = "教材证据尚未绑定；请先刷新该点位的教材证据。"
     elif state_status in {"failed", "unavailable"}:
         status_value = "failed_catalog_node_evidence"
         message = "教材证据刷新失败；请查看刷新诊断或重试。"
     elif state_status in {"succeeded", "partial", "fresh", "available"}:
-        status_value = "available_catalog_node_evidence"
-        message = "教材证据已绑定，可用于 AI 出题。"
+        if bindings:
+            status_value = "available_catalog_node_evidence"
+            message = "教材证据已绑定，可用于 AI 出题。"
+        else:
+            status_value = "missing_catalog_node_evidence"
+            message = "教材证据没有可消费的已选新鲜绑定；请刷新该点位的教材证据。"
     else:
-        status_value = "pending_catalog_node_evidence" if state_status in {"pending", "running"} else "available_catalog_node_evidence"
-        message = "教材证据正在刷新。" if state_status in {"pending", "running"} else "教材证据已绑定，可用于 AI 出题。"
+        if state_status in {"pending", "running"}:
+            status_value = "pending_catalog_node_evidence"
+            message = "教材证据正在刷新。"
+        elif bindings:
+            status_value = "available_catalog_node_evidence"
+            message = "教材证据已绑定，可用于 AI 出题。"
+        else:
+            status_value = "missing_catalog_node_evidence"
+            message = "教材证据没有可消费的已选新鲜绑定；请刷新该点位的教材证据。"
     return {
         "node_id": node_id,
         "status": status_value,
         "state": state,
         "bindings": bindings,
-        "candidate_diagnostics": (state.get("diagnostics") or {}).get("candidate_diagnostics") if isinstance(state.get("diagnostics"), dict) else {},
-        "selected_chunk_ids": [item["chunk_id"] for item in bindings if item.get("selection_status") == "selected"],
+        "binding_diagnostics": binding_diagnostics,
+        "candidate_diagnostics": (
+            (state.get("diagnostics") or {}).get("candidate_diagnostics")
+            if isinstance(state.get("diagnostics"), dict)
+            else {}
+        ),
+        "selected_chunk_ids": [item["chunk_id"] for item in bindings],
         "binding_count": len(bindings),
+        "diagnostic_binding_count": len(binding_diagnostics),
         "static_fallback_available": bool(bindings),
         "static_fallback_missing": not bindings,
         "catalog_node_evidence_available": status_value == "available_catalog_node_evidence",
@@ -264,6 +283,7 @@ def catalog_point_static_evidence_package(*, point_node_id: str) -> dict[str, An
         "static_evidence_status": payload.get("status"),
         "evidence_state_status": (payload.get("state") or {}).get("evidence_status"),
         "source_count": len(bindings),
+        "diagnostic_binding_count": int(payload.get("diagnostic_binding_count") or 0),
         "bindings": bindings,
         "dynamic_rag_available": False,
         "message": payload.get("message"),
@@ -443,10 +463,14 @@ def _evidence_binding_rows(session: Any, *, node_id: str) -> list[dict[str, Any]
                        sd.metadata AS document_metadata
                 FROM experiment_catalog_point_evidence_bindings b
                 JOIN source ON true
-                LEFT JOIN source_chunks sc ON sc.id = b.chunk_id
-                LEFT JOIN source_documents sd ON sd.id = sc.document_id
-                WHERE b.node_id = :node_id
-                   OR (source.canonical_point_id IS NOT NULL AND b.canonical_point_id = source.canonical_point_id)
+                JOIN source_chunks sc ON sc.id = b.chunk_id
+                JOIN source_documents sd ON sd.id = sc.document_id
+                WHERE (
+                    b.node_id = :node_id
+                    OR (source.canonical_point_id IS NOT NULL AND b.canonical_point_id = source.canonical_point_id)
+                )
+                  AND COALESCE(sc.content_status, 'pending_review') = 'published'
+                  AND sd.publication_status = 'published'
                 ORDER BY b.freshness_status = 'fresh' DESC,
                          b.selection_status = 'selected' DESC,
                          b.rank,

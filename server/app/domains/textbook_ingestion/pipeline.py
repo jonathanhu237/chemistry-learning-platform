@@ -217,11 +217,28 @@ class TextbookIngestionPipeline:
             message=f"Indexed {completed}/{total} textbook chunk(s)" if completed == total else None,
         )
 
+    @staticmethod
+    def _cleanup_unpublished_projection(
+        projector: TextbookSearchProjector | None,
+        *,
+        document_id: str,
+    ) -> None:
+        if projector is None:
+            return
+        try:
+            projector.delete_document(document_id)
+        except Exception:
+            # Preserve the original job/cancellation error. A later retry starts
+            # with a delete-by-query, and explicit document deletion also cleans
+            # the derived projection.
+            return
+
     def process(self, claimed_job: ClaimedIngestionJob) -> PipelineOutcome:
         current = claimed_job
         total_pages = 0
         ocr_page_count = 0
         total_chunks = 0
+        projector: TextbookSearchProjector | None = None
         try:
             self._ensure_active(current)
             processing_input = self.input_loader(current)
@@ -413,6 +430,7 @@ class TextbookIngestionPipeline:
                 total_chunks=total_chunks,
             )
         except PipelineCancelled:
+            self._cleanup_unpublished_projection(projector, document_id=current.document_id)
             acknowledge_cancellation(current)
             return PipelineOutcome(
                 job_id=current.id,
@@ -423,6 +441,7 @@ class TextbookIngestionPipeline:
                 total_chunks=total_chunks,
             )
         except TextbookJobLeaseLostError:
+            self._cleanup_unpublished_projection(projector, document_id=current.document_id)
             try:
                 if cancellation_requested(current):
                     acknowledge_cancellation(current)
@@ -438,6 +457,7 @@ class TextbookIngestionPipeline:
                 pass
             raise
         except Exception as exc:
+            self._cleanup_unpublished_projection(projector, document_id=current.document_id)
             reason, message, retryable = _error_details(exc)
             if retryable and release_job_for_retry(current, error_code=reason, error_message=message):
                 return PipelineOutcome(

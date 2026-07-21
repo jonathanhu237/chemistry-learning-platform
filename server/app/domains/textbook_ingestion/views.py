@@ -74,19 +74,54 @@ def public_document(row: dict[str, Any]) -> dict[str, Any]:
     job_status = str((latest_job or {}).get("status") or "")
     quality_report = (latest_job or {}).get("quality_report") or {}
     outputs = (latest_job or {}).get("outputs") or {}
+    document_kind = str(row.get("document_kind") or "")
+    is_seed = document_kind == "canonical_textbook"
     blockers = [str(item) for item in quality_report.get("blocking_issues") or []]
-    if job_status != IngestionStage.REVIEW_READY.value:
-        blockers.append("ingestion_not_review_ready")
-    if not bool(outputs.get("index_verified")):
-        blockers.append("index_not_verified")
+    rollback_candidate = publication_status == "inactive"
+    expected_job_statuses = (
+        {IngestionStage.READY.value, IngestionStage.REVIEW_READY.value}
+        if rollback_candidate
+        else {IngestionStage.REVIEW_READY.value}
+    )
+    if not (rollback_candidate and is_seed):
+        if job_status not in expected_job_statuses:
+            blockers.append("ingestion_not_review_ready")
+        if not bool(quality_report.get("publishable")):
+            blockers.append("quality_not_publishable")
+        if not bool(outputs.get("index_verified")):
+            blockers.append("index_not_verified")
+        total_chunks = int((latest_job or {}).get("total_chunks") or 0)
+        if (
+            total_chunks <= 0
+            or int((latest_job or {}).get("embedded_chunks") or 0) != total_chunks
+            or int((latest_job or {}).get("indexed_chunks") or 0) != total_chunks
+            or int(outputs.get("indexed_chunks") or 0) != total_chunks
+        ):
+            blockers.append("index_count_mismatch")
     blockers = list(dict.fromkeys(blockers))
-    can_publish = publication_status == "review_ready" and not blockers
+    can_publish = publication_status in {"review_ready", "inactive"} and not blockers
     actions = list((latest_job or {}).get("allowed_actions") or [])
     if can_publish:
         actions.append("publish")
+        if rollback_candidate:
+            actions.append("rollback")
     if publication_status == "published":
         actions.append("deactivate")
-    if publication_status not in {"published", "deleted"}:
+    active_job_statuses = {
+        IngestionStage.UPLOADED.value,
+        IngestionStage.EXTRACTING.value,
+        IngestionStage.AWAITING_OCR.value,
+        IngestionStage.OCR.value,
+        IngestionStage.STRUCTURING.value,
+        IngestionStage.CHUNKING.value,
+        IngestionStage.EMBEDDING.value,
+        IngestionStage.INDEXING.value,
+    }
+    if (
+        not is_seed
+        and publication_status not in {"published", "deleted"}
+        and job_status not in active_job_statuses
+    ):
         actions.append("delete")
     return {
         "id": str(row.get("id") or ""),
@@ -104,6 +139,8 @@ def public_document(row: dict[str, Any]) -> dict[str, Any]:
         "updated_at": row.get("updated_at"),
         "published_at": row.get("published_at"),
         "deactivated_at": row.get("deactivated_at"),
+        "deleted_at": row.get("deleted_at"),
+        "corpus_revision": row.get("corpus_revision"),
         "latest_job": latest_job,
         "allowed_actions": list(dict.fromkeys(actions)),
         "can_publish": can_publish,

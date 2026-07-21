@@ -72,6 +72,7 @@ def sanitized_textbook_rag_config(settings: dict[str, Any]) -> dict[str, Any]:
         "selected_per_section": int(settings.get("selected_per_section") or DEFAULT_SELECTED_PER_SECTION),
         "candidate_per_section": int(settings.get("candidate_per_section") or DEFAULT_CANDIDATE_PER_SECTION),
         "min_rerank_score": float(settings.get("min_rerank_score") or 0.0),
+        "corpus_revision": max(0, int(settings.get("corpus_revision") or 0)),
     }
 
 
@@ -113,10 +114,15 @@ def retrieve_point_textbook_evidence(
         "candidate_per_section": candidate_per_section,
     }
     package = retrieve_textbook_evidence(point_context=point_context, settings=retrieval_settings)
+    package_diagnostics = package.get("diagnostics") if isinstance(package.get("diagnostics"), dict) else {}
+    fingerprint_settings = {
+        **retrieval_settings,
+        "corpus_revision": max(0, int(package_diagnostics.get("corpus_revision") or 0)),
+    }
     fingerprints = textbook_evidence_fingerprints(
         catalog_context=catalog_context,
         point_context=point_context,
-        settings=retrieval_settings,
+        settings=fingerprint_settings,
     )
     selected_refs: list[dict[str, Any]] = []
     candidate_diagnostics: dict[str, list[dict[str, Any]]] = {}
@@ -145,6 +151,10 @@ def retrieve_point_textbook_evidence(
                     "section_path": section_path,
                     "content_type": source.get("content_type"),
                     "content_hash": source.get("content_hash"),
+                    "document_id": source.get("document_id"),
+                    "logical_textbook_key": source.get("logical_textbook_key"),
+                    "document_version": source.get("document_version"),
+                    "source_collection": source.get("source_collection"),
                     "recall_source": source.get("recall_source"),
                     "recall_score": source.get("recall_score"),
                     "rerank_score": source.get("rerank_score"),
