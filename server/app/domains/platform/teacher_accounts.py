@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
@@ -11,17 +11,16 @@ from server.app.domains.errors import DomainHTTPException as HTTPException, doma
 from server.app.infrastructure.database import db_session
 from server.app.security import hash_password
 
-MANAGED_TEACHER_ROLES = ("admin", "teacher")
-MANAGED_ACCOUNT_STATUSES = ("active", "disabled")
-TEACHER_ACCOUNT_DELETE_BLOCKED_DETAIL = "Teacher account has owned records; disable it instead"
+SELF_PEER_OPERATION_DETAIL = "Peer account operations cannot target the current account"
+LAST_ACTIVE_SUPERVISOR_DETAIL = "Cannot disable the last active supervisor teacher"
 
 
 class TeacherAccountResponse(BaseModel):
     id: str
     username: str
-    role: str
+    role: Literal["admin", "teacher"]
     display_name: str
-    status: str
+    status: Literal["active", "disabled"]
     must_change_password: bool
     password_version: int
     created_at: datetime | None = None
@@ -30,21 +29,17 @@ class TeacherAccountResponse(BaseModel):
 
 
 class TeacherAccountCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     username: str = Field(min_length=1, max_length=128)
     display_name: str = Field(min_length=1, max_length=120)
     password: str = Field(min_length=8, max_length=256)
-    must_change_password: bool = True
-
-
-class TeacherAccountPatchRequest(BaseModel):
-    display_name: str | None = Field(default=None, min_length=1, max_length=120)
-    role: str | None = Field(default=None, pattern="^(admin|teacher)$")
-    status: str | None = Field(default=None, pattern="^(active|disabled)$")
 
 
 class TeacherAccountPasswordResetRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     password: str = Field(min_length=8, max_length=256)
-    must_change_password: bool = True
 
 
 def _teacher_account_response(row: dict[str, Any]) -> TeacherAccountResponse:
@@ -66,57 +61,65 @@ def _not_found() -> HTTPException:
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Teacher account not found")
 
 
-def _quote_identifier(identifier: str) -> str:
-    return '"' + identifier.replace('"', '""') + '"'
+def _ensure_peer_operation(*, actor_user_id: str, account_id: str) -> None:
+    if actor_user_id == account_id:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=SELF_PEER_OPERATION_DETAIL)
 
 
-def _teacher_account_dependencies(session: Any, account_id: str) -> list[str]:
-    dependency_rows = [
+def _lock_supervisor_accounts(session: Any) -> list[dict[str, Any]]:
+    return [
         dict(row)
         for row in session.execute(
             text(
                 """
-                SELECT kcu.table_schema, kcu.table_name, kcu.column_name
-                FROM information_schema.table_constraints tc
-                JOIN information_schema.key_column_usage kcu
-                  ON tc.constraint_name = kcu.constraint_name
-                 AND tc.constraint_schema = kcu.constraint_schema
-                JOIN information_schema.constraint_column_usage ccu
-                  ON ccu.constraint_name = tc.constraint_name
-                 AND ccu.constraint_schema = tc.constraint_schema
-                WHERE tc.constraint_type = 'FOREIGN KEY'
-                  AND ccu.table_name = 'app_users'
-                  AND ccu.column_name = 'id'
-                  AND kcu.table_name <> 'auth_sessions'
-                ORDER BY kcu.table_schema, kcu.table_name, kcu.column_name
+                SELECT id, status
+                FROM app_users
+                WHERE role = 'admin'
+                ORDER BY id
+                FOR UPDATE
                 """
             )
         )
         .mappings()
         .all()
     ]
-    dependencies: list[str] = []
-    for dependency in dependency_rows:
-        schema = _quote_identifier(str(dependency["table_schema"]))
-        table = _quote_identifier(str(dependency["table_name"]))
-        column = _quote_identifier(str(dependency["column_name"]))
-        row = (
-            session.execute(
-                text(
-                    f"""
-                    SELECT COUNT(*) AS dependency_count
-                    FROM {schema}.{table}
-                    WHERE {column} = CAST(:account_id AS uuid)
-                    """
-                ),
-                {"account_id": account_id},
-            )
-            .mappings()
-            .first()
+
+
+def _load_teacher_account_for_update(session: Any, account_id: str) -> dict[str, Any]:
+    row = (
+        session.execute(
+            text(
+                """
+                SELECT id, username, role, display_name, status, must_change_password,
+                       password_version, created_at, updated_at, last_login_at
+                FROM app_users
+                WHERE id = CAST(:account_id AS uuid)
+                  AND role IN ('admin', 'teacher')
+                FOR UPDATE
+                """
+            ),
+            {"account_id": account_id},
         )
-        if int(row["dependency_count"] if row else 0) > 0:
-            dependencies.append(f"{dependency['table_name']}.{dependency['column_name']}")
-    return dependencies
+        .mappings()
+        .first()
+    )
+    if not row:
+        raise _not_found()
+    return dict(row)
+
+
+def _revoke_active_sessions(session: Any, account_id: str) -> None:
+    session.execute(
+        text(
+            """
+            UPDATE auth_sessions
+            SET revoked_at = now()
+            WHERE user_id = CAST(:account_id AS uuid)
+              AND revoked_at IS NULL
+            """
+        ),
+        {"account_id": account_id},
+    )
 
 
 def list_teacher_accounts() -> list[TeacherAccountResponse]:
@@ -132,6 +135,7 @@ def list_teacher_accounts() -> list[TeacherAccountResponse]:
                     WHERE role IN ('admin', 'teacher')
                     ORDER BY
                       CASE status WHEN 'active' THEN 1 ELSE 2 END,
+                      CASE role WHEN 'admin' THEN 1 ELSE 2 END,
                       COALESCE(updated_at, created_at) DESC,
                       username
                     """
@@ -159,8 +163,8 @@ def create_teacher_account(payload: TeacherAccountCreateRequest) -> TeacherAccou
                           must_change_password, password_version
                         )
                         VALUES (
-                          :username, 'admin', :display_name, :password_hash, 'active',
-                          :must_change_password, 1
+                          :username, 'teacher', :display_name, :password_hash, 'active',
+                          true, 1
                         )
                         RETURNING id, username, role, display_name, status, must_change_password,
                                   password_version, created_at, updated_at, last_login_at
@@ -170,7 +174,6 @@ def create_teacher_account(payload: TeacherAccountCreateRequest) -> TeacherAccou
                         "username": username,
                         "display_name": display_name,
                         "password_hash": hash_password(payload.password),
-                        "must_change_password": payload.must_change_password,
                     },
                 )
                 .mappings()
@@ -181,57 +184,13 @@ def create_teacher_account(payload: TeacherAccountCreateRequest) -> TeacherAccou
     return _teacher_account_response(dict(row))
 
 
-def patch_teacher_account(account_id: str, payload: TeacherAccountPatchRequest) -> TeacherAccountResponse:
-    display_name = payload.display_name.strip() if payload.display_name is not None else None
-    if payload.display_name is not None and not display_name:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Display name is required")
-    with db_session() as session:
-        row = (
-            session.execute(
-                text(
-                    """
-                    UPDATE app_users
-                    SET display_name = COALESCE(:display_name, display_name),
-                        role = COALESCE(:role, role),
-                        status = COALESCE(:status, status),
-                        updated_at = now()
-                    WHERE id = CAST(:account_id AS uuid)
-                      AND role IN ('admin', 'teacher')
-                    RETURNING id, username, role, display_name, status, must_change_password,
-                              password_version, created_at, updated_at, last_login_at
-                    """
-                ),
-                {
-                    "account_id": account_id,
-                    "display_name": display_name,
-                    "role": payload.role,
-                    "status": payload.status,
-                },
-            )
-            .mappings()
-            .first()
-        )
-        if not row:
-            raise _not_found()
-        if payload.status == "disabled" or payload.role is not None:
-            session.execute(
-                text(
-                    """
-                    UPDATE auth_sessions
-                    SET revoked_at = now()
-                    WHERE user_id = CAST(:account_id AS uuid)
-                      AND revoked_at IS NULL
-                    """
-                ),
-                {"account_id": account_id},
-            )
-    return _teacher_account_response(dict(row))
-
-
 def reset_teacher_account_password(
     account_id: str,
     payload: TeacherAccountPasswordResetRequest,
+    *,
+    actor_user_id: str,
 ) -> TeacherAccountResponse:
+    _ensure_peer_operation(actor_user_id=actor_user_id, account_id=account_id)
     with db_session() as session:
         row = (
             session.execute(
@@ -239,7 +198,7 @@ def reset_teacher_account_password(
                     """
                     UPDATE app_users
                     SET password_hash = :password_hash,
-                        must_change_password = :must_change_password,
+                        must_change_password = true,
                         password_version = password_version + 1,
                         updated_at = now()
                     WHERE id = CAST(:account_id AS uuid)
@@ -251,7 +210,6 @@ def reset_teacher_account_password(
                 {
                     "account_id": account_id,
                     "password_hash": hash_password(payload.password),
-                    "must_change_password": payload.must_change_password,
                 },
             )
             .mappings()
@@ -259,76 +217,67 @@ def reset_teacher_account_password(
         )
         if not row:
             raise _not_found()
-        session.execute(
-            text(
-                """
-                UPDATE auth_sessions
-                SET revoked_at = now()
-                WHERE user_id = CAST(:account_id AS uuid)
-                  AND revoked_at IS NULL
-                """
-            ),
-            {"account_id": account_id},
-        )
+        _revoke_active_sessions(session, account_id)
     return _teacher_account_response(dict(row))
 
 
-def disable_teacher_account(account_id: str) -> TeacherAccountResponse:
-    return patch_teacher_account(account_id, TeacherAccountPatchRequest(status="disabled"))
-
-
-def enable_teacher_account(account_id: str) -> TeacherAccountResponse:
-    return patch_teacher_account(account_id, TeacherAccountPatchRequest(status="active"))
-
-
-def delete_teacher_account(account_id: str) -> TeacherAccountResponse:
-    try:
-        with db_session() as session:
-            row = (
-                session.execute(
-                    text(
-                        """
-                        SELECT id, username, role, display_name, status, must_change_password,
-                               password_version, created_at, updated_at, last_login_at
-                        FROM app_users
-                        WHERE id = CAST(:account_id AS uuid)
-                          AND role IN ('admin', 'teacher')
-                        """
-                    ),
-                    {"account_id": account_id},
-                )
-                .mappings()
-                .first()
-            )
-            if not row:
-                raise _not_found()
-            dependencies = _teacher_account_dependencies(session, account_id)
-            if dependencies:
+def disable_teacher_account(account_id: str, *, actor_user_id: str) -> TeacherAccountResponse:
+    _ensure_peer_operation(actor_user_id=actor_user_id, account_id=account_id)
+    with db_session() as session:
+        supervisor_accounts = _lock_supervisor_accounts(session)
+        target = _load_teacher_account_for_update(session, account_id)
+        if target["role"] == "admin" and target["status"] == "active":
+            active_supervisor_count = sum(row["status"] == "active" for row in supervisor_accounts)
+            if active_supervisor_count <= 1:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail=TEACHER_ACCOUNT_DELETE_BLOCKED_DETAIL,
+                    detail=LAST_ACTIVE_SUPERVISOR_DETAIL,
                 )
-            deleted = (
-                session.execute(
-                    text(
-                        """
-                        DELETE FROM app_users
-                        WHERE id = CAST(:account_id AS uuid)
-                          AND role IN ('admin', 'teacher')
-                        RETURNING id, username, role, display_name, status, must_change_password,
-                                  password_version, created_at, updated_at, last_login_at
-                        """
-                    ),
-                    {"account_id": account_id},
-                )
-                .mappings()
-                .first()
+        row = (
+            session.execute(
+                text(
+                    """
+                    UPDATE app_users
+                    SET status = 'disabled',
+                        must_change_password = true,
+                        password_version = password_version + 1,
+                        updated_at = now()
+                    WHERE id = CAST(:account_id AS uuid)
+                      AND role IN ('admin', 'teacher')
+                    RETURNING id, username, role, display_name, status, must_change_password,
+                              password_version, created_at, updated_at, last_login_at
+                    """
+                ),
+                {"account_id": account_id},
             )
-            if not deleted:
-                raise _not_found()
-    except IntegrityError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=TEACHER_ACCOUNT_DELETE_BLOCKED_DETAIL,
-        ) from exc
-    return _teacher_account_response(dict(deleted))
+            .mappings()
+            .one()
+        )
+        _revoke_active_sessions(session, account_id)
+    return _teacher_account_response(dict(row))
+
+
+def enable_teacher_account(account_id: str, *, actor_user_id: str) -> TeacherAccountResponse:
+    _ensure_peer_operation(actor_user_id=actor_user_id, account_id=account_id)
+    with db_session() as session:
+        row = (
+            session.execute(
+                text(
+                    """
+                    UPDATE app_users
+                    SET status = 'active',
+                        updated_at = now()
+                    WHERE id = CAST(:account_id AS uuid)
+                      AND role IN ('admin', 'teacher')
+                    RETURNING id, username, role, display_name, status, must_change_password,
+                              password_version, created_at, updated_at, last_login_at
+                    """
+                ),
+                {"account_id": account_id},
+            )
+            .mappings()
+            .first()
+        )
+        if not row:
+            raise _not_found()
+    return _teacher_account_response(dict(row))

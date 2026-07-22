@@ -18,9 +18,12 @@ The user-owned modification at `artifacts/catalog_outline_seed_validation_report
   - `test_runtime_consumer_import_boundaries`: `assessments/reports.py` already imports the disallowed assistant provider module.
   - `test_question_workbench_generates_draft_from_prebound_catalog_evidence`: the local effective configuration reports textbook RAG disabled, so the fixture receives HTTP 409.
 - Teacher typecheck: passed.
-- Student typecheck: passed after installing the lockfile dependencies with `npm ci`; the initial attempt only failed because `node_modules/tsc` was absent.
+- Teacher tests/build: `154 passed`; production build passed with existing large-chunk warnings.
+- Student typecheck/build: passed after installing the lockfile dependencies with `npm ci`; the initial typecheck attempt only failed because `node_modules/tsc` was absent. Production build passed with existing large-chunk/eval warnings.
+- Student tests: `107 passed`, `1 failed`.
+  - `assistantHistoryStore.test.ts`: `readStudentAiHistory(saved.id)` returned `undefined` in the localStorage test environment instead of the expected normalized message IDs.
 
-These two backend failures are baseline defects/environment state, not reconciliation regressions. The final gate should either fix them when naturally touched or continue to report them explicitly.
+These backend and student-test failures are baseline defects/environment state, not reconciliation regressions. The final gate should either fix them when naturally touched or continue to report them explicitly.
 
 ## Merge preview risk
 

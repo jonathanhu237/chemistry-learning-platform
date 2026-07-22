@@ -898,6 +898,36 @@
     },
     {
       "method": "GET",
+      "path": "/api/admin/teacher-accounts",
+      "name": "admin_list_teacher_accounts",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/teacher-accounts",
+      "name": "admin_create_teacher_account",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/teacher-accounts/{account_id}/disable",
+      "name": "admin_disable_teacher_account",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/teacher-accounts/{account_id}/enable",
+      "name": "admin_enable_teacher_account",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/teacher-accounts/{account_id}/reset-password",
+      "name": "admin_reset_teacher_account_password",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
       "path": "/api/admin/textbooks",
       "name": "admin_list_textbooks",
       "owner": "admin-api"
@@ -1282,12 +1312,6 @@
     },
     {
       "method": "GET",
-      "path": "/api/web-admin/session",
-      "name": "web_admin_session",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "GET",
       "path": "/api/web-admin/student-preview/classes",
       "name": "web_admin_list_student_preview_classes",
       "owner": "web-admin-api"
@@ -1314,48 +1338,6 @@
       "method": "POST",
       "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/restore",
       "name": "web_admin_restore_student_preview",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/web-admin/teacher-accounts",
-      "name": "web_admin_list_teacher_accounts",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/web-admin/teacher-accounts",
-      "name": "web_admin_create_teacher_account",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/web-admin/teacher-accounts/{account_id}",
-      "name": "web_admin_delete_teacher_account",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "PATCH",
-      "path": "/api/web-admin/teacher-accounts/{account_id}",
-      "name": "web_admin_patch_teacher_account",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/web-admin/teacher-accounts/{account_id}/disable",
-      "name": "web_admin_disable_teacher_account",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/web-admin/teacher-accounts/{account_id}/enable",
-      "name": "web_admin_enable_teacher_account",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/web-admin/teacher-accounts/{account_id}/reset-password",
-      "name": "web_admin_reset_teacher_account_password",
       "owner": "web-admin-api"
     },
     {

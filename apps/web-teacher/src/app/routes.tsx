@@ -63,7 +63,7 @@ const TextbooksPage = lazy(async () => {
   return { default: module.TextbooksPage };
 });
 
-export type AdminRole = "admin" | "teacher" | "student" | "platform_admin";
+export type AdminRole = "admin" | "teacher" | "student";
 
 export type AdminRouteDefinition = {
   path: string;

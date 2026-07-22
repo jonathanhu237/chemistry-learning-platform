@@ -1,0 +1,32 @@
+.account-password-card {
+  width: min(470px, 100%);
+}
+
+.account-modal-description {
+  display: block;
+  margin-bottom: 18px;
+  line-height: 1.7;
+}
+
+.teacher-account-card {
+  border-color: rgba(0, 88, 38, 0.15);
+}
+
+.teacher-account-card .ant-card-body {
+  display: grid;
+  gap: 16px;
+}
+
+.teacher-account-identity {
+  display: grid;
+  gap: 2px;
+}
+
+.teacher-account-identity .ant-typography-secondary {
+  font-size: 12px;
+}
+
+.teacher-account-actions {
+  display: flex;
+  justify-content: flex-end;
+}

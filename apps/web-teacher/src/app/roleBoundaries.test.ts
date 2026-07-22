@@ -5,6 +5,8 @@ import requireAdminSource from "./auth/RequireAdmin.tsx?raw";
 import navSource from "./nav.tsx?raw";
 import learningResourcesPageSource from "../features/resources/LearningResourcesPage.tsx?raw";
 import resourceUtilsSource from "../lib/resourceUtils.ts?raw";
+import authApiSource from "../api/auth.ts?raw";
+import routesSource from "./routes.tsx?raw";
 import { adminNavItemsForRole, selectedAdminNavKey } from "./nav";
 import { adminDefaultRoute, adminRoutes } from "./routes";
 import { areaMeta } from "../lib/resourceUtils";
@@ -42,6 +44,8 @@ describe("teacher console role boundaries", () => {
     expect(requireAdminSource).toContain('meQuery.data.role !== "admin" && meQuery.data.role !== "teacher"');
     expect(loginPageSource).not.toContain('response.user.role === "admin"');
     expect(requireAdminSource).not.toContain('meQuery.data.role === "admin"');
+    expect(authApiSource).not.toContain("platform_admin");
+    expect(routesSource).not.toContain("platform_admin");
   });
 
   it("keeps resource overview on teacher-owned periodic rendering with shared area semantics", () => {

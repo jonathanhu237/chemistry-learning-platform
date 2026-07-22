@@ -8,7 +8,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
-from server.app.domains.platform.roles import PLATFORM_ADMIN_ROLE, TEACHER_CONSOLE_ROLES, is_teacher_console_role
+from server.app.domains.platform.roles import (
+    is_supervisor_teacher_role,
+    is_teacher_console_role,
+)
 from server.app.infrastructure.database import db_session
 from server.app.security import AuthError, create_access_token, hash_password, verify_password, decode_access_token
 
@@ -555,7 +558,11 @@ async def register_student(payload: StudentActivateRequest) -> LoginResponse:
     return await activate_student(payload)
 
 
-def get_user_from_access_token(access_token: str) -> AuthUser:
+def get_user_from_access_token(
+    access_token: str,
+    *,
+    allow_password_change_required: bool = False,
+) -> AuthUser:
     try:
         claims = decode_access_token(access_token)
     except AuthError as exc:
@@ -596,35 +603,46 @@ def get_user_from_access_token(access_token: str) -> AuthUser:
         user.preview_student_id = claims.get("preview_student_id") or user.student_id
     if user.status != "active" or user.password_version != int(claims.get("password_version") or 0):
         raise _auth_error("User session is no longer valid")
+    if not allow_password_change_required:
+        _require_completed_password_change(user)
     return user
 
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)) -> AuthUser:
     if not credentials:
         raise _auth_error()
-    return get_user_from_access_token(credentials.credentials)
+    return get_user_from_access_token(
+        credentials.credentials,
+        allow_password_change_required=True,
+    )
 
 
 def require_roles(*roles: str) -> Callable[[AuthUser], AuthUser]:
     async def dependency(user: AuthUser = Depends(get_current_user)) -> AuthUser:
-        if user.role == "student" and user.must_change_password:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Password change required")
         if user.role not in roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+        _require_completed_password_change(user)
         return user
 
     return dependency
 
 
-async def require_platform_admin(user: AuthUser = Depends(get_current_user)) -> AuthUser:
-    if user.role != PLATFORM_ADMIN_ROLE:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Platform admin account required")
-    return user
+def _require_completed_password_change(user: AuthUser) -> None:
+    if user.must_change_password:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Password change required")
 
 
 async def require_teacher_console_user(user: AuthUser = Depends(get_current_user)) -> AuthUser:
     if not is_teacher_console_role(user.role):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teacher console account required")
+    _require_completed_password_change(user)
+    return user
+
+
+async def require_supervisor_teacher(user: AuthUser = Depends(get_current_user)) -> AuthUser:
+    if not is_supervisor_teacher_role(user.role):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Supervisor teacher account required")
+    _require_completed_password_change(user)
     return user
 
 
@@ -653,17 +671,36 @@ async def logout(
     return {"ok": True}
 
 
-@router.post("/password")
-async def change_password(
+def _copy_session_context(source: AuthUser, target: AuthUser) -> AuthUser:
+    target.student_id = source.student_id
+    target.class_id = source.class_id
+    target.class_name = source.class_name
+    target.preview_mode = source.preview_mode
+    target.preview_purpose = source.preview_purpose
+    target.preview_teacher_user_id = source.preview_teacher_user_id
+    target.preview_class_id = source.preview_class_id
+    target.preview_student_id = source.preview_student_id
+    return target
+
+
+@router.post("/password", response_model=LoginResponse)
+def change_password(
     payload: PasswordChangeRequest,
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     user: AuthUser = Depends(get_current_user),
-) -> dict[str, bool]:
-    claims = decode_access_token(credentials.credentials) if credentials else {}
+) -> LoginResponse:
+    if user.preview_mode:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Preview account mutation is disabled")
     with db_session() as session:
         row = (
             session.execute(
-                text("SELECT password_hash FROM app_users WHERE id = CAST(:user_id AS uuid)"),
+                text(
+                    """
+                    SELECT password_hash
+                    FROM app_users
+                    WHERE id = CAST(:user_id AS uuid)
+                    FOR UPDATE
+                    """
+                ),
                 {"user_id": user.id},
             )
             .mappings()
@@ -671,18 +708,26 @@ async def change_password(
         )
         if not row or not verify_password(payload.current_password, row["password_hash"]):
             raise _auth_error("Current password is invalid")
-        session.execute(
-            text(
-                """
-                UPDATE app_users
-                SET password_hash = :password_hash,
-                    must_change_password = false,
-                    password_version = password_version + 1,
-                    updated_at = now()
-                WHERE id = CAST(:user_id AS uuid)
-                """
-            ),
-            {"user_id": user.id, "password_hash": hash_password(payload.new_password)},
+        if verify_password(payload.new_password, row["password_hash"]):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="New password must be different")
+        updated = (
+            session.execute(
+                text(
+                    """
+                    UPDATE app_users
+                    SET password_hash = :password_hash,
+                        must_change_password = false,
+                        password_version = password_version + 1,
+                        updated_at = now()
+                    WHERE id = CAST(:user_id AS uuid)
+                    RETURNING id, username, role, display_name, status,
+                              must_change_password, password_version
+                    """
+                ),
+                {"user_id": user.id, "password_hash": hash_password(payload.new_password)},
+            )
+            .mappings()
+            .one()
         )
         session.execute(
             text(
@@ -690,13 +735,13 @@ async def change_password(
                 UPDATE auth_sessions
                 SET revoked_at = now()
                 WHERE user_id = CAST(:user_id AS uuid)
-                  AND token_jti <> :current_jti
                   AND revoked_at IS NULL
                 """
             ),
-            {"user_id": user.id, "current_jti": claims.get("jti")},
+            {"user_id": user.id},
         )
-    return {"ok": True}
+    next_user = _copy_session_context(user, _user_from_row(dict(updated)))
+    return _issue_login_response(next_user)
 
 
 @router.post("/student/password", response_model=LoginResponse)
@@ -711,7 +756,14 @@ def change_student_password(
     with db_session() as session:
         row = (
             session.execute(
-                text("SELECT password_hash FROM app_users WHERE id = CAST(:user_id AS uuid)"),
+                text(
+                    """
+                    SELECT password_hash
+                    FROM app_users
+                    WHERE id = CAST(:user_id AS uuid)
+                    FOR UPDATE
+                    """
+                ),
                 {"user_id": user.id},
             )
             .mappings()
@@ -724,6 +776,8 @@ def change_student_password(
             not payload.current_password or not verify_password(payload.current_password, row["password_hash"])
         ):
             raise _auth_error("Current password is invalid")
+        if verify_password(payload.new_password, row["password_hash"]):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="New password must be different")
         updated = (
             session.execute(
                 text(
@@ -754,8 +808,5 @@ def change_student_password(
             ),
             {"user_id": user.id},
         )
-    next_user = _user_from_row(updated_user)
-    next_user.student_id = user.student_id
-    next_user.class_id = user.class_id
-    next_user.class_name = user.class_name
+    next_user = _copy_session_context(user, _user_from_row(updated_user))
     return _issue_login_response(next_user)

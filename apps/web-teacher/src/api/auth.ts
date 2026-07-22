@@ -1,10 +1,11 @@
 export type User = {
   id: string;
   username: string;
-  role: "platform_admin" | "admin" | "teacher" | "student";
+  role: "admin" | "teacher" | "student";
   display_name: string;
   status: string;
   must_change_password?: boolean;
+  password_version: number;
 };
 
 const ADMIN_TOKEN_STORAGE_KEY = "chem_web_teacher_token";

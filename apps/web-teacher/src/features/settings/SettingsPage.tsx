@@ -32,8 +32,11 @@ import {
   type AssessmentReportPromptSettings,
 } from "../../api/assessmentReports";
 import { api, putJson } from "../../api/http";
+import { getAuthToken } from "../../api/auth";
+import { useAdminSession } from "../../app/auth/useAdminSession";
 import { PageTitle } from "../../components/PageTitle";
 import { QueryState } from "../../components/QueryState";
+import { TeacherAccountManagementCard } from "../account/TeacherAccountManagementCard";
 import {
   aiConfigurationFormValues,
   aiConfigurationUpdateFromForm,
@@ -158,6 +161,7 @@ export function SettingsPage() {
   const [aiFeatureForm] = Form.useForm();
   const [aiConfigForm] = Form.useForm();
   const [reportPromptForm] = Form.useForm();
+  const session = useAdminSession(getAuthToken());
   const platformSettings = useQuery({
     queryKey: ["platform-settings"],
     queryFn: () => api<PlatformSettingsResponse>("/api/admin/platform-settings"),
@@ -286,6 +290,7 @@ export function SettingsPage() {
   return (
     <Space orientation="vertical" size={18} className="full">
       <PageTitle title="系统设置" description="控制全体 H5/手机学习端功能、学生 AI 能力，以及 AI 与教材 RAG 接入配置。" />
+      {session.data?.role === "admin" ? <TeacherAccountManagementCard currentUser={session.data} /> : null}
       <QueryState loading={platformSettings.isLoading} error={platformSettings.error}>
         <Form form={form} layout="vertical" onFinish={(values) => save.mutate(values as LearningBehaviorSettings)}>
           <Space orientation="vertical" size={18} className="full">
