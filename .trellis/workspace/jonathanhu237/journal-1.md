@@ -42,3 +42,38 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 2: Unify legacy and main product applications
+
+**Date**: 2026-07-22
+**Task**: Unify legacy and main product applications
+**Branch**: `main`
+
+### Summary
+
+Reconciled legacy learning workflows into the canonical five-tab student H5 and teacher console, retired duplicate runtimes and platform operations, preserved online textbook RAG, and completed full fresh-database, frontend, mobile, Compose, and security validation.
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cf532d4` | (see git log) |
+| `1f81e2e` | (see git log) |
+| `9ef82e3` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
