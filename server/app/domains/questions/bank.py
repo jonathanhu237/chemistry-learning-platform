@@ -25,6 +25,17 @@ from server.app.domains.questions.point_identity import collect_question_point_i
 QUESTION_TYPE_ORDER = ("single_choice", "true_false", "fill_blank")
 OBJECTIVE_TYPES = set(QUESTION_TYPE_ORDER)
 QUESTION_STATUSES = {"draft", "published", "disabled", "archived"}
+QUESTION_WITHDRAWAL_MODE = "question_withdrawal"
+LEGACY_QUESTION_WITHDRAWAL_MODE = "revoke_to_draft"
+QUESTION_WITHDRAWAL_OPERATION = "question_withdrawal"
+QUESTION_WITHDRAWAL_PAYLOAD_KEYS = {
+    "revoked_from_question_id",
+    "revoked_by",
+    "revoked_by_user_id",
+    "revoked_at",
+    "withdrawal",
+    "withdrawal_provenance",
+}
 
 def _json(value: Any) -> str:
     return json.dumps(value if value is not None else {}, ensure_ascii=False, default=str)
@@ -77,6 +88,87 @@ def _inc_count(target: dict[str, int], key: str, amount: int = 1) -> None:
 
 def _metadata(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
+
+
+def _without_question_withdrawal_provenance(payload: dict[str, Any]) -> dict[str, Any]:
+    """Keep withdrawal authority out of the teacher-editable draft payload."""
+
+    cleaned = {key: value for key, value in payload.items() if key not in QUESTION_WITHDRAWAL_PAYLOAD_KEYS}
+    metadata = dict(cleaned.get("metadata") if isinstance(cleaned.get("metadata"), dict) else {})
+    for key in QUESTION_WITHDRAWAL_PAYLOAD_KEYS:
+        metadata.pop(key, None)
+    cleaned["metadata"] = metadata
+    return cleaned
+
+
+def _question_withdrawal_provenance(generation: dict[str, Any]) -> dict[str, str] | None:
+    metadata = _metadata(generation.get("generation_metadata") or generation.get("metadata"))
+    mode = str(generation.get("generation_mode") or generation.get("mode") or "").strip()
+    operation = str(metadata.get("operation") or "").strip()
+    is_current = mode == QUESTION_WITHDRAWAL_MODE and operation == QUESTION_WITHDRAWAL_OPERATION
+    is_legacy = mode == LEGACY_QUESTION_WITHDRAWAL_MODE
+    if not is_current and not is_legacy:
+        return None
+    source_id = str(metadata.get("revoked_from_question_id") or "").strip()
+    try:
+        source_id = str(uuid.UUID(source_id))
+    except (ValueError, AttributeError):
+        raise ValueError("Withdrawal provenance contains an invalid source question id") from None
+    actor = str(
+        metadata.get("revoked_by_user_id")
+        or metadata.get("revoked_by")
+        or generation.get("generation_created_by")
+        or generation.get("created_by")
+        or ""
+    ).strip()
+    occurred_at = metadata.get("revoked_at") or generation.get("generation_created_at") or generation.get("created_at")
+    if isinstance(occurred_at, datetime):
+        occurred_at = occurred_at.isoformat()
+    return {
+        "revoked_from_question_id": source_id,
+        "revoked_by_user_id": actor,
+        "revoked_at": str(occurred_at or ""),
+        "source_status": "disabled" if is_current else "draft_or_disabled",
+    }
+
+
+def _question_draft_response(row: dict[str, Any], provenance: dict[str, str] | None = None) -> dict[str, Any]:
+    response = dict(row)
+    response.pop("generation_metadata", None)
+    response.pop("generation_created_by", None)
+    response.pop("generation_created_at", None)
+    if provenance:
+        public_provenance = {key: value for key, value in provenance.items() if key != "source_status"}
+        response.update(public_provenance)
+        response["withdrawal"] = public_provenance
+    return response
+
+
+def _active_question_withdrawal_draft_id(session: Any, question_id: str) -> str | None:
+    draft_id = session.execute(
+        text(
+            """
+            SELECT d.id
+            FROM experiment_question_drafts d
+            JOIN experiment_question_generations g ON g.id = d.generation_id
+            WHERE d.status = 'draft'
+              AND g.metadata->>'revoked_from_question_id' = :question_id
+              AND (
+                (g.mode = :current_mode AND g.metadata->>'operation' = :operation)
+                OR g.mode = :legacy_mode
+              )
+            ORDER BY d.created_at
+            LIMIT 1
+            """
+        ),
+        {
+            "question_id": question_id,
+            "current_mode": QUESTION_WITHDRAWAL_MODE,
+            "operation": QUESTION_WITHDRAWAL_OPERATION,
+            "legacy_mode": LEGACY_QUESTION_WITHDRAWAL_MODE,
+        },
+    ).scalar_one_or_none()
+    return str(draft_id) if draft_id else None
 
 
 def catalog_experiment_id_for_root(root_node_id: str) -> str:
@@ -1636,12 +1728,24 @@ def update_question(
     data = {key: value for key, value in _dump(payload).items() if value is not None}
     with db_session() as session:
         current = (
-            session.execute(text("SELECT * FROM experiment_questions WHERE id = CAST(:id AS uuid)"), {"id": question_id})
+            session.execute(
+                text("SELECT * FROM experiment_questions WHERE id = CAST(:id AS uuid) FOR UPDATE"),
+                {"id": question_id},
+            )
             .mappings()
             .first()
         )
         if not current:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Question not found")
+        active_withdrawal_draft_id = _active_question_withdrawal_draft_id(session, question_id)
+        if active_withdrawal_draft_id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "Withdrawn questions must be edited through their active draft",
+                    "draft_id": active_withdrawal_draft_id,
+                },
+            )
         merged = {**dict(current), **data}
         normalized, errors = _validate_question_payload(merged)
         if errors or normalized is None:
@@ -1698,12 +1802,161 @@ def update_question(
     return dict(row)
 
 
+def revoke_question_to_draft(
+    *,
+    question_id: str,
+    user: Any,
+) -> dict[str, Any]:
+    revoked_at = datetime.now(timezone.utc).isoformat()
+    with db_session() as session:
+        current = (
+            session.execute(
+                text("SELECT * FROM experiment_questions WHERE id = CAST(:id AS uuid) FOR UPDATE"),
+                {"id": question_id},
+            )
+            .mappings()
+            .first()
+        )
+        if not current:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Question not found")
+        if current["status"] != "published":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only published questions can be withdrawn to a draft",
+            )
+        active_draft_id = _active_question_withdrawal_draft_id(session, question_id)
+        if active_draft_id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"message": "Question already has an active withdrawal draft", "draft_id": active_draft_id},
+            )
+
+        payload = _without_question_withdrawal_provenance(
+            {
+                "question_type": current["question_type"],
+                "stem": current["stem"],
+                "options": current["options"] or [],
+                "answer": current["answer"] or {},
+                "explanation": current["explanation"],
+                "difficulty": current["difficulty"] or "basic",
+                "related_chapter_ids": list(current["related_chapter_ids"] or []),
+                "related_knowledge_point_ids": list(current["related_knowledge_point_ids"] or []),
+                "source_chunk_ids": list(current["source_chunk_ids"] or []),
+                "source_refs": list(current["source_refs"] or []),
+                "primary_point_node_ids": list(current["primary_point_node_ids"] or []),
+                "primary_canonical_point_ids": list(current["primary_canonical_point_ids"] or []),
+                "source_placement_node_ids": list(current["source_placement_node_ids"] or []),
+                "metadata": dict(current["metadata"] or {}),
+                "status": "draft",
+            }
+        )
+        normalized, errors = _validate_question_payload(payload)
+        if errors or normalized is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"message": "Published question cannot be converted to an editable draft", "errors": errors},
+            )
+
+        provenance = {
+            "operation": QUESTION_WITHDRAWAL_OPERATION,
+            "revoked_from_question_id": str(current["id"]),
+            "revoked_by_user_id": str(user.id),
+            "revoked_at": revoked_at,
+            "source_status": "disabled",
+        }
+        generation = (
+            session.execute(
+                text(
+                    """
+                    INSERT INTO experiment_question_generations (
+                      experiment_id, prompt, question_types, difficulty, requested_count,
+                      provider, model, mode, rag_sources, warning, status, created_by, metadata
+                    )
+                    VALUES (
+                      :experiment_id, :prompt, :question_types, :difficulty, 1,
+                      'manual', NULL, :mode, CAST(:rag_sources AS jsonb),
+                      NULL, 'draft', CAST(:created_by AS uuid), CAST(:metadata AS jsonb)
+                    )
+                    RETURNING id, mode AS generation_mode, metadata AS generation_metadata,
+                              created_by AS generation_created_by, created_at AS generation_created_at
+                    """
+                ),
+                {
+                    "experiment_id": current["experiment_id"],
+                    "prompt": f"撤回已发布题目进行修订：{current['stem']}",
+                    "question_types": [current["question_type"]],
+                    "difficulty": current["difficulty"] or "basic",
+                    "mode": QUESTION_WITHDRAWAL_MODE,
+                    "rag_sources": _json_array(current["source_refs"] or []),
+                    "created_by": user.id,
+                    "metadata": _json(provenance),
+                },
+            )
+            .mappings()
+            .one()
+        )
+        draft = (
+            session.execute(
+                text(
+                    """
+                    INSERT INTO experiment_question_drafts (
+                      generation_id, experiment_id, payload, validation_errors, status
+                    )
+                    VALUES (
+                      CAST(:generation_id AS uuid), :experiment_id,
+                      CAST(:payload AS jsonb), CAST(:errors AS jsonb), 'draft'
+                    )
+                    RETURNING *
+                    """
+                ),
+                {
+                    "generation_id": str(generation["id"]),
+                    "experiment_id": current["experiment_id"],
+                    "payload": _json(normalized),
+                    "errors": _json_array([]),
+                },
+            )
+            .mappings()
+            .one()
+        )
+        session.execute(
+            text(
+                """
+                UPDATE experiment_questions
+                SET status = 'disabled', updated_at = now()
+                WHERE id = CAST(:id AS uuid) AND status = 'published'
+                """
+            ),
+            {"id": question_id},
+        )
+    return _question_draft_response(dict(draft), _question_withdrawal_provenance(dict(generation)))
+
+
 def publish_question(
     *,
     question_id: str,
     user: Any,
 ) -> dict[str, Any]:
     with db_session() as session:
+        current = (
+            session.execute(
+                text("SELECT * FROM experiment_questions WHERE id = CAST(:id AS uuid) FOR UPDATE"),
+                {"id": question_id},
+            )
+            .mappings()
+            .first()
+        )
+        if not current:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Question not found")
+        active_withdrawal_draft_id = _active_question_withdrawal_draft_id(session, question_id)
+        if active_withdrawal_draft_id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "Withdrawn questions must be republished through their active draft",
+                    "draft_id": active_withdrawal_draft_id,
+                },
+            )
         row = (
             session.execute(
                 text(
@@ -1720,10 +1973,8 @@ def publish_question(
                 {"id": question_id, "actor": user.id},
             )
             .mappings()
-            .first()
+            .one()
         )
-    if not row:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Question not found")
     return dict(row)
 
 

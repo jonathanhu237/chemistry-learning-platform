@@ -4,7 +4,7 @@ import hashlib
 import json
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal, cast
 
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
 from sqlalchemy import text
@@ -15,7 +15,11 @@ from server.app.domains.platform.settings import get_learning_behavior_settings
 from server.app.domains.assessments.mastery import update_experiment_mastery_from_attempt_rows
 from server.app.domains.assessments.student_experiment import _grade_answer
 from server.app.domains.questions.point_identity import unique_strings
-from server.app.domains.assessments.pretest import _ensure_student_row, _load_student_context
+from server.app.domains.assessments.student_context import (
+    ensure_student_row as _ensure_student_row,
+    load_student_context as _load_student_context,
+    require_completed_smart_baseline as _require_completed_smart_baseline,
+)
 from server.app.student_posttest_schemas import (
     PosttestExperimentSummary,
     PublicPosttestQuestion,
@@ -43,6 +47,12 @@ class PosttestQuestionCandidate:
     primary_point_node_ids: list[str] = field(default_factory=list)
     primary_canonical_point_ids: list[str] = field(default_factory=list)
     source_placement_node_ids: list[str] = field(default_factory=list)
+
+
+QUESTION_SNAPSHOT_VERSION = 1
+QUESTION_SNAPSHOTS_METADATA_KEY = "question_snapshots"
+QUESTION_TYPE_VALUES = {"single_choice", "true_false", "fill_blank"}
+QuestionType = Literal["single_choice", "true_false", "fill_blank"]
 
 
 def _json(value: Any) -> str:
@@ -88,6 +98,97 @@ def _metadata(row: dict[str, Any]) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def _string_list(value: Any) -> list[str]:
+    return [str(item) for item in _as_list(value) if str(item).strip()]
+
+
+def _question_snapshot(question: PosttestQuestionCandidate) -> dict[str, Any]:
+    return {
+        "version": QUESTION_SNAPSHOT_VERSION,
+        "id": question.id,
+        "experiment": {
+            "id": question.experiment_id,
+            "title": question.experiment_title,
+        },
+        "question_type": question.question_type,
+        "stem": question.stem,
+        "options": question.options,
+        "answer": question.answer,
+        "explanation": question.explanation,
+        "difficulty": question.difficulty,
+        "related_chapter_ids": question.related_chapter_ids,
+        "related_knowledge_point_ids": question.related_knowledge_point_ids,
+        "primary_point_node_ids": question.primary_point_node_ids,
+        "primary_canonical_point_ids": question.primary_canonical_point_ids,
+        "source_placement_node_ids": question.source_placement_node_ids,
+    }
+
+
+def _question_snapshots(questions: list[PosttestQuestionCandidate]) -> list[dict[str, Any]]:
+    return [_question_snapshot(question) for question in questions]
+
+
+def _question_type_from_value(value: Any) -> QuestionType | None:
+    if not isinstance(value, str) or value not in QUESTION_TYPE_VALUES:
+        return None
+    return cast(QuestionType, value)
+
+
+def _candidate_from_question_snapshot(value: Any) -> PosttestQuestionCandidate | None:
+    if not isinstance(value, dict):
+        return None
+    if value.get("version") != QUESTION_SNAPSHOT_VERSION:
+        return None
+    experiment = value.get("experiment")
+    if not isinstance(experiment, dict):
+        return None
+    question_id = str(value.get("id") or "").strip()
+    experiment_id = str(experiment.get("id") or "").strip()
+    question_type = _question_type_from_value(value.get("question_type"))
+    stem = str(value.get("stem") or "")
+    answer = value.get("answer")
+    if not question_id or not experiment_id or question_type is None or not isinstance(answer, dict):
+        return None
+    options = value.get("options")
+    return PosttestQuestionCandidate(
+        id=question_id,
+        experiment_id=experiment_id,
+        experiment_title=str(experiment.get("title") or experiment_id),
+        question_type=question_type,
+        stem=stem,
+        options=options if isinstance(options, list) else [],
+        answer=dict(answer),
+        explanation=str(value["explanation"]) if value.get("explanation") is not None else None,
+        difficulty=str(value.get("difficulty") or "basic"),
+        related_chapter_ids=_string_list(value.get("related_chapter_ids")),
+        related_knowledge_point_ids=_string_list(value.get("related_knowledge_point_ids")),
+        primary_point_node_ids=_string_list(value.get("primary_point_node_ids")),
+        primary_canonical_point_ids=_string_list(value.get("primary_canonical_point_ids")),
+        source_placement_node_ids=_string_list(value.get("source_placement_node_ids")),
+    )
+
+
+def _questions_from_session_snapshot(
+    row: dict[str, Any],
+    question_ids: list[str],
+) -> dict[str, PosttestQuestionCandidate] | None:
+    metadata = _metadata(row)
+    if QUESTION_SNAPSHOTS_METADATA_KEY not in metadata:
+        return None
+    raw_snapshots = metadata.get(QUESTION_SNAPSHOTS_METADATA_KEY)
+    if not isinstance(raw_snapshots, list):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Assessment question snapshot is invalid")
+    questions: dict[str, PosttestQuestionCandidate] = {}
+    for raw_snapshot in raw_snapshots:
+        question = _candidate_from_question_snapshot(raw_snapshot)
+        if question is None or question.id in questions:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Assessment question snapshot is invalid")
+        questions[question.id] = question
+    if set(questions) != set(question_ids) or len(questions) != len(question_ids):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Assessment question snapshot is invalid")
+    return questions
+
+
 def _question_ids(questions: list[PosttestQuestionCandidate]) -> list[str]:
     return [question.id for question in questions]
 
@@ -101,11 +202,14 @@ def _session_experiment_ids(row: dict[str, Any]) -> list[str]:
 
 
 def _public_question(question: PosttestQuestionCandidate) -> PublicPosttestQuestion:
+    question_type = _question_type_from_value(question.question_type)
+    if question_type is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Assessment question type is invalid")
     return PublicPosttestQuestion(
         id=question.id,
         experiment_id=question.experiment_id,
         experiment_title=question.experiment_title,
-        question_type=question.question_type,  # type: ignore[arg-type]
+        question_type=question_type,
         stem=question.stem,
         options=question.options,
         related_chapter_ids=question.related_chapter_ids,
@@ -189,16 +293,22 @@ def _load_learning_experiments(session: Any, *, student_id: str) -> list[Posttes
     return [_experiment_summary_from_row(dict(row)) for row in rows]
 
 
-def _load_experiment_summaries(session: Any, experiment_ids: list[str]) -> list[PosttestExperimentSummary]:
+def _load_experiment_summaries(
+    session: Any,
+    experiment_ids: list[str],
+    *,
+    published_only: bool = True,
+) -> list[PosttestExperimentSummary]:
     if not experiment_ids:
         return []
+    status_filter = "AND status = 'published'" if published_only else ""
     rows = session.execute(
         text(
-            """
+            f"""
             SELECT id, code, title, metadata, display_order
             FROM formal_experiments
             WHERE id = ANY(:experiment_ids)
-              AND status = 'published'
+              {status_filter}
             ORDER BY array_position(:experiment_ids, id), display_order, code
             """
         ),
@@ -207,12 +317,40 @@ def _load_experiment_summaries(session: Any, experiment_ids: list[str]) -> list[
     return [_experiment_summary_from_row(dict(row)) for row in rows]
 
 
-def _load_questions_by_ids(session: Any, question_ids: list[str]) -> dict[str, PosttestQuestionCandidate]:
+def _session_experiment_summaries(session: Any, row: dict[str, Any]) -> list[PosttestExperimentSummary]:
+    experiment_ids = _session_experiment_ids(row)
+    metadata = _metadata(row)
+    if "experiments" in metadata:
+        raw_snapshots = metadata.get("experiments")
+        if not isinstance(raw_snapshots, list):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Assessment experiment snapshot is invalid")
+        snapshots: dict[str, PosttestExperimentSummary] = {}
+        try:
+            for raw_snapshot in raw_snapshots:
+                summary = PosttestExperimentSummary.model_validate(raw_snapshot)
+                if summary.id in snapshots:
+                    raise ValueError("duplicate experiment snapshot")
+                snapshots[summary.id] = summary
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Assessment experiment snapshot is invalid") from None
+        if set(snapshots) != set(experiment_ids) or len(snapshots) != len(experiment_ids):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Assessment experiment snapshot is invalid")
+        return [snapshots[experiment_id] for experiment_id in experiment_ids]
+    return _load_experiment_summaries(session, experiment_ids, published_only=False)
+
+
+def _load_questions_by_ids(
+    session: Any,
+    question_ids: list[str],
+    *,
+    published_only: bool = True,
+) -> dict[str, PosttestQuestionCandidate]:
     if not question_ids:
         return {}
+    status_filter = "AND q.status = 'published'" if published_only else ""
     rows = session.execute(
         text(
-            """
+            f"""
             SELECT q.id::text AS id, q.experiment_id, fe.title AS experiment_title,
                    q.question_type, q.stem, q.options, q.answer, q.explanation,
                    q.difficulty, q.related_chapter_ids, q.related_knowledge_point_ids,
@@ -220,7 +358,7 @@ def _load_questions_by_ids(session: Any, question_ids: list[str]) -> dict[str, P
             FROM experiment_questions q
             JOIN formal_experiments fe ON fe.id = q.experiment_id
             WHERE q.id::text = ANY(:question_ids)
-              AND q.status = 'published'
+              {status_filter}
             """
         ),
         {"question_ids": question_ids},
@@ -247,6 +385,27 @@ def _load_questions_by_ids(session: Any, question_ids: list[str]) -> dict[str, P
             source_placement_node_ids=[str(item) for item in _as_list(row.get("source_placement_node_ids")) if str(item).strip()],
         )
     return questions
+
+
+def _load_locked_session_questions(
+    session: Any,
+    row: dict[str, Any],
+    *,
+    changed_detail: str,
+) -> list[PosttestQuestionCandidate]:
+    question_ids = _session_question_ids(row)
+    questions = _questions_from_session_snapshot(row, question_ids)
+    if questions is None:
+        # Compatibility for sessions opened before question snapshots were introduced.
+        # These IDs are already locked by the session; do not sample from the current pool.
+        questions = _load_questions_by_ids(session, question_ids, published_only=False)
+    if len(questions) != len(question_ids):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=changed_detail)
+    experiment_ids = set(_session_experiment_ids(row))
+    ordered = [questions[question_id] for question_id in question_ids if question_id in questions]
+    if len(ordered) != len(question_ids) or any(question.experiment_id not in experiment_ids for question in ordered):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=changed_detail)
+    return ordered
 
 
 def _load_published_candidates(session: Any, experiment_ids: list[str]) -> list[PosttestQuestionCandidate]:
@@ -417,28 +576,30 @@ def _experiment_mastery_snapshot(
 
 
 def _response_for_session(session: Any, row: dict[str, Any]) -> StudentPosttestResponse:
-    question_ids = _session_question_ids(row)
-    questions = _load_questions_by_ids(session, question_ids)
-    ordered_questions = [questions[question_id] for question_id in question_ids if question_id in questions]
+    ordered_questions = _load_locked_session_questions(
+        session,
+        row,
+        changed_detail="Posttest question bank has changed",
+    )
     return StudentPosttestResponse(
         status="in_progress",
         session_id=str(row["id"]),
-        experiments=_load_experiment_summaries(session, _session_experiment_ids(row)),
+        experiments=_session_experiment_summaries(session, row),
         questions=[_public_question(question) for question in ordered_questions],
     )
 
 
 def start_student_posttest(user: Any) -> StudentPosttestResponse:
     settings = get_learning_behavior_settings()
-    if not settings.assessment.posttest_enabled:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Posttest is disabled")
-
     with db_session() as session:
         context = _load_student_context(session, user)
         _ensure_student_row(session, context)
+        _require_completed_smart_baseline(session, context.student_id)
         existing = _load_open_session(session, context.student_id)
         if existing:
             return _response_for_session(session, existing)
+        if not settings.assessment.posttest_enabled:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Posttest is disabled")
 
         experiments = _load_learning_experiments(session, student_id=context.student_id)
         if not experiments:
@@ -461,6 +622,7 @@ def start_student_posttest(user: Any) -> StudentPosttestResponse:
         mastery_before = _experiment_mastery_snapshot(session, student_id=context.student_id, experiments=experiments)
         metadata = {
             "experiments": [experiment.model_dump() for experiment in experiments],
+            QUESTION_SNAPSHOTS_METADATA_KEY: _question_snapshots(selected),
             "point_node_ids": sorted({node_id for question in selected for node_id in _question_point_node_ids(question)}),
             "source_placement_node_ids": sorted(
                 {node_id for question in selected for node_id in _question_source_placement_node_ids(question)}
@@ -585,6 +747,7 @@ def _insert_attempts(
                         "canonical_point_ids": _question_canonical_point_ids(question),
                         "related_chapter_ids": question.related_chapter_ids,
                         "related_knowledge_point_ids": question.related_knowledge_point_ids,
+                        "question_snapshot": _question_snapshot(question),
                     }
                 ),
             },
@@ -600,7 +763,9 @@ def _update_mastery_from_posttest(session: Any, *, student_id: str, posttest_ses
                 """
                 SELECT a.correct, a.class_id, a.experiment_id, a.point_node_id,
                        a.canonical_point_id, a.source_placement_node_id, a.question_type,
-                       q.difficulty, q.related_knowledge_point_ids
+                       q.difficulty, q.related_knowledge_point_ids,
+                       q.primary_point_node_ids, q.primary_canonical_point_ids, q.source_placement_node_ids,
+                       a.metadata
                 FROM experiment_question_attempts a
                 JOIN experiment_questions q ON q.id = a.question_id
                 WHERE a.student_id = :student_id
@@ -613,6 +778,22 @@ def _update_mastery_from_posttest(session: Any, *, student_id: str, posttest_ses
         .mappings()
         .all()
     ]
+    for row in attempt_rows:
+        metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        snapshot = _candidate_from_question_snapshot(metadata.get("question_snapshot"))
+        if snapshot is not None:
+            row["difficulty"] = snapshot.difficulty
+            row["related_knowledge_point_ids"] = snapshot.related_knowledge_point_ids
+            row["point_node_ids"] = _question_point_node_ids(snapshot)
+            row["canonical_point_ids"] = _question_canonical_point_ids(snapshot)
+            row["source_placement_node_ids"] = _question_source_placement_node_ids(snapshot)
+        else:
+            row["point_node_ids"] = _as_list(row.get("primary_point_node_ids"))
+            row["canonical_point_ids"] = _as_list(row.get("primary_canonical_point_ids"))
+            row["source_placement_node_ids"] = (
+                _as_list(row.get("source_placement_node_ids"))
+                or _as_list(row.get("point_node_id"))
+            )
     update_experiment_mastery_from_attempt_rows(
         session,
         student_id=student_id,
@@ -843,10 +1024,11 @@ def submit_student_posttest(user: Any, payload: StudentPosttestSubmitRequest) ->
 
         question_ids = _session_question_ids(current)
         answers = _validate_submitted_answers(question_ids, payload)
-        questions_by_id = _load_questions_by_ids(session, question_ids)
-        if len(questions_by_id) != len(question_ids):
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Posttest question bank has changed")
-        ordered_questions = [questions_by_id[question_id] for question_id in question_ids]
+        ordered_questions = _load_locked_session_questions(
+            session,
+            current,
+            changed_detail="Posttest question bank has changed",
+        )
 
         posttest_session_id = str(current["id"])
         graded = _insert_attempts(
@@ -861,7 +1043,7 @@ def submit_student_posttest(user: Any, payload: StudentPosttestSubmitRequest) ->
         total_count = len(graded)
         score = round(100 * correct_count / total_count, 2) if total_count else 0.0
         experiment_ids = _session_experiment_ids(current)
-        experiments = _load_experiment_summaries(session, experiment_ids)
+        experiments = _session_experiment_summaries(session, current)
         _update_mastery_from_posttest(session, student_id=context.student_id, posttest_session_id=posttest_session_id)
         mastery_after = _experiment_mastery_snapshot(session, student_id=context.student_id, experiments=experiments)
         _update_experiment_progress(

@@ -4,6 +4,23 @@ import { getAuthToken } from "./auth";
 import type { Experiment } from "./experiments";
 import type { Question, QuestionOptionLink, QuestionPoint } from "./questionBank";
 
+export type AnalyticsPointState = {
+  point_node_id?: string | null;
+  point_title: string;
+  canonical_point_id?: string | null;
+  directory_id?: string | null;
+  directory_title?: string | null;
+  experiment_id?: string | null;
+  experiment_code?: string | null;
+  experiment_title?: string | null;
+  family_id?: string | null;
+  family_title?: string | null;
+  mastery_score: number;
+  score: number;
+  evidence_count: number;
+  updated_at?: string | null;
+};
+
 export type AnalyticsExperimentState = {
   status: string;
   completion_percent: number;
@@ -13,6 +30,7 @@ export type AnalyticsExperimentState = {
   has_mastery: boolean;
   evidence_count: number;
   attempt_count: number;
+  points?: AnalyticsPointState[];
 };
 
 export type AnalyticsExperimentGroup = {
@@ -30,11 +48,13 @@ export type AnalyticsExperimentGroupState = {
   score: number;
   has_mastery: boolean;
   evidence_experiment_count: number;
+  evidence_point_count?: number;
   experiment_count: number;
   evidence_count: number;
   attempt_count: number;
   lowest_experiment_id?: string | null;
   lowest_experiment_score?: number | null;
+  points?: AnalyticsPointState[];
 };
 
 export type AnalyticsDashboard = {

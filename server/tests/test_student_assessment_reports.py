@@ -80,6 +80,7 @@ class _FakeSession:
         self.class_prompt = class_prompt
         self.reports = reports or []
         self.params: list[dict[str, Any]] = []
+        self.sql: list[str] = []
 
     def connection(self) -> _FakeConnection:
         return _FakeConnection()
@@ -87,6 +88,7 @@ class _FakeSession:
     def execute(self, query: object, params: dict[str, Any] | None = None) -> _FakeResult:
         self.params.append(params or {})
         sql = str(query)
+        self.sql.append(sql)
         if "FROM student_pretest_sessions" in sql:
             return _FakeResult(first=self.pretest_session)
         if "FROM student_smart_assessment_sessions" in sql:
@@ -287,6 +289,102 @@ async def test_smart_custom_point_report_creation_keeps_mode_and_fallback(monkey
 
 
 @pytest.mark.anyio
+async def test_smart_report_retry_replays_existing_canonical_report_without_regeneration(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = _FakeSession(
+        smart_session={
+            "id": SESSION_ID,
+            "student_id": "20249999",
+            "class_id": "class-a",
+            "status": "completed",
+            "assessment_mode": "smart",
+            "completed_at": COMPLETED_AT,
+        },
+        reports=[_report_row()],
+    )
+    monkeypatch.setattr(reports_module, "db_session", lambda: _SessionScope(session))
+
+    async def fail_generation(**_kwargs: Any) -> Any:
+        pytest.fail("persisted report retries must not regenerate report text")
+
+    monkeypatch.setattr(reports_module, "_generate_report_texts", fail_generation)
+
+    report = await reports_module.create_smart_assessment_report(_user(), _smart_report("smart"))
+
+    assert report.id == REPORT_ID
+    assert report.payload["assessment_mode"] == "smart"
+    assert all("FOR UPDATE" not in sql for sql in session.sql)
+
+
+@pytest.mark.anyio
+async def test_smart_report_generation_failure_can_retry_from_completed_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = _FakeSession(
+        smart_session={
+            "id": SESSION_ID,
+            "student_id": "20249999",
+            "class_id": "class-a",
+            "status": "completed",
+            "assessment_mode": "smart",
+            "completed_at": COMPLETED_AT,
+        },
+        attempts=[_attempt(correct=False)],
+    )
+    captured = _install_report_creation_fakes(monkeypatch, session)
+    generation_calls = 0
+
+    async def flaky_generation(**_kwargs: Any) -> Any:
+        nonlocal generation_calls
+        generation_calls += 1
+        if generation_calls == 1:
+            raise RuntimeError("transient generation failure")
+        return (
+            reports_module._generated_text("retry summary"),
+            reports_module._generated_text("retry mistake"),
+            {"source": "global"},
+        )
+
+    monkeypatch.setattr(reports_module, "_generate_report_texts", flaky_generation)
+
+    with pytest.raises(RuntimeError, match="transient generation failure"):
+        await reports_module.create_smart_assessment_report(_user(), _smart_report("smart"))
+
+    report = await reports_module.create_smart_assessment_report(_user(), _smart_report("smart"))
+
+    assert report.summary.text == "retry summary"
+    assert generation_calls == 2
+    assert len(captured) == 1
+    assert all("FOR UPDATE" not in sql for sql in session.sql)
+
+
+def test_report_insert_conflict_returns_first_persisted_report(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = _FakeSession(reports=[_report_row(summary={"text": "first", "source": "fallback", "mode": "local_fallback"})])
+    monkeypatch.setattr(reports_module, "db_session", lambda: _SessionScope(session))
+
+    report = reports_module._insert_report(
+        student_id="20249999",
+        class_id="class-a",
+        report_type="smart",
+        source_session_id=SESSION_ID,
+        source_table="student_smart_assessment_sessions",
+        title="智能测试报告",
+        score=0,
+        correct_count=0,
+        total_count=1,
+        correct_rate=0,
+        wrong_count=1,
+        summary=reports_module._generated_text("second"),
+        mistake_explanation=reports_module._generated_text("second mistake"),
+        prompt_snapshot={"source": "global"},
+        payload={"assessment_mode": "smart"},
+        completed_at=COMPLETED_AT,
+    )
+
+    assert report.summary.text == "first"
+    insert_sql = next(sql for sql in session.sql if "INSERT INTO student_assessment_reports" in sql)
+    assert "DO NOTHING" in insert_sql
+    assert "DO UPDATE" not in insert_sql
+
+
+@pytest.mark.anyio
 async def test_assessment_report_ai_generation_uses_direct_chat(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, Any] = {}
 
@@ -300,7 +398,7 @@ async def test_assessment_report_ai_generation_uses_direct_chat(monkeypatch: pyt
 
     monkeypatch.setattr(reports_module, "_ai_ready", lambda: True)
     monkeypatch.setattr(reports_module, "effective_ai_settings", lambda _settings: SimpleNamespace(agent_llm_model="qwen-max"))
-    monkeypatch.setattr(reports_module, "_async_openai_client", lambda _settings, *, timeout: _FakeClient())
+    monkeypatch.setattr(reports_module, "openai_chat_client", lambda _settings, *, timeout: _FakeClient())
 
     generated = await reports_module._generate_with_ai(
         user=_user(),
@@ -331,7 +429,7 @@ async def test_assessment_report_ai_generation_times_out_to_fallback(monkeypatch
 
     monkeypatch.setattr(reports_module, "_ai_ready", lambda: True)
     monkeypatch.setattr(reports_module, "effective_ai_settings", lambda _settings: SimpleNamespace(agent_llm_model="qwen-max"))
-    monkeypatch.setattr(reports_module, "_async_openai_client", lambda _settings, *, timeout: _SlowClient())
+    monkeypatch.setattr(reports_module, "openai_chat_client", lambda _settings, *, timeout: _SlowClient())
     monkeypatch.setattr(reports_module, "ASSESSMENT_REPORT_AI_TIMEOUT_SECONDS", 0.01)
 
     generated = await reports_module._generate_with_ai(

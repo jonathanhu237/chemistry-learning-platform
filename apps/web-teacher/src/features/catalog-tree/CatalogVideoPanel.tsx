@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
-import { Button, Empty, Input, Modal, Popconfirm, Tag, Typography } from "antd";
+import { useEffect, useMemo, useState } from "react";
+import { Button, Empty, Input, InputNumber, Modal, Popconfirm, Switch, Tag, Typography } from "antd";
 import {
   ArrowRightOutlined,
   EyeOutlined,
   LinkOutlined,
   PlayCircleFilled,
   SearchOutlined,
+  StarFilled,
   SwapOutlined,
   VideoCameraOutlined,
 } from "@ant-design/icons";
@@ -391,7 +392,19 @@ export function CatalogVideoPanel({
   const [internalPickerOpen, setInternalPickerOpen] = useState(false);
   const [pendingMediaId, setPendingMediaId] = useState<string | null>(null);
   const currentVideo = detail.media_bindings[0] || null;
+  const savedRecommendation = detail.home_recommendation || { recommended: false, sort_order: 0 };
+  const [recommendationEnabled, setRecommendationEnabled] = useState(savedRecommendation.recommended);
+  const [recommendationOrder, setRecommendationOrder] = useState(savedRecommendation.sort_order);
   const resolvedPickerOpen = pickerOpen ?? internalPickerOpen;
+
+  useEffect(() => {
+    setRecommendationEnabled(savedRecommendation.recommended);
+    setRecommendationOrder(savedRecommendation.sort_order);
+  }, [node.node_id, savedRecommendation.recommended, savedRecommendation.sort_order]);
+
+  const recommendationChanged =
+    recommendationEnabled !== savedRecommendation.recommended ||
+    recommendationOrder !== savedRecommendation.sort_order;
   const setPickerOpen = (open: boolean) => {
     if (onPickerOpenChange) {
       onPickerOpenChange(open);
@@ -425,6 +438,22 @@ export function CatalogVideoPanel({
     mutations.changeMediaStatus.mutate({ bindingId: currentVideo.binding_id, action: "delete" });
   };
 
+  const saveHomeRecommendation = () => {
+    mutations.setHomeRecommendation.mutate(
+      {
+        nodeId: node.node_id,
+        recommended: recommendationEnabled,
+        sortOrder: recommendationEnabled ? recommendationOrder : 0,
+      },
+      {
+        onSuccess: (result) => {
+          setRecommendationEnabled(result.home_recommendation.recommended);
+          setRecommendationOrder(result.home_recommendation.sort_order);
+        },
+      },
+    );
+  };
+
   return (
     <section className="catalog-editor-section catalog-editor-panel-section catalog-video-panel-section">
       <div className="catalog-video-panel-heading">
@@ -442,6 +471,50 @@ export function CatalogVideoPanel({
           </span>
           <ArrowRightOutlined />
         </a>
+      </div>
+      <div className={`catalog-home-recommendation-card${recommendationEnabled ? " is-active" : ""}`}>
+        <span className="catalog-home-recommendation-icon" aria-hidden="true">
+          <StarFilled />
+        </span>
+        <div className="catalog-home-recommendation-copy">
+          <div className="catalog-home-recommendation-title">
+            <strong>学生首页推荐</strong>
+            {savedRecommendation.recommended ? <Tag color="gold">已推荐</Tag> : <Tag>普通排序</Tag>}
+          </div>
+          <Text type="secondary">
+            推荐点位会在首页视频流优先展示；只有点位、学习内容和视频均已发布且视频可播放时，学生才会看到。
+          </Text>
+        </div>
+        <div className="catalog-home-recommendation-controls">
+          <label className="catalog-home-recommendation-toggle">
+            <span>加入推荐</span>
+            <Switch
+              checked={recommendationEnabled}
+              onChange={setRecommendationEnabled}
+              disabled={node.status === "archived"}
+              aria-label="加入学生首页推荐"
+            />
+          </label>
+          <label className="catalog-home-recommendation-order">
+            <span>推荐顺序</span>
+            <InputNumber
+              min={0}
+              precision={0}
+              value={recommendationOrder}
+              onChange={(value) => setRecommendationOrder(Math.max(0, Number(value ?? 0)))}
+              disabled={!recommendationEnabled || node.status === "archived"}
+              aria-label="首页推荐顺序"
+            />
+          </label>
+          <Button
+            type="primary"
+            onClick={saveHomeRecommendation}
+            loading={mutations.setHomeRecommendation.isPending}
+            disabled={!recommendationChanged || node.status === "archived"}
+          >
+            保存推荐设置
+          </Button>
+        </div>
       </div>
       <CurrentVideoSlot
         binding={currentVideo}

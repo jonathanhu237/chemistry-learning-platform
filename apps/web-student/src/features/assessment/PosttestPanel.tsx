@@ -1,5 +1,5 @@
 import type { StudentSmartAssessmentResponse } from "../../api";
-import { AssessmentPanel, type AnswerMap } from "../pretest/AssessmentPanel";
+import { AssessmentPanel, type AnswerMap } from "./AssessmentPanel";
 import { stripExperimentPrefix } from "./assessmentText";
 
 export function PosttestPanel({
@@ -29,11 +29,11 @@ export function PosttestPanel({
           <div className="assessment-composition">
             {isCustom ? (
               <>
-                <span>自选实验 {posttest.experiments.length} 个</span>
+                <span>自选点位 {selectedPointCount} 个</span>
                 <span>
                   实际 {posttest.questions.length}/目标 {targetCount} 题
                 </span>
-                <span>每实验最多 {posttest.composition.max_questions_per_experiment} 题</span>
+                <span>每点位 {posttest.composition.max_questions_per_experiment} 题</span>
               </>
             ) : isPoint ? (
               <>

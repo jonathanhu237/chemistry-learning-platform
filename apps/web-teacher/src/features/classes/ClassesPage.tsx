@@ -859,13 +859,13 @@ export function ClassesPage() {
                   <Form.Item
                     name="default_password"
                     label="统一初始密码"
-                    extra={registration.data?.has_default_password ? "留空则继续使用当前统一密码。" : "至少 8 位。"}
+                    extra={registration.data?.has_default_password ? "留空则继续使用当前统一密码。" : "至少 6 位；学生首次登录后必须修改。"}
                     rules={[
                       {
                         validator: (_, value) => {
                           if (!value && registration.data?.has_default_password) return Promise.resolve();
                           if (!value) return Promise.reject(new Error("请输入统一初始密码"));
-                          if (String(value).length < 8) return Promise.reject(new Error("至少 8 位"));
+                          if (String(value).length < 6) return Promise.reject(new Error("至少 6 位"));
                           return Promise.resolve();
                         },
                       },

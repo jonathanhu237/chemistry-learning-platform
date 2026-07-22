@@ -164,7 +164,8 @@ function SyncDiagnosticsSection({ detail, mutations }: { detail: CatalogNodeDeta
   const sync = status.async_consumption;
   const nodeId = detail.node.node_id;
   const jobState = detail.job_state;
-  const latestError = jobState?.es_state?.last_error || jobState?.evidence_state?.latest_error || "";
+  const teacherSearchState = detail.teacher_search_state || jobState?.teacher_search_state;
+  const latestError = teacherSearchState?.last_error || jobState?.evidence_state?.latest_error || "";
   if (detail.node.node_kind !== "point") {
     return (
       <section className="catalog-node-status-card is-secondary">
@@ -172,7 +173,7 @@ function SyncDiagnosticsSection({ detail, mutations }: { detail: CatalogNodeDeta
           <Title level={5}>同步诊断</Title>
           <StatusTag value="not_applicable" />
         </div>
-        <Text type="secondary">目录不直接消费 ES 或 AI/RAG 证据；相关问题会以目录后代聚合呈现。</Text>
+        <Text type="secondary">目录不直接消费教师搜索索引或 AI/RAG 证据；相关问题会以目录后代聚合呈现。</Text>
       </section>
     );
   }
@@ -181,8 +182,8 @@ function SyncDiagnosticsSection({ detail, mutations }: { detail: CatalogNodeDeta
       <div className="catalog-node-status-card-heading">
         <Title level={5}>同步诊断</Title>
         <Space wrap>
-          <Button size="small" onClick={() => mutations.triggerPointJob.mutate({ nodeId, action: "es-refresh" })}>
-            刷新 ES
+          <Button size="small" onClick={() => mutations.triggerPointJob.mutate({ nodeId, action: "teacher-search-refresh" })}>
+            刷新教师搜索
           </Button>
           <Button size="small" onClick={() => mutations.triggerPointJob.mutate({ nodeId, action: "rag-refresh" })}>
             刷新 RAG
@@ -193,13 +194,13 @@ function SyncDiagnosticsSection({ detail, mutations }: { detail: CatalogNodeDeta
         </Space>
       </div>
       <Descriptions size="small" column={2}>
-        <Descriptions.Item label="搜索 ES">
+        <Descriptions.Item label="教师目录搜索">
           <StatusTag value={sync.search_index} />
         </Descriptions.Item>
         <Descriptions.Item label="AI/RAG 证据">
           <StatusTag value={sync.ai_evidence} />
         </Descriptions.Item>
-        <Descriptions.Item label="最近 ES 更新">{jobState?.es_state?.updated_at || "-"}</Descriptions.Item>
+        <Descriptions.Item label="最近搜索索引更新">{teacherSearchState?.updated_at || "-"}</Descriptions.Item>
         <Descriptions.Item label="最近证据更新">{jobState?.evidence_state?.updated_at || "-"}</Descriptions.Item>
         <Descriptions.Item label="最近错误" span={2}>
           {latestError || "-"}

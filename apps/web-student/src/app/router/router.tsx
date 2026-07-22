@@ -19,8 +19,6 @@ import { AssessmentReportPage } from "../../routes/assessment/AssessmentReportPa
 import { ProfileRootPage } from "../../routes/profile/ProfileRootPage";
 import { ProfileReportsPage } from "../../routes/profile/ProfileReportsPage";
 import { FeedbackPage } from "../../routes/profile/FeedbackPage";
-import { UnifiedSearchPage } from "../../routes/search/UnifiedSearchPage";
-import { VideoLibraryPage } from "../../routes/video-library/VideoLibraryPage";
 import { parseStudentRouteSearch } from "./routeTypes";
 
 export type StudentRouterContext = Record<string, never>;
@@ -99,20 +97,6 @@ const previewNodeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/preview/catalog/nodes/$nodeId",
   component: PreviewCatalogNodePage,
-});
-
-const videoLibraryRoute = createRoute({
-  getParentRoute: () => authenticatedRoute,
-  path: "/video-library",
-  validateSearch: parseStudentRouteSearch,
-  component: VideoLibraryPage,
-});
-
-const searchRoute = createRoute({
-  getParentRoute: () => authenticatedRoute,
-  path: "/search",
-  validateSearch: parseStudentRouteSearch,
-  component: UnifiedSearchPage,
 });
 
 const aiRoute = createRoute({
@@ -201,8 +185,6 @@ const routeTree = rootRoute.addChildren([
     elementRoute,
     catalogNodeRoute,
     pointRoute,
-    searchRoute,
-    videoLibraryRoute,
     aiRoute,
     aiChatRoute,
     aiArtifactRoute,

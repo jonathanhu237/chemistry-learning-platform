@@ -43,7 +43,7 @@ class TeacherClassAssignRequest(BaseModel):
 
 
 class StudentPasswordResetRequest(BaseModel):
-    initial_password: str | None = Field(default=None, min_length=8)
+    initial_password: str | None = Field(default=None, min_length=6)
     force_change: bool = True
 
 
@@ -87,7 +87,7 @@ class RegistrationSettingsUpdateRequest(BaseModel):
     mode: str = Field(pattern="^(roster_only|self_registration)$")
     default_password_policy: str = "student_id_name_activation"
     default_password_mode: str | None = Field(default=None, pattern="^(student_id|shared)$")
-    default_password: str | None = Field(default=None, min_length=8)
+    default_password: str | None = Field(default=None, min_length=6)
 
 
 def _new_class_id() -> str:
@@ -211,6 +211,68 @@ def _sync_disabled_student_account(session: Any, class_id: str, student_id: str)
             """
         ),
         {"user_id": user_id},
+    )
+
+
+def _disable_class_roster_entries(session: Any, class_id: str) -> int:
+    return int(
+        session.execute(
+            text(
+                """
+                WITH roster_targets AS (
+                  SELECT re.id,
+                         re.activated_user_id,
+                         sp.user_id AS profile_user_id
+                  FROM roster_entries re
+                  LEFT JOIN student_profiles sp ON sp.roster_entry_id = re.id
+                  WHERE re.class_id = :class_id
+                ),
+                target_user_ids AS (
+                  SELECT DISTINCT candidate.user_id
+                  FROM roster_targets target
+                  CROSS JOIN LATERAL (
+                    VALUES (target.activated_user_id), (target.profile_user_id)
+                  ) AS candidate(user_id)
+                  WHERE candidate.user_id IS NOT NULL
+                ),
+                disabled_roster AS (
+                  UPDATE roster_entries roster
+                  SET status = 'disabled',
+                      updated_at = now()
+                  WHERE roster.id IN (SELECT id FROM roster_targets)
+                    AND roster.status <> 'disabled'
+                  RETURNING roster.id
+                ),
+                disabled_users AS (
+                  UPDATE app_users account
+                  SET status = 'disabled',
+                      password_version = password_version + 1,
+                      updated_at = now()
+                  WHERE account.id IN (SELECT user_id FROM target_user_ids)
+                    AND account.role = 'student'
+                    AND account.status <> 'disabled'
+                  RETURNING account.id
+                ),
+                revoked_sessions AS (
+                  UPDATE auth_sessions auth_session
+                  SET revoked_at = now()
+                  WHERE auth_session.user_id IN (SELECT user_id FROM target_user_ids)
+                    AND auth_session.revoked_at IS NULL
+                  RETURNING auth_session.id
+                ),
+                disabled_students AS (
+                  UPDATE students student
+                  SET status = 'disabled',
+                      updated_at = now()
+                  WHERE student.user_id IN (SELECT user_id FROM target_user_ids)
+                    AND student.status <> 'disabled'
+                  RETURNING student.id
+                )
+                SELECT COUNT(*) FROM disabled_roster
+                """
+            ),
+            {"class_id": class_id},
+        ).scalar_one()
     )
 
 
@@ -560,6 +622,8 @@ def get_class(class_id: str, user: Any) -> ClassResponse:
 def update_class(payload: ClassUpdateRequest, class_id: str, user: Any) -> ClassResponse:
     require_class_access(class_id, user)
     with db_session() as session:
+        if payload.status == "archived":
+            _disable_class_roster_entries(session, class_id)
         row = (
             session.execute(
                 text(
@@ -643,6 +707,55 @@ def preview_roster_import(class_id: str, filename: str | None, content: bytes, u
     return roster_preview(rows)
 
 
+def _raise_if_roster_has_cross_class_conflicts(
+    session: Any,
+    class_id: str,
+    normalized_student_ids: set[str],
+) -> None:
+    student_ids = sorted({_normalize_student_id(value) for value in normalized_student_ids if str(value).strip()})
+    if not student_ids:
+        return
+    session.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
+        {"lock_key": "roster-student-identities"},
+    )
+    conflicts = (
+        session.execute(
+            text(
+                """
+                SELECT re.normalized_student_id, re.student_id, re.student_name,
+                       c.id AS class_id, c.class_name
+                FROM roster_entries re
+                JOIN classes c ON c.id = re.class_id
+                WHERE re.class_id <> :class_id
+                  AND re.status <> 'disabled'
+                  AND re.normalized_student_id IN (
+                    SELECT jsonb_array_elements_text(CAST(:student_ids AS jsonb))
+                  )
+                ORDER BY re.normalized_student_id, c.class_name, c.id
+                """
+            ),
+            {
+                "class_id": class_id,
+                "student_ids": json.dumps(student_ids, ensure_ascii=False),
+            },
+        )
+        .mappings()
+        .all()
+    )
+    if not conflicts:
+        return
+    examples = "、".join(
+        f"{row['student_id']}（{row['student_name']}，{row['class_name']}）"
+        for row in conflicts[:5]
+    )
+    suffix = "等" if len(conflicts) > 5 else ""
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail=f"操作失败：{len(conflicts)} 个学号已存在于其他班级：{examples}{suffix}",
+    )
+
+
 def import_roster(
     class_id: str,
     filename: str | None,
@@ -658,6 +771,7 @@ def import_roster(
     preview = roster_preview(rows)
     valid_student_ids = {_normalize_student_id(row["student_id"]) for row in preview["rows"] if row["valid"]}
     with db_session() as session:
+        _raise_if_roster_has_cross_class_conflicts(session, class_id, valid_student_ids)
         import_id = (
             session.execute(
                 text(
@@ -814,6 +928,7 @@ def create_roster_student(
     normalized_student_id = _normalize_student_id(payload.student_id)
     try:
         with db_session() as session:
+            _raise_if_roster_has_cross_class_conflicts(session, class_id, {normalized_student_id})
             session.execute(
                 text(
                     """
@@ -853,6 +968,7 @@ def update_roster_student(
     try:
         with db_session() as session:
             if next_student_id != current_student_id:
+                _raise_if_roster_has_cross_class_conflicts(session, class_id, {next_student_id})
                 activated_row = (
                     session.execute(
                         text(

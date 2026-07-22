@@ -36,7 +36,7 @@ export function AssessmentRootPage() {
           </span>
           <span className="assessment-entry-copy">
             <b>自主测评</b>
-            <small>选择实验</small>
+            <small>选择章节、目录或点位</small>
           </span>
           <span className="assessment-entry-action" aria-hidden="true">
             <ChevronRight size={22} />

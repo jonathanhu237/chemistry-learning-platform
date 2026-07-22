@@ -145,7 +145,6 @@ export function PreviewCatalogNodePage() {
             loadCatalogNode={loadDirectory}
             onOpenDirectoryOverride={openPreviewNode}
             onOpenPointOverride={openPreviewNode}
-            onOpenSearchOverride={() => undefined}
             onOpenElementDetailOverride={() => undefined}
             onTitleChange={setFamilyTitle}
           />

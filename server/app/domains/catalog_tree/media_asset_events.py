@@ -6,7 +6,7 @@ from sqlalchemy import text
 
 from server.app.domains.catalog_tree.common import active_placement_ids_for_canonical_point
 from server.app.domains.catalog_tree.jobs import mark_point_evidence_stale
-from server.app.domains.catalog_tree.search_documents import queue_index_state
+from server.app.domains.catalog_tree.teacher_search import queue_teacher_index_state
 
 
 def _affected_placement_ids(session: Any, rows: list[dict[str, Any]]) -> list[str]:
@@ -67,7 +67,7 @@ def handle_media_asset_archived(
     ]
     placement_ids = _affected_placement_ids(session, rows)
     for placement_node_id in placement_ids:
-        queue_index_state(
+        queue_teacher_index_state(
             session,
             node_id=placement_node_id,
             action="upsert",
@@ -127,7 +127,7 @@ def handle_media_asset_deleted(
     ]
     placement_ids = _affected_placement_ids(session, rows)
     for placement_node_id in placement_ids:
-        queue_index_state(
+        queue_teacher_index_state(
             session,
             node_id=placement_node_id,
             action="upsert",

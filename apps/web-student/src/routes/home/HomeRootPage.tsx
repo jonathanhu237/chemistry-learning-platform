@@ -1,38 +1,39 @@
-import { type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Ban, Clock3, Flag, FlaskConical, LoaderCircle, MoreVertical, Share2, Video } from "lucide-react";
+import { FlaskConical, LoaderCircle, Search, Sparkles, Video, X } from "lucide-react";
 import {
   errorMessage,
   getStudentHomeVideoFeed,
-  removeStudentVideoSave,
-  saveStudentVideo,
   studentMediaUrl,
   type StudentHomeVideoFeedItem,
   type StudentHomeVideoFeedReason,
   type StudentHomeVideoFeedResponse,
-  type StudentVideoSaveRequest,
 } from "../../api";
 import { navigateToPoint } from "../../app/router/navigation";
-import { useStudentRuntime } from "../../app/shell/studentAppContext";
 import { MobileEmptyState } from "../../mobile/primitives";
 import { LearningState } from "../../shared/mobile/LearningState";
 
 const reasonLabels: Record<StudentHomeVideoFeedReason, string> = {
   catalog: "目录实验",
   recommended: "推荐观看",
-  recent: "最近更新",
-  weakness: "薄弱章节",
 };
 
 const genericHomeMetadata = new Set(["experiment video", "video point", "实验视频"]);
 const homeMetadataSeparator = " · ";
 const HOME_FEED_BATCH_SIZE = 20;
 
-const homeTopicEmptyText: Record<string, string> = {
-  discover: "暂时没有可发现的实验视频",
-  watch_later: "还没有稍后学习的视频",
-  all: "暂无已发布实验视频",
-};
+function uniqueHomeFeedItems(items: StudentHomeVideoFeedItem[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.instance_id)) return false;
+    seen.add(item.instance_id);
+    return true;
+  });
+}
+
+function isStaleHomeFeedCursor(error: unknown) {
+  return typeof error === "object" && error !== null && "status" in error && (error as { status?: unknown }).status === 400;
+}
 
 type HomeFeedCandidate = {
   id: string;
@@ -289,10 +290,9 @@ type HomeVideoFeedCardProps = {
   isActive: boolean;
   registerCard: (id: string, node: HTMLElement | null) => void;
   onOpen: (item: StudentHomeVideoFeedItem) => void;
-  onOpenMenu: (item: StudentHomeVideoFeedItem) => void;
 };
 
-function HomeVideoFeedCard({ item, isActive, registerCard, onOpen, onOpenMenu }: HomeVideoFeedCardProps) {
+function HomeVideoFeedCard({ item, isActive, registerCard, onOpen }: HomeVideoFeedCardProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaUrl = item.video.stream_path ? studentMediaUrl(item.video.stream_path) : "";
   const posterUrl = item.video.thumbnail_path ? studentMediaUrl(item.video.thumbnail_path) : "";
@@ -341,6 +341,12 @@ function HomeVideoFeedCard({ item, isActive, registerCard, onOpen, onOpenMenu }:
             </span>
           )}
         </button>
+        {item.reason === "recommended" ? (
+          <span className="home-video-recommendation-badge">
+            <Sparkles size={13} aria-hidden="true" />
+            老师推荐
+          </span>
+        ) : null}
         <div className="home-video-inactive-progress" aria-hidden="true">
           <span className="home-video-progress-loaded" style={{ width: `${progress.loadedPercent}%` }} />
           <span className="home-video-progress-played" style={{ width: `${progress.playedPercent}%` }} />
@@ -357,136 +363,73 @@ function HomeVideoFeedCard({ item, isActive, registerCard, onOpen, onOpenMenu }:
           <h2 id={titleId}>{item.title}</h2>
           {metadata ? <p className="home-video-metadata">{metadata}</p> : null}
         </button>
-        <button type="button" className="home-video-overflow-trigger" onClick={() => onOpenMenu(item)} aria-label={`更多视频选项：${item.title}`}>
-          <MoreVertical size={21} />
-        </button>
       </div>
     </article>
   );
 }
 
-type HomeVideoOverflowAction = "watch-later" | "share" | "not-interested" | "feedback";
-
-type HomeVideoOverflowSheetProps = {
-  item: StudentHomeVideoFeedItem;
-  onAction: (action: HomeVideoOverflowAction, item: StudentHomeVideoFeedItem) => void;
-  onClose: () => void;
-};
-
-const homeVideoOverflowActions: Array<{
-  key: HomeVideoOverflowAction;
-  label: string;
-  description: string;
-  icon: ReactNode;
-}> = [
-  { key: "watch-later", label: "稍后学习", description: "先把这个实验留到稍后再看", icon: <Clock3 size={22} /> },
-  { key: "share", label: "分享", description: "通过系统分享这个实验入口", icon: <Share2 size={22} /> },
-  { key: "not-interested", label: "不感兴趣", description: "减少类似推荐的展示", icon: <Ban size={22} /> },
-  { key: "feedback", label: "反馈问题", description: "记录这个视频卡片的问题", icon: <Flag size={22} /> },
-];
-
-function HomeVideoOverflowSheet({ item, onAction, onClose }: HomeVideoOverflowSheetProps) {
-  return (
-    <div
-      className="home-video-overflow-backdrop"
-      role="presentation"
-      onPointerDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <section className="home-video-overflow-sheet" role="dialog" aria-modal="true" aria-label={`视频选项：${item.title}`}>
-        <div className="home-video-overflow-head">
-          <p>更多</p>
-          <h3>{item.title}</h3>
-        </div>
-        {homeVideoOverflowActions.map((action) => {
-          const isWatchLater = action.key === "watch-later";
-          const activeWatchLater = isWatchLater && item.personal_state.watch_later;
-          const label = activeWatchLater ? "移出稍后学习" : action.label;
-          const description = activeWatchLater ? "不再放在首页稍后学习标签里" : action.description;
-          return (
-            <button key={action.key} type="button" onClick={() => onAction(action.key, item)}>
-              {action.icon}
-              <span>
-                <b>{label}</b>
-                <small>{description}</small>
-              </span>
-            </button>
-          );
-        })}
-      </section>
-    </div>
-  );
-}
-
-function savePayloadForHomeItem(item: StudentHomeVideoFeedItem, source: string): StudentVideoSaveRequest {
-  return {
-    placement_node_id: item.placement_node_id || item.target.placement_node_id || item.node_id,
-    canonical_point_id: item.canonical_point_id || item.target.canonical_point_id,
-    media_id: item.video.media_id,
-    source,
-  };
-}
-
-function sameRenderedVideo(left: StudentHomeVideoFeedItem, right: StudentHomeVideoFeedItem) {
-  return (
-    left.video.media_id === right.video.media_id &&
-    (left.placement_node_id || left.target.placement_node_id || left.node_id) ===
-      (right.placement_node_id || right.target.placement_node_id || right.node_id)
-  );
-}
-
 export function HomeRootPage() {
   const navigate = useNavigate();
-  const { homeVideoTopic, lockHomeChromeForOverlay, releaseHomeChromeForOverlay } = useStudentRuntime();
+  const [draftQuery, setDraftQuery] = useState("");
+  const [activeQuery, setActiveQuery] = useState("");
   const [items, setItems] = useState<StudentHomeVideoFeedItem[]>([]);
-  const [feedMeta, setFeedMeta] = useState<Pick<StudentHomeVideoFeedResponse, "status" | "message" | "topic" | "repeat_mode" | "pool_size"> | null>(null);
+  const [feedMeta, setFeedMeta] = useState<Pick<StudentHomeVideoFeedResponse, "status" | "message" | "query" | "pool_size"> | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
-  const [overflowItem, setOverflowItem] = useState<StudentHomeVideoFeedItem | null>(null);
-  const [overflowMessage, setOverflowMessage] = useState("");
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const topicRef = useRef(homeVideoTopic);
+  const [feedNotice, setFeedNotice] = useState("");
+  const [reloadToken, setReloadToken] = useState(0);
+  const queryRef = useRef(activeQuery);
   const requestSeqRef = useRef(0);
   const loadingMoreRef = useRef(false);
+  const staleCursorRecoveryRef = useRef(false);
   const { activeId, registerCard } = useActiveFeedItem(items);
-
-  useEffect(() => {
-    topicRef.current = homeVideoTopic;
-  }, [homeVideoTopic]);
 
   useEffect(() => {
     const requestId = requestSeqRef.current + 1;
     requestSeqRef.current = requestId;
+    queryRef.current = activeQuery;
+    const recoveringStaleCursor = staleCursorRecoveryRef.current;
     let cancelled = false;
     loadingMoreRef.current = false;
     setLoadingInitial(true);
     setLoadingMore(false);
     setError("");
-    setOverflowMessage("");
     setItems([]);
     setNextCursor(null);
     setHasMore(false);
     setFeedMeta(null);
-    getStudentHomeVideoFeed({ limit: HOME_FEED_BATCH_SIZE, topic: homeVideoTopic })
+    getStudentHomeVideoFeed({ limit: HOME_FEED_BATCH_SIZE, q: activeQuery })
       .then((response) => {
-        if (cancelled || requestSeqRef.current !== requestId || topicRef.current !== homeVideoTopic) return;
-        setItems(response.items);
+        if (cancelled || requestSeqRef.current !== requestId || queryRef.current !== activeQuery) return;
+        setItems(uniqueHomeFeedItems(response.items));
         setNextCursor(response.next_cursor || null);
         setHasMore(response.has_more);
         setFeedMeta({
           status: response.status,
           message: response.message,
-          topic: response.topic,
-          repeat_mode: response.repeat_mode,
+          query: response.query,
           pool_size: response.pool_size,
         });
+        if (recoveringStaleCursor) {
+          staleCursorRecoveryRef.current = false;
+          setFeedNotice("视频列表已更新，已从第一页重新加载。");
+        } else {
+          setFeedNotice("");
+        }
       })
       .catch((requestError) => {
-        if (!cancelled && requestSeqRef.current === requestId) setError(errorMessage(requestError));
+        if (!cancelled && requestSeqRef.current === requestId) {
+          if (recoveringStaleCursor) staleCursorRecoveryRef.current = false;
+          setFeedNotice("");
+          setError(
+            recoveringStaleCursor
+              ? `视频列表已更新，但重新加载失败：${errorMessage(requestError)}`
+              : errorMessage(requestError),
+          );
+        }
       })
       .finally(() => {
         if (!cancelled && requestSeqRef.current === requestId) setLoadingInitial(false);
@@ -494,33 +437,47 @@ export function HomeRootPage() {
     return () => {
       cancelled = true;
     };
-  }, [homeVideoTopic]);
+  }, [activeQuery, reloadToken]);
+
+  const retryFirstPage = useCallback(() => {
+    staleCursorRecoveryRef.current = false;
+    setFeedNotice("");
+    setReloadToken((current) => current + 1);
+  }, []);
 
   const loadMore = useCallback(() => {
     if (loadingMoreRef.current || loadingInitial || !hasMore || !nextCursor) return;
     const requestId = requestSeqRef.current + 1;
     requestSeqRef.current = requestId;
-    const topic = homeVideoTopic;
+    const query = activeQuery;
     const cursor = nextCursor;
     loadingMoreRef.current = true;
     setLoadingMore(true);
     setError("");
-    getStudentHomeVideoFeed({ limit: HOME_FEED_BATCH_SIZE, topic, cursor })
+    getStudentHomeVideoFeed({ limit: HOME_FEED_BATCH_SIZE, q: query, cursor })
       .then((response) => {
-        if (requestSeqRef.current !== requestId || topicRef.current !== topic) return;
-        setItems((current) => [...current, ...response.items]);
+        if (requestSeqRef.current !== requestId || queryRef.current !== query) return;
+        setItems((current) => uniqueHomeFeedItems([...current, ...response.items]));
         setNextCursor(response.next_cursor || null);
         setHasMore(response.has_more);
         setFeedMeta({
           status: response.status,
           message: response.message,
-          topic: response.topic,
-          repeat_mode: response.repeat_mode,
+          query: response.query,
           pool_size: response.pool_size,
         });
       })
       .catch((requestError) => {
-        if (requestSeqRef.current === requestId && topicRef.current === topic) setError(errorMessage(requestError));
+        if (requestSeqRef.current !== requestId || queryRef.current !== query) return;
+        if (isStaleHomeFeedCursor(requestError)) {
+          staleCursorRecoveryRef.current = true;
+          setNextCursor(null);
+          setHasMore(false);
+          setFeedNotice("视频列表已更新，正在从第一页重新加载……");
+          setReloadToken((current) => current + 1);
+          return;
+        }
+        setError(errorMessage(requestError));
       })
       .finally(() => {
         if (requestSeqRef.current === requestId) {
@@ -528,22 +485,27 @@ export function HomeRootPage() {
           setLoadingMore(false);
         }
       });
-  }, [hasMore, homeVideoTopic, loadingInitial, nextCursor]);
+  }, [activeQuery, hasMore, loadingInitial, nextCursor]);
 
-  useEffect(() => {
-    const node = sentinelRef.current;
-    if (!node || loadingInitial || !hasMore || !nextCursor) return undefined;
-    if (!("IntersectionObserver" in window)) return undefined;
+  const submitSearch = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const nextQuery = draftQuery.trim();
+      if (nextQuery !== activeQuery) {
+        staleCursorRecoveryRef.current = false;
+        setFeedNotice("");
+        setActiveQuery(nextQuery);
+      }
+    },
+    [activeQuery, draftQuery],
+  );
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) loadMore();
-      },
-      { root: null, rootMargin: "640px 0px", threshold: 0.01 },
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [hasMore, loadMore, loadingInitial, nextCursor]);
+  const clearSearch = useCallback(() => {
+    staleCursorRecoveryRef.current = false;
+    setFeedNotice("");
+    setDraftQuery("");
+    setActiveQuery("");
+  }, []);
 
   const openItem = useCallback(
     (item: StudentHomeVideoFeedItem) => {
@@ -551,118 +513,61 @@ export function HomeRootPage() {
       const nodeId = target.node_id || item.placement_node_id || item.node_id;
       navigateToPoint(navigate, nodeId, {
         from: "home",
-        profileId: target.profile_id,
         chapterId: target.chapter_id || item.chapter_id,
         sourceNodeId: target.source_node_id,
         catalogPath: (target.catalog_path || item.catalog_path).join(" / "),
-        propertyKey: target.property_key,
-        propertyTitle: target.property_title,
-        elementSymbol: target.element_symbol,
         pointTitle: target.point_title || item.title,
       });
     },
     [navigate],
   );
 
-  const openOverflowMenu = useCallback(
-    (item: StudentHomeVideoFeedItem) => {
-      lockHomeChromeForOverlay();
-      setOverflowItem(item);
-    },
-    [lockHomeChromeForOverlay],
-  );
-
-  const closeOverflowMenu = useCallback(() => {
-    setOverflowItem(null);
-  }, []);
-
-  useEffect(() => {
-    if (!overflowItem) return undefined;
-    return () => releaseHomeChromeForOverlay();
-  }, [overflowItem, releaseHomeChromeForOverlay]);
-
-  useEffect(() => {
-    if (!overflowItem) return undefined;
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") closeOverflowMenu();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [closeOverflowMenu, overflowItem]);
-
-  useEffect(() => {
-    if (!overflowItem || items.some((item) => item.instance_id === overflowItem.instance_id)) return;
-    closeOverflowMenu();
-  }, [closeOverflowMenu, items, overflowItem]);
-
-  const updateRenderedSaveState = useCallback((sourceItem: StudentHomeVideoFeedItem, response: Awaited<ReturnType<typeof saveStudentVideo>>) => {
-    setItems((current) =>
-      current.map((item) =>
-        sameRenderedVideo(item, sourceItem)
-          ? {
-              ...item,
-              personal_state: response.personal_state,
-            }
-          : item,
-      ),
-    );
-    setOverflowItem((current) =>
-      current && sameRenderedVideo(current, sourceItem)
-        ? {
-            ...current,
-            personal_state: response.personal_state,
-          }
-        : current,
-    );
-  }, []);
-
-  const handleOverflowAction = useCallback((action: HomeVideoOverflowAction, item: StudentHomeVideoFeedItem) => {
-    closeOverflowMenu();
-    if (action === "share") {
-      if (typeof navigator.share === "function") {
-        void navigator
-          .share({
-            title: item.title,
-            text: buildHomeVideoMetadata(item) || item.summary || item.title,
-            url: window.location.href,
-          })
-          .then(() => setOverflowMessage(`已打开系统分享：${item.title}`))
-          .catch(() => undefined);
-      } else {
-        setOverflowMessage(`当前环境暂不支持系统分享：${item.title}`);
-      }
-      return;
-    }
-    if (action === "watch-later") {
-      const active = item.personal_state.watch_later;
-      const request = active ? removeStudentVideoSave("watch_later", savePayloadForHomeItem(item, "home_feed")) : saveStudentVideo("watch_later", savePayloadForHomeItem(item, "home_feed"));
-      void request
-        .then((response) => {
-          updateRenderedSaveState(item, response);
-          if (active && homeVideoTopic === "watch_later") {
-            setItems((current) => current.filter((candidate) => !sameRenderedVideo(candidate, item)));
-          }
-          setOverflowMessage(`${active ? "已移出稍后学习" : "已记录稍后学习"}：${item.title}`);
-        })
-        .catch((requestError) => setOverflowMessage(errorMessage(requestError)));
-      return;
-    }
-    const messages: Record<Exclude<HomeVideoOverflowAction, "share">, string> = {
-      "watch-later": `已记录稍后学习：${item.title}`,
-      "not-interested": `已减少类似推荐：${item.title}`,
-      feedback: `已记录反馈入口：${item.title}`,
-    };
-    setOverflowMessage(messages[action]);
-  }, [closeOverflowMenu, homeVideoTopic, updateRenderedSaveState]);
-
   return (
     <section className="learning-panel home-root-page" aria-label="实验视频首页">
-      {loadingInitial ? <LearningState icon={<LoaderCircle className="spin" size={23} />} text="正在加载实验视频" /> : null}
-      {error ? <LearningState icon={<FlaskConical size={23} />} text={error} /> : null}
-      {!loadingInitial && !error && feedMeta?.message && feedMeta.status !== "ok" ? <div className={`home-feed-banner ${feedMeta.status}`}>{feedMeta.message}</div> : null}
-      {!loadingInitial && !error && overflowMessage ? <div className="home-video-overflow-feedback">{overflowMessage}</div> : null}
+      <form className="home-feed-search" role="search" aria-label="搜索实验视频" onSubmit={submitSearch}>
+        <label className="home-feed-search-field">
+          <Search size={18} aria-hidden="true" />
+          <input
+            type="search"
+            value={draftQuery}
+            maxLength={120}
+            placeholder="搜索实验、现象或试剂"
+            aria-label="搜索实验视频"
+            onChange={(event) => setDraftQuery(event.target.value)}
+          />
+          {draftQuery || activeQuery ? (
+            <button type="button" className="home-feed-search-clear" aria-label="清空实验视频搜索" onClick={clearSearch}>
+              <X size={17} />
+            </button>
+          ) : null}
+        </label>
+        <button type="submit" className="home-feed-search-submit" disabled={loadingInitial && draftQuery.trim() === activeQuery}>
+          搜索
+        </button>
+      </form>
 
-      {!loadingInitial && !error && items.length ? (
+      {loadingInitial ? <LearningState icon={<LoaderCircle className="spin" size={23} />} text="正在加载实验视频" /> : null}
+      {!loadingInitial && feedNotice ? <div className="home-feed-banner" role="status">{feedNotice}</div> : null}
+      {!loadingInitial && error && !items.length ? (
+        <div className="home-feed-retry">
+          <LearningState icon={<FlaskConical size={23} />} text={error} />
+          <button type="button" className="home-feed-search-submit" onClick={retryFirstPage}>重新加载</button>
+        </div>
+      ) : null}
+      {!loadingInitial && error && items.length ? (
+        <div className="home-feed-banner error" role="alert">
+          <span>{error}</span>
+          <button type="button" className="home-feed-search-submit" onClick={nextCursor ? loadMore : retryFirstPage}>重试</button>
+        </div>
+      ) : null}
+      {!loadingInitial && !error && activeQuery && feedMeta ? (
+        <div className="home-feed-result-summary" aria-live="polite">
+          <span>“{feedMeta.query || activeQuery}”</span>
+          <strong>{feedMeta.pool_size} 个结果</strong>
+        </div>
+      ) : null}
+
+      {!loadingInitial && items.length ? (
         <div className="home-video-feed" aria-live="polite">
           {items.map((item) => (
             <HomeVideoFeedCard
@@ -671,29 +576,27 @@ export function HomeRootPage() {
               isActive={activeId === item.instance_id}
               registerCard={registerCard}
               onOpen={openItem}
-              onOpenMenu={openOverflowMenu}
             />
           ))}
         </div>
       ) : null}
 
-      {!loadingInitial && !error && items.length ? (
-        <div className="home-feed-sentinel" ref={sentinelRef} aria-live="polite">
-          {loadingMore ? <span>继续加载实验视频…</span> : null}
-          {!loadingMore && hasMore && nextCursor && !("IntersectionObserver" in window) ? (
-            <button type="button" onClick={loadMore}>
-              继续加载
+      {!loadingInitial && items.length ? (
+        <div className="home-feed-pagination" aria-live="polite">
+          {hasMore && nextCursor ? (
+            <button type="button" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? <LoaderCircle className="spin" size={17} /> : null}
+              <span>{loadingMore ? "正在加载" : "继续加载"}</span>
             </button>
-          ) : null}
-          {!hasMore ? <span>{homeVideoTopic === "discover" ? "" : "已经到底了"}</span> : null}
+          ) : (
+            <span>已显示全部实验视频</span>
+          )}
         </div>
       ) : null}
 
-      {overflowItem ? <HomeVideoOverflowSheet item={overflowItem} onAction={handleOverflowAction} onClose={closeOverflowMenu} /> : null}
-
       {!loadingInitial && !error && !items.length ? (
         <MobileEmptyState className="empty-learning-card" icon={<Video size={20} />}>
-          <span>{homeTopicEmptyText[homeVideoTopic] || "这个分类暂时没有实验视频"}</span>
+          <span>{activeQuery ? `没有找到与“${feedMeta?.query || activeQuery}”匹配的实验视频，换个关键词试试。` : feedMeta?.message || "暂时没有可学习的实验视频。"}</span>
         </MobileEmptyState>
       ) : null}
     </section>

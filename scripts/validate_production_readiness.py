@@ -11,11 +11,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-WEB_ADMIN_DIR = ROOT / "apps" / "web-admin"
 WEB_TEACHER_DIR = ROOT / "apps" / "web-teacher"
 WEB_STUDENT_DIR = ROOT / "apps" / "web-student"
 FRONTENDS = [
-    ("web-admin frontend", WEB_ADMIN_DIR, False),
     ("web-teacher frontend", WEB_TEACHER_DIR, True),
     ("web-student frontend", WEB_STUDENT_DIR, True),
 ]
@@ -115,9 +113,10 @@ def _compose_host_env() -> dict[str, str]:
     return {
         "DATA_BACKEND": "postgres",
         "DATABASE_URL": f"postgresql+psycopg://chemistry:chemistry@127.0.0.1:{postgres_port}/chemistry_exam",
-        "VIDEO_LIBRARY_SEARCH_BACKEND": "elasticsearch",
-        "VIDEO_LIBRARY_SEARCH_URL": f"http://127.0.0.1:{elasticsearch_port}",
-        "VIDEO_LIBRARY_SEARCH_LOCAL_FALLBACK": "false",
+        "TEACHER_CATALOG_SEARCH_ENABLED": "true",
+        "TEACHER_CATALOG_SEARCH_BACKEND": "elasticsearch",
+        "TEACHER_CATALOG_SEARCH_URL": f"http://127.0.0.1:{elasticsearch_port}",
+        "TEACHER_CATALOG_SEARCH_LOCAL_FALLBACK": "false",
     }
 
 
@@ -161,8 +160,8 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
         )
         stages.append(
             Stage(
-                "video-library ES/IK readiness",
-                [sys.executable, "scripts/validate_video_library_search.py"],
+                "teacher catalog ES/IK readiness",
+                [sys.executable, "scripts/validate_teacher_catalog_search.py"],
                 env=compose_host_env,
             )
         )
@@ -175,7 +174,7 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
         )
     stages.append(
         Stage(
-            "admin app import smoke",
+            "backend app import smoke",
             [sys.executable, "-c", "import server.app.app_runtime.main as m; print(m.app.title)"],
         )
     )
@@ -194,7 +193,8 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
         for name, frontend_dir, has_tests in FRONTENDS:
             stages.append(Stage(f"{name} typecheck", [_npm(), "run", "typecheck"], cwd=frontend_dir))
             if has_tests:
-                stages.append(Stage(f"{name} tests", [_npm(), "test"], cwd=frontend_dir))
+                test_env = {"NODE_OPTIONS": "--no-experimental-webstorage"} if frontend_dir == WEB_STUDENT_DIR else None
+                stages.append(Stage(f"{name} tests", [_npm(), "test"], cwd=frontend_dir, env=test_env))
             stages.append(Stage(f"{name} build", [_npm(), "run", "build"], cwd=frontend_dir))
         stages.append(
             Stage("web-teacher build chunk report", [_npm(), "run", "build:report"], cwd=WEB_TEACHER_DIR)
@@ -214,7 +214,7 @@ def _stages(args: argparse.Namespace) -> list[Stage]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Run the production-readiness validation chain for the admin platform."
+        description="Run the production-readiness validation chain for the chemistry learning platform."
     )
     parser.add_argument("--install-frontend", action="store_true", help="Run npm ci before frontend checks.")
     parser.add_argument("--skip-frontend", action="store_true", help="Skip frontend typecheck, tests, and build.")
@@ -223,7 +223,7 @@ def main() -> None:
     parser.add_argument(
         "--run-e2e",
         action="store_true",
-        help="Run opt-in browser e2e smoke. Requires backend, admin frontend, and student frontend origins to be running.",
+        help="Run opt-in browser e2e smoke. Requires backend, teacher frontend, and student frontend origins to be running.",
     )
     parser.add_argument(
         "--run-compose-smoke",

@@ -8,6 +8,7 @@ from server.app.auth import AuthUser, require_teacher_console_user
 from server.app.catalog_tree_schemas import (
     CatalogEquationAssistRequest,
     CatalogEquationAssistResponse,
+    CatalogHomeRecommendationRequest,
     CatalogNodeCopyRequest,
     CatalogEquationPreviewRequest,
     CatalogEquationPreviewResponse,
@@ -24,8 +25,15 @@ from server.app.catalog_tree_schemas import (
 )
 from server.app.domains.catalog_tree.equations import assist_reaction_equations, equation_rows_from_inputs, normalize_reaction_equations
 from server.app.domains.catalog_tree.ai_context import catalog_point_ai_context, catalog_point_rag_probe
+from server.app.domains.catalog_tree.home_recommendations import set_home_video_recommendation
 from server.app.domains.catalog_tree.jobs import catalog_point_job_state, trigger_catalog_point_job
+from server.app.domains.catalog_tree.nodes import trigger_teacher_search_sync
 from server.app.domains.catalog_tree.preview import PreviewTeacherIdentity, create_catalog_node_preview_token
+from server.app.domains.catalog_tree.teacher_search import (
+    diagnose_teacher_catalog_search,
+    search_teacher_catalog_nodes,
+    teacher_catalog_search_index_diagnostics,
+)
 from server.app.domains.catalog_tree.tree import (
     bind_existing_media,
     chapter_tree_summary,
@@ -83,6 +91,20 @@ async def admin_catalog_node_detail(
     user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
     return get_node_detail(node_id=node_id)
+
+
+@router.put("/nodes/{node_id}/home-recommendation")
+async def admin_catalog_home_recommendation(
+    payload: CatalogHomeRecommendationRequest,
+    node_id: str = Path(min_length=1),
+    user: AuthUser = Depends(require_teacher_console_user),
+) -> dict[str, Any]:
+    return set_home_video_recommendation(
+        node_id=node_id,
+        recommended=payload.recommended,
+        sort_order=payload.sort_order,
+        user_id=user.id,
+    )
 
 
 @router.post("/nodes")
@@ -231,7 +253,9 @@ async def admin_catalog_point_job_state(
     node_id: str = Path(min_length=1),
     user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
-    return catalog_point_job_state(node_id=node_id)
+    result = catalog_point_job_state(node_id=node_id)
+    result.pop("es_state", None)
+    return result
 
 
 @router.get("/nodes/{node_id}/ai-context")
@@ -253,10 +277,32 @@ async def admin_catalog_point_rag_probe(
 @router.post("/nodes/{node_id}/jobs/{action}")
 async def admin_catalog_trigger_point_job(
     node_id: str = Path(min_length=1),
-    action: str = Path(pattern="^(es-refresh|es-delete|rag-refresh|rag-delete|retry)$"),
+    action: str = Path(pattern="^(teacher-search-refresh|teacher-search-delete|rag-refresh|rag-delete|retry)$"),
     user: AuthUser = Depends(require_teacher_console_user),
 ) -> dict[str, Any]:
-    return trigger_catalog_point_job(node_id=node_id, action=action, user=user)
+    if action == "teacher-search-refresh":
+        return trigger_teacher_search_sync(node_id=node_id, action="refresh", user=user)
+    if action == "teacher-search-delete":
+        return trigger_teacher_search_sync(node_id=node_id, action="delete", user=user)
+    result = trigger_catalog_point_job(node_id=node_id, action=action, user=user)
+    result.pop("es_state", None)
+    return result
+
+
+@router.get("/search/index/diagnostics")
+async def admin_catalog_search_index_diagnostics(
+    user: AuthUser = Depends(require_teacher_console_user),
+) -> dict[str, Any]:
+    return teacher_catalog_search_index_diagnostics()
+
+
+@router.get("/search/query/diagnostics")
+async def admin_catalog_search_query_diagnostics(
+    q: str = Query(default="", max_length=200),
+    limit: int = Query(default=10, ge=1, le=50),
+    user: AuthUser = Depends(require_teacher_console_user),
+) -> dict[str, Any]:
+    return diagnose_teacher_catalog_search(query=q, limit=limit)
 
 
 @router.get("/search")

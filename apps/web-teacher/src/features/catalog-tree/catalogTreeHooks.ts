@@ -20,6 +20,7 @@ import {
   saveCatalogPointContent,
   saveCatalogRelatedLinks,
   searchCatalogNodes,
+  setCatalogHomeRecommendation,
   triggerCatalogPointJob,
   updateCatalogNode,
   validateCatalogNode,
@@ -192,11 +193,18 @@ export function useCatalogMutations(message: MessageApi) {
       nodeId,
       action,
       includeSubtree,
+      archiveFinalPlacement,
     }: {
       nodeId: string;
       action: "archive" | "restore" | "publish" | "unpublish";
       includeSubtree?: boolean;
-    }) => changeCatalogNodeStatus(nodeId, { action, include_subtree: includeSubtree }),
+      archiveFinalPlacement?: boolean;
+    }) =>
+      changeCatalogNodeStatus(nodeId, {
+        action,
+        include_subtree: includeSubtree,
+        archive_final_placement: archiveFinalPlacement,
+      }),
     onSuccess: (detail) => {
       message.success("节点状态已更新");
       invalidateCatalog(detail);
@@ -233,6 +241,17 @@ export function useCatalogMutations(message: MessageApi) {
     onSuccess: (detail) => {
       message.success("相关实验已保存");
       invalidateCatalog(detail);
+    },
+    onError: (error) => message.error(errorMessage(error)),
+  });
+
+  const setHomeRecommendation = useMutation({
+    mutationFn: ({ nodeId, recommended, sortOrder }: { nodeId: string; recommended: boolean; sortOrder: number }) =>
+      setCatalogHomeRecommendation(nodeId, { recommended, sort_order: sortOrder }),
+    onSuccess: (_result, variables) => {
+      message.success(variables.recommended ? "已加入首页推荐" : "已取消首页推荐");
+      void queryClient.invalidateQueries({ queryKey: ["catalog-node", variables.nodeId] });
+      void queryClient.invalidateQueries({ queryKey: ["catalog-search"] });
     },
     onError: (error) => message.error(errorMessage(error)),
   });
@@ -299,6 +318,7 @@ export function useCatalogMutations(message: MessageApi) {
     savePointContent,
     changePointPublication,
     saveRelatedLinks,
+    setHomeRecommendation,
     bindMedia,
     changeMediaStatus,
     triggerPointJob,

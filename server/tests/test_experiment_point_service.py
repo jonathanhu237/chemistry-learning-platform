@@ -6,7 +6,8 @@ import pytest
 from pydantic import ValidationError
 
 from server.app.catalog_tree_schemas import CatalogNodeCreateRequest, CatalogNodeUpdateRequest
-from server.app.domains.catalog_tree.tree import _content_publication_errors, _queue_index_state, validate_node_payload
+from server.app.domains.catalog_tree.teacher_search import queue_teacher_index_state
+from server.app.domains.catalog_tree.tree import _content_publication_errors, validate_node_payload
 
 
 class _Result:
@@ -30,8 +31,10 @@ class _FakeSession:
     def execute(self, statement: Any, params: dict[str, Any] | None = None) -> _Result:
         sql = str(statement)
         self.calls.append(params or {})
-        if "SELECT canonical_point_id FROM experiment_catalog_nodes" in sql:
+        if "SELECT canonical_point_id" in sql:
             return _Result({"canonical_point_id": "cat-canon-1"})
+        if "SELECT id, node_kind, canonical_point_id" in sql:
+            return _Result({"id": (params or {}).get("node_id"), "node_kind": "point", "canonical_point_id": "cat-canon-1"})
         if "SELECT id AS placement_node_id, canonical_point_id" in sql:
             return _Result({"placement_node_id": (params or {}).get("node_id"), "canonical_point_id": "cat-canon-1"})
         return _Result()
@@ -139,10 +142,10 @@ def test_catalog_point_publication_accepts_complete_text_mode() -> None:
     assert errors == []
 
 
-def test_catalog_point_index_queue_uses_stable_node_id() -> None:
+def test_catalog_point_teacher_search_queue_uses_stable_node_id() -> None:
     session = _FakeSession()
 
-    _queue_index_state(session, node_id="cat-point-1", action="upsert")
+    queue_teacher_index_state(session, node_id="cat-point-1", action="upsert")
 
     index_call = next(call for call in session.calls if call.get("desired_action") == "upsert")
     assert index_call == {
@@ -151,7 +154,7 @@ def test_catalog_point_index_queue_uses_stable_node_id() -> None:
         "desired_action": "upsert",
         "last_error": None,
     }
-    job_call = next(call for call in session.calls if call.get("job_type") == "es_upsert")
+    job_call = next(call for call in session.calls if call.get("job_type") == "teacher_search_upsert")
     assert job_call["node_id"] == "cat-point-1"
     assert job_call["placement_node_id"] == "cat-point-1"
     assert job_call["canonical_point_id"] == "cat-canon-1"

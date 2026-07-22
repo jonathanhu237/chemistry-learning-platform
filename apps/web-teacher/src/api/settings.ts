@@ -2,8 +2,6 @@ import { api, putJson } from "./http";
 
 export type LearningBehaviorSettings = {
   assessment: {
-    pretest_enabled: boolean;
-    pretest_question_count: number;
     posttest_enabled: boolean;
     posttest_question_count: number;
     smart_assessment: SmartAssessmentSettings;

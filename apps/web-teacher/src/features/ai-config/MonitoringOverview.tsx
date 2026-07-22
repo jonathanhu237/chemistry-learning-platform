@@ -2,7 +2,7 @@ import { Button, Input, Tag, Typography } from "antd";
 import { ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 
 import { buildAttentionItems, buildHealthTiles, tagColorForTone } from "./monitoringMappers";
-import type { MonitorModuleKey, MonitoringQueries, VideoLibrarySearchDiagnostics } from "./monitoringTypes";
+import type { MonitorModuleKey, MonitoringQueries, TeacherCatalogSearchDiagnostics } from "./monitoringTypes";
 
 const { Text } = Typography;
 
@@ -105,7 +105,7 @@ export function MonitoringOverview({
   );
 }
 
-function QuickDiagnosisResult({ search, onOpenEs }: { search?: VideoLibrarySearchDiagnostics; onOpenEs: () => void }) {
+function QuickDiagnosisResult({ search, onOpenEs }: { search?: TeacherCatalogSearchDiagnostics; onOpenEs: () => void }) {
   const result = search?.results?.[0];
   if (!result) {
     return <div className="ai-monitor-quiet-state">暂无检索诊断结果。</div>;

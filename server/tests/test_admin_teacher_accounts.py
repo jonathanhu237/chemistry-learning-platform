@@ -102,7 +102,7 @@ def test_teacher_account_routes_move_to_supervisor_teacher_api() -> None:
     assert "delete" not in paths.get("/api/admin/teacher-accounts/{account_id}", {})
     assert "/api/web-admin/session" not in paths
     assert "/api/web-admin/teacher-accounts" not in paths
-    assert "/api/web-admin/student-preview/classes" in paths
+    assert "/api/web-admin/student-preview/classes" not in paths
 
 
 @pytest.mark.anyio

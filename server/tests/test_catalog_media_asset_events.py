@@ -47,8 +47,8 @@ def test_handle_media_asset_archived_archives_bindings_and_queues_point_refresh(
     )
     monkeypatch.setattr(
         media_asset_events,
-        "queue_index_state",
-        lambda _session, **kwargs: queued.append({"kind": "index", **kwargs}),
+        "queue_teacher_index_state",
+        lambda _session, **kwargs: queued.append({"kind": "teacher_index", **kwargs}),
     )
     monkeypatch.setattr(
         media_asset_events,
@@ -75,9 +75,9 @@ def test_handle_media_asset_archived_archives_bindings_and_queues_point_refresh(
     assert result["archived_binding_count"] == 1
     assert result["affected_placement_node_ids"] == ["placement-a", "placement-b"]
     assert queued == [
-        {"kind": "index", "node_id": "placement-a", "action": "upsert", "trigger_source": "system"},
+        {"kind": "teacher_index", "node_id": "placement-a", "action": "upsert", "trigger_source": "system"},
         {"kind": "rag", "node_id": "placement-a", "reason": "media_asset_archived", "trigger_source": "system"},
-        {"kind": "index", "node_id": "placement-b", "action": "upsert", "trigger_source": "system"},
+        {"kind": "teacher_index", "node_id": "placement-b", "action": "upsert", "trigger_source": "system"},
         {"kind": "rag", "node_id": "placement-b", "reason": "media_asset_archived", "trigger_source": "system"},
     ]
 
@@ -85,7 +85,7 @@ def test_handle_media_asset_archived_archives_bindings_and_queues_point_refresh(
 def test_handle_media_asset_archived_is_idempotent_when_bindings_already_archived(monkeypatch) -> None:
     session = _FakeSession([])
     queued: list[dict[str, Any]] = []
-    monkeypatch.setattr(media_asset_events, "queue_index_state", lambda _session, **kwargs: queued.append(kwargs))
+    monkeypatch.setattr(media_asset_events, "queue_teacher_index_state", lambda _session, **kwargs: queued.append(kwargs))
     monkeypatch.setattr(media_asset_events, "mark_point_evidence_stale", lambda _session, **kwargs: queued.append(kwargs))
 
     result = media_asset_events.handle_media_asset_archived(

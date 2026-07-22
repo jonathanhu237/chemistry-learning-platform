@@ -353,6 +353,15 @@
   cursor: pointer;
 }
 
+.question-lifecycle-actions {
+  white-space: nowrap;
+}
+
+.question-withdrawal-notice {
+  border-color: rgba(180, 112, 0, 0.18);
+  background: #fffdf5;
+}
+
 .question-chapter-panel {
   position: sticky;
   top: 78px;

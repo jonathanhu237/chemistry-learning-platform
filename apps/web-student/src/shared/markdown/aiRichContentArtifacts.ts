@@ -11,6 +11,7 @@ export type AiRichContentArtifact = {
   id: string;
   kind: AiRichContentKind;
   index: number;
+  startLine: number;
   title: string;
   source: string;
   table?: ParsedMarkdownTable;
@@ -107,6 +108,7 @@ export function extractAiRichContentArtifacts(markdown: string, messageId: strin
     const line = lines[index] || "";
     const fenceMatch = line.trim().match(/^(`{3,}|~{3,})\s*mermaid\b/i);
     if (fenceMatch) {
+      const startLine = index + 1;
       const fence = fenceMatch[1];
       const fenceChar = fence[0];
       const fenceLength = fence.length;
@@ -126,6 +128,7 @@ export function extractAiRichContentArtifacts(markdown: string, messageId: strin
           id: aiRichContentArtifactId(messageId, "mermaid", mermaidIndex),
           kind: "mermaid",
           index: mermaidIndex,
+          startLine,
           title: titleForArtifact("mermaid", mermaidIndex),
           source,
         });
@@ -134,6 +137,7 @@ export function extractAiRichContentArtifacts(markdown: string, messageId: strin
     }
 
     if (index + 1 < lines.length && looksLikeTableRow(line) && isSeparatorRow(lines[index + 1] || "")) {
+      const startLine = index + 1;
       const tableLines = [line, lines[index + 1] || ""];
       index += 2;
       while (index < lines.length && looksLikeTableRow(lines[index] || "")) {
@@ -149,6 +153,7 @@ export function extractAiRichContentArtifacts(markdown: string, messageId: strin
           id: aiRichContentArtifactId(messageId, "table", tableIndex),
           kind: "table",
           index: tableIndex,
+          startLine,
           title: titleForArtifact("table", tableIndex, table),
           source,
           table,

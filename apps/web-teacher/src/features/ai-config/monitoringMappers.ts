@@ -8,8 +8,8 @@ import type {
   MonitorModuleKey,
   MonitorTone,
   UsageRange,
-  VideoLibraryIndexDiagnostics,
-  VideoLibrarySearchDiagnostics,
+  TeacherCatalogIndexDiagnostics,
+  TeacherCatalogSearchDiagnostics,
 } from "./monitoringTypes";
 
 export const monitorModules: Array<{ key: MonitorModuleKey; label: string; shortLabel: string }> = [
@@ -103,7 +103,7 @@ export function ragRouteSummary(aiConfig?: AIConfiguration, assistantRuntime?: L
   return "RAG 已关闭";
 }
 
-export function esStatus(index?: VideoLibraryIndexDiagnostics) {
+export function esStatus(index?: TeacherCatalogIndexDiagnostics) {
   const runtime = index?.elasticsearch;
   if (runtime?.error) return { label: "异常", tone: "bad" as MonitorTone, color: "#b42318" };
   if (runtime?.health?.status === "green") return { label: "green", tone: "good" as MonitorTone, color: "#005826" };
@@ -112,13 +112,13 @@ export function esStatus(index?: VideoLibraryIndexDiagnostics) {
   return { label: runtime?.health?.status || "待检测", tone: "idle" as MonitorTone, color: "default" };
 }
 
-export function esMappingReady(index?: VideoLibraryIndexDiagnostics) {
+export function esMappingReady(index?: TeacherCatalogIndexDiagnostics) {
   const mapping = index?.elasticsearch?.mapping;
   const fields = Object.entries(mapping?.chemistry_fields_present || {});
   return Boolean(mapping?.version && mapping.version === mapping.desired_version) || (fields.length > 0 && fields.every(([, present]) => present));
 }
 
-export function dictionaryHealthy(index?: VideoLibraryIndexDiagnostics) {
+export function dictionaryHealthy(index?: TeacherCatalogIndexDiagnostics) {
   const analyzerOk = index?.settings?.analyzer_assets?.ok;
   const counts = index?.settings?.dictionary_assets?.category_counts || {};
   return analyzerOk !== false && Object.keys(counts).length > 0;
@@ -130,7 +130,7 @@ export function guardrailStatus(policy?: AIConfiguration["student_ai_policy"]) {
   return { label: "主动防护中", tone: "good" as MonitorTone, color: "#005826" };
 }
 
-export function searchTermGroups(search?: VideoLibrarySearchDiagnostics) {
+export function searchTermGroups(search?: TeacherCatalogSearchDiagnostics) {
   const terms = search?.query_plan?.terms;
   return [
     { key: "formulae", label: "化学式", values: terms?.formulae || [] },
@@ -143,7 +143,7 @@ export function searchTermGroups(search?: VideoLibrarySearchDiagnostics) {
   ];
 }
 
-export function dictionaryRows(index?: VideoLibraryIndexDiagnostics) {
+export function dictionaryRows(index?: TeacherCatalogIndexDiagnostics) {
   const counts = index?.settings?.dictionary_assets?.category_counts || {};
   return Object.entries(counts).map(([name, count]) => ({ name, count }));
 }
@@ -151,7 +151,7 @@ export function dictionaryRows(index?: VideoLibraryIndexDiagnostics) {
 export function buildHealthTiles(args: {
   aiConfig?: AIConfiguration;
   assistantRuntime?: LearningAssistantRuntime;
-  indexDiagnostics?: VideoLibraryIndexDiagnostics;
+  indexDiagnostics?: TeacherCatalogIndexDiagnostics;
 }): HealthTile[] {
   const aiStatus = openAiStatus(args.aiConfig?.status);
   const rag = ragStatus(args.aiConfig, args.assistantRuntime);
@@ -222,8 +222,8 @@ function aiConfigDetail(aiConfig?: AIConfiguration) {
 export function buildAttentionItems(args: {
   aiConfig?: AIConfiguration;
   assistantRuntime?: LearningAssistantRuntime;
-  indexDiagnostics?: VideoLibraryIndexDiagnostics;
-  searchDiagnostics?: VideoLibrarySearchDiagnostics;
+  indexDiagnostics?: TeacherCatalogIndexDiagnostics;
+  searchDiagnostics?: TeacherCatalogSearchDiagnostics;
 }): AttentionItem[] {
   const items: AttentionItem[] = [];
   const aiStatus = openAiStatus(args.aiConfig?.status);

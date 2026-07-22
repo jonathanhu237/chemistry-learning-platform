@@ -5,7 +5,6 @@ from typing import Any
 
 from sqlalchemy import text
 
-from server.app.domains.experiment_points.index_events import queue_point_search_index_for_media_binding
 from server.app.infrastructure.database import db_session
 
 
@@ -52,7 +51,6 @@ def create_media_binding(
             .mappings()
             .one()
         )
-        queue_point_search_index_for_media_binding(session, dict(row))
     return dict(row)
 
 
@@ -77,8 +75,6 @@ def publish_media_binding(binding_id: str, actor_user_id: str | None) -> dict[st
             .mappings()
             .first()
         )
-        if row:
-            queue_point_search_index_for_media_binding(session, dict(row))
     if not row:
         raise ValueError("Media binding not found")
     return dict(row)
@@ -106,8 +102,6 @@ def unpublish_media_binding(binding_id: str) -> dict[str, Any]:
             .mappings()
             .first()
         )
-        if row:
-            queue_point_search_index_for_media_binding(session, dict(row))
     if not row:
         raise ValueError("Media binding not found")
     return dict(row)
@@ -130,8 +124,6 @@ def delete_media_binding(binding_id: str) -> dict[str, Any]:
             .mappings()
             .first()
         )
-        if row:
-            queue_point_search_index_for_media_binding(session, dict(row))
     if not row:
         raise ValueError("Media binding not found")
     return dict(row)

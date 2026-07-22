@@ -12,8 +12,8 @@ import { navigateToAssessmentReport, navigateToLegacyAssessmentReport } from "..
 import type { StudentRouteSearch } from "../../app/router/routeTypes";
 import { DetailPageFrame } from "../../app/shell/DetailPageFrame";
 import { useStudentRuntime } from "../../app/shell/studentAppContext";
+import type { AnswerMap } from "../../features/assessment/AssessmentPanel";
 import { PosttestPanel } from "../../features/assessment/PosttestPanel";
-import type { AnswerMap } from "../../features/pretest/AssessmentPanel";
 import { MobileEmptyState } from "../../mobile/primitives";
 
 export function AssessmentSessionPage() {

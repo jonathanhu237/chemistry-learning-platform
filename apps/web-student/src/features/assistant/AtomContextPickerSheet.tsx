@@ -8,21 +8,21 @@ import type {
   StudentCatalogNodeResponse,
   StudentLearningPageResponse,
   StudentLearningProfileSummary,
-  StudentVideoLibraryResultItem,
-  StudentVideoLibrarySearchResponse,
+  StudentHomeVideoFeedItem,
+  StudentHomeVideoFeedResponse,
 } from "../../api";
 import {
   errorMessage,
   getStudentCatalogNode,
   getStudentChapterCatalog,
+  getStudentHomeVideoFeed,
   getStudentLearningPage,
-  searchStudentVideoLibrary,
 } from "../../api";
 import { formatChapterEntryTitle } from "../learning/learningFormat";
 import {
   assistantContextFromCatalogNode,
-  assistantContextFromVideoLibraryResult,
-  isBindableVideoLibraryResult,
+  assistantContextFromHomeFeedItem,
+  isBindableHomeFeedItem,
   type AssistantContext,
 } from "./assistantContext";
 
@@ -48,10 +48,10 @@ function profileTitle(profile: StudentLearningProfileSummary): string {
   return formatChapterEntryTitle(profile) || profile.title || profile.subtitle || profile.chapter_id;
 }
 
-function compactResultPath(item: StudentVideoLibraryResultItem, profiles: StudentLearningProfileSummary[] = []): string {
+function compactResultPath(item: StudentHomeVideoFeedItem, profiles: StudentLearningProfileSummary[] = []): string {
   const target = item.target;
-  const path = item.target?.catalog_path?.map((part) => part.trim()).filter(Boolean) || [];
-  const profile = profiles.find((entry) => entry.profile_id === target?.profile_id || entry.chapter_id === target?.chapter_id);
+  const path = (target.catalog_path?.length ? target.catalog_path : item.catalog_path).map((part) => part.trim()).filter(Boolean);
+  const profile = profiles.find((entry) => entry.chapter_id === (target.chapter_id || item.chapter_id));
   const chapterTitle = profile ? profileTitle(profile) : target?.chapter_id || "";
   const fullPath: string[] = [];
   for (const part of [chapterTitle, ...path]) {
@@ -60,21 +60,19 @@ function compactResultPath(item: StudentVideoLibraryResultItem, profiles: Studen
     fullPath.push(text);
   }
   if (fullPath.length) return fullPath.join(" / ");
-  return item.subtitle;
+  return item.summary;
 }
 
-function pointResultItems(response: StudentVideoLibrarySearchResponse | null): StudentVideoLibraryResultItem[] {
+function pointResultItems(response: StudentHomeVideoFeedResponse | null): StudentHomeVideoFeedItem[] {
   if (!response) return [];
   const seen = new Set<string>();
-  const items: StudentVideoLibraryResultItem[] = [];
-  for (const group of response.groups) {
-    for (const item of group.items) {
-      if (!isBindableVideoLibraryResult(item)) continue;
-      const key = item.target?.node_id || item.target?.placement_node_id || item.id;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      items.push(item);
-    }
+  const items: StudentHomeVideoFeedItem[] = [];
+  for (const item of response.items) {
+    if (!isBindableHomeFeedItem(item)) continue;
+    const key = item.target.node_id || item.target.placement_node_id || item.id;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push(item);
   }
   return items;
 }
@@ -148,7 +146,7 @@ export function AtomContextPickerSheet({
   const [directoryRequestVersion, setDirectoryRequestVersion] = useState(0);
   const [directoryLoading, setDirectoryLoading] = useState(false);
   const [directoryError, setDirectoryError] = useState("");
-  const [searchResponse, setSearchResponse] = useState<StudentVideoLibrarySearchResponse | null>(null);
+  const [searchResponse, setSearchResponse] = useState<StudentHomeVideoFeedResponse | null>(null);
   const [searchRequestVersion, setSearchRequestVersion] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState("");
@@ -352,7 +350,7 @@ export function AtomContextPickerSheet({
     let cancelled = false;
     setSearchLoading(true);
     setSearchError("");
-    searchStudentVideoLibrary(debouncedQuery, PICKER_SEARCH_LIMIT)
+    getStudentHomeVideoFeed({ q: debouncedQuery, limit: PICKER_SEARCH_LIMIT })
       .then((payload) => {
         if (!cancelled) setSearchResponse(payload);
       })
@@ -391,8 +389,8 @@ export function AtomContextPickerSheet({
   );
 
   const selectSearchPoint = useCallback(
-    (item: StudentVideoLibraryResultItem) => {
-      const context = assistantContextFromVideoLibraryResult(item);
+    (item: StudentHomeVideoFeedItem) => {
+      const context = assistantContextFromHomeFeedItem(item);
       if (!context) return;
       blurPickerFocus();
       clearShellPickerState();
@@ -534,7 +532,7 @@ export function AtomContextPickerSheet({
     return (
       <div className="atom-context-picker-list kind-search" aria-label="点位搜索结果">
         {searchItems.map((item) => {
-          const context = assistantContextFromVideoLibraryResult(item);
+          const context = assistantContextFromHomeFeedItem(item);
           const selected = context ? contextIdentity(context) === selectedIdentity : false;
           return (
             <button

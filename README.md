@@ -1,196 +1,127 @@
-# SYSU Chemistry Platform Console
+# SYSU Chemistry Learning Platform
 
-This repository contains the standalone admin-management application and the student H5 login shell for the SYSU chemistry experiment learning platform.
+This repository contains one student H5 application, one teacher console, and their shared FastAPI backend.
 
-It includes:
+## Product Surfaces
 
-- React + Ant Design platform operations frontend in `apps/web-admin`
-- React + Ant Design teacher console frontend in `apps/web-teacher`
-- React student H5 frontend in `apps/web-student`
-- optional legacy competition frontends in `apps/web-student-old` and `apps/web-teacher-old`
-- FastAPI admin backend in `server`
-- database migrations in `server/migrations`
-- admin bootstrap/import scripts in `scripts`
-- protected production seed data under `data/seed`
+- `apps/web-student`: the canonical green mobile H5. Its five root tabs are Home, Learn, Atom, Assessment, and Profile.
+- `apps/web-teacher`: the canonical Ant Design teacher console for textbooks, classes, catalog authoring, videos, questions, analytics, feedback, preview, and settings.
+- `server`: FastAPI APIs, domain logic, PostgreSQL persistence, and workers.
+- `server/migrations`: the ordered PostgreSQL migration chain.
+- `scripts`: migrations, bootstrap, rebuild, validation, and deployment commands.
+- `data/seed`: protected current resources used to restore and validate a blank deployment.
 
-It intentionally excludes:
+The student application is an H5 website, not a native WeChat Mini Program. Home keeps a finite experiment-video discovery feed with viewport-muted preview, focused search, explicit teacher recommendations, point navigation, and durable favorites. PostgreSQL owns this feed and its search; there is no separate student video-search Elasticsearch projection.
 
-- WeChat/student mini-program source
-- generated student app JSON bundles
-- legacy courseware-derived demo chunks, guessed links, and generated placeholder question seeds
-- raw PDF extraction inputs
-- intermediate extraction output
-- uploaded media files
-- local logs, caches, dependency folders, and build output
+Elasticsearch remains in use for two distinct consumers:
+
+- teacher catalog-authoring search; and
+- the textbook RAG index used by Atom, question evidence, and teacher learning-assistant workflows.
+
+Online textbook ingestion is managed from the teacher console. A PDF is uploaded, extracted natively or through configurable MinerU OCR, chunked, embedded, indexed, reviewed, and published. OCR, embedding, and rerank providers are administrator-configurable in the teacher settings; API keys must be supplied at runtime and must never be committed.
+
+Assessment exposes one smart baseline/assembly path and an optional chapter → directory → point custom assessment with 1, 2, or 3 questions per point. The active two-stage pretest flow is retired; existing pretest reports remain readable as historical records.
 
 ## Local Development
 
-Install backend dependencies:
+Backend requirements:
 
-```powershell
+```bash
 python -m pip install -r requirements.txt
-```
-
-Use Node.js `^20.19.0 || >=22.12.0` for the frontend workspaces. The repository includes `.nvmrc` for teams that use nvm-compatible tooling.
-
-Install frontend dependencies:
-
-```powershell
-Set-Location apps/web-admin
-npm install
-Set-Location ../web-teacher
-npm install
-Set-Location ../web-student
-npm install
-Set-Location ../web-student-old
-npm install
-Set-Location ../web-teacher-old
-npm install
-```
-
-Run the admin backend:
-
-```powershell
+python scripts/apply_migrations.py
 python -m uvicorn server.app.app_runtime.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Run the platform operations frontend:
+Use Node.js `^20.19.0 || >=22.12.0`. Install and start the two frontends in separate terminals:
 
-```powershell
-Set-Location apps/web-admin
+```bash
+cd apps/web-student
+npm install
 npm run dev
 ```
 
-Run the teacher console frontend:
-
-```powershell
-Set-Location apps/web-teacher
+```bash
+cd apps/web-teacher
+npm install
 npm run dev
 ```
 
-Run the student H5 frontend:
+Default development URLs:
 
-```powershell
-Set-Location apps/web-student
-npm run dev
-```
+- student H5: `http://127.0.0.1:5173/`
+- teacher console: `http://127.0.0.1:5174/login`
+- backend: `http://127.0.0.1:8000/health`
 
-Run the optional legacy competition frontends:
-
-```powershell
-Set-Location apps/web-student-old
-npm run dev
-Set-Location ../web-teacher-old
-npm run dev
-```
-
-The student H5 runs at `http://127.0.0.1:5173/`, the teacher console runs at `http://127.0.0.1:5174/login`, and the platform operations console runs at `http://127.0.0.1:5175/`. The optional legacy student and teacher dev servers run at `http://127.0.0.1:5176/` and `http://127.0.0.1:5177/`. All frontend dev servers proxy `/api` to the backend.
-The platform operations console uses the backend `WEB_ADMIN_ACCESS_TOKEN` value as its login token; it does not use an `app_users` username/password session.
+Both frontend development servers proxy `/api` to the backend.
 
 ## Production-Style Local Run
 
-Copy the example environment:
+Copy the environment template, replace development credentials, and keep the resulting `.env` file out of Git:
 
-```powershell
-Copy-Item .env.example .env
-```
-
-For Docker Compose, adjust secrets and database settings, then deploy the default service graph:
-
-```powershell
+```bash
+cp .env.example .env
 python scripts/deploy_compose_stack.py
 ```
 
-The default Compose stack is the production-style application unit: Postgres, Elasticsearch with IK analysis, the FastAPI backend API, independent `web-student`, `web-teacher`, and `web-admin` frontend services, tusd uploads, and the local video worker. Textbook RAG is accessed through the configured external provider APIs and Elasticsearch index; there is no local RAG sidecar service in Compose.
+The base Compose graph contains PostgreSQL, Elasticsearch/IK, the backend, the two canonical frontends, `tusd`, and `video-worker`. `textbook-ingestion-worker` is behind the optional `textbook-ingestion` profile; the deployment helper explicitly starts it so online textbook jobs are available in the production-style stack. The video worker starts without a GPU requirement and falls back to CPU transcoding. On an NVIDIA host, pass `--gpu` to `deploy_compose_stack.py` (or layer `docker-compose.gpu.yml` over the default file) to expose NVENC/NVDEC.
 
-To include the legacy BKT competition profile in the Compose run:
+For routine changes, rebuild only the owning service:
 
-```powershell
-python scripts/deploy_compose_stack.py --include-legacy
-```
-
-This adds `web-student-old` at `222.200.189.249:15176` and `web-teacher-old` at `127.0.0.1:15177`. Both old services share the same backend, database, seed data, media, question bank, BKT/mastery records, and analytics as the current products.
-
-For routine development after the stack already exists, rebuild only the service that owns your change:
-
-```powershell
+```bash
 docker compose up -d --build backend
-docker compose up -d --build web-teacher
 docker compose up -d --build web-student
-docker compose up -d --build web-admin
-docker compose up -d --build web-student-old web-teacher-old
+docker compose up -d --build web-teacher
 docker compose up -d --build video-worker
+docker compose up -d --build textbook-ingestion-worker
 ```
 
-Do not clear Docker build cache or run no-cache/full-stack rebuilds as normal startup. Use cache prune only as an explicit recovery step for cache corruption or disk pressure.
-
-See `docs/production-operations.md` for health checks, migration discipline, backup/restore, and restore-from-seed instructions. See `docs/catalog-tree-architecture.md` for the chapter catalog tree and point-node authoring model.
+See `docs/production-operations.md` for deployment, health, backup, search, textbook-ingestion, and recovery procedures. See `docs/local_video_processing.md` for resumable upload and local video processing.
 
 ## Bootstrap
 
-Apply migrations:
+Restore the current protected seed baseline on a configured blank deployment:
 
-```powershell
-python scripts/apply_migrations.py
+```bash
+python scripts/bootstrap_production_seed.py
 ```
 
-Create or update a teacher-console account:
+Create or update the initial supervisor-teacher account separately when needed:
 
-```powershell
+```bash
 python scripts/bootstrap_admin.py --username admin
 ```
 
-Set the `web-admin` access token in configuration:
-
-```powershell
-$env:WEB_ADMIN_ACCESS_TOKEN = "<long-random-token>"
-```
-
-Import formal admin data and canonical evidence when needed:
-
-```powershell
-python scripts/seed_formal_experiments.py
-python scripts/publish_reviewed_curriculum.py
-python scripts/import_canonical_evidence.py
-python scripts/import_experiment_knowledge_framework.py --skip-migrations
-python scripts/generate_experiment_catalog_seed.py
-python scripts/validate_experiment_catalog_seed.py --write-report
-python scripts/import_experiment_catalog_seed.py --skip-migrations
-python scripts/rebuild_video_library_index.py --recreate
-python scripts/verify_canonical_evidence.py
-```
+The internal `admin` role represents a supervisor teacher inside the teacher console. It is not a separate operations product. Every teacher can change their own password; only a supervisor teacher can list, create, reset, enable, or disable peer teacher accounts.
 
 ## Validation
 
-Run the production-readiness validation chain:
+Run the full production-readiness chain:
 
-```powershell
+```bash
 python scripts/validate_production_readiness.py --install-frontend
 ```
 
-For a real Docker Compose application smoke check, including Postgres, Elasticsearch/IK, backend/frontend health, frontend API proxies, migrations, and video-library index readiness:
+Run the Compose application smoke check when Docker prerequisites are available:
 
-```powershell
+```bash
 python scripts/validate_production_readiness.py --run-compose-smoke --skip-frontend --skip-backend-tests
 ```
 
-For backend/resource-only phases:
+Focused checks:
 
-```powershell
-python scripts/validate_production_readiness.py --skip-frontend
-```
+```bash
+python scripts/validate_backend_architecture.py
+python -m pytest server/tests -q
+python scripts/validate_teacher_catalog_search.py
 
-For focused frontend validation:
-
-```powershell
-Set-Location apps/web-admin
-npm run typecheck
-npm run build
-Set-Location ../web-teacher
+cd apps/web-student
 npm run typecheck
 npm test
 npm run build
-Set-Location ../web-student
+npm run qa:mobile
+
+cd ../web-teacher
+npm run validate:boundaries
 npm run typecheck
 npm test
 npm run build
@@ -198,9 +129,7 @@ npm run build
 
 ## GitHub Publishing
 
-After the local repository has been created and committed, add the GitHub remote and push:
-
-```powershell
+```bash
 git remote add origin <github-repo-url>
 git push -u origin main
 ```

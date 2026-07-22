@@ -179,6 +179,14 @@ export type QuestionDraft = {
   mode?: string;
   warning?: string;
   created_at?: string;
+  revoked_from_question_id?: string;
+  revoked_by_user_id?: string;
+  revoked_at?: string;
+  withdrawal?: {
+    revoked_from_question_id: string;
+    revoked_by_user_id?: string;
+    revoked_at?: string;
+  };
 };
 
 export type PointAwareSuggestionRequest = {
@@ -435,6 +443,14 @@ export function listQuestionBankQuestions(params: URLSearchParams): Promise<ApiL
 
 export function listQuestionDrafts(experimentId: string): Promise<ApiList<QuestionDraft>> {
   return api<ApiList<QuestionDraft>>(`/api/admin/question-banks/drafts?experiment_id=${experimentId}`);
+}
+
+export function withdrawQuestionToDraft(questionId: string): Promise<QuestionDraft> {
+  return postJson<QuestionDraft>(`/api/admin/question-banks/questions/${questionId}/revoke-to-draft`, {});
+}
+
+export function disableQuestion(questionId: string): Promise<Question> {
+  return postJson<Question>(`/api/admin/question-banks/questions/${questionId}/disable`, {});
 }
 
 export function getQuestionWorkbenchSession(sessionId: string): Promise<QuestionWorkbenchSession> {

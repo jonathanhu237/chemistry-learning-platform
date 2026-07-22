@@ -45,8 +45,6 @@ class CustomAssessmentSettings(BaseModel):
 
 
 class AssessmentSettings(BaseModel):
-    pretest_enabled: bool = True
-    pretest_question_count: int = Field(default=8, ge=1, le=50)
     posttest_enabled: bool = True
     posttest_question_count: int = Field(default=8, ge=1, le=50)
     smart_assessment: SmartAssessmentSettings = Field(default_factory=SmartAssessmentSettings)
@@ -309,7 +307,7 @@ def _defaults_for_key(key: str) -> dict[str, Any]:
                 ),
                 textbook_rag=TextbookRAGConfigurationUpdate(
                     enabled=settings.textbook_rag_enabled,
-                    elasticsearch_url=settings.textbook_rag_elasticsearch_url or settings.video_library_search_url,
+                    elasticsearch_url=settings.textbook_rag_elasticsearch_url,
                     index_name=settings.textbook_rag_elasticsearch_index,
                     ocr=TextbookOCRProviderUpdate(
                         enabled=settings.textbook_ocr_enabled,
@@ -576,7 +574,6 @@ def _textbook_rag_payload(stored: Any, base: Settings) -> dict[str, Any]:
         "elasticsearch_url": str(
             payload.get("elasticsearch_url")
             or base.textbook_rag_elasticsearch_url
-            or base.video_library_search_url
             or ""
         ).strip().rstrip("/"),
         "index_name": str(payload.get("index_name") or base.textbook_rag_elasticsearch_index).strip(),

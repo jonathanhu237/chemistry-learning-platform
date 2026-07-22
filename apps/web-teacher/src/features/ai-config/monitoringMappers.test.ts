@@ -8,7 +8,7 @@ import {
   searchTermGroups,
   trendBuckets,
 } from "./monitoringMappers";
-import type { VideoLibraryIndexDiagnostics, VideoLibrarySearchDiagnostics } from "./monitoringTypes";
+import type { TeacherCatalogIndexDiagnostics, TeacherCatalogSearchDiagnostics } from "./monitoringTypes";
 import type { AIConfiguration } from "../../api/settings";
 
 const connectedStatus = {
@@ -100,7 +100,7 @@ describe("intelligent monitoring mappers", () => {
         },
         settings: {
           backend: "elasticsearch",
-          index: "student-video-library",
+          index: "teacher-catalog-admin-search",
           analyzer_assets: { ok: false, missing: ["analysis/chemistry_synonyms.txt"] },
           dictionary_assets: { category_counts: {} },
         },
@@ -123,7 +123,7 @@ describe("intelligent monitoring mappers", () => {
           property_tags: ["氧化性"],
         },
       },
-    } as VideoLibrarySearchDiagnostics);
+    } as TeacherCatalogSearchDiagnostics);
     expect(groups.find((group) => group.key === "formulae")?.values).toEqual(["H2O2", "KMNO4"]);
     expect(groups.find((group) => group.key === "condition_tags")?.values).toEqual(["酸性"]);
   });
@@ -135,11 +135,11 @@ describe("intelligent monitoring mappers", () => {
   });
 });
 
-function indexDiagnostics(overrides: Partial<VideoLibraryIndexDiagnostics> = {}): VideoLibraryIndexDiagnostics {
+function indexDiagnostics(overrides: Partial<TeacherCatalogIndexDiagnostics> = {}): TeacherCatalogIndexDiagnostics {
   return {
     settings: {
       backend: "elasticsearch",
-      index: "student-video-library",
+      index: "teacher-catalog-admin-search",
       desired_mapping_version: "chemistry-point-placement-v4",
       analyzer: "ik_max_word",
       local_fallback: false,

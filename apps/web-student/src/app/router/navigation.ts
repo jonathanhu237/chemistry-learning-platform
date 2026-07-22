@@ -133,50 +133,6 @@ export function navigateToCatalogNode(
   });
 }
 
-export function navigateToSearch(
-  navigate: NavigateLike,
-  options: {
-    from?: StudentDetailSource;
-    profileId?: string | null;
-    chapterId?: string | null;
-    sourceNodeId?: string | null;
-    catalogPath?: string | null;
-    elementSymbol?: string | null;
-    q?: string | null;
-    replace?: boolean;
-  } = {},
-): void {
-  void navigate({
-    to: "/search",
-    replace: options.replace,
-    search: compactSearch({
-      from: options.from || "chapter",
-      profileId: options.profileId || "",
-      chapterId: options.chapterId || "",
-      sourceNodeId: options.sourceNodeId || "",
-      catalogPath: options.catalogPath || "",
-      elementSymbol: options.elementSymbol || "",
-      q: options.q || "",
-    }),
-  });
-}
-
-export function navigateToVideoLibrary(
-  navigate: NavigateLike,
-  options: {
-    from?: StudentDetailSource;
-    q?: string | null;
-  } = {},
-): void {
-  void navigate({
-    to: "/video-library",
-    search: compactSearch({
-      from: options.from || "home",
-      q: options.q || "",
-    }),
-  });
-}
-
 export function navigateToAiChat(navigate: NavigateLike, context: AssistantContext, from: StudentDetailSource): void {
   const contextKey = saveAssistantContext(context);
   void navigate({

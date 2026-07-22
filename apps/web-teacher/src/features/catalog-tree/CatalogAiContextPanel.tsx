@@ -227,6 +227,7 @@ export function CatalogAiContextPanel({ detail, mutations }: { detail: CatalogNo
   const contextQuery = useCatalogPointAiContext(nodeId, detail.node.node_kind === "point");
   const probe = mutations.runRagProbe.data?.node_id === nodeId ? mutations.runRagProbe.data : undefined;
   const jobState = contextQuery.data?.job_state || detail.job_state;
+  const teacherSearchState = detail.teacher_search_state || jobState?.teacher_search_state;
   const evidenceState = jobState?.evidence_state;
 
   return (
@@ -234,9 +235,16 @@ export function CatalogAiContextPanel({ detail, mutations }: { detail: CatalogNo
       <div className="catalog-panel-title-row">
         <div>
           <Title level={4}>点位检索诊断</Title>
-          <Text type="secondary">仅教师可见，用于诊断学生端可见内容、ES 同步状态、静态兜底证据、真实 RAG 搜索和点位上下文。</Text>
+          <Text type="secondary">仅教师可见，用于诊断学生端可见内容、教师目录搜索同步、静态兜底证据、真实 RAG 搜索和点位上下文。</Text>
         </div>
         <Space wrap>
+          <Button
+            size="small"
+            loading={mutations.triggerPointJob.isPending}
+            onClick={() => mutations.triggerPointJob.mutate({ nodeId, action: "teacher-search-refresh" })}
+          >
+            刷新教师搜索
+          </Button>
           <Button
             size="small"
             loading={mutations.triggerPointJob.isPending}
@@ -315,15 +323,15 @@ export function CatalogAiContextPanel({ detail, mutations }: { detail: CatalogNo
 
             <section className="catalog-ai-band">
               <div className="catalog-panel-title-row">
-                <Title level={5}>ES 与证据任务</Title>
+                <Title level={5}>教师搜索与证据任务</Title>
                 <Space>
-                  <Tag color={statusColor(jobState?.es_state?.sync_status)}>{displayLabel(jobState?.es_state?.sync_status || "no-es-state")}</Tag>
+                  <Tag color={statusColor(teacherSearchState?.sync_status)}>{displayLabel(teacherSearchState?.sync_status || "no-search-state")}</Tag>
                   <Tag color={statusColor(evidenceState?.evidence_status)}>{displayLabel(evidenceState?.evidence_status || "missing")}</Tag>
                 </Space>
               </div>
               <Descriptions size="small" column={2}>
-                <Descriptions.Item label="ES 动作">{displayLabel(jobState?.es_state?.desired_action || "-")}</Descriptions.Item>
-                <Descriptions.Item label="ES 错误">{jobState?.es_state?.last_error || "-"}</Descriptions.Item>
+                <Descriptions.Item label="教师搜索动作">{displayLabel(teacherSearchState?.desired_action || "-")}</Descriptions.Item>
+                <Descriptions.Item label="教师搜索错误">{teacherSearchState?.last_error || "-"}</Descriptions.Item>
                 <Descriptions.Item label="证据模式">{displayLabel(evidenceState?.source_mode || "-")}</Descriptions.Item>
                 <Descriptions.Item label="证据错误">{evidenceState?.latest_error || "-"}</Descriptions.Item>
               </Descriptions>

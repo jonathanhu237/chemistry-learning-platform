@@ -75,7 +75,7 @@ def main() -> None:
             "textbook projections from PostgreSQL after the seed import."
         ),
     )
-    parser.add_argument("--rebuild-search-indexes", action="store_true", help="Also rebuild teacher catalog and student video search indexes.")
+    parser.add_argument("--rebuild-search-indexes", action="store_true", help="Also rebuild the teacher catalog search index.")
     parser.add_argument("--teacher-username", default=os.getenv("SEED_TEACHER_USERNAME"))
     parser.add_argument("--teacher-password", default=os.getenv("SEED_TEACHER_PASSWORD"))
     parser.add_argument("--teacher-display-name", default=os.getenv("SEED_TEACHER_DISPLAY_NAME"))
@@ -165,7 +165,6 @@ def main() -> None:
 
     if args.rebuild_search_indexes:
         _run(["scripts/rebuild_teacher_catalog_search_index.py", "--recreate"], dry_run=args.dry_run)
-        _run(["scripts/rebuild_video_library_index.py", "--recreate"], dry_run=args.dry_run)
 
     if not args.skip_validation:
         validation_step = ["scripts/validate_complete_seed_bootstrap.py"]

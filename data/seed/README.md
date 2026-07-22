@@ -1,6 +1,6 @@
 # Production Seed Resources
 
-`data/seed` is a strict current-resource boundary. Files here must be required to restore, import, rebuild, or validate the current application baseline. Historical generation packets, audit drafts, local review reports, retired local BGE embeddings, and old `experiment_id + point_key` seed outputs do not belong here.
+`data/seed` is a strict current-resource boundary. Files here must be required to restore, import, rebuild, or validate the current application baseline: one student H5, one teacher console, and one textbook RAG vector projection. Historical generation packets, audit drafts, local review reports, retired local BGE embeddings, student video-search projections, and old `experiment_id + point_key` seed outputs do not belong here.
 
 Protected current resources:
 
@@ -17,7 +17,7 @@ Protected current resources:
 - `media/experiment-videos-new-v1/**`: protected media seed package restored into `MEDIA_ROOT/seed/experiment-videos-new-v1/**`.
 - `canonical_rag/chunks/*.jsonl`: canonical textbook chunks used to recreate `source_documents` and `source_chunks`.
 - `textbook_rag_precomputed/`: precomputed Qwen `text-embedding-v4` Elasticsearch documents for `canonical-rag-chunks-qwen-v1`; importing this bundle does not call Qwen or any other external API.
-- `search/**`: runtime chemistry search dictionaries and ES/IK analyzer assets, including `chemistry_vocabulary.json`.
+- `search/**`: teacher catalog-authoring search dictionaries and ES/IK analyzer assets, including `chemistry_vocabulary.json`.
 - `student_learning/element_profiles.json`: curated student-facing family and element learning profiles.
 - `manifests/core_resources.json`: count, size, SHA256, and database expectation manifest for the current whitelist.
 
@@ -35,21 +35,22 @@ Current restore order:
 python scripts/bootstrap_production_seed.py
 ```
 
-The bootstrap command creates or updates the demo teacher-console account as `admin / 123456`, creates `seed-class-2026`, creates 30 active student accounts `SEED001` through `SEED030` with default password `123456`, restores seed videos into `MEDIA_ROOT`, imports precomputed RAG evidence/questions, and finishes with complete seed validation.
+The bootstrap command creates or updates the demo supervisor-teacher account as `admin / 123456`, creates `seed-class-2026`, creates 30 active student accounts `SEED001` through `SEED030` with default password `123456`, restores seed videos into `MEDIA_ROOT`, imports precomputed RAG evidence/questions, and finishes with complete seed validation. These are local/demo credentials and must be overridden for a real deployment.
 
 Recommended blank-server flow:
 
 ```bash
 cp .env.example .env
 # Edit .env with deployment-only secrets and URLs:
-# - DATABASE_URL, MEDIA_ROOT, API_PUBLIC_BASE_URL, AUTH_SECRET_KEY, WEB_ADMIN_ACCESS_TOKEN
+# - DATABASE_URL, MEDIA_ROOT, API_PUBLIC_BASE_URL, AUTH_SECRET_KEY
 # - AGENT_LLM_API_KEY for DeepSeek and AGENT_LLM_MODEL, for example deepseek-chat
-# - TEXTBOOK_RAG_EMBEDDING_API_KEY / TEXTBOOK_RAG_RERANK_API_KEY for Alibaba Cloud Model Studio
-# - TEXTBOOK_RAG_ELASTICSEARCH_URL and search Elasticsearch URLs
+# - TEXTBOOK_OCR_API_KEY for MinerU when OCR is enabled
+# - TEXTBOOK_RAG_EMBEDDING_API_KEY / TEXTBOOK_RAG_RERANK_API_KEY for the configured providers
+# - TEXTBOOK_RAG_ELASTICSEARCH_URL and TEACHER_CATALOG_SEARCH_URL
 python scripts/bootstrap_production_seed.py
 ```
 
-The `.env.example` file documents the current provider template without real secrets: Alibaba Cloud Model Studio/DashScope `text-embedding-v4` for embedding, `qwen3-rerank` for rerank, and DeepSeek's OpenAI-compatible chat provider for LLM generation.
+The `.env.example` file contains provider-neutral bootstrap fields without real secrets. The teacher settings page is authoritative after configuration is saved; MinerU OCR, Qwen-compatible embedding/rerank, and the chat provider remain runtime choices rather than seed constants.
 
 Credential overrides are supported without editing committed seed JSON:
 
@@ -78,7 +79,7 @@ python scripts/import_precomputed_textbook_rag.py --recreate
 python scripts/validate_complete_seed_bootstrap.py
 ```
 
-If teacher catalog search and student video-library search are also configured for Elasticsearch, run:
+To also rebuild the retained teacher catalog-authoring Elasticsearch projection, run:
 
 ```bash
 python scripts/bootstrap_production_seed.py --rebuild-search-indexes
@@ -106,10 +107,10 @@ python scripts/validate_production_resources.py --write-manifest
 
 Manual runtime configuration after seed import:
 
-- AI question generation: configure provider, base URL, API key, and model name through environment/platform settings, for example `AGENT_LLM_PROVIDER`, `AGENT_LLM_BASE_URL`, `AGENT_LLM_API_KEY`, and `AGENT_LLM_MODEL`.
-- Textbook RAG refresh/generation: configure `TEXTBOOK_RAG_ELASTICSEARCH_URL`, `TEXTBOOK_RAG_ELASTICSEARCH_INDEX`, Qwen embedding base URL/API key/model, and Qwen rerank base URL/API key/model. Seed restore does not call these APIs.
-- Search: configure teacher catalog and student video-library search backends/URLs if Elasticsearch search is required in the deployment.
-- Deployment URLs and secrets: configure `DATABASE_URL`, `MEDIA_ROOT`, `API_PUBLIC_BASE_URL`, `AUTH_SECRET_KEY`, and `WEB_ADMIN_ACCESS_TOKEN` outside seed files.
+- AI question generation: configure provider, base URL, API key, and model through runtime environment values or the teacher AI settings, for example `AGENT_LLM_PROVIDER`, `AGENT_LLM_BASE_URL`, `AGENT_LLM_API_KEY`, and `AGENT_LLM_MODEL`.
+- Online textbook ingestion/RAG: configure MinerU OCR, `TEXTBOOK_RAG_ELASTICSEARCH_URL`, `TEXTBOOK_RAG_ELASTICSEARCH_INDEX`, embedding, and rerank from environment or the teacher settings page. Seed restore imports the committed precomputed RAG bundle and does not call provider APIs.
+- Search: configure only the teacher catalog-authoring search backend/URL. Student Home feed/search is PostgreSQL-backed and owns no Elasticsearch seed or rebuild operation.
+- Deployment URLs and secrets: configure `DATABASE_URL`, `MEDIA_ROOT`, `API_PUBLIC_BASE_URL`, and `AUTH_SECRET_KEY` outside seed files. Never commit provider keys or `.env`.
 
 Adding later video seed versions:
 

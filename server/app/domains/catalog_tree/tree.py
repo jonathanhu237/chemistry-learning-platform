@@ -23,17 +23,11 @@ from server.app.domains.catalog_tree.nodes import (
 )
 from server.app.domains.catalog_tree.points import save_point_content, set_point_content_publication
 from server.app.domains.catalog_tree.related_links import replace_related_links
-from server.app.domains.catalog_tree.search_documents import (
-    queue_index_state as _queue_index_state,
-    search_preview_for_node,
-    student_search_document_for_node,
-)
 from server.app.domains.catalog_tree.student_read_models import student_catalog_node, student_chapter_catalog, student_point_detail
 
 __all__ = [
     "NODE_KINDS",
     "_content_publication_errors",
-    "_queue_index_state",
     "validate_node_payload",
     "bind_existing_media",
     "chapter_tree_summary",
@@ -47,7 +41,6 @@ __all__ = [
     "replace_related_links",
     "save_point_content",
     "search_catalog_nodes",
-    "search_preview_for_node",
     "set_media_binding_status",
     "set_node_status",
     "set_point_content_publication",
@@ -57,7 +50,6 @@ __all__ = [
     "student_media_thumbnail_file",
     "student_media_subtitle_file",
     "student_point_detail",
-    "student_search_document_for_node",
     "update_node",
     "validate_selected_node",
 ]

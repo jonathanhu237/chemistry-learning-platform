@@ -91,29 +91,43 @@ export type CatalogNodeCard = {
   active_placement_count?: number;
   validation: CatalogValidation;
   node_status?: CatalogNodeStatusSummary | null;
-  index_state?: CatalogIndexState | null;
 };
 
-export type CatalogIndexState = {
+export type CatalogTeacherSearchState = {
+  node_id?: string;
+  placement_node_id?: string | null;
+  canonical_point_id?: string | null;
   document_id: string;
   desired_action: "upsert" | "delete";
-  sync_status: "pending" | "synced" | "failed" | "disabled";
+  sync_status: "pending" | "synced" | "failed" | "disabled" | "unavailable";
   attempts: number;
   last_error?: string | null;
   indexed_at?: string | null;
   updated_at?: string | null;
 };
 
+export type CatalogHomeRecommendationSetting = {
+  recommended: boolean;
+  sort_order: number;
+  recommended_by?: string | null;
+  updated_at?: string | null;
+};
+
+export type CatalogHomeRecommendationResponse = {
+  node_id: string;
+  home_recommendation: CatalogHomeRecommendationSetting;
+};
+
 export type CatalogPointJobStatus = "pending" | "running" | "succeeded" | "failed" | "disabled" | "unavailable";
 export type CatalogPointEvidenceStatus = "missing" | "pending" | "running" | "succeeded" | "failed" | "stale" | "disabled" | "unavailable";
-export type CatalogPointJobAction = "es-refresh" | "es-delete" | "rag-refresh" | "rag-delete" | "retry";
+export type CatalogPointJobAction = "teacher-search-refresh" | "teacher-search-delete" | "rag-refresh" | "rag-delete" | "retry";
 
 export type CatalogPointJob = {
   id: string;
   node_id: string;
   placement_node_id?: string | null;
   canonical_point_id?: string | null;
-  job_type: "es_upsert" | "es_delete" | "rag_evidence_refresh" | "rag_evidence_delete" | string;
+  job_type: "teacher_search_upsert" | "teacher_search_delete" | "rag_evidence_refresh" | "rag_evidence_delete" | string;
   trigger_source: "automatic" | "manual" | "retry" | "system" | string;
   status: CatalogPointJobStatus;
   attempts: number;
@@ -151,7 +165,7 @@ export type CatalogPointJobState = {
   node_id: string;
   placement_node_id?: string | null;
   canonical_point_id?: string | null;
-  es_state?: CatalogIndexState | null;
+  teacher_search_state?: CatalogTeacherSearchState | null;
   evidence_state: CatalogPointEvidenceState;
   recent_jobs: CatalogPointJob[];
 };
@@ -413,8 +427,9 @@ export type CatalogNodeDetail = {
   related_links: CatalogRelatedLink[];
   validation: CatalogValidation;
   node_status?: CatalogNodeStatusSummary | null;
-  search_preview?: CatalogSearchPreview | null;
-  index_state?: CatalogIndexState | null;
+  teacher_search_document?: CatalogSearchPreview | null;
+  teacher_search_state?: CatalogTeacherSearchState | null;
+  home_recommendation?: CatalogHomeRecommendationSetting | null;
   job_state?: CatalogPointJobState | null;
 };
 
@@ -581,9 +596,23 @@ export function reorderCatalogNodes(items: Array<{ node_id: string; display_orde
 
 export function changeCatalogNodeStatus(
   nodeId: string,
-  payload: { action: "archive" | "restore" | "publish" | "unpublish"; include_subtree?: boolean },
+  payload: {
+    action: "archive" | "restore" | "publish" | "unpublish";
+    include_subtree?: boolean;
+    archive_final_placement?: boolean;
+  },
 ): Promise<CatalogNodeDetail> {
   return postJson<CatalogNodeDetail>(`/api/admin/catalog/nodes/${encodeURIComponent(nodeId)}/status`, payload);
+}
+
+export function setCatalogHomeRecommendation(
+  nodeId: string,
+  payload: { recommended: boolean; sort_order: number },
+): Promise<CatalogHomeRecommendationResponse> {
+  return putJson<CatalogHomeRecommendationResponse>(
+    `/api/admin/catalog/nodes/${encodeURIComponent(nodeId)}/home-recommendation`,
+    payload,
+  );
 }
 
 export function createCatalogNodePreviewToken(nodeId: string): Promise<CatalogPreviewTokenResponse> {

@@ -178,6 +178,12 @@
     },
     {
       "method": "PUT",
+      "path": "/api/admin/catalog/nodes/{node_id}/home-recommendation",
+      "name": "admin_catalog_home_recommendation",
+      "owner": "admin-api"
+    },
+    {
+      "method": "PUT",
       "path": "/api/admin/catalog/nodes/{node_id}/related-links",
       "name": "admin_catalog_replace_related_links",
       "owner": "admin-api"
@@ -198,6 +204,18 @@
       "method": "GET",
       "path": "/api/admin/catalog/search",
       "name": "admin_catalog_search",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/search/index/diagnostics",
+      "name": "admin_catalog_search_index_diagnostics",
+      "owner": "admin-api"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/catalog/search/query/diagnostics",
+      "name": "admin_catalog_search_query_diagnostics",
       "owner": "admin-api"
     },
     {
@@ -466,60 +484,6 @@
     },
     {
       "method": "GET",
-      "path": "/api/admin/legacy/teacher-demo/classes",
-      "name": "admin_legacy_teacher_demo_classes",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/legacy/teacher-demo/classes/{class_id}/analytics",
-      "name": "admin_legacy_teacher_demo_class_analytics",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/legacy/teacher-demo/classes/{class_id}/weak-points",
-      "name": "admin_legacy_teacher_demo_class_weak_points",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/legacy/teacher-demo/evaluation-system",
-      "name": "admin_legacy_teacher_demo_evaluation_system",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/legacy/teacher-demo/overview",
-      "name": "admin_legacy_teacher_demo_overview",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/legacy/teacher-demo/question-resources",
-      "name": "admin_legacy_teacher_demo_question_resources",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/legacy/teacher-demo/video-resources",
-      "name": "admin_legacy_teacher_demo_video_resources",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/legacy/video-points",
-      "name": "admin_legacy_video_points",
-      "owner": "admin-api"
-    },
-    {
-      "method": "PUT",
-      "path": "/api/admin/legacy/video-points/{node_id}/recommendation",
-      "name": "admin_set_legacy_video_point_recommendation",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
       "path": "/api/admin/media/assets",
       "name": "admin_list_media_assets",
       "owner": "admin-api"
@@ -766,12 +730,6 @@
     },
     {
       "method": "POST",
-      "path": "/api/admin/question-banks/legacy-point-generate",
-      "name": "admin_generate_legacy_point_questions",
-      "owner": "admin-api"
-    },
-    {
-      "method": "POST",
       "path": "/api/admin/question-banks/import",
       "name": "admin_import_question_bank",
       "owner": "admin-api"
@@ -786,6 +744,12 @@
       "method": "GET",
       "path": "/api/admin/question-banks/questions",
       "name": "admin_list_questions",
+      "owner": "admin-api"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/question-banks/questions/{question_id}/revoke-to-draft",
+      "name": "admin_revoke_question_to_draft",
       "owner": "admin-api"
     },
     {
@@ -1005,18 +969,6 @@
       "owner": "admin-api"
     },
     {
-      "method": "GET",
-      "path": "/api/admin/video-library/index/diagnostics",
-      "name": "admin_video_library_index_diagnostics",
-      "owner": "admin-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/video-library/search/diagnostics",
-      "name": "admin_video_library_search_diagnostics",
-      "owner": "admin-api"
-    },
-    {
       "method": "POST",
       "path": "/api/auth/login",
       "name": "login",
@@ -1119,12 +1071,6 @@
       "owner": "student-api"
     },
     {
-      "method": "POST",
-      "path": "/api/student/assessment/baseline-prompt-dismiss",
-      "name": "dismiss_baseline_prompt",
-      "owner": "student-api"
-    },
-    {
       "method": "GET",
       "path": "/api/student/assessment/status",
       "name": "assessment_status",
@@ -1204,30 +1150,6 @@
     },
     {
       "method": "GET",
-      "path": "/api/student/legacy/reports",
-      "name": "legacy_reports",
-      "owner": "student-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/student/legacy/reports/{report_id}",
-      "name": "legacy_report_detail",
-      "owner": "student-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/student/legacy/smart-assessment/submit",
-      "name": "legacy_submit_smart_assessment",
-      "owner": "student-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/student/legacy/video-points",
-      "name": "legacy_video_points",
-      "owner": "student-api"
-    },
-    {
-      "method": "GET",
       "path": "/api/student/media/assets/{asset_id}/stream",
       "name": "student_media_stream",
       "owner": "student-api"
@@ -1264,18 +1186,6 @@
     },
     {
       "method": "POST",
-      "path": "/api/student/pretest/start",
-      "name": "start_pretest",
-      "owner": "student-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/student/pretest/submit",
-      "name": "submit_pretest_stage",
-      "owner": "student-api"
-    },
-    {
-      "method": "POST",
       "path": "/api/student/smart-assessment/start",
       "name": "start_smart_assessment",
       "owner": "student-api"
@@ -1288,57 +1198,21 @@
     },
     {
       "method": "GET",
-      "path": "/api/student/video-library/search",
-      "name": "video_library_search",
-      "owner": "student-api"
-    },
-    {
-      "method": "GET",
       "path": "/api/student/video-saves/favorite/feed",
       "name": "favorite_video_feed",
       "owner": "student-api"
     },
     {
       "method": "DELETE",
-      "path": "/api/student/video-saves/{save_type}",
-      "name": "remove_student_video_save",
+      "path": "/api/student/video-saves/favorite",
+      "name": "remove_student_video_favorite",
       "owner": "student-api"
     },
     {
       "method": "PUT",
-      "path": "/api/student/video-saves/{save_type}",
-      "name": "save_student_video",
+      "path": "/api/student/video-saves/favorite",
+      "name": "save_student_video_favorite",
       "owner": "student-api"
-    },
-    {
-      "method": "GET",
-      "path": "/api/web-admin/student-preview/classes",
-      "name": "web_admin_list_student_preview_classes",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/disable",
-      "name": "web_admin_disable_student_preview",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/ensure",
-      "name": "web_admin_ensure_student_preview",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/reset",
-      "name": "web_admin_reset_student_preview",
-      "owner": "web-admin-api"
-    },
-    {
-      "method": "POST",
-      "path": "/api/web-admin/student-preview/classes/{teacher_user_id}/restore",
-      "name": "web_admin_restore_student_preview",
-      "owner": "web-admin-api"
     },
     {
       "method": "GET",

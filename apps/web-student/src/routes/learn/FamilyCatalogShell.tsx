@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronRight, FlaskConical, FolderOpen, LoaderCircle, MoreHorizontal, Search } from "lucide-react";
+import { ChevronRight, FlaskConical, FolderOpen, LoaderCircle, MoreHorizontal } from "lucide-react";
 
 import {
   errorMessage,
@@ -16,7 +16,7 @@ import {
   type StudentLearningPageResponse,
   type StudentLearningProfile,
 } from "../../api";
-import { navigateToElement, navigateToPoint, navigateToSearch } from "../../app/router/navigation";
+import { navigateToElement, navigateToPoint } from "../../app/router/navigation";
 import { CatalogNodeCards, catalogPathLabel } from "../../features/catalog/CatalogNodeCards";
 import { formatChapterEntryTitle } from "../../features/learning/learningFormat";
 import { ElementTileContent } from "../../features/periodic-table/PeriodicElementCell";
@@ -34,7 +34,6 @@ export function FamilyCatalogShell({
   loadCatalogNode = getStudentCatalogNode,
   onOpenDirectoryOverride,
   onOpenPointOverride,
-  onOpenSearchOverride,
   onOpenElementDetailOverride,
   onTitleChange,
 }: {
@@ -47,7 +46,6 @@ export function FamilyCatalogShell({
   loadCatalogNode?: (nodeId: string) => Promise<StudentCatalogNodeResponse>;
   onOpenDirectoryOverride?: (node: StudentCatalogNodeCard) => void;
   onOpenPointOverride?: (node: StudentCatalogNodeCard, breadcrumbs: StudentCatalogBreadcrumb[]) => void;
-  onOpenSearchOverride?: (sourceNodeId: string, catalogPath: string) => void;
   onOpenElementDetailOverride?: (profile: StudentLearningProfile, element: StudentLearningElementBadge) => void;
   onTitleChange?: (title: string) => void;
 }) {
@@ -190,20 +188,6 @@ export function FamilyCatalogShell({
             onChangeDirectory={setActiveDirectoryId}
             onOpenDirectory={openDirectory}
             onOpenPoint={openPoint}
-            onOpenSearch={(sourceNodeId, catalogPath) => {
-              if (onOpenSearchOverride) {
-                onOpenSearchOverride(sourceNodeId, catalogPath);
-                return;
-              }
-              navigateToSearch(navigate, {
-                from: "chapter",
-                profileId: profile.profile_id,
-                chapterId: profile.chapter_id,
-                sourceNodeId,
-                catalogPath,
-                elementSymbol: selectedElement?.symbol || "",
-              });
-            }}
           />
         </section>
       </div>
@@ -220,7 +204,6 @@ function FamilyCatalogBrowser({
   onChangeDirectory,
   onOpenDirectory,
   onOpenPoint,
-  onOpenSearch,
 }: {
   chapterId?: string | null;
   rootLabel: string;
@@ -230,7 +213,6 @@ function FamilyCatalogBrowser({
   onChangeDirectory: (nodeId: string) => void;
   onOpenDirectory: (node: StudentCatalogNodeCard) => void;
   onOpenPoint: (node: StudentCatalogNodeCard, breadcrumbs: StudentCatalogBreadcrumb[]) => void;
-  onOpenSearch: (sourceNodeId: string, catalogPath: string) => void;
 }) {
   const [chapterCatalog, setChapterCatalog] = useState<StudentCatalogChapterResponse | null>(null);
   const [directoryDetail, setDirectoryDetail] = useState<StudentCatalogNodeResponse | null>(null);
@@ -292,7 +274,6 @@ function FamilyCatalogBrowser({
   const breadcrumbs = activeDirectoryId ? directoryDetail?.breadcrumbs || [] : [];
   const nodes = activeDirectoryId ? directoryDetail?.children || [] : chapterCatalog?.nodes || [];
   const loading = rootLoading || directoryLoading;
-  const fullPathText = breadcrumbs.length ? catalogPathLabel(breadcrumbs) : rootLabel;
   const childBreadcrumbItems = useMemo(() => breadcrumbs.map((item) => ({ nodeId: item.node_id, title: item.title })), [breadcrumbs]);
 
   useEffect(() => {
@@ -323,10 +304,6 @@ function FamilyCatalogBrowser({
             {childBreadcrumbItems.length ? <span className="family-catalog-crumb-separator" aria-hidden="true">›</span> : null}
           </div>
           <div className="family-catalog-browser-actions" aria-label="目录操作">
-            <button className="family-catalog-search-action" type="button" onClick={() => onOpenSearch(activeDirectoryId, fullPathText)}>
-              <Search size={14} />
-              搜索
-            </button>
             <button className="family-catalog-more-action" type="button" onClick={() => setMoreOpen(true)}>
               <MoreHorizontal size={14} />
               更多

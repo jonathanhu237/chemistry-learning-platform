@@ -1,130 +1,108 @@
 # Application Engineering Structure
 
-This document records the current whole-application structure contract after `standardize-application-engineering-structure`.
-It is intentionally about ownership and validation, not feature behavior.
+This document records current application ownership and validation boundaries. Feature behavior is described in the product and domain-specific documents.
 
-## Surfaces
+## Runtime Surfaces
 
 ```text
-chemistry-admin
-  apps/web-student     Student H5 mobile learning experience
-  apps/web-teacher     Teacher console
-  apps/web-admin       Platform operations console
-  server/app           Backend runtime, APIs, domains, infrastructure, workers
-  docker-compose.yml   Required local/prod-like service graph with separate frontend services
-  scripts/             Validation, migrations, imports, rebuilds, maintenance
+chemistry-learning-platform/
+  apps/web-student     canonical green five-tab student H5
+  apps/web-teacher     canonical Ant Design teacher console
+  server/app           FastAPI APIs, domains, infrastructure, and workers
+  server/migrations    ordered PostgreSQL migrations
+  docker-compose.yml   production-style service graph
+  scripts              migrations, bootstrap, rebuild, validation, maintenance
+  data/seed            protected current restore resources
 ```
 
-Structural work must name the surfaces it touches. If a change touches two or more surfaces, the active Trellis task design should explain which surface owns:
+A cross-surface change must identify which owner is responsible for:
 
-- user interaction
-- teacher/admin editing
-- canonical database facts
-- derived projections such as Elasticsearch
-- validation and rollback
+- user interaction;
+- teacher authoring;
+- canonical PostgreSQL facts;
+- rebuildable projections;
+- asynchronous jobs; and
+- validation and rollback.
 
 ## Student H5
 
-Canonical starting shape:
+Canonical source shape:
 
 ```text
 apps/web-student/src/
   app/
-    router/        route definitions, typed route search, navigation helpers, route visibility
+    router/        routes, typed search state, navigation, visibility
     shell/         authenticated layout, header, bottom tabs, detail frame
-    appConfig.ts   app-level configuration helpers
-  routes/          route-level pages that compose feature components
-  features/        domain UI, formatting, hooks, adapters, and feature-specific components
-  shared/          reusable UI/utilities with no route ownership
-  mobile/          H5/mobile primitives, viewport helpers, and tokens
-  styles/          global and legacy styles with explicit ownership
+    preview/       teacher-preview sandbox boundaries
+  routes/          route-level composition
+  features/        domain UI, hooks, adapters, formatting
+  shared/          reusable UI and utilities without route ownership
+  mobile/          H5 primitives, viewport helpers, and tokens
+  styles/          shell/global and feature styles with explicit ownership
 ```
 
-Student H5 page hierarchy is semantic, not a direct measure of URL depth.
+The five root tabs and paths are:
 
-Root tab pages:
+- Home — `/home`
+- Learn — `/learn`
+- Atom — `/ai`
+- Assessment — `/assessment`
+- Profile — `/profile`
 
-- `/home`
-- `/learn`
-- `/ai`
-- `/assessment`
-- `/profile`
+Home owns the finite experiment-video feed, focused search, viewport-muted preview, explicit recommendation label, and navigation into a point. It does not own a separate video-library route. The same PostgreSQL catalog/video read model answers the default and searched feed.
 
-Reusable second-level pages:
-
-- chapter study
-- element detail
-- experiment point detail
-- video library
-- AI chat
-- assessment session/report
-- feedback
-
-An experiment point detail page may be opened from a learning card, video-library result, related point link, or assessment flow. It remains a reusable second-level page because the route is shared across entry points.
+Reusable detail routes include chapter, element, catalog directory, experiment point, Atom chat/artifact, assessment session/report, Profile reports, and feedback. The experiment point page is shared by Home, Learn, related-point, favorite, and assessment navigation.
 
 Rules:
 
-- Cross-page navigation should use `apps/web-student/src/app/router/navigation.ts` or an equivalent typed owner.
-- Route pages should remain composition boundaries and move reusable display logic into `features/*`.
+- Cross-page navigation belongs in `app/router/navigation.ts` or another typed router owner.
+- Route pages are composition boundaries; reusable behavior belongs in `features/*`.
 - Shared modules must not import route or feature owners.
-- New endpoint clients should move toward domain-specific client/schema modules instead of expanding one monolithic `api.ts`.
-- Route-stack, shell, bottom-tab, and detail-page changes require student mobile viewport QA.
+- A visible persistent action must call a durable backend owner. Student video saves support `favorite` only.
+- Root shell, tabs, route-stack, and detail-frame changes require mobile viewport QA.
+- The current green visual system is canonical; legacy competition styling is not a fallback.
+- The 3D atom/orbital experience and persisted Profile favorites are retained capabilities.
 
-Current follow-up debt:
+The remaining large `api.ts`, Atom viewer, assistant panel, and global style files are refactor candidates, not compatibility owners.
 
-- `apps/web-student/src/api.ts` is a split candidate.
-- `features/atom-viewer/AtomViewerZdog.tsx` is a split candidate.
-- `features/assistant/StudentAiChatPanel.tsx` is a split candidate.
-- Large global CSS files should be gradually moved toward feature or shell ownership.
+## Teacher Console
 
-## Teacher/Admin Web
-
-Target shape:
+Canonical source shape:
 
 ```text
 apps/web-teacher/src/
-  app/             app providers, auth guard, route registry, nav model, shell layout, theme
-  api/             HTTP primitives plus domain-specific clients and schemas
-  features/        teacher/admin workflows by business capability
-  components/      shared UI primitives used across features
-  lib/             shared non-React or cross-feature helpers
-  styles.css       shell/global styles only after migration
+  app/             providers, auth guard, route registry, navigation, shell, theme
+  api/             HTTP primitives plus domain clients and schemas
+  features/        workflows by business capability
+  components/      cross-feature UI primitives
+  lib/             shared non-React helpers
+  styles.css       shell/global styles only
 ```
+
+Canonical routes are `/login`, `/overview`, `/textbooks`, `/classes`, `/experiments`, `/videos`, `/question-banks`, `/analytics`, `/feedback`, `/learning-assistant`, `/student-preview`, `/settings`, and `/ai-config`.
+
+The teacher console owns:
+
+- online textbook upload, review, publish/deactivate/delete, and job recovery;
+- class/roster management and global/per-class assessment settings;
+- catalog tree authoring, Home recommendation flags, media bindings, and teacher catalog search diagnostics;
+- local video upload and processing workflows;
+- question evidence, withdrawal-to-draft, editing, validation, and republication;
+- element-family analytics plus experiment/point/attempt/report drilldowns;
+- student preview, feedback, learning assistant, and AI monitoring; and
+- self-service password change plus supervisor-teacher account controls in Settings.
 
 Rules:
 
-- Global shell behavior belongs in app-level owners, not feature pages.
-- Route metadata and navigation metadata should be centralized instead of duplicated in page modules.
-- The admin frontend is deployed at its service root. Canonical admin routes are `/login`, `/overview`, `/classes`, `/experiments`, `/videos`, `/question-banks`, `/analytics`, `/feedback`, `/learning-assistant`, `/settings`, and `/ai-config`.
-- Feature pages should split into page orchestration, hooks, panels, forms, tables, adapters, and display helpers when they grow.
-- Cross-feature components must not import feature-specific API clients or data types.
-- Shared request primitives live in `api/http.ts`; auth/session token ownership lives in `api/auth.ts`; common response envelopes live in `api/common.ts`.
-- Domain schemas and endpoint helpers live in explicit modules such as `api/classes.ts`, `api/settings.ts`, `api/feedback.ts`, `api/analytics.ts`, `api/resources.ts`, `api/learningAssistant.ts`, `api/media.ts`, `api/questionBank.ts`, and `api/experiments.ts`.
-- The deleted `api/index.ts` barrel must not return as a compatibility layer. Admin source imports must reference concrete `api/*` modules.
-- Shell, auth, navigation, route registry, or top-level lazy-route changes require admin e2e smoke.
+- Shell behavior and route/navigation metadata belong to `app/*`, not feature pages.
+- Shared request primitives live in `api/http.ts`; authentication ownership lives in `api/auth.ts`.
+- API modules must not import React or feature owners.
+- Feature modules may use shared `components/*` and `lib/*`; they must not reach into sibling feature-private modules.
+- Source imports target concrete `api/*` modules; deleted compatibility barrels must stay deleted.
+- The internal `admin` identity is presented as a supervisor teacher. It does not imply another frontend.
+- Shell, authentication, navigation, or top-level lazy-route changes require teacher e2e smoke.
 
-Current experiment feature baseline:
-
-```text
-apps/web-teacher/src/features/experiments/
-  ExperimentsPage.tsx        route-level composition only
-  experimentHooks.ts         React Query queries, mutations, and invalidation
-  experimentFilters.ts       pure point filtering helpers
-  experimentList/            filters and list table
-  experimentDetail/          detail drawer and basic form
-  pointContent/              point-content modal, related links, request mappers, tests
-  videoBindings/             point video resources, binding modal, preview modal
-```
-
-Cross-feature helper baseline:
-
-- Reusable resource/catalog display helpers live in `apps/web-teacher/src/lib/resourceUtils.ts`, not inside a sibling feature folder.
-- Feature pages should not import sibling feature private UI/helper modules. Promote stable cross-feature helpers to `lib/` or a shared component owner first.
-
-Current follow-up debt:
-
-- Large feature pages such as learning assistant, question bank, media resources, and analytics should be decomposed inside their feature folders.
-- `apps/web-teacher/src/styles.css` and large feature CSS files should be reduced toward explicit style ownership.
+The current Ant Design shell and tokens are canonical. Approved legacy behavior is implemented inside these owners, not by restoring an older monolith.
 
 ## Backend
 
@@ -133,10 +111,10 @@ Canonical shape:
 ```text
 server/app/
   app_runtime/      FastAPI construction, middleware, health
-  api/              auth/admin/student HTTP translation
+  api/              auth/admin/student/preview HTTP translation
   domains/          business rules, commands, read models, projections, adapters
   infrastructure/   settings, database, connection primitives
-  workers/          process entrypoints
+  workers/          video and textbook-ingestion process entrypoints
   scripts_support/  CLI-only support helpers
 ```
 
@@ -150,30 +128,60 @@ scripts     -> domains/infrastructure/scripts_support
 
 Rules:
 
-- Domain modules must not import FastAPI, Starlette response classes, API routers, app runtime, or worker entrypoints.
-- API route modules translate domain results and domain errors into HTTP responses; they do not own domain rules.
+- Domain modules do not import FastAPI, Starlette response classes, API routers, app runtime, or worker entrypoints.
+- API modules translate domain results/errors into HTTP; business rules stay in domains.
 - Worker entrypoints import worker-safe domain and infrastructure owners only.
-- Deleted legacy wrappers stay deleted; rollback uses git or deployment rollback.
-- The backend owns `/health` and `/api/*` only. Student and admin SPA assets, deep-route fallbacks, and frontend health endpoints are owned by their frontend runtime containers.
-- Large domain files should split by commands, read models, projections, adapters, and worker-safe helpers when they become structural hotspots.
+- The backend owns `/health` and `/api/*`; frontend containers own SPA assets, deep-route fallback, and frontend health.
+- Deleted legacy adapters and runtime wrappers stay deleted. Rollback uses Git/deployment rollback.
 
-Current follow-up debt:
+Important data/projection ownership:
 
-- Large domain files such as question workbench, student learning detail, assistant agent runtime, analytics read models, roster classes, and assessment modules should be evaluated before they become new service-layer monoliths.
-- Root-level backend modules that remain outside `domains` and `infrastructure` are migration candidates, process entrypoints, or seed-backed support modules, not compatibility owners. Retired demo/RAG/report modules must stay deleted rather than returning as wrappers.
+- PostgreSQL is canonical for Home feed/search, recommendations, favorites, catalog facts, identities, assessments, questions, and textbook/job metadata.
+- Teacher catalog Elasticsearch is a rebuildable authoring projection.
+- Textbook RAG Elasticsearch is the single vector projection used by retained RAG consumers.
+- Online textbook PDFs live under the configured shared `TEXTBOOK_STORAGE_ROOT` and are processed by `textbook-ingestion-worker`.
+- Video files live under `MEDIA_ROOT` and are processed by `video-worker`.
+- Historical pretest data remains report-readable, but no active pretest HTTP workflow exists.
 
 ## Validation Gates
 
-Default gates by surface:
+Backend:
 
-- Backend package ownership: `python scripts/validate_backend_architecture.py` and backend tests.
-- Backend service graph or required service changes: Compose smoke through `python scripts/validate_production_readiness.py --run-compose-smoke`, covering `backend`, `web-student`, `web-teacher`, `web-admin`, `postgres`, `elasticsearch`, `tusd`, and `video-worker`.
-- Student H5 routing/shell/layout: typecheck, tests, build, and `npm run qa:mobile`.
-- Admin shell/routing/top-level pages: import-boundary validation, typecheck, tests, build, chunk report, and `npm run e2e:smoke`.
-- Multi-surface structural changes: full production readiness with e2e when the local runtime prerequisites are available.
+```bash
+python scripts/validate_backend_architecture.py
+python -m pytest server/tests -q
+```
 
-Elasticsearch/IK is part of the application contract for student video-library search. Local fallback must not hide production search failures in production-like validation.
+Student H5:
 
-## Frontend Boundary Validation Direction
+```bash
+cd apps/web-student
+npm run typecheck
+npm test
+npm run build
+npm run qa:mobile
+```
 
-The admin frontend owns a lightweight path-boundary check through `npm run validate:boundaries`. It fails on legacy directory imports that resolve to the removed `api/index.ts`, on React imports inside `src/api/*`, and on feature imports from API modules. Consider ESLint import rules or TypeScript project references only after the final module shape stabilizes.
+Teacher console:
+
+```bash
+cd apps/web-teacher
+npm run validate:boundaries
+npm run typecheck
+npm test
+npm run build
+npm run build:report
+```
+
+Service graph and multi-surface release:
+
+```bash
+python scripts/validate_production_readiness.py
+python scripts/validate_production_readiness.py --run-compose-smoke --skip-frontend --skip-backend-tests
+```
+
+The Compose smoke covers `backend`, `web-student`, `web-teacher`, `postgres`, `elasticsearch`, `tusd`, `video-worker`, and `textbook-ingestion-worker`. It validates teacher catalog Elasticsearch/IK; it does not build a student video-search index.
+
+## Boundary Validation Direction
+
+`apps/web-teacher` owns a lightweight path-boundary check through `npm run validate:boundaries`. The backend architecture validator enforces layer imports and guards deleted compatibility paths. Route inventory is maintained at `server/tests/contracts/backend_route_inventory.json` and must change whenever a supported endpoint is added or retired.

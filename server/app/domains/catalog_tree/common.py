@@ -160,7 +160,7 @@ def node_select(where_clause: str) -> str:
           END AS active_placement_count,
           (
             SELECT to_jsonb(s)
-            FROM experiment_catalog_point_search_index_state s
+            FROM experiment_catalog_teacher_search_index_state s
             WHERE s.node_id = n.id
           ) AS index_state,
           (
@@ -345,7 +345,7 @@ def node_select(where_clause: str) -> str:
                   AND ma.upload_status = 'ready'
                   AND COALESCE(ma.lifecycle_status, 'active') = 'active'
               ) dmb ON TRUE
-              LEFT JOIN experiment_catalog_point_search_index_state dsi ON dsi.node_id = dt.id
+              LEFT JOIN experiment_catalog_teacher_search_index_state dsi ON dsi.node_id = dt.id
               LEFT JOIN LATERAL (
                 SELECT es.evidence_status
                 FROM experiment_catalog_point_evidence_state es
@@ -676,7 +676,7 @@ def catalog_node_status_summary(
     if clean(node.get("canonical_point_status")) == "archived":
         shared_content_state = "archived"
     video_present = int(node.get("published_media_count") or 0) > 0
-    index_state = (job_state or {}).get("es_state") if job_state else node.get("index_state")
+    index_state = (job_state or {}).get("teacher_search_state") if job_state else node.get("index_state")
     evidence_state = (job_state or {}).get("evidence_state") if job_state else node.get("evidence_state")
     search_state = _map_search_index_state(index_state if isinstance(index_state, dict) else None)
     ai_state = _map_ai_evidence_state(evidence_state if isinstance(evidence_state, dict) else None)
@@ -774,9 +774,9 @@ def catalog_node_status_summary(
                 group="async_consumption",
                 severity="warning",
                 status_value=search_state,
-                reason="搜索同步异常",
-                message="学生搜索消费的 ES 文档同步失败或不可用。",
-                action="在同步诊断中重试 ES 刷新",
+                reason="教师目录搜索同步异常",
+                message="教师目录搜索的 ES 文档同步失败或不可用。",
+                action="在同步诊断中重试教师目录搜索刷新",
             )
         )
     elif search_state in {"pending", "running", "stale"}:
@@ -786,8 +786,8 @@ def catalog_node_status_summary(
                 group="async_consumption",
                 severity="info",
                 status_value=search_state,
-                reason="搜索同步处理中",
-                message="ES 搜索文档仍在异步处理，可能短暂滞后于已保存内容。",
+                reason="教师目录搜索同步处理中",
+                message="教师目录搜索文档仍在异步处理，可能短暂滞后于已保存内容。",
                 action=None,
             )
         )
@@ -835,7 +835,7 @@ def catalog_node_status_summary(
         primary_reason = "内容和视频完整，等待发布目录位置"
     elif search_state in {"failed", "unavailable"} or ai_state in {"failed", "unavailable"}:
         primary_state = "sync_attention"
-        primary_reason = "搜索或 AI 同步异常"
+        primary_reason = "教师目录搜索或 AI 同步异常"
     else:
         primary_state = "published"
         primary_reason = "学生可见"

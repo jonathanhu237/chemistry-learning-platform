@@ -18,6 +18,7 @@ def test_question_bank_question_routes_are_registered_once() -> None:
     assert_route("/api/admin/question-banks/questions/{question_id}", "PATCH")
     assert_route("/api/admin/question-banks/questions/{question_id}/publish", "POST")
     assert_route("/api/admin/question-banks/questions/{question_id}/disable", "POST")
+    assert_route("/api/admin/question-banks/questions/{question_id}/revoke-to-draft", "POST")
 
 
 def test_question_bank_import_export_routes_are_registered_once() -> None:

@@ -3,7 +3,7 @@ import { SearchOutlined } from "@ant-design/icons";
 
 import { errorMessage, searchTermGroups } from "./monitoringMappers";
 import { LocalQueryState, ModuleHeader, TagsList } from "./MonitoringShared";
-import type { VideoLibrarySearchDiagnostics } from "./monitoringTypes";
+import type { TeacherCatalogSearchDiagnostics } from "./monitoringTypes";
 
 const { Text } = Typography;
 
@@ -12,7 +12,7 @@ type EsRetrievalModuleProps = {
   query: string;
   onDraftChange: (value: string) => void;
   onSearch: (value: string) => void;
-  data?: VideoLibrarySearchDiagnostics;
+  data?: TeacherCatalogSearchDiagnostics;
   loading?: boolean;
   fetching?: boolean;
   error?: unknown;

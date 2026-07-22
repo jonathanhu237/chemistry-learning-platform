@@ -15,7 +15,6 @@ from server.app.domains.catalog_tree.common import (
     point_capable,
 )
 from server.app.domains.catalog_tree.jobs import mark_point_evidence_stale
-from server.app.domains.catalog_tree.search_documents import queue_index_state
 from server.app.domains.catalog_tree.teacher_search import queue_teacher_index_state
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
 from server.app.infrastructure.database import db_session
@@ -293,9 +292,6 @@ def bind_existing_media(*, node_id: str, payload: CatalogPointMediaBindRequest, 
                 ),
                 params,
             ).mappings().one()
-        if node["status"] == "published":
-            for placement_node_id in active_placement_ids_for_canonical_point(session, canonical_point_id):
-                queue_index_state(session, node_id=placement_node_id, action="upsert", soft=True)
         for placement_node_id in active_placement_ids_for_canonical_point(session, canonical_point_id):
             queue_teacher_index_state(session, node_id=placement_node_id, action="upsert", soft=True)
         mark_point_evidence_stale(session, node_id=node_id, reason="point_video_binding_changed")
@@ -378,7 +374,6 @@ def set_media_binding_status(*, binding_id: str, action: str, user: Any) -> dict
                     {"binding_id": binding_id, "user_id": user.id},
                 )
         for placement_node_id in active_placement_ids_for_canonical_point(session, canonical_point_id):
-            queue_index_state(session, node_id=placement_node_id, action="upsert", soft=True)
             queue_teacher_index_state(session, node_id=placement_node_id, action="upsert", soft=True)
         mark_point_evidence_stale(session, node_id=node_id, reason=f"point_video_binding_{action}")
     from server.app.domains.catalog_tree.nodes import get_node_detail

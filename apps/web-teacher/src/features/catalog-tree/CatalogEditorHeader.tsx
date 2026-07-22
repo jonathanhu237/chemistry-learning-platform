@@ -4,6 +4,7 @@ import { CheckCircleOutlined, DeleteOutlined, EditOutlined, MoreOutlined, StopOu
 import { Archive, CircleAlert, CircleCheck, CircleX, FileText, FlaskConical, Folder, Link2, ListTree, RefreshCw, TriangleAlert, Video } from "lucide-react";
 
 import type { CatalogNodeDetail } from "../../api/catalogTree";
+import { confirmCatalogNodeArchive } from "./catalogArchiveConfirmation";
 import { CatalogStatusCompositeWarningIcon } from "./CatalogStatusCompositeWarningIcon";
 import {
   catalogStatusLabel,
@@ -246,13 +247,16 @@ export function CatalogEditorHeader({
   }, [titleEditing]);
 
   const confirmStatusAction = (action: "unpublish" | "archive") => {
+    if (action === "archive") {
+      confirmCatalogNodeArchive(node, (variables) => mutations.changeNodeStatus.mutateAsync(variables));
+      return;
+    }
     Modal.confirm({
-      title: action === "unpublish" ? "取消发布该节点？" : "归档该节点？",
-      content: action === "unpublish" ? "学生端将暂时不可见，可稍后重新发布。" : "节点将从常规目录隐藏，必要时可恢复。",
-      okText: action === "unpublish" ? "取消发布" : "归档",
-      okButtonProps: { danger: action === "archive" },
+      title: "取消发布该节点？",
+      content: "学生端将暂时不可见，可稍后重新发布。",
+      okText: "取消发布",
       cancelText: "再想想",
-      onOk: () => mutations.changeNodeStatus.mutate({ nodeId: node.node_id, action }),
+      onOk: () => mutations.changeNodeStatus.mutateAsync({ nodeId: node.node_id, action }),
     });
   };
 

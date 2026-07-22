@@ -361,6 +361,17 @@ def test_legacy_stored_textbook_roles_gain_compatible_defaults_without_secret_le
     assert "legacy-rerank-secret" not in str(serialized)
 
 
+def test_textbook_rag_does_not_fall_back_to_retired_video_search_url(monkeypatch) -> None:
+    platform_settings._memory_settings.clear()
+    base = Settings(data_backend="json", textbook_rag_elasticsearch_url="")
+    object.__setattr__(base, "video_library_search_url", "http://retired-video-search:9200")
+    monkeypatch.setattr(platform_settings, "get_settings", lambda: base)
+
+    effective = effective_textbook_rag_settings()
+
+    assert effective["elasticsearch_url"] == ""
+
+
 @pytest.mark.parametrize(
     "provider_update",
     [

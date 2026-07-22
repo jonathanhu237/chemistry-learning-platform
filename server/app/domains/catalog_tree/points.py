@@ -9,7 +9,6 @@ from server.app.domains.catalog_tree.common import clean, content_publication_er
 from server.app.domains.catalog_tree.common import active_placement_ids_for_canonical_point, canonical_point_id_for_node
 from server.app.domains.catalog_tree.equations import normalize_reaction_equations, replace_reaction_equations
 from server.app.domains.catalog_tree.jobs import mark_point_evidence_stale
-from server.app.domains.catalog_tree.search_documents import queue_index_state
 from server.app.domains.catalog_tree.teacher_search import queue_teacher_index_state
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
 from server.app.infrastructure.database import db_session
@@ -49,6 +48,14 @@ def _searchable_content_signature(content: dict[str, Any] | None) -> dict[str, A
     }
 
 
+def _teacher_search_content_signature(content: dict[str, Any] | None) -> dict[str, Any]:
+    content = content or {}
+    return {
+        **_searchable_content_signature(content),
+        "teacher_note": clean(content.get("teacher_note")),
+    }
+
+
 def save_point_content(*, node_id: str, payload: CatalogPointContentRequest, user: Any) -> dict[str, Any]:
     data = dump_model(payload)
     with db_session() as session:
@@ -76,6 +83,7 @@ def save_point_content(*, node_id: str, payload: CatalogPointContentRequest, use
         point_title = clean(data.get("point_title"))
         next_content_for_signature = {
             "point_title": point_title,
+            "teacher_note": clean(data.get("teacher_note")),
             "principle_mode": mode,
             "principle_equation": principle_equation,
             "principle_text": principle_text,
@@ -84,7 +92,9 @@ def save_point_content(*, node_id: str, payload: CatalogPointContentRequest, use
             "safety_note": clean(data.get("safety_note")),
         }
         searchable_content_changed = _searchable_content_signature(existing_content) != _searchable_content_signature(next_content_for_signature)
-        next_content_status = "published" if (existing_content or {}).get("content_status") == "published" else "draft"
+        teacher_search_content_changed = _teacher_search_content_signature(existing_content) != _teacher_search_content_signature(
+            next_content_for_signature
+        )
         result = session.execute(
             text(
                 """
@@ -179,12 +189,10 @@ def save_point_content(*, node_id: str, payload: CatalogPointContentRequest, use
             ),
             {"canonical_point_id": canonical_point_id, "title": point_title, "user_id": user.id},
         )
-        if searchable_content_changed:
+        if teacher_search_content_changed:
             for placement_node_id in active_placement_ids_for_canonical_point(session, canonical_point_id):
                 queue_teacher_index_state(session, node_id=placement_node_id, action="upsert", soft=True)
-            if next_content_status == "published":
-                for placement_node_id in active_placement_ids_for_canonical_point(session, canonical_point_id):
-                    queue_index_state(session, node_id=placement_node_id, action="upsert", soft=True)
+        if searchable_content_changed:
             mark_point_evidence_stale(session, node_id=node_id, reason="point_content_edited")
     from server.app.domains.catalog_tree.nodes import get_node_detail
 
@@ -206,13 +214,11 @@ def set_point_content_publication(*, node_id: str, payload: CatalogPointPublicat
                 raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=errors)
             content_status = "published"
             node_status = "published"
-            action = "upsert"
             published_sql = "published_at = now(), published_by = CAST(:user_id AS uuid),"
             node_published_sql = "published_at = COALESCE(published_at, now()),"
         elif payload.action in {"unpublish", "archive"}:
             content_status = "archived" if payload.action == "archive" else "draft"
             node_status = "archived" if payload.action == "archive" else "draft"
-            action = "delete"
             published_sql = "published_at = NULL, published_by = NULL,"
             node_published_sql = "published_at = NULL,"
         else:
@@ -261,7 +267,6 @@ def set_point_content_publication(*, node_id: str, payload: CatalogPointPublicat
             {"node_id": node_id, "status": node_status, "user_id": user.id},
         )
         for placement_node_id in affected_placement_node_ids:
-            queue_index_state(session, node_id=placement_node_id, action=action)
             queue_teacher_index_state(
                 session,
                 node_id=placement_node_id,

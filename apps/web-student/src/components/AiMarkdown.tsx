@@ -49,11 +49,18 @@ function ArtifactOpenButton({ artifact, context }: { artifact: AiRichContentArti
   );
 }
 
+function markdownNodeStartLine(node: unknown): number | null {
+  if (!node || typeof node !== "object") return null;
+  const position = (node as { position?: { start?: { line?: unknown } } }).position;
+  return typeof position?.start?.line === "number" ? position.start.line : null;
+}
+
 function createStudentMarkdownComponents(artifacts: AiRichContentArtifact[], artifactContext?: AiRichContentOpenContext): Components {
-  let tableIndex = 0;
-  let mermaidIndex = 0;
-  const artifactFor = (kind: AiRichContentArtifact["kind"], index: number) =>
-    artifacts.find((artifact) => artifact.kind === kind && artifact.index === index);
+  const artifactFor = (kind: AiRichContentArtifact["kind"], node: unknown) => {
+    const candidates = artifacts.filter((artifact) => artifact.kind === kind);
+    const startLine = markdownNodeStartLine(node);
+    return candidates.find((artifact) => artifact.startLine === startLine) || (candidates.length === 1 ? candidates[0] : undefined);
+  };
 
   return {
     p({ children }) {
@@ -83,9 +90,8 @@ function createStudentMarkdownComponents(artifacts: AiRichContentArtifact[], art
     li({ children }) {
       return <li className="ai-md-list-item">{children}</li>;
     },
-    table({ children }) {
-      tableIndex += 1;
-      const artifact = artifactFor("table", tableIndex);
+    table({ children, node }) {
+      const artifact = artifactFor("table", node);
       return (
         <div className="ai-md-rich-block ai-md-table-block">
           <div className="ai-md-artifact-toolbar">
@@ -119,12 +125,11 @@ function createStudentMarkdownComponents(artifacts: AiRichContentArtifact[], art
     strong({ children }) {
       return <strong className="ai-md-strong">{children}</strong>;
     },
-    code({ className, children }) {
+    code({ className, children, node }) {
       const value = String(children).replace(/\n$/, "");
       const classValue = String(className || "");
       if (classValue.includes("language-mermaid")) {
-        mermaidIndex += 1;
-        const artifact = artifactFor("mermaid", mermaidIndex);
+        const artifact = artifactFor("mermaid", node);
         return <AiMermaidBlock chart={value} artifact={artifact} onOpenArtifact={artifactContext?.onOpenArtifact} />;
       }
       const isMath = classValue.includes("language-math") || classValue.includes("math-inline") || classValue.includes("math-display");

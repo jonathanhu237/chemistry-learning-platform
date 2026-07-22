@@ -21,7 +21,6 @@ from server.app.api.admin.admin_experiments import router as admin_experiments_r
 from server.app.api.admin.admin_feedback import router as admin_feedback_router
 from server.app.api.admin.admin_learning_assistant import router as admin_learning_assistant_router
 from server.app.api.admin.admin_learning_resources import router as admin_learning_resources_router
-from server.app.api.admin.admin_legacy import router as admin_legacy_router
 from server.app.api.admin.admin_media import router as admin_media_router
 from server.app.api.admin.admin_platform import router as admin_platform_router
 from server.app.api.admin.admin_question_banks import router as admin_question_banks_router
@@ -32,7 +31,6 @@ from server.app.api.admin.admin_point_aware_questions import router as admin_poi
 from server.app.api.admin.admin_student_preview import router as admin_student_preview_router
 from server.app.api.admin.admin_teacher_accounts import router as admin_teacher_accounts_router
 from server.app.api.admin.admin_textbooks import router as admin_textbooks_router
-from server.app.api.web_admin.student_preview import router as web_admin_student_preview_router
 from server.app.api.student.student_catalog import router as student_catalog_router
 from server.app.api.preview.catalog_preview import router as catalog_preview_router
 from server.app.api.preview.student_session import router as student_preview_session_router
@@ -41,14 +39,11 @@ from server.app.api.student.student_assistant import router as student_assistant
 from server.app.api.student.student_assessment_reports import router as student_assessment_reports_router
 from server.app.api.student.student_custom_assessment import router as student_custom_assessment_router
 from server.app.api.student.student_learning import router as student_learning_router
-from server.app.api.student.student_legacy import router as student_legacy_router
 from server.app.api.student.student_home_feed import router as student_home_feed_router
 from server.app.api.student.student_video_saves import router as student_video_saves_router
 from server.app.api.student.student_posttest import router as student_posttest_router
-from server.app.api.student.student_pretest import router as student_pretest_router
 from server.app.api.student.student_platform import router as student_platform_router
 from server.app.api.student.student_smart_assessment import router as student_smart_assessment_router
-from server.app.api.student.student_video_library import router as student_video_library_router
 
 
 # Validate the same DB-backed textbook RAG contract used by upload, workers,
@@ -94,7 +89,6 @@ app.include_router(admin_experiments_router)
 app.include_router(admin_feedback_router)
 app.include_router(admin_learning_assistant_router)
 app.include_router(admin_learning_resources_router)
-app.include_router(admin_legacy_router)
 app.include_router(admin_media_router)
 app.include_router(admin_platform_router)
 app.include_router(admin_question_banks_router)
@@ -105,7 +99,6 @@ app.include_router(admin_point_aware_questions_router)
 app.include_router(admin_student_preview_router)
 app.include_router(admin_teacher_accounts_router)
 app.include_router(admin_textbooks_router)
-app.include_router(web_admin_student_preview_router)
 app.include_router(student_catalog_router)
 app.include_router(catalog_preview_router)
 app.include_router(student_preview_session_router)
@@ -115,13 +108,10 @@ app.include_router(student_assessment_reports_router)
 app.include_router(student_custom_assessment_router)
 app.include_router(student_home_feed_router)
 app.include_router(student_learning_router)
-app.include_router(student_legacy_router)
 app.include_router(student_posttest_router)
-app.include_router(student_pretest_router)
 app.include_router(student_platform_router)
 app.include_router(student_smart_assessment_router)
 app.include_router(student_video_saves_router)
-app.include_router(student_video_library_router)
 
 
 @app.get("/health")

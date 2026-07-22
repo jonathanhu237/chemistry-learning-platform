@@ -14,7 +14,7 @@ export type MonitorModuleKey =
 
 export type MonitorTone = "good" | "warn" | "bad" | "idle" | "legacy" | "muted";
 
-export type VideoLibraryIndexDiagnostics = {
+export type TeacherCatalogIndexDiagnostics = {
   settings?: {
     backend?: string;
     index?: string;
@@ -55,7 +55,7 @@ export type VideoLibraryIndexDiagnostics = {
   };
 };
 
-export type VideoLibrarySearchDiagnostics = {
+export type TeacherCatalogSearchDiagnostics = {
   status?: string;
   backend?: string;
   query_plan?: {
@@ -103,7 +103,7 @@ export type MonitoringQueries = {
     refetch: () => Promise<unknown>;
   };
   indexDiagnostics: {
-    data?: VideoLibraryIndexDiagnostics;
+    data?: TeacherCatalogIndexDiagnostics;
     error: unknown;
     isLoading: boolean;
     isFetching: boolean;
@@ -111,7 +111,7 @@ export type MonitoringQueries = {
     refetch: () => Promise<unknown>;
   };
   searchDiagnostics: {
-    data?: VideoLibrarySearchDiagnostics;
+    data?: TeacherCatalogSearchDiagnostics;
     error: unknown;
     isLoading: boolean;
     isFetching: boolean;

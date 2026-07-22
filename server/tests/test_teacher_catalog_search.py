@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-import inspect
 from typing import Any
 
-from server.app.domains.catalog_tree import search_documents, teacher_search
+from server.app.domains.catalog_tree import teacher_search
+from server.app.search_index import SearchIndexClient
 
 
 def test_teacher_search_mapping_uses_separate_admin_index_contract() -> None:
     mapping = teacher_search.teacher_catalog_search_index_mapping(analyzer="ik_max_word")
 
     assert mapping["mappings"]["_meta"]["mapping_version"] == teacher_search.TEACHER_CATALOG_SEARCH_INDEX_MAPPING_VERSION
-    assert mapping["mappings"]["_meta"]["student_index_boundary"] == "separate-index-no-student-documents"
+    assert mapping["mappings"]["_meta"]["projection_owner"] == "teacher-catalog-authoring"
     filters = mapping["settings"]["analysis"]["filter"]
     assert filters["chemistry_stop"]["stopwords_path"] == "analysis/chemistry_stopwords.txt"
     assert filters["chemistry_synonyms"]["synonyms_path"] == "analysis/chemistry_synonyms.txt"
@@ -159,12 +159,36 @@ def test_teacher_search_document_includes_teacher_only_draft_and_legacy_fields(m
     assert document["target"]["route"] == "/admin/catalog?node=cat-point-1"
 
 
-def test_student_search_document_source_excludes_teacher_only_fields() -> None:
-    source = inspect.getsource(search_documents.student_search_document_for_node)
+def test_teacher_search_client_uses_neutral_search_transport() -> None:
+    assert issubclass(teacher_search.TeacherCatalogSearchIndexClient, SearchIndexClient)
 
-    assert "teacher_note" not in source
-    assert "legacy_experiment_ids" not in source
-    assert "legacy_point_keys" not in source
+
+def test_teacher_search_diagnostics_wraps_teacher_owned_results(monkeypatch) -> None:
+    monkeypatch.setattr(
+        teacher_search,
+        "search_teacher_catalog_nodes",
+        lambda **_kwargs: {
+            "items": [
+                {
+                    "node_id": "cat-point-1",
+                    "title": "氯水与溴化钾",
+                    "breadcrumb_path": "第 13 章 / 卤族元素",
+                    "search_match": {"score": 9.5, "field_label": "化学结构匹配"},
+                }
+            ],
+            "meta": {"backend": "elasticsearch", "index": "teacher-catalog", "total": 1},
+        },
+    )
+
+    result = teacher_search.diagnose_teacher_catalog_search(query="Br2 KBr", limit=8)
+
+    assert result["status"] == "ok"
+    assert result["backend"] == "elasticsearch"
+    assert result["index"] == "teacher-catalog"
+    assert result["results"][0]["id"] == "cat-point-1"
+    assert result["results"][0]["matched_routes"] == ["化学结构匹配"]
+    assert result["query_plan"]["terms"]["formulae"]
+    assert any(route["name"] == "text" for route in result["query_plan"]["routes"])
 
 
 def test_teacher_search_falls_back_with_explicit_metadata(monkeypatch) -> None:

@@ -5,12 +5,10 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-StudentVideoSaveType = Literal["watch_later", "favorite"]
+StudentVideoSaveType = Literal["favorite"]
 
 
 class StudentVideoPersonalState(BaseModel):
-    watch_later: bool = False
-    watch_later_saved_at: str | None = None
     favorite: bool = False
     favorite_saved_at: str | None = None
 

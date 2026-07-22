@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from server.app.catalog_tree_schemas import CatalogPointMediaBindRequest, CatalogPointRelatedLinkRequest
+from server.app.catalog_tree_schemas import CatalogNodeStatusRequest, CatalogPointMediaBindRequest, CatalogPointRelatedLinkRequest
 from server.app.domains.catalog_tree.common import node_card, node_select, row_dict, validate_node_payload
 from server.app.domains.catalog_tree.directories import create_node_params
 
@@ -425,9 +425,7 @@ def test_point_card_summary_is_derived_from_learning_content_when_node_summary_i
     assert "point_card_presentation" not in card
 
 
-def test_video_library_search_contract_is_point_only_with_directory_category_text() -> None:
-    search_source = (SERVER_DIR / "app" / "domains" / "video_library" / "search.py").read_text(encoding="utf-8")
-    catalog_search_source = (CATALOG_DIR / "search_documents.py").read_text(encoding="utf-8")
+def test_catalog_media_contract_and_teacher_projection_hooks_are_explicit() -> None:
     student_source = (CATALOG_DIR / "student_read_models.py").read_text(encoding="utf-8")
     file_source = (CATALOG_DIR / "files.py").read_text(encoding="utf-8")
     preview_source = (CATALOG_DIR / "preview.py").read_text(encoding="utf-8")
@@ -435,25 +433,6 @@ def test_video_library_search_contract_is_point_only_with_directory_category_tex
     media_bindings_source = (CATALOG_DIR / "media_bindings.py").read_text(encoding="utf-8")
     media_asset_events_source = (CATALOG_DIR / "media_asset_events.py").read_text(encoding="utf-8")
 
-    assert "WHERE n.node_kind = 'point'" in search_source
-    assert "canonical_point_id" in search_source
-    assert "placement_node_id" in search_source
-    assert "directory_context" in search_source
-    assert '"category_text": category_text' in search_source
-    assert "teacher_note" not in search_source
-    assert "source_chunks" not in search_source
-    assert "experiment_video_point_evidence" not in search_source
-
-    assert "SELECT id FROM subtree WHERE node_kind = 'point'" in catalog_search_source
-    assert "canonical_point_id" in catalog_search_source
-    assert "placement_node_id" in catalog_search_source
-    assert '"category_text": category_text' in catalog_search_source
-    assert "teacher_note" not in catalog_search_source
-    assert "not content or content.get(\"content_status\") != \"published\"" not in catalog_search_source
-    assert "content_for_search = (published_content if require_published else content) or" in catalog_search_source
-    assert "student_video_readiness" in catalog_search_source
-    assert '"videos":' not in catalog_search_source
-    assert '"media_id":' not in catalog_search_source
     assert "Point content not available" not in student_source
     assert "published_content = content if content and content.get(\"content_status\") == \"published\" else None" in student_source
     assert "pc.content_status = 'published'" not in file_source
@@ -495,7 +474,7 @@ def test_video_library_search_contract_is_point_only_with_directory_category_tex
     assert "def handle_media_asset_archived" in media_asset_events_source
     assert "'media_asset_lifecycle_event_id'" in media_asset_events_source
     assert "CAST(:lifecycle_event_id AS text)" in media_asset_events_source
-    assert "queue_index_state" in media_asset_events_source
+    assert "queue_teacher_index_state" in media_asset_events_source
     assert "mark_point_evidence_stale" in media_asset_events_source
 
 
@@ -508,7 +487,7 @@ def test_catalog_tree_facade_stays_slim_and_boundaries_are_named() -> None:
         "points.py": "save_point_content",
         "media_bindings.py": "bind_existing_media",
         "related_links.py": "replace_related_links",
-        "search_documents.py": "student_search_document_for_node",
+        "teacher_search.py": "teacher_search_document_for_node",
         "student_read_models.py": "student_catalog_node",
         "files.py": "student_media_asset_file",
     }
@@ -580,20 +559,16 @@ def test_related_link_labels_do_not_override_target_titles_in_live_read_paths() 
     related_source = (CATALOG_DIR / "related_links.py").read_text(encoding="utf-8")
     student_source = (CATALOG_DIR / "student_read_models.py").read_text(encoding="utf-8")
     preview_source = (CATALOG_DIR / "preview.py").read_text(encoding="utf-8")
-    search_documents_source = (CATALOG_DIR / "search_documents.py").read_text(encoding="utf-8")
     ai_context_source = (CATALOG_DIR / "ai_context.py").read_text(encoding="utf-8")
-    video_search_source = (SERVER_DIR / "app" / "domains" / "video_library" / "search.py").read_text(encoding="utf-8")
 
     assert '"target_title": row["target_title"]' in related_source
     assert '"label": row["label"]' not in related_source
     assert 'COALESCE(l.label' not in related_source
-    assert 'COALESCE(l.label' not in video_search_source
     assert "label = NULL" not in related_source
     assert "sort_order, label" not in related_source
 
     assert '"title": link["target_title"]' in student_source
     assert '"title": link["target_title"]' in preview_source
-    assert "clean(link.get(\"target_title\"))" in search_documents_source
     assert '"related_points": related' in ai_context_source
 
 
@@ -621,7 +596,8 @@ def test_catalog_point_placement_backend_contracts_are_explicit() -> None:
     assert "Canonical experiment point not found" in nodes_source
     assert "active_placements_for_canonical_point" in nodes_source
     assert "Archiving the final placement requires an explicit canonical archive decision" in nodes_source
-    assert "queue_subtree_point_indexes(session, node_id=node_id, soft=True)" in nodes_source
+    assert "not payload.archive_final_placement" in nodes_source
+    assert "queue_subtree_teacher_indexes(session, node_id=node_id, action=\"upsert\", soft=True)" in nodes_source
     assert 'reason="catalog_path_moved"' in nodes_source
 
     assert "canonical_point_id_for_node(session, node_id)" in points_source
@@ -633,3 +609,15 @@ def test_catalog_point_placement_backend_contracts_are_explicit() -> None:
     assert "def active_placements_for_canonical_point" in common_source
     assert "def active_placement_ids_for_canonical_point" in common_source
     assert "Point placement must target a canonical experiment point" in common_source
+
+
+def test_catalog_node_archive_requires_an_explicit_final_placement_decision() -> None:
+    default_request = CatalogNodeStatusRequest(action="archive", include_subtree=True)
+    confirmed_request = CatalogNodeStatusRequest(
+        action="archive",
+        include_subtree=True,
+        archive_final_placement=True,
+    )
+
+    assert default_request.archive_final_placement is False
+    assert confirmed_request.archive_final_placement is True

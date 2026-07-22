@@ -707,14 +707,14 @@ RESOURCE_SPECS: list[dict[str, Any]] = [
     },
     {
         "id": "chemical_search_aliases",
-        "role": "Chemistry-aware video-library search formula alias dictionary",
+        "role": "Chemistry-aware teacher catalog search formula alias dictionary",
         "path": "data/seed/search/chemical_aliases.json",
         "kind": "json",
         "source_path": "data/seed/search/chemical_aliases.json",
     },
     {
         "id": "chemical_search_stopwords",
-        "role": "Chemistry-aware video-library search domain stopword list",
+        "role": "Chemistry-aware teacher catalog search domain stopword list",
         "path": "data/seed/search/chemical_stopwords.txt",
         "kind": "text",
         "source_path": "data/seed/search/chemical_stopwords.txt",

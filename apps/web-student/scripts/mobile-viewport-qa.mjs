@@ -36,12 +36,6 @@ const mockUser = {
   preview_mode: true,
 };
 
-const mockPretest = {
-  status: "completed",
-  stage: null,
-  questions: [],
-};
-
 const mockRootAiHistoryEntry = {
   id: "mobile-qa-root-ai-history",
   title: "Restored Atom conversation",
@@ -155,6 +149,8 @@ const mockCatalogPointDetail = {
   node_id: "cat-point-halogen",
   canonical_node_id: "cat-point-halogen",
   source_node_id: null,
+  placement_node_id: "cat-point-halogen",
+  canonical_point_id: "cat-canon-halogen",
   chapter_id: "CH17",
   title: "卤素置换观察",
   summary: "氯水把 Br- 氧化为溴单质，CCl4 层出现橙红色。",
@@ -180,6 +176,7 @@ const mockCatalogPointDetail = {
   videos: [],
   has_video: false,
   no_video_reason: "暂无可播放视频",
+  personal_state: { favorite: false, favorite_saved_at: null },
   related_points: [
     {
       node_id: "cat-point-iodine",
@@ -190,6 +187,8 @@ const mockCatalogPointDetail = {
   ],
   assessment_context: {
     point_node_id: "cat-point-halogen",
+    placement_node_id: "cat-point-halogen",
+    canonical_point_id: "cat-canon-halogen",
     chapter_id: "CH17",
     source_node_id: null,
     catalog_path: [
@@ -332,9 +331,15 @@ const mockLearningHome = {
 const mockHomeVideoFeed = {
   status: "ok",
   message: "",
+  query: "",
+  next_cursor: null,
+  has_more: false,
+  batch_size: 20,
+  pool_size: 1,
   items: [
     {
       id: "feed:cat-point-halogen",
+      instance_id: "feed:cat-point-halogen:mobile-qa",
       node_id: "cat-point-halogen",
       placement_node_id: "cat-point-halogen",
       canonical_point_id: "cat-canon-halogen",
@@ -344,7 +349,7 @@ const mockHomeVideoFeed = {
       snippet: "氯水 + KBr + CCl4",
       catalog_path: ["卤素置换目录", "卤素置换观察"],
       badges: ["卤素", "实验视频"],
-      reason: "catalog",
+      reason: "recommended",
       video: {
         media_id: "media-halogen",
         title: "卤素置换视频",
@@ -367,70 +372,7 @@ const mockHomeVideoFeed = {
         element_symbol: "Cl",
         point_title: "卤素置换观察",
       },
-    },
-  ],
-};
-
-const mockVideoLibrary = {
-  query: "",
-  status: "ok",
-  backend: "local",
-  message: "",
-  total: 1,
-  browse: {
-    recommended: [
-      {
-        id: "video_point:cat-point-halogen",
-        type: "video_point",
-        title: "Orange layer observation",
-        subtitle: "Halogen displacement",
-        snippet: "Chlorine water + KBr + CCl4",
-        score: 8,
-        badges: ["Halogens", "Video point"],
-        action_label: "View point",
-        target: {
-          kind: "point_detail",
-          route: "/point/cat-point-halogen",
-          node_id: "cat-point-halogen",
-          profile_id: "halogens-17",
-          chapter_id: "CH17",
-          catalog_path: ["卤素置换目录", "卤素置换观察"],
-          point_title: "Orange layer observation",
-        },
-      },
-    ],
-    recent: [],
-    chips: [
-      { kind: "phenomenon", label: "orange layer", query: "orange" },
-      { kind: "reagent", label: "CCl4", query: "CCl4" },
-    ],
-  },
-  groups: [
-    {
-      key: "video_points",
-      title: "Video points",
-      summary: "Open experiment observation points.",
-      items: [
-        {
-          id: "video_point:cat-point-halogen",
-          type: "video_point",
-          title: "Orange layer observation",
-          subtitle: "Halogen displacement",
-          snippet: "Chlorine water + KBr + CCl4",
-          score: 8,
-          badges: ["Halogens", "Video point"],
-          action_label: "View point",
-          target: {
-            kind: "point_detail",
-            route: "/point/cat-point-halogen",
-            node_id: "cat-point-halogen",
-            profile_id: "halogens-17",
-            chapter_id: "CH17",
-            catalog_path: ["卤素置换目录", "卤素置换观察"],
-            point_title: "Orange layer observation",
-          },
-        },
-      ],
+      personal_state: { favorite: false, favorite_saved_at: null },
     },
   ],
 };
@@ -512,27 +454,35 @@ const mockPosttest = {
 const mockCustomAssessmentOptions = {
   settings: {
     enabled: true,
-    question_count_options: [5, 10],
-    default_question_count: 5,
-    max_question_count: 10,
-    max_questions_per_experiment: 2,
+    questions_per_point_options: [1, 2, 3],
+    default_questions_per_point: 1,
   },
-  experiments: [
+  scope_tree: [
     {
-      id: "EXP_19_1_01",
-      code: "19-1-01",
-      title: "氯、溴、碘的置换次序",
-      parent_code: "19-1",
-      parent_title: "实验 19-1 卤素",
+      id: "chapter-halogen",
+      title: "卤族元素",
+      kind: "chapter",
+      parent_id: null,
       question_count: 5,
-    },
-    {
-      id: "EXP_19_1_02",
-      code: "19-1-02",
-      title: "碘的萃取观察",
-      parent_code: "19-1",
-      parent_title: "实验 19-1 卤素",
-      question_count: 3,
+      children: [
+        {
+          id: "directory-halogen-displacement",
+          title: "卤素置换实验",
+          kind: "directory",
+          parent_id: "chapter-halogen",
+          question_count: 5,
+          children: [
+            {
+              id: "cat-point-halogen",
+              title: "氯、溴、碘的置换次序",
+              kind: "point",
+              parent_id: "directory-halogen-displacement",
+              question_count: 5,
+              children: [],
+            },
+          ],
+        },
+      ],
     },
   ],
 };
@@ -979,9 +929,10 @@ async function installMockApi(page) {
       }),
     ),
   );
-  await page.route("**/api/student/pretest/start", (route) => route.fulfill(jsonResponse(mockPretest)));
-  await page.route("**/api/student/pretest/submit", (route) => route.fulfill(jsonResponse(mockPretest)));
-  await page.route("**/api/student/home-video-feed**", (route) => route.fulfill(jsonResponse(mockHomeVideoFeed)));
+  await page.route("**/api/student/home-video-feed**", (route) => {
+    const query = new URL(route.request().url()).searchParams.get("q")?.trim().toLowerCase() || "";
+    return route.fulfill(jsonResponse({ ...mockHomeVideoFeed, query }));
+  });
   await page.route("**/api/student/learning-home", (route) => route.fulfill(jsonResponse(mockLearningHome)));
   await page.route("**/api/student/learning-page**", (route) => route.fulfill(jsonResponse(mockLearningPage)));
   await page.route("**/api/student/chapters/CH17/catalog", (route) => route.fulfill(jsonResponse(mockCatalogChapter)));
@@ -990,7 +941,6 @@ async function installMockApi(page) {
   await page.route("**/api/student/catalog/points/cat-point-iodine", (route) =>
     route.fulfill(jsonResponse({ ...mockCatalogPointDetail, node_id: "cat-point-iodine", canonical_node_id: "cat-point-iodine", title: "碘的置换观察" })),
   );
-  await page.route("**/api/student/video-library/search**", (route) => route.fulfill(jsonResponse(mockVideoLibrary)));
   await page.route("**/api/student/media/assets/**/thumbnail**", (route) =>
     route.fulfill({
       status: 200,
@@ -1008,6 +958,9 @@ async function installMockApi(page) {
   await page.route("**/api/student/posttest/submit", (route) =>
     route.fulfill(jsonResponse({ status: "completed", report: mockReport })),
   );
+  await page.route("**/api/student/point-assessment/start", (route) =>
+    route.fulfill(jsonResponse({ ...mockPosttest, assessment_mode: "point" })),
+  );
   await page.route("**/api/student/smart-assessment/start", (route) => route.fulfill(jsonResponse(mockPosttest)));
   await page.route("**/api/student/smart-assessment/submit", (route) =>
     route.fulfill(jsonResponse({ status: "completed", report: mockReport })),
@@ -1021,10 +974,12 @@ async function installMockApi(page) {
         session_id: "mobile-qa-custom",
         composition: {
           ...mockPosttest.composition,
-          requested_question_count: 5,
+          requested_question_count: 1,
           untested_question_count: 0,
           measured_question_count: 0,
           custom_question_count: 1,
+          selected_point_count: 1,
+          max_questions_per_experiment: 1,
           warnings: { underfilled: true },
         },
       }),
@@ -1114,7 +1069,7 @@ async function loginIfConfigured(page) {
     await page.locator(".success-panel button").first().click({ force: true });
   }
   if (await page.locator(".assessment-panel").first().isVisible().catch(() => false)) {
-    throw new Error("Pretest rendered instead of the temporary skip barrier; provide an account that can enter learning directly.");
+    throw new Error("Required smart baseline is active; provide an account that has completed its baseline before running authenticated mobile QA.");
   }
   await page.locator(".learning-panel").first().waitFor({ state: "visible", timeout: 15000 });
   return true;
@@ -1641,7 +1596,7 @@ async function checkAssessmentFlows(page, viewportName) {
   await page.goto(baseUrl + '/assessment', { waitUntil: 'networkidle' });
   await ensureAuthenticatedShell(page);
   await expectRootNav(page, 'assessment', viewportName + ': assessment root');
-  await page.locator('.assessment-home-panel').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('.assessment-root-page').first().waitFor({ state: 'visible', timeout: 10000 });
   await page.locator('.assessment-entry-card.primary').first().waitFor({ state: 'visible', timeout: 10000 });
   await page.locator('.assessment-entry-card').nth(1).waitFor({ state: 'visible', timeout: 10000 });
   await assertNoHorizontalOverflow(page, viewportName + ': assessment root');
@@ -1651,7 +1606,7 @@ async function checkAssessmentFlows(page, viewportName) {
   await expectBottomNavHidden(page, viewportName + ': custom assessment');
   await page.locator('.custom-assessment-page').first().waitFor({ state: 'visible', timeout: 10000 });
   await page.locator('.custom-count-row button').first().waitFor({ state: 'visible', timeout: 10000 });
-  await page.locator('.custom-experiment-option').first().click();
+  await page.locator('.custom-scope-node > button').first().click();
   await assertNoHorizontalOverflow(page, viewportName + ': custom assessment');
   await page.locator('.custom-start-action').first().click();
   await page.waitForURL(/\/assessment\/session\/mobile-qa-custom/, { timeout: 10000 });
@@ -1708,30 +1663,18 @@ async function checkAuthenticatedFlows(page, viewportName) {
   await clickRoot(page, 'home');
   await page.locator('.home-video-card').first().waitFor({ state: 'visible', timeout: 10000 });
   await assertNoHorizontalOverflow(page, viewportName + ': home video feed');
-  const videoLibraryAction = page.locator('.home-feed-topbar button').first();
-  if (await videoLibraryAction.isVisible().catch(() => false)) {
-    await videoLibraryAction.click();
-  } else {
-    await page.goto(baseUrl + '/video-library', { waitUntil: 'networkidle' });
+  const removedHomeChromeCount = await page.locator('.home-video-topic-rail, .home-video-overflow-trigger').count();
+  if (removedHomeChromeCount > 0) {
+    throw new Error(viewportName + ': removed Home topic or overflow chrome is still rendered');
   }
-  await page.waitForURL(/\/video-library/, { timeout: 10000 });
-  await expectBottomNavHidden(page, viewportName + ': video library detail');
-  await page.locator('.video-library-page').first().waitFor({ state: 'visible', timeout: 10000 });
-  await assertNoHorizontalOverflow(page, viewportName + ': video library default');
-  await page.locator('.video-library-search input').first().fill('orange');
-  const videoResult = page.locator('.video-library-results .video-result-card, .video-library-results .video-library-search-video-row').first();
-  await videoResult.waitFor({ state: 'visible', timeout: 10000 });
-  await assertNoHorizontalOverflow(page, viewportName + ': video library results');
-  await videoResult.click();
-  await page.waitForURL(/\/point\/cat-point-halogen/, { timeout: 10000 });
-  await expectBottomNavHidden(page, viewportName + ': video-library result point detail');
-  await assertStructuredPointDetail(page, viewportName + ': video-library result point detail');
-  await page.goBack({ waitUntil: 'domcontentloaded' });
-  await page.waitForURL(/\/video-library/, { timeout: 10000 });
-  await expectBottomNavHidden(page, viewportName + ': back to video library');
-  await page.goBack({ waitUntil: 'domcontentloaded' });
-  await page.waitForURL(/\/home/, { timeout: 10000 });
-  await expectRootNav(page, 'home', viewportName + ': back to home from video library');
+  await page.locator('.home-video-recommendation-badge').first().waitFor({ state: 'visible', timeout: 10000 });
+  const homeSearch = page.locator('.home-feed-search').first();
+  await homeSearch.locator('input[type="search"]').fill('orange');
+  await homeSearch.locator('button[type="submit"]').click();
+  await page.locator('.home-feed-result-summary').first().waitFor({ state: 'visible', timeout: 10000 });
+  await assertNoHorizontalOverflow(page, viewportName + ': focused Home search');
+  await homeSearch.locator('.home-feed-search-clear').click();
+  await page.locator('.home-feed-result-summary').waitFor({ state: 'hidden', timeout: 10000 });
   await page.locator('.home-video-media-button').first().click();
   await page.waitForURL(/\/point\/cat-point-halogen/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': home feed point detail');
@@ -1793,7 +1736,16 @@ async function checkAuthenticatedFlows(page, viewportName) {
 
   await page.locator('.catalog-node-card-main').first().waitFor({ state: 'visible', timeout: 10000 });
   await page.locator('.catalog-node-card-main').first().click();
-  await page.locator('.family-catalog-up-action:not([disabled])').first().waitFor({ state: 'visible', timeout: 10000 });
+  const catalogRootCrumb = page.locator('.family-catalog-root-crumb:not([aria-current="page"])').first();
+  await catalogRootCrumb.waitFor({ state: 'visible', timeout: 10000 });
+  const catalogRootCrumbState = await catalogRootCrumb.evaluate((button) => ({
+    tagName: button.tagName,
+    height: button.getBoundingClientRect().height,
+    disabled: button instanceof HTMLButtonElement ? button.disabled : true,
+  }));
+  if (catalogRootCrumbState.tagName !== 'BUTTON' || catalogRootCrumbState.disabled || catalogRootCrumbState.height < 44) {
+    throw new Error(viewportName + ': catalog root breadcrumb is not a usable return action ' + JSON.stringify(catalogRootCrumbState));
+  }
   await page.locator('.catalog-node-card.kind-point .catalog-node-card-main').first().waitFor({ state: 'visible', timeout: 10000 });
   await assertCatalogCardsDistinctAndTouchable(page, viewportName + ': directory point cards', { directory: false, point: true });
   await page.locator('.catalog-node-card.kind-point .catalog-node-card-main').first().click();
@@ -1801,15 +1753,19 @@ async function checkAuthenticatedFlows(page, viewportName) {
   await expectBottomNavHidden(page, viewportName + ': point detail');
   await assertStructuredPointDetail(page, viewportName + ': point detail');
   await assertNoHorizontalOverflow(page, viewportName + ': point detail');
-  await assertNoOverlap(page, viewportName + ': point detail fixed action', ['.finish-action', '.pagebar']);
+  const removedPointActionCount = await page.getByRole('button', { name: /点赞|分享|更多/ }).count();
+  if (removedPointActionCount > 0) {
+    throw new Error(viewportName + ': removed point social or overflow actions are still rendered');
+  }
+  await page.getByRole('button', { name: '收藏' }).first().waitFor({ state: 'visible', timeout: 10000 });
 
-  await page.locator('.context-assistant-action').first().click();
+  await page.getByRole('button', { name: '问问Atom' }).first().click();
   await page.waitForURL(/\/ai\/chat/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': contextual point AI');
   await page.goBack({ waitUntil: 'domcontentloaded' });
   await page.waitForURL(/\/point\/cat-point-halogen/, { timeout: 10000 });
 
-  await page.locator('.finish-action').first().click();
+  await page.getByRole('button', { name: '学完测一测' }).first().click();
   await page.waitForURL(/\/assessment\/session\/mobile-qa-posttest/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': assessment session');
   await page.locator('.assessment-panel').first().waitFor({ state: 'visible', timeout: 10000 });
@@ -1831,7 +1787,7 @@ async function checkAuthenticatedFlows(page, viewportName) {
   await page.goto(baseUrl + '/profile', { waitUntil: 'networkidle' });
   await ensureAuthenticatedShell(page);
   await expectRootNav(page, 'profile', viewportName + ': profile root');
-  await page.locator('.profile-entry-card').first().click();
+  await page.getByRole('button', { name: /提交反馈/ }).click();
   await page.waitForURL(/\/feedback\/new/, { timeout: 10000 });
   await expectBottomNavHidden(page, viewportName + ': feedback detail');
   const feedbackFile = {
@@ -1848,7 +1804,13 @@ async function checkAuthenticatedFlows(page, viewportName) {
   await page.locator('.feedback-file-pill').first().waitFor({ state: 'visible', timeout: 10000 });
   await page.locator('.feedback-panel textarea').first().fill('mobile route stack feedback');
   await page.locator('.feedback-panel button[type="submit"]').first().click();
-  await page.locator('.feedback-success').first().waitFor({ state: 'visible', timeout: 10000 });
+  const feedbackPreviewDialog = page.getByRole('dialog', { name: '预览模式提示' });
+  await feedbackPreviewDialog.waitFor({ state: 'visible', timeout: 10000 });
+  if (await page.locator('.feedback-success').count()) {
+    throw new Error(viewportName + ': preview feedback unexpectedly reported a real submission');
+  }
+  await feedbackPreviewDialog.getByRole('button', { name: '知道了' }).click();
+  await feedbackPreviewDialog.waitFor({ state: 'hidden', timeout: 10000 });
   await assertNoHorizontalOverflow(page, viewportName + ': feedback detail');
 
   const directRoutes = [
@@ -1856,14 +1818,13 @@ async function checkAuthenticatedFlows(page, viewportName) {
     { path: '/learn', root: 'learn', selector: '.periodic-grid' },
     { path: '/learn/area/p', detail: true, selector: '.chapter-card-panel' },
     { path: '/ai', root: 'ai', selector: '.ai-root-page' },
-    { path: '/assessment', root: 'assessment', selector: '.assessment-home-panel' },
+    { path: '/assessment', root: 'assessment', selector: '.assessment-root-page' },
     { path: '/assessment/custom', detail: true, selector: '.custom-assessment-page' },
     { path: '/profile', root: 'profile', selector: '.profile-card' },
     { path: '/chapter/halogens-17', detail: true, selector: '.chapter-element-summary' },
     { path: '/chapter/halogens-17/element/Cl', detail: true, selector: '.atom-model-card' },
     { path: '/catalog/cat-dir-halogen', detail: true, selector: '.catalog-directory-panel' },
-    { path: '/point/cat-point-halogen', detail: true, selector: '.experiment-detail-card' },
-    { path: '/video-library', detail: true, selector: '.video-library-page' },
+    { path: '/point/cat-point-halogen', detail: true, selector: '.catalog-point-detail' },
     { path: '/ai/chat', detail: true, selector: '.ai-chat-panel' },
     { path: '/assessment/session/mobile-qa-posttest', detail: true, selector: '.assessment-panel' },
     { path: '/assessment/report/mobile-qa-posttest', detail: true, selector: '.summary-hero' },
@@ -1880,6 +1841,14 @@ async function checkAuthenticatedFlows(page, viewportName) {
       await expectRootNav(page, route.root, viewportName + ': direct ' + route.path);
     }
     await assertNoHorizontalOverflow(page, viewportName + ': direct ' + route.path);
+  }
+
+  for (const removedPath of ['/video-library', '/search']) {
+    await page.goto(baseUrl + removedPath, { waitUntil: 'networkidle' });
+    await ensureAuthenticatedShell(page);
+    await page.waitForURL(/\/home(?:[?#]|$)/, { timeout: 10000 });
+    await page.locator('.home-root-page').first().waitFor({ state: 'visible', timeout: 10000 });
+    await expectRootNav(page, 'home', viewportName + ': removed route fallback ' + removedPath);
   }
 }
 

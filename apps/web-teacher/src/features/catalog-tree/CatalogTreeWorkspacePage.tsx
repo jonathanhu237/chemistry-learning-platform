@@ -7,6 +7,7 @@ import { listCatalogChildren, type CatalogChapterTreeSummary, type CatalogNodeCa
 import { PageTitle } from "../../components/PageTitle";
 import { QueryState } from "../../components/QueryState";
 import { formatChapterTitle } from "../../lib/resourceUtils";
+import { confirmCatalogNodeArchive } from "./catalogArchiveConfirmation";
 import { CatalogStatusCompositeWarningIcon } from "./CatalogStatusCompositeWarningIcon";
 import { CatalogTreeEditor } from "./CatalogTreeEditor";
 import {
@@ -816,7 +817,13 @@ export function CatalogTreeWorkspacePage() {
             onMove={(nodeId, payload) => mutations.moveNode.mutateAsync({ nodeId, payload })}
             onReorder={(items) => mutations.reorderNodes.mutateAsync(items)}
             onRefreshRoots={() => roots.refetch()}
-            onChangeStatus={(node, action) => mutations.changeNodeStatus.mutate({ nodeId: node.node_id, action })}
+            onChangeStatus={(node, action) => {
+              if (action === "archive") {
+                confirmCatalogNodeArchive(node, (variables) => mutations.changeNodeStatus.mutateAsync(variables));
+                return;
+              }
+              mutations.changeNodeStatus.mutate({ nodeId: node.node_id, action });
+            }}
             statusFilter={statusFilter}
             refreshedChildrenParentId={selectedParentId}
             refreshedParent={selectedSiblingChildren.data?.parent}

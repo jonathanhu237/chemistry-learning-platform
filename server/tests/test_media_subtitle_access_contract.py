@@ -38,6 +38,7 @@ def test_student_and_preview_subtitle_streams_use_existing_visibility_scopes() -
     student_api = _source("app/api/student/student_learning.py")
     preview_api = _source("app/api/preview/catalog_preview.py")
     file_source = _source("app/domains/catalog_tree/files.py")
+    visibility_source = _source("app/domains/media/student_catalog_visibility.py")
 
     student_block = student_api[
         student_api.index('"/media/assets/{asset_id}/subtitle-tracks/{track_id}/stream"') :
@@ -54,8 +55,10 @@ def test_student_and_preview_subtitle_streams_use_existing_visibility_scopes() -
     assert "preview_media_subtitle_file(asset_id, track_id, node_id=node_id)" in preview_block
 
     assert "FROM media_subtitle_tracks st" in file_source
+    assert "JOIN student_visible_playable_media visible_media" in file_source
     assert "JOIN experiment_catalog_point_media_bindings mb" in file_source
-    assert "n.status = 'published'" in file_source
+    assert "placement.status = 'published'" in visibility_source
+    assert "binding.binding_status = 'published'" in visibility_source
     assert "ma.upload_status = 'ready'" in file_source
     assert "COALESCE(ma.lifecycle_status, 'active') = 'active'" in file_source
     assert '"text/vtt; charset=utf-8"' in file_source

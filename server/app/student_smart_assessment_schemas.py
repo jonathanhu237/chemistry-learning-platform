@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from server.app.domains.platform.settings import CustomAssessmentSettings, SmartAssessmentSettings
 from server.app.student_assessment_report_schemas import StudentAssessmentReport
@@ -147,10 +147,10 @@ class StudentSmartAssessmentSubmitResponse(BaseModel):
 
 class StudentAssessmentStatusResponse(BaseModel):
     has_completed_smart_baseline: bool = False
+    needs_smart_baseline: bool = True
     has_open_assessment: bool = False
     open_session_id: str | None = None
     open_assessment_mode: AssessmentMode | None = None
-    smart_baseline_prompt_dismissed: bool = False
 
 
 class StudentPointAssessmentStartRequest(BaseModel):
@@ -165,31 +165,48 @@ class SmartAssessmentStrategyResponse(BaseModel):
     can_edit: bool = False
 
 
-class CustomAssessmentExperimentOption(BaseModel):
+class CustomAssessmentScopeNode(BaseModel):
     id: str
-    code: str
     title: str
-    parent_code: str | None = None
-    parent_title: str | None = None
+    kind: Literal["chapter", "directory", "point"]
+    parent_id: str | None = None
     question_count: int = 0
+    children: list["CustomAssessmentScopeNode"] = Field(default_factory=list)
 
 
 class CustomAssessmentOptionsSettings(BaseModel):
     enabled: bool = True
-    question_count_options: list[int] = Field(default_factory=list)
-    default_question_count: int = 10
-    max_question_count: int = 20
-    max_questions_per_experiment: int = 3
+    questions_per_point_options: list[Literal[1, 2, 3]] = Field(default_factory=lambda: [1, 2, 3])
+    default_questions_per_point: Literal[1, 2, 3] = 1
 
 
 class StudentCustomAssessmentOptionsResponse(BaseModel):
     settings: CustomAssessmentOptionsSettings
-    experiments: list[CustomAssessmentExperimentOption] = Field(default_factory=list)
+    scope_tree: list[CustomAssessmentScopeNode] = Field(default_factory=list)
 
 
 class StudentCustomAssessmentStartRequest(BaseModel):
-    experiment_ids: list[str] = Field(min_length=1)
-    question_count: int
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    scope_node_ids: list[str] = Field(min_length=1)
+    questions_per_point: Literal[1, 2, 3]
+
+    @field_validator("scope_node_ids")
+    @classmethod
+    def normalize_scope_node_ids(cls, value: list[str]) -> list[str]:
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for raw_id in value:
+            scope_id = raw_id.strip()
+            if not scope_id:
+                raise ValueError("scope node ids must be nonempty")
+            if scope_id in seen:
+                continue
+            seen.add(scope_id)
+            normalized.append(scope_id)
+        if not normalized:
+            raise ValueError("select at least one assessment scope")
+        return normalized
 
 
 class CustomAssessmentSettingsResponse(BaseModel):

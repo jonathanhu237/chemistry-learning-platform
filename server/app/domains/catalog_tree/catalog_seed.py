@@ -535,10 +535,6 @@ def reset_legacy_experiment_seed_data(session: Any) -> dict[str, int]:
         ("catalog_point_identity_map", "DELETE FROM experiment_catalog_point_identity_map"),
         ("catalog_nodes", "DELETE FROM experiment_catalog_nodes"),
         ("catalog_points", "DELETE FROM experiment_catalog_points"),
-        (
-            "legacy_video_point_search_state",
-            "DELETE FROM experiment_video_point_search_index_state",
-        ),
         ("legacy_point_related_links", "DELETE FROM experiment_point_related_links"),
         ("legacy_point_learning_content", "DELETE FROM experiment_point_learning_content"),
         ("legacy_video_points", "DELETE FROM experiment_video_points"),
@@ -586,7 +582,7 @@ def import_catalog_seed(
     imported_canonical_points = 0
     imported_point_content = 0
     imported_equation_rows = 0
-    queued_search_documents = 0
+    queued_teacher_search_documents = 0
     now = datetime.now(timezone.utc).isoformat()
 
     for point in canonical_points:
@@ -673,6 +669,34 @@ def import_catalog_seed(
                 "metadata": _json(metadata),
             },
         )
+        session.execute(
+            text(
+                """
+                INSERT INTO experiment_catalog_teacher_search_index_state (
+                  node_id, placement_node_id, canonical_point_id, document_id,
+                  desired_action, sync_status, attempts, updated_at
+                )
+                VALUES (
+                  :node_id, :node_id, :canonical_point_id, :node_id,
+                  'upsert', 'pending', 0, now()
+                )
+                ON CONFLICT (node_id) DO UPDATE SET
+                  placement_node_id = EXCLUDED.placement_node_id,
+                  canonical_point_id = EXCLUDED.canonical_point_id,
+                  document_id = EXCLUDED.document_id,
+                  desired_action = 'upsert',
+                  sync_status = 'pending',
+                  attempts = 0,
+                  last_error = NULL,
+                  updated_at = now()
+                """
+            ),
+            {
+                "node_id": node["seed_key"],
+                "canonical_point_id": node.get("canonical_point_id") if node.get("node_kind") == "point" else None,
+            },
+        )
+        queued_teacher_search_documents += 1
         imported_nodes += 1
 
     content_records = point_content or []
@@ -746,28 +770,6 @@ def import_catalog_seed(
             )
             imported_equation_rows += len(normalized_equations)
         imported_point_content += 1
-        session.execute(
-            text(
-                """
-                INSERT INTO experiment_catalog_point_search_index_state (
-                  node_id, placement_node_id, canonical_point_id, document_id, desired_action, sync_status, attempts, updated_at
-                )
-                VALUES (:node_id, :node_id, :canonical_point_id, :node_id, 'upsert', 'pending', 0, now())
-                ON CONFLICT (node_id) DO UPDATE SET
-                  placement_node_id = EXCLUDED.placement_node_id,
-                  canonical_point_id = EXCLUDED.canonical_point_id,
-                  document_id = EXCLUDED.document_id,
-                  desired_action = 'upsert',
-                  sync_status = 'pending',
-                  attempts = 0,
-                  last_error = NULL,
-                  updated_at = now()
-                """
-            ),
-            {"node_id": content_record["target_seed_key"], "canonical_point_id": content_record["target_canonical_point_id"]},
-        )
-        queued_search_documents += 1
-
     return {
         "imported_at": now,
         "reset": bool(reset),
@@ -783,7 +785,7 @@ def import_catalog_seed(
         "ambiguous_duplicate_count": 0,
         "point_content_records": imported_point_content,
         "reaction_equation_rows": imported_equation_rows,
-        "queued_search_documents": queued_search_documents,
+        "queued_teacher_search_documents": queued_teacher_search_documents,
         "validation": validation,
         "preserved_resources": [
             "source_documents",

@@ -155,7 +155,7 @@ export function AnalyticsPage() {
     <Space orientation="vertical" size={18} className="full analytics-page">
       <PageTitle
         title="学情分析"
-        description="班级实验组分数总览"
+        description="班级元素族得分与点位证据总览"
         extra={
           <Button icon={<DownloadOutlined />} loading={exporting} onClick={() => void exportReport()}>
             导出分数
@@ -186,14 +186,14 @@ export function AnalyticsPage() {
             <Statistic title="班级均分" value={dashboard.data?.metrics.average_score || 0} precision={1} suffix="分" />
           </Card>
           <Card>
-            <Statistic title="实验组" value={dashboard.data?.metrics.published_experiment_groups || groupCount} suffix="组" />
+            <Statistic title="元素族" value={dashboard.data?.metrics.published_experiment_groups || groupCount} suffix="族" />
           </Card>
           <Card>
             <Statistic title="已有答题学生" value={dashboard.data?.metrics.active_students || 0} />
           </Card>
         </div>
         <Card
-          title="学生实验组分数"
+          title="学生元素族得分"
           extra={<Text type="secondary">{dashboard.data?.matrix.length || 0} 名学生</Text>}
           className="analytics-matrix-card"
         >
@@ -291,7 +291,7 @@ function FamilyScoreCell({
         <button
           className="analytics-family-info-button"
           type="button"
-          aria-label={`${group.title}实验明细`}
+          aria-label={`${group.title}元素族明细`}
           onClick={(event) => event.stopPropagation()}
         >
           <InfoCircleOutlined />
@@ -312,7 +312,8 @@ function FamilyPreview({
   student: MatrixRow;
   state?: AnalyticsExperimentGroupState;
 }) {
-  const rows = group.experiment_ids
+  const pointRows = (state?.points || []).slice(0, 6);
+  const experimentRows = group.experiment_ids
     .flatMap((experimentId) => {
       const experiment = experimentsById.get(experimentId);
       return experiment ? [{ experiment, state: student.experiments[experimentId] }] : [];
@@ -323,17 +324,25 @@ function FamilyPreview({
       <div className="analytics-family-preview-head">
         <strong>{group.title}</strong>
         <Text type="secondary">
-          族均分 {formatScore(state?.mastery_score ?? 50)} · 有证据 {state?.evidence_experiment_count ?? 0}/{group.experiment_count}
+          族均分 {formatScore(state?.mastery_score ?? 50)} · 有证据点位 {state?.evidence_point_count ?? 0}/{state?.points?.length || 0}
         </Text>
       </div>
       <div className="analytics-family-preview-list">
-        {rows.map(({ experiment, state: experimentState }) => (
-          <div className={`analytics-family-preview-row ${experimentState?.has_mastery ? "" : "is-default"}`} key={experiment.id}>
-            <span>{cleanExperimentTitle(experiment.title)}</span>
-            <strong>{formatScore(experimentState?.mastery_score ?? 50)}</strong>
-            {!experimentState?.has_mastery ? <em>默认 50</em> : null}
-          </div>
-        ))}
+        {pointRows.length
+          ? pointRows.map((point) => (
+              <div className={`analytics-family-preview-row ${point.evidence_count ? "" : "is-default"}`} key={point.point_node_id || point.point_title}>
+                <span>{point.point_title}</span>
+                <strong>{formatScore(point.mastery_score ?? 50)}</strong>
+                {!point.evidence_count ? <em>默认 50</em> : null}
+              </div>
+            ))
+          : experimentRows.map(({ experiment, state: experimentState }) => (
+              <div className={`analytics-family-preview-row ${experimentState?.has_mastery ? "" : "is-default"}`} key={experiment.id}>
+                <span>{cleanExperimentTitle(experiment.title)}</span>
+                <strong>{formatScore(experimentState?.mastery_score ?? 50)}</strong>
+                {!experimentState?.has_mastery ? <em>默认 50</em> : null}
+              </div>
+            ))}
       </div>
       <Text type="secondary">未答题实验按 50 分计入。</Text>
     </div>
@@ -540,7 +549,7 @@ function FamilyDetailDrawer({
       : experimentRows[0]?.experiment;
   return (
     <Drawer
-      title={`${student?.student_name || student?.student_id || "学生"} · ${group?.title || "实验组"}`}
+      title={`${student?.student_name || student?.student_id || "学生"} · ${group?.title || "元素族"}`}
       size={780}
       open={open}
       onClose={onClose}
@@ -555,19 +564,55 @@ function FamilyDetailDrawer({
                 <ScorePill score={state?.mastery_score ?? 50} muted={!state?.has_mastery} evidenceCount={state?.evidence_count} />
               </div>
               <div>
-                <Text type="secondary">有证据实验</Text>
+                <Text type="secondary">有证据点位</Text>
                 <strong>
-                  {state?.evidence_experiment_count ?? 0} / {group.experiment_count}
+                  {state?.evidence_point_count ?? 0} / {state?.points?.length || 0}
                 </strong>
               </div>
               <div>
-                <Text type="secondary">最低实验</Text>
-                <strong>{lowestExperiment ? cleanExperimentTitle(lowestExperiment.title) : "-"}</strong>
+                <Text type="secondary">最低点位</Text>
+                <strong>{state?.points?.[0]?.point_title || (lowestExperiment ? cleanExperimentTitle(lowestExperiment.title) : "-")}</strong>
               </div>
             </div>
             <section className="analytics-drawer-section">
               <div className="analytics-section-title">
-                <strong>实验分数</strong>
+                <strong>点位得分</strong>
+                <Text type="secondary">按教材目录点位汇总，未测点位按 50 分计入</Text>
+              </div>
+              <Table
+                rowKey={(row) => row.point_node_id || `${row.directory_id || "point"}-${row.point_title}`}
+                size="small"
+                dataSource={state?.points || []}
+                pagination={false}
+                columns={[
+                  {
+                    title: "点位",
+                    render: (_value, row) => (
+                      <Space orientation="vertical" size={2} className="full">
+                        <Text strong>{row.point_title}</Text>
+                        {row.directory_title ? <Text type="secondary">{row.directory_title}</Text> : null}
+                      </Space>
+                    ),
+                  },
+                  {
+                    title: "掌握度",
+                    width: 108,
+                    render: (_value, row) => (
+                      <ScorePill score={row.mastery_score ?? 50} muted={!row.evidence_count} evidenceCount={row.evidence_count} />
+                    ),
+                  },
+                  {
+                    title: "证据",
+                    width: 84,
+                    render: (_value, row) => <Text>{row.evidence_count ?? 0} 条</Text>,
+                  },
+                ]}
+                locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="该元素族暂无已发布点位" /> }}
+              />
+            </section>
+            <section className="analytics-drawer-section">
+              <div className="analytics-section-title">
+                <strong>族内实验</strong>
                 <Text type="secondary">未答题实验按 50 分计入</Text>
               </div>
               <Table
@@ -586,7 +631,7 @@ function FamilyDetailDrawer({
                     ),
                   },
                   {
-                    title: "mastery",
+                    title: "掌握度",
                     width: 96,
                     render: (_value, row) => (
                       <ScorePill
@@ -628,12 +673,12 @@ function FamilyDetailDrawer({
                   ))}
                 </Space>
               ) : (
-                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无包含该实验组的后测报告" />
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无包含该元素族的后测报告" />
               )}
             </section>
           </Space>
         ) : (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请选择实验组" />
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请选择元素族" />
         )}
       </QueryState>
     </Drawer>

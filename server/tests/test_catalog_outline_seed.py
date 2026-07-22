@@ -15,7 +15,6 @@ from server.app.domains.catalog_tree.catalog_seed import (
     validate_catalog_seed,
 )
 from server.app.domains.questions.generation import _catalog_node_evidence_ready
-from server.app.domains.video_library.search import _build_documents
 from scripts import seed_full_catalog_point_content as full_point_content_seed
 from scripts.generate_experiment_catalog_seed import ExampleMapping, _build_semantic_mapping_report
 
@@ -129,6 +128,7 @@ def test_import_catalog_seed_defaults_to_catalog_only(monkeypatch: pytest.Monkey
 
     assert result["point_content_records"] == 0
     assert result["reaction_equation_rows"] == 0
+    assert result["queued_teacher_search_documents"] == 569
     assert session.point_content_params == []
     assert replace_calls == []
 
@@ -362,47 +362,3 @@ def test_question_bank_regeneration_audit_reports_catalog_node_coverage() -> Non
     assert audit["by_chapter"][0]["id"] == "CH13"
     assert audit["by_directory"][0]["id"] == "cat-dir-1"
     assert audit["unresolved_points"][0]["point_node_id"] == "cat-point-2"
-
-
-def test_point_content_seed_builds_search_documents_without_flattening_equations() -> None:
-    nodes = {node["seed_key"]: node for node in load_catalog_seed()}
-    point_content = full_point_content_seed.load_seed(full_point_content_seed.DEFAULT_SEED_PATH)["records"]
-    point_rows = []
-    for record in point_content:
-        target = nodes[record["node_id"]]
-        path_titles = list(target["path_titles"])
-        principle_equation = "\n".join(row["raw_text"] for row in record["reaction_equations"])
-        point_rows.append(
-            {
-                "node_id": record["node_id"],
-                "placement_node_id": record["node_id"],
-                "canonical_point_id": record["canonical_point_id"],
-                "chapter_id": target["chapter_id"],
-                "chapter_title": path_titles[0],
-                "node_title": path_titles[-1],
-                "catalog_path": path_titles,
-                "point_title": record["point_title"],
-                "principle_mode": record["principle_mode"],
-                "principle_text": record["principle_text"],
-                "principle_equation": principle_equation if record["principle_mode"] == "equation" else None,
-                "phenomenon_explanation": record["phenomenon_explanation"],
-                "safety_note": record["safety_note"],
-                "directory_context": [{"title": title} for title in path_titles[:-1]],
-                "videos": [],
-                "related_links": [],
-                "content_updated_at": None,
-            }
-        )
-
-    documents = _build_documents([], [], point_rows=point_rows)
-    search_text = "\n".join(document.search_text for document in documents)
-
-    assert len(documents) == 393
-    assert all(document.target and document.target.node_id for document in documents)
-    assert all(document.target and document.target.placement_node_id for document in documents)
-    assert all(document.target and document.target.canonical_point_id for document in documents)
-    assert "source_chunks" not in search_text
-    assert "experiment_video_point_evidence" not in search_text
-    assert any(record["principle_mode"] == "equation" for record in point_content)
-    assert any("Cl₂ + 2KBr" in document.search_text for document in documents)
-    assert any("焰色反应" in document.search_text for document in documents)

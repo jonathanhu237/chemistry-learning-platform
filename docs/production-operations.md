@@ -1,486 +1,275 @@
-# Production Operations Baseline
+# Production Operations
 
-This document records the operational baseline for turning the admin platform into a maintainable production project. It does not change feature behavior; it defines how to validate, deploy, back up, restore, and extend the current system safely.
+This document is the runbook for the canonical chemistry learning platform. The supported product topology has one student H5, one teacher console, and one backend.
 
-## Application Structure Standard
+## Service Topology
 
-Whole-application structural changes are governed by `docs/application-engineering-structure.md` and the active task records under `.trellis/tasks/`.
+`docker-compose.yml` defines the deployable application graph:
 
-The current application is treated as three coupled engineering surfaces plus a validation/service graph:
+- `postgres`: canonical application facts, identities, assessment state, Home recommendations/favorites, textbook metadata, and job state.
+- `elasticsearch`: IK-enabled teacher catalog search and textbook RAG projections.
+- `backend`: FastAPI `/health` and `/api/*` owner.
+- `web-student`: the green five-tab student H5.
+- `web-teacher`: the Ant Design teacher console.
+- `tusd`: resumable local video uploads.
+- `video-worker`: local video probe, rendition, thumbnail, subtitle, and duplicate-candidate processing.
+- `textbook-ingestion-worker`: queued PDF extraction, MinerU OCR when required, chunking, embedding, and Elasticsearch indexing.
 
-- student H5 frontend: `apps/web-student`
-- teacher console frontend: `apps/web-teacher`
-- platform operations frontend: `apps/web-admin`
-- optional legacy competition frontends: `apps/web-student-old` and `apps/web-teacher-old`
-- backend service: `server/app`
-- required Compose and validation scripts: `docker-compose.yml` and `scripts/`
+Student Home is not an Elasticsearch consumer. Its default feed, focused search, explicit recommendation ordering, and favorite state are read from PostgreSQL. Elasticsearch outages must not be described as a Home-feed outage.
 
-Before moving files across these surfaces, or before splitting a major shell/API/domain owner, record the touched surfaces, owner map, validation gate, and rollback posture in the active Trellis task design. Destructive refactors are allowed when git history, task scope, and validation output make rollback clear; do not preserve obsolete wrappers only for old internal compatibility.
+The two remaining Elasticsearch consumers are independent:
 
-## Protected Resources
+- the teacher catalog-authoring index, configured with `TEACHER_CATALOG_SEARCH_*`; and
+- the textbook RAG index, configured with `TEXTBOOK_RAG_*` or from the teacher AI settings page.
 
-Current system data is protected under `data/seed` and validated by:
+## Environment And Secrets
 
-```powershell
-python scripts/validate_production_resources.py
+Start from the committed template:
+
+```bash
+cp .env.example .env
 ```
 
-The manifest at `data/seed/manifests/core_resources.json` covers the formal experiment catalog, knowledge framework, current catalog tree/content/evidence seed, current catalog-node question-bank seed, canonical chunks, runtime search dictionaries including `chemistry_vocabulary.json`, ES/IK analyzer assets, student learning profiles, and the current manifest. Retired legacy point inventory, old question-bank seed files, old point-evidence bindings, generated reports, audit drafts, and local BGE embedding artifacts are intentionally outside the protected baseline.
-
-Destructive cleanup must run only after this validation passes. The cleanup script intentionally excludes `data/media` because uploaded media requires a database/UI consistency plan.
-
-## Migration Discipline
-
-Historical migrations are append-only. Do not rename or renumber existing files, including the two historical `010_*.sql` files. They have already become part of the migration identity recorded in `schema_migrations`.
-
-This productionization baseline now includes migrations through `022_platform_admin_role.sql`. New migrations after this baseline must use the next unambiguous prefix:
+At minimum, production must replace development database/auth values and configure the public origins appropriate to the deployment:
 
 ```text
-023_<short_description>.sql
-024_<short_description>.sql
-...
+CHEMISTRY_APP_ENV=production
+DATABASE_URL=postgresql+psycopg://...
+AUTH_SECRET_KEY=<long-random-secret>
+MEDIA_ROOT=/app/data/media
+FRONTEND_ALLOWED_ORIGINS=https://student.example,https://teacher.example
+STUDENT_PREVIEW_APP_BASE_URL=https://student.example
 ```
 
-Rules for new migrations:
+Never commit `.env`, provider API keys, uploaded PDFs, generated textbook data, or production database dumps. AI settings saved in the teacher console are persisted by the backend and API responses redact the secret value; database backups must still be treated as secret-bearing material.
 
-- Add exactly one new numeric prefix at a time.
-- Do not introduce another duplicate number.
-- Keep migrations idempotent where practical.
-- Test with `python scripts/apply_migrations.py` against a disposable database before merging.
-- If a historical migration needs correction, add a new follow-up migration instead of editing the old file.
+Online textbook processing is opt-in:
 
-## Environment Configuration
-
-Copy `.env.example` to `.env` for local Docker Compose or production-like runs:
-
-```powershell
-Copy-Item .env.example .env
+```text
+TEXTBOOK_INGESTION_ENABLED=true
+TEXTBOOK_STORAGE_ROOT=/app/data/textbooks
+MAX_TEXTBOOK_UPLOAD_MB=200
+TEXTBOOK_UPLOAD_PROXY_MAX_MB=210
+TEXTBOOK_RAG_ENABLED=true
+TEXTBOOK_RAG_ELASTICSEARCH_URL=http://elasticsearch:9200
+TEXTBOOK_RAG_ELASTICSEARCH_INDEX=canonical-rag-chunks-qwen-v1
 ```
 
-Production deployments must set:
+`TEXTBOOK_UPLOAD_PROXY_MAX_MB` must remain greater than `MAX_TEXTBOOK_UPLOAD_MB` because the proxy measures the complete multipart request.
 
-- `CHEMISTRY_APP_ENV=production`
-- `DATA_BACKEND=postgres`
-- `DATABASE_URL`
-- `MEDIA_ROOT`
-- `MAX_MEDIA_UPLOAD_MB` for the original video upload limit shown and enforced by the teacher video resource page
-- `MAX_MEDIA_SUBTITLE_UPLOAD_MB` for external `.srt` / `.vtt` subtitle track uploads
-- `VIDEO_DUPLICATE_DETECTION_COMMAND`, `VIDEO_DUPLICATE_DETECTION_COMPARE_COMMAND`, `VIDEO_DUPLICATE_DETECTION_ALGORITHM`, and `VIDEO_DUPLICATE_DETECTION_THRESHOLD` for worker duplicate checks
-- `VIDEO_DUPLICATE_DEFAULT_INTERVAL_SECONDS=3`, `VIDEO_DUPLICATE_MIN_SAMPLES=12`, and `VIDEO_DUPLICATE_MIN_INTERVAL_SECONDS=0.5` for the duplicate-focused vPDQ sampling defaults
-- `VIDEO_DUPLICATE_DURATION_TOLERANCE_RATIO=0.001`, `VIDEO_DUPLICATE_DURATION_TOLERANCE_FLOOR_SECONDS=0.5`, and `VIDEO_DUPLICATE_DURATION_TOLERANCE_CEILING_SECONDS=2.0` for near-equal duration gating
-- `API_PUBLIC_BASE_URL`
-- `FRONTEND_ALLOWED_ORIGINS`
-- `STUDENT_PREVIEW_APP_BASE_URL` pointing to the student H5 origin used inside teacher device preview if it differs from the default student service origin
-- `STUDENT_PREVIEW_ALLOWED_ORIGINS` listing the student H5 origins allowed to exchange preview tickets
-- `STUDENT_PREVIEW_TICKET_EXPIRE_MINUTES` and `STUDENT_PREVIEW_SESSION_EXPIRE_MINUTES` for bootstrap ticket and preview student session lifetimes
-- `AUTH_SECRET_KEY` with a long random value
-- `WEB_ADMIN_ACCESS_TOKEN` with a long random value used to open `web-admin`
-- `AGENT_LLM_PROVIDER=disabled` when no LLM provider is configured, or provider credentials/model when enabled
-- `VIDEO_LIBRARY_SEARCH_ENABLED=true` for the student H5 experiment video library search entry
-- `VIDEO_LIBRARY_SEARCH_BACKEND=elasticsearch`; production video-library search requires Elasticsearch with IK analysis
-- `VIDEO_LIBRARY_SEARCH_URL`, `VIDEO_LIBRARY_SEARCH_INDEX`, `VIDEO_LIBRARY_SEARCH_ANALYZER`, and `VIDEO_LIBRARY_SEARCH_TIMEOUT_SECONDS`
-- `VIDEO_LIBRARY_SEARCH_BOOTSTRAP_INDEX=true` when the backend or rebuild command should create the index mapping
-- `VIDEO_LIBRARY_SEARCH_LOCAL_FALLBACK=false` in production; local fallback is only for explicit local or test runs
-- `VIDEO_LIBRARY_SEARCH_REQUIRE_ES_IN_PRODUCTION=true` so startup/readiness fails when ES/IK is missing
-- `TEACHER_CATALOG_SEARCH_ENABLED=true` for teacher catalog authoring search
-- `TEACHER_CATALOG_SEARCH_BACKEND=elasticsearch`, `TEACHER_CATALOG_SEARCH_URL`, `TEACHER_CATALOG_SEARCH_INDEX=teacher-catalog-admin-search`, `TEACHER_CATALOG_SEARCH_ANALYZER`, and `TEACHER_CATALOG_SEARCH_TIMEOUT_SECONDS`
-- `TEACHER_CATALOG_SEARCH_LOCAL_FALLBACK=true` is acceptable for local authoring, but production operations should monitor fallback metadata because teacher synonyms and formula routes require ES
+The teacher **System Settings → AI and textbook RAG** surface is the normal owner for OCR, embedding, and rerank endpoints, protocols, models, API keys, dimensions, batch sizes, timeouts, and retrieval limits. Environment variables bootstrap the same provider-neutral contract before settings have been saved. MinerU is the default OCR provider label, but the endpoint and model remain configuration, not source-code constants. Embedding and rerank accept the configured compatible provider, including Qwen endpoints.
 
-Do not commit real `.env` files or secrets.
+## Deploy And Upgrade
 
-## Docker Expectations
+Validate configuration, build the required services, remove retired containers, and run the Compose smoke check:
 
-Compose owns the production-like application graph. Build and start all required default services together:
-
-```powershell
+```bash
 python scripts/deploy_compose_stack.py
 ```
 
-The deploy script runs `docker compose up -d --build --remove-orphans` for the canonical default services, then performs the Compose smoke validation. This intentionally removes obsolete service containers such as the historical `admin-web` and `student-web` after the product split.
+Useful options:
 
-For the lower-level BKT competition demo, include the optional legacy frontends:
-
-```powershell
-python scripts/deploy_compose_stack.py --include-legacy
+```bash
+python scripts/deploy_compose_stack.py --skip-build
+python scripts/deploy_compose_stack.py --skip-smoke
+python scripts/deploy_compose_stack.py --skip-index-rebuild
+python scripts/deploy_compose_stack.py --gpu
 ```
 
-This adds `web-student-old` and `web-teacher-old` without adding a second backend, database, seed corpus, media store, question bank, mastery table, or analytics import.
+The default stack has no GPU requirement and lets `video-worker` fall back to CPU transcoding. Use `--gpu` only on an NVIDIA host with the Container Toolkit configured; it layers `docker-compose.gpu.yml` over the default Compose file.
 
-For routine development after the stack already exists, rebuild and recreate only the service that owns the changed code or configuration:
+`textbook-ingestion-worker` remains an optional Compose-profile service. `deploy_compose_stack.py` and the manual command below name it explicitly, which starts it without enabling every service in that profile. For a partial stack, omit it unless online textbook jobs should run.
 
-```powershell
-docker compose up -d --build backend
-docker compose up -d --build web-teacher
-docker compose up -d --build web-student
-docker compose up -d --build web-admin
-docker compose up -d --build video-worker
+For a controlled manual upgrade:
+
+```bash
+docker compose config --quiet
+docker compose up -d --build --remove-orphans backend web-student web-teacher postgres elasticsearch tusd video-worker textbook-ingestion-worker
+docker compose exec -T backend python scripts/apply_migrations.py
+python scripts/validate_compose_stack.py --skip-up
 ```
 
-Reserve full-stack image rebuilds for initial setup, shared base-image or Compose-topology changes, multi-service dependency changes, release smoke checks, or explicitly requested full validation. Do not run `docker builder prune`, `docker buildx prune`, `docker system prune`, or no-cache rebuilds as routine development startup; use them only as documented recovery for cache corruption or disk pressure after service-scoped restart or rebuild has been tried.
+Migrations are ordered, forward-only files under `server/migrations`. Back up PostgreSQL and persistent files before applying a migration that rewrites or removes data. Never rename an applied migration or run ad-hoc DDL as an application startup fallback.
 
-Default Compose services:
+Health checks:
 
-- `postgres`: pgvector Postgres with `pg_isready` health check.
-- `elasticsearch`: Elasticsearch with the IK analyzer plugin. Compose builds `chemistry-admin-elasticsearch-ik:8.11.3` from Elastic's official `docker.elastic.co/elasticsearch/elasticsearch:8.11.3` image and installs INFINI Labs `analysis-ik` `8.11.3`. It disables security for local development, exposes port `9200`, and health-checks the HTTP endpoint.
-- `backend`: FastAPI API service. It serves `/health` and `/api/*` only.
-- `web-student`: student H5 frontend service at `http://127.0.0.1:5173`, serving SPA routes from its own nginx runtime and proxying `/api/*` to `backend:8000`.
-- `web-teacher`: teacher console service at `http://127.0.0.1:5174`, serving canonical root routes such as `/login`, `/overview`, `/experiments`, and `/videos` from its own nginx runtime and proxying `/api/*` to `backend:8000`.
-- `web-admin`: platform operations service at `http://127.0.0.1:5175`, serving the teacher-account management workbench and proxying `/api/*` to `backend:8000`.
-- `web-student-old`: optional legacy student frontend, default Compose endpoint `http://222.200.189.249:15176`, serving old SPA routes and proxying `/api/*` to `backend:8000`.
-- `web-teacher-old`: optional legacy teacher frontend, default Compose endpoint `http://127.0.0.1:15177`, serving old SPA routes and proxying `/api/*` to `backend:8000`.
-- `tusd`: resumable upload receiver sharing `data/media`.
-- `video-worker`: local video processing worker sharing `data/media`.
-
-The backend depends on the PostgreSQL and Elasticsearch health checks. The frontend services depend on backend health. If a production-like run swaps the search image, verify the replacement image provides the `ik_max_word` tokenizer before bootstrapping the `student-video-library` index.
-
-### Video-worker FFmpeg Archive Cache
-
-The `video-worker` image installs static `ffmpeg` and `ffprobe` binaries during Docker build. By default the Dockerfile can download the pinned archive from GitHub, but deployment environments do not have to rely on build-time GitHub reachability.
-
-For reproducible or network-restricted deployments, download the pinned archive on the host and place it in:
-
-```text
-server/vendor/ffmpeg/ffmpeg-N-125136-gb57ff00bcf-linux64-gpl.tar.xz
+```bash
+curl -fsS http://127.0.0.1:8000/health
+curl -fsS http://127.0.0.1:9200/_cluster/health
+docker compose ps
+docker compose logs --tail=200 backend
+docker compose logs --tail=200 video-worker
+docker compose logs --tail=200 textbook-ingestion-worker
 ```
 
-Expected SHA-256:
+Default Compose host bindings are controlled by `.env`; do not assume the development Vite ports are the deployed ports.
 
-```text
-e73c0658d2b778e92d5367d3b47368c86f1589ae93764ea74cdca9e213fbba59
+## Identity Operations
+
+Bootstrap the first supervisor teacher with a temporary password supplied outside source control:
+
+```bash
+python scripts/bootstrap_admin.py --username admin
 ```
 
-Then build normally:
+The internal `admin` role means **supervisor teacher**. It is not a separate platform-operations product. Inside the teacher Settings page:
 
-```powershell
-docker compose build video-worker
-docker compose up -d video-worker
+- every teacher can change their own password;
+- a supervisor teacher can list, create, reset, enable, or disable teacher accounts;
+- account creation/reset requires a password change at next login;
+- reset/disable revokes affected sessions; and
+- historical ownership is preserved, so accounts are not deleted or role-edited from the product.
+
+Classes, roster imports, shared initial passwords, and archived-class behavior are owned by the teacher Classes page. Student accounts created from an initial roster password must complete the required password change before entering learning APIs.
+
+## Student Home Operations
+
+The canonical endpoint is:
+
+```http
+GET /api/student/home-video-feed?q=<query>&limit=<1..30>&cursor=<cursor>
 ```
 
-The Dockerfile copies `server/vendor/ffmpeg/` into the `ffmpeg` build stage, verifies `FFMPEG_SHA256`, and only falls back to `FFMPEG_URL` when no local `*.tar.xz` archive exists. If multiple archives are present, select one explicitly:
+Only published catalog point placements with published, playable media are eligible. Ordering is deterministic: explicit teacher recommendations first, followed by catalog order. Cursors are bound to the normalized query and current result pool; clients should restart from the first page after a stale-cursor response.
 
-```powershell
-docker compose build --build-arg FFMPEG_LOCAL_ARCHIVE=ffmpeg-N-125136-gb57ff00bcf-linux64-gpl.tar.xz video-worker
+Teachers author recommendation status and non-negative order from the current catalog editor. The backend stores this in `student_home_video_recommendations`. Ordinary catalog videos must not be labeled as recommended.
+
+The only persisted Home save type is `favorite`:
+
+```http
+PUT    /api/student/video-saves/favorite
+DELETE /api/student/video-saves/favorite
+GET    /api/student/video-saves/favorite/feed
 ```
 
-See `docs/local_video_processing.md` for the video pipeline, NVENC probe, and CPU fallback details.
+There is no separate Home index to rebuild. Diagnose missing cards by checking catalog/content publication, media binding publication, media processing readiness, and the recommendation/favorite rows in PostgreSQL.
 
-### Video Subtitle Operations
+## Teacher Catalog Search
 
-Generated student playback videos intentionally do not carry subtitles. The worker strips embedded subtitle, attachment, and data streams from the generated MP4; operators should not expect MKV/MP4 embedded subtitles to appear on the student side automatically.
+Teacher catalog search indexes active directory and point nodes for authoring, including draft context, teacher notes, status facets, paths, equations, formulae, and aliases. PostgreSQL remains the fact owner; Elasticsearch is a rebuildable projection.
 
-Teachers attach external subtitle tracks to video assets. First-pass supported inputs are `.srt` and `.vtt`; the backend normalizes served tracks to WebVTT and enforces `MAX_MEDIA_SUBTITLE_UPLOAD_MB`. `.ass` and `.ssa` are rejected unless a future change adds a styled-subtitle renderer or an explicit burn-in workflow.
+Rebuild and validate it with the current scripts:
 
-Student and teacher preview players load subtitles through browser-native `<track>` elements. Because `<track>` cannot send custom authorization headers, subtitle stream URLs must stay compatible with existing cookie/session auth or token query parameters, and must return `text/vtt; charset=utf-8`. Keep `API_PUBLIC_BASE_URL`, frontend origins, preview-token settings, and CORS policy aligned when deploying student and teacher frontends on different origins.
-
-The Compose Postgres service is available to other containers as `postgres:5432`. Its host binding defaults to `127.0.0.1:15432` to avoid collisions with a developer's local Postgres. Host-side scripts and validation defaults should use `postgresql+psycopg://chemistry:chemistry@127.0.0.1:15432/chemistry_exam`. Override `POSTGRES_HOST_PORT` only when the host port is known to be free.
-
-Frontend host bindings default to `127.0.0.1:5173` for `web-student`, `127.0.0.1:5174` for `web-teacher`, and `127.0.0.1:5175` for `web-admin`. Override `WEB_STUDENT_HOST_PORT`, `WEB_TEACHER_HOST_PORT`, or `WEB_ADMIN_HOST_PORT` only when the host port is already occupied. Rollback for this topology uses git or deployment rollback; do not restore backend SPA fallbacks as a compatibility layer.
-
-Legacy frontend host bindings default to `222.200.189.249:15176` for `web-student-old` and `127.0.0.1:15177` for `web-teacher-old`. Override `WEB_STUDENT_OLD_HOST_BIND`, `WEB_STUDENT_OLD_HOST_PORT`, `WEB_TEACHER_OLD_HOST_BIND`, or `WEB_TEACHER_OLD_HOST_PORT` only for host-port conflicts or demo-network constraints.
-
-Teacher student-device preview loads the real `web-student` app in an iframe owned by `web-teacher`. In production-like deployments, keep `STUDENT_PREVIEW_APP_BASE_URL`, `STUDENT_PREVIEW_ALLOWED_ORIGINS`, and the student frontend `frame-ancestors` policy aligned so only the expected teacher origin can embed the student app.
-
-## Student Video-Library Search Operations
-
-Student video-library search is a PostgreSQL-to-Elasticsearch projection. PostgreSQL catalog point tables are the fact source:
-
-- `experiment_catalog_points`: canonical experiment point identity shared by one or more catalog point placements
-- `experiment_catalog_nodes`: stable chapter catalog hierarchy, directory category/card metadata, and point-placement `node_id` values targeting `canonical_point_id`
-- `experiment_catalog_point_content`: teacher-authored point title, teacher-only note, principle, phenomenon explanation, safety note, and publication audit keyed by canonical point identity with placement context
-- `experiment_catalog_point_related_links`: manual related point links and hidden default overrides stored by canonical source/target point identity with placement display resolution
-- `experiment_catalog_point_media_bindings`: video bindings keyed by canonical point identity with source placement context
-- `experiment_catalog_point_search_index_state`: retryable desired search actions and sync status for placement documents
-
-Elasticsearch stores derived published placement documents only. Directory nodes contribute ancestor category text to descendant point documents but never become standalone results. A canonical experiment with multiple published placements produces multiple ES documents that share `canonical_point_id` and differ by `placement_node_id`, chapter, and path. Teacher-only notes, raw media-library uploads that are not bound to published points, video resource titles, media asset titles, original file names, media ids, playback paths, thumbnail paths, upload/processing status, `source_chunks`, and `experiment_video_point_evidence` must stay out of the student video-library index. The only allowed media-derived readiness signals are `has_video` and `video_count`, where `video_count` is a 0/1 readiness flag because one video point has one current video resource. Do not edit ES documents by hand and do not treat ES hit sources as student page content.
-
-The current catalog seed comes from `data/seed/experiment_catalog/catalog_tree.json`: 569 visible catalog nodes, 176 directory nodes, 393 point placements, and 357 canonical experiment points. Chapter 21 has no seeded catalog content. Reviewed exact duplicate leaves such as `Na2SiO3 + CO2`, `Al2(SO4)3 + NH3·H2O + NaOH`, and `BeSO4 + NH3·H2O + NaOH` are represented as multiple placements targeting one canonical point. The corrected sibling points `NaClO + MnSO₄` and `NaClO + 品红溶液` remain distinct canonical points. The current point-content seed imports 76 reviewed records for catalog point placements and canonical points, including 71 equation-mode records and 122 structured reaction-equation rows.
-
-Catalog authoring only binds existing media assets to canonical experiment points through the selected placement. New uploads are owned by the media library workflow and then selected from the catalog editor after processing.
-
-Bootstrap or destructively rebuild the search index from PostgreSQL:
-
-```powershell
-python scripts/rebuild_video_library_index.py --recreate
-```
-
-This recreates the index with the current pure mapping and refuses to write generated documents that contain forbidden video-resource fields. Use this after deploying code that changes index shape, after clearing stale ES data, or after any migration that changes point readiness semantics.
-
-Preview the document count without writing to ES:
-
-```powershell
-python scripts/rebuild_video_library_index.py --dry-run
-```
-
-Validate ES/IK readiness in production mode:
-
-```powershell
-python scripts/validate_video_library_search.py
-```
-
-The validator checks the mapping version, generated document purity, and indexed `_source` purity. A production readiness run must fail if stale ES documents still contain video resource labels or metadata.
-
-Inspect admin-facing index state through the backend:
-
-```powershell
-Invoke-RestMethod http://localhost:8000/api/admin/video-library/index/diagnostics -Headers @{ Authorization = "Bearer <token>" }
-```
-
-The chemistry search seed files live under `data/seed/search/`:
-
-- `chemical_aliases.json`: formula and common-name aliases such as HCl/salt acid and Na2S2O3/sodium thiosulfate
-- `chemical_stopwords.txt`: high-frequency workflow words that should carry less search meaning
-
-Admin point content edits write PostgreSQL first. Saving drafts queues a delete from search; publishing queues an upsert; unpublishing, archiving, video binding changes, or media asset archival queue the affected point for refresh. A failed ES write must leave the PostgreSQL content intact and visible in `experiment_catalog_point_search_index_state` for retry or full rebuild.
-
-## Teacher Catalog Search Operations
-
-Teacher catalog search is a separate PostgreSQL-to-Elasticsearch projection from the student video-library index. It indexes active directory nodes and point placements for teacher/admin authoring, including draft and unpublished nodes, teacher notes, legacy identifiers, status facets, path context, reaction equations, chemistry aliases, and formula routes. It must not share the `VIDEO_LIBRARY_SEARCH_INDEX` value or write teacher documents into `student-video-library`.
-
-One catalog fact can enqueue independent projection work:
-
-- student search job: `es_upsert` / `es_delete`, visible in `experiment_catalog_point_search_index_state`, limited to published student-visible point placement documents
-- teacher search job: `teacher_search_upsert` / `teacher_search_delete`, visible in `experiment_catalog_teacher_search_index_state`, covering active teacher-visible directory and point documents
-
-Failures are separate. A failed teacher search projection does not mark the student video-library projection failed, and a failed student projection should not hide teacher search if the teacher index is healthy.
-
-Rebuild or inspect the teacher search index:
-
-```powershell
+```bash
 python scripts/rebuild_teacher_catalog_search_index.py --recreate
-python scripts/rebuild_teacher_catalog_search_index.py --dry-run
-python scripts/rebuild_teacher_catalog_search_index.py --diagnostics
 python scripts/validate_teacher_catalog_search.py
 ```
 
-The admin catalog search endpoint returns metadata in each response indicating whether `elasticsearch` or `postgres_fallback` answered the query. Fallback responses are intentionally limited and should not be described as synonym or formula-aware search.
+Targeted diagnostics:
 
-External textbook RAG:
-
-Textbook RAG is configured through `TEXTBOOK_RAG_*` environment variables or the teacher AI settings page. It uses the configured Elasticsearch index plus external OpenAI-compatible embedding and rerank providers. There is no local `bge-rag` Compose profile, model mount, or port `8010` health check.
-
-## Media Lifecycle Operations
-
-`data/media` is operational upload state, not protected seed data. It can be backed up, archived, or cleaned only with database consistency in mind because `media_assets`, catalog point video bindings, legacy `media_bindings`, processing jobs, and review rows may still reference local files.
-
-Teacher deletion in `/videos` is destructive resource deletion, not archive retention. The backend first makes the asset unavailable with `lifecycle_status='tombstoned'`, cancels queued/running media processing jobs, removes point video bindings while leaving point content, equations, related links, questions, assessments, and publication state intact, removes subtitle track records/artifacts, removes duplicate-candidate references, and then deletes source/playback/thumbnail/rendition/subtitle/fingerprint/temp artifacts under `MEDIA_ROOT` with path containment checks. If physical cleanup partially fails, the asset remains unavailable and stores cleanup diagnostics for maintenance.
-
-Deleting only a subtitle track is a separate, narrow operation. It removes that track's source/WebVTT artifacts and metadata, but does not delete or archive the media asset, student playback file, point bindings, duplicate fingerprints, or thumbnail.
-
-Inspect the current media lifecycle state with a dry run:
-
-```powershell
-python scripts/media_lifecycle_cleanup.py --json --limit 500 --orphan-limit 200
+```bash
+python scripts/rebuild_teacher_catalog_search_index.py --diagnostics
+python scripts/rebuild_teacher_catalog_search_index.py --dry-run
 ```
 
-The script reports asset dependency counts, missing files, existing referenced files, and unreferenced orphan files. Database-backed maintenance file deletion is allowed only for archived or tombstoned asset rows:
+The teacher catalog UI also exposes index/query diagnostics through authenticated catalog endpoints. Do not write Elasticsearch documents by hand. A failed catalog projection must not mutate PostgreSQL or the textbook RAG index.
 
-```powershell
-python scripts/media_lifecycle_cleanup.py --delete-asset-files
+## Online Textbook Ingestion And RAG
+
+The teacher **Textbook Knowledge Base** page owns the online workflow:
+
+1. Upload a PDF and optional logical textbook/version labels.
+2. The worker extracts native text and sends only pages that fail quality checks to the configured MinerU HTTP service.
+3. The pipeline normalizes pages, creates stable chunks, calls the configured embedding endpoint, and writes a verified projection to the configured textbook RAG index.
+4. A teacher reviews page/chunk counts and quality issues, then publishes the version.
+5. Atom, teacher learning-assistant, and question-evidence retrieval use the active published corpus with the configured reranker.
+
+Processing stages are visible as uploaded, extracting, awaiting OCR, OCR, structuring, chunking, embedding, indexing, review-ready, ready, failed, or cancelled. Use the teacher UI to inspect events, cancel, retry, publish, deactivate, or delete according to the returned allowed actions.
+
+Readiness requires all configured components to agree on endpoint, model, embedding dimension, index metadata, and active projection. Check the teacher AI settings and:
+
+```http
+GET /api/admin/textbooks/upload-policy
+GET /api/admin/learning-assistant/runtime
 ```
 
-If an active asset still references files, the command reports `refused_active_asset_file_asset_ids` and does not delete those files.
+For a blank deployment with protected precomputed RAG resources:
 
-Only unreferenced orphan files under `MEDIA_ROOT` may be removed directly:
-
-```powershell
-python scripts/media_lifecycle_cleanup.py --delete-orphans --limit 500 --orphan-limit 200
+```bash
+python scripts/import_precomputed_textbook_rag.py --recreate
+python scripts/import_precomputed_textbook_rag.py --dry-run
 ```
 
-Before manual media cleanup in production, back up any media that should remain available, delete teacher resources through the `/videos` delete flow or deliberately tombstone old archived assets, confirm affected point bindings no longer point at deleted media, and confirm the admin UI shows unavailable or missing files intentionally instead of broken playback links. See `docs/production-media-cleanup.md` for the detailed cleanup procedure.
+For an intentional rebuild from canonical chunks or current online textbook rows, use the existing projection scripts after taking an index snapshot:
 
-## One-Command Validation
+```bash
+python scripts/rebuild_online_textbook_projections.py
+python scripts/index_textbook_rag_chunks.py
+```
 
-Run the full local validation chain with frontend dependency installation:
+Do not create a second vector store for student video discovery. The textbook RAG index is the vector projection owner.
 
-```powershell
+Back up `data/textbooks` with PostgreSQL and Elasticsearch snapshots when online uploads are in use. The PDF files, database metadata, and index documents are a coordinated unit; a database-only restore cannot recreate deleted source PDFs.
+
+## Local Video Processing
+
+Video upload and processing remain supported. Back up `data/media` with PostgreSQL. Common operations:
+
+```bash
+docker compose up -d --build backend tusd video-worker postgres
+docker compose run --rm -e VIDEO_WORKER_BACKFILL=1 video-worker
+docker compose stop video-worker
+```
+
+Stopping the worker pauses new processing but does not remove ready media. Detailed GPU/CPU transcoding, subtitle, duplicate-detection, retry, and rollback instructions live in `docs/local_video_processing.md`.
+
+## Assessment Compatibility
+
+The active student entry points are smart assessment and hierarchical custom assessment. A student without a completed smart assessment receives the one smart baseline flow. Custom assessment expands selected published chapter/directory/point scope to usable leaf points and accepts exactly 1, 2, or 3 questions per point.
+
+Historical pretest rows, report types, and report labels are retained for read-only compatibility. There is no supported operation to start or submit a new pretest. Do not drop historical pretest tables merely because the active route is absent.
+
+## Backup And Restore
+
+A recoverable backup includes at least:
+
+- PostgreSQL;
+- `data/media`;
+- `data/textbooks` when online ingestion is enabled;
+- Elasticsearch snapshots for teacher search and textbook RAG; and
+- the deployed `.env`/secret manager values stored outside the repository.
+
+Example logical PostgreSQL backup from Compose:
+
+```bash
+docker compose exec -T postgres pg_dump -U chemistry -d chemistry_exam -Fc > chemistry_exam.dump
+```
+
+Verify backups in an isolated environment. Do not overwrite a live database or media/textbook directory as a routine validation step.
+
+To restore the committed blank-server baseline instead of production data:
+
+```bash
+python scripts/bootstrap_production_seed.py
+```
+
+The expanded seed order and protected-resource boundary are documented in `data/seed/README.md`.
+
+## Release Validation
+
+Run the full repository gate:
+
+```bash
 python scripts/validate_production_readiness.py --install-frontend
 ```
 
-The command checks protected resources, video-library ES/IK readiness, experiment point identity validation, backend import smoke, backend tests, `web-admin` typecheck/build, `web-teacher` typecheck/tests/build, `web-student` typecheck/tests/build, and the teacher build chunk report.
-The backend stage also runs:
+Run the real Compose smoke when Docker, ports, provider-independent search prerequisites, and sufficient resources are available:
 
-```powershell
-python scripts/validate_backend_architecture.py
-```
-
-This validates slim import boundaries, deleted compatibility paths, and the canonical route inventory.
-The `web-teacher` frontend stage also runs `npm run build:report` after `npm run build` so large production chunks stay classified by owner.
-
-For backend/resource-only environments:
-
-```powershell
-python scripts/validate_production_readiness.py --skip-frontend
-```
-
-Skipping frontend validation is acceptable only for a scoped backend/resource phase. A production release gate should run the full command.
-
-Run the real Docker Compose application smoke check when deployment wiring changes or when a change makes a service required:
-
-```powershell
+```bash
 python scripts/validate_production_readiness.py --run-compose-smoke --skip-frontend --skip-backend-tests
 ```
 
-This starts or verifies the required default Compose services, verifies backend and frontend health, verifies both frontend `/api/*` proxies, verifies PostgreSQL reachability, verifies `ik_max_word` through Elasticsearch `_analyze`, applies migrations, rebuilds the video-library index, and runs the ES/IK readiness validator with production fallback disabled.
+The Compose validator checks the required service set, rejects retired services, validates PostgreSQL, Elasticsearch/IK assets and analyzer behavior, checks both frontend/API proxies, applies migrations, rebuilds teacher catalog search, and runs its production-style validator.
 
-To also rebuild images as part of the smoke check, run the lower-level command explicitly:
+Focused recovery checks:
 
-```powershell
-python scripts/validate_compose_stack.py --build
-```
-
-Browser e2e smoke is opt-in because it requires a running backend, a running teacher frontend on the allowed local origin, and a local browser runtime:
-
-```powershell
-Set-Location apps/web-teacher
-npm run dev
-# In another shell, with the Docker backend running:
-npm run e2e:smoke
-Set-Location ..\..
-```
-
-The smoke script defaults to:
-
-- teacher frontend: `http://localhost:5174`
-- backend API: `http://localhost:8000`
-- local admin: `codex_smoke_admin`
-
-If `E2E_ADMIN_PASSWORD` is not set, the script prepares a disposable local smoke admin through the Docker backend container. For an existing admin account, set `E2E_ADMIN_USERNAME` and `E2E_ADMIN_PASSWORD`. To run the same check through the validation chain:
-
-```powershell
-python scripts/validate_production_readiness.py --run-e2e
-```
-
-The student H5 mobile route-stack QA defaults to `http://127.0.0.1:5173` through `STUDENT_H5_URL`. It covers direct root routes, nested detail routes, and the video library detail route `/video-library` when run with a student account or `STUDENT_H5_QA_MOCK=1`.
-
-## Local Smoke Tests
-
-After rebuilding the backend, verify the runtime before handoff:
-
-```powershell
-docker compose up -d --build backend
-Invoke-RestMethod http://localhost:8000/health
-```
-
-For textbook RAG readiness, check `/api/admin/learning-assistant/runtime` or the teacher AI settings page. Healthy status requires the external Elasticsearch index, embedding provider, rerank provider, and index metadata to match the configured model and dimension.
-
-Run representative authenticated API checks:
-
-```powershell
-# Log in with a local-only admin account, then reuse the bearer token.
-Invoke-RestMethod http://localhost:8000/api/admin/media/assets?limit=3 -Headers @{ Authorization = "Bearer <token>" }
-Invoke-RestMethod http://localhost:8000/api/admin/learning-assistant/ask -Method Post -Headers @{ Authorization = "Bearer <token>" } -ContentType "application/json" -Body '{"question":"Explain a representative experiment point.","allow_rag_lookup":false}'
-```
-
-Browser-smoke the main admin paths after the frontend service or dev server is running:
-
-- `/overview`
-- `/videos`
-- `/learning-assistant`
-- `/question-banks`
-- `/analytics`
-
-## Local Smoke Admin Account
-
-Temporary admin accounts created for smoke testing, such as `codex_smoke_admin`, are local-only developer database state. They are not seed data, are not protected resources, and must not be shipped or documented with shared passwords.
-
-Production environments should create named administrator accounts through the deployment bootstrap or identity-management process, then rotate or remove any smoke-only credentials before real users are admitted. For local test databases, recreate a smoke admin with `scripts/bootstrap_admin.py` and a local password manager entry when needed.
-
-## Restore From Declared Resources
-
-For a fresh database with declared seed resources available:
-
-```powershell
-python scripts/apply_migrations.py
-python scripts/publish_reviewed_curriculum.py
-python scripts/seed_formal_experiments.py --skip-migrations
-python scripts/import_canonical_evidence.py --skip-migrations
-python scripts/import_experiment_knowledge_framework.py --skip-migrations
-python scripts/generate_experiment_catalog_seed.py
-python scripts/validate_experiment_catalog_seed.py --write-report
-python scripts/import_experiment_catalog_seed.py --skip-migrations
-python scripts/seed_catalog_point_evidence.py import
-python scripts/seed_current_question_bank.py import --skip-migrations
-python scripts/rebuild_video_library_index.py --recreate
+```bash
+python scripts/validate_backend_architecture.py
 python scripts/validate_production_resources.py
-python scripts/seed_current_question_bank.py validate
-python scripts/validate_experiment_points.py
+python scripts/validate_complete_seed_bootstrap.py
+python scripts/validate_teacher_catalog_search.py
+docker compose config --quiet
+git diff --check
 ```
 
-Expected protected baseline counts:
-
-- 77 formal experiments
-- 11 chapters, 133 units, 385 knowledge points
-- 569 catalog nodes: 176 directories and 393 point placements
-- 357 canonical experiment points
-- 76 published catalog point-content seed records
-- 54 published generated question banks and 1,965 published questions
-- 3637 canonical source chunks
-- 0 legacy point evidence bindings
-
-## Database Backup And Restore
-
-Create a compressed backup from the Compose Postgres container:
-
-```powershell
-docker compose exec postgres pg_dump -U chemistry -d chemistry_exam -Fc -f /tmp/chemistry_exam.dump
-docker compose cp postgres:/tmp/chemistry_exam.dump .\backups\chemistry_exam.dump
-```
-
-Restore into a disposable or replacement database:
-
-```powershell
-docker compose cp .\backups\chemistry_exam.dump postgres:/tmp/chemistry_exam.dump
-docker compose exec postgres dropdb -U chemistry --if-exists chemistry_exam
-docker compose exec postgres createdb -U chemistry chemistry_exam
-docker compose exec postgres pg_restore -U chemistry -d chemistry_exam --clean --if-exists /tmp/chemistry_exam.dump
-```
-
-Back up `data/media` separately if uploaded media should be preserved. Do not delete media files while database `media_assets` or `media_bindings` records still point to them.
-
-Point learning content is ordinary PostgreSQL state and is covered by the database dump above. After restoring a database, rebuild the derived video-library index instead of restoring stale ES data:
-
-```powershell
-python scripts/rebuild_video_library_index.py --recreate
-python scripts/validate_video_library_search.py
-```
-
-If the ES volume is corrupted or intentionally cleared, keep PostgreSQL and protected seed data intact, recreate the index, and run the rebuild command. Do not delete `source_documents`, `source_chunks`, or `data/seed/canonical_rag/chunks/**`; those canonical corpus resources remain valid. Old `experiment_video_point_evidence` rows and old `data/seed/point_evidence/**` files are retired point-to-chunk bindings and must not be treated as current AI/question-bank evidence.
-
-Catalog point ES sync and catalog-node evidence refresh use PostgreSQL-backed jobs in `experiment_catalog_point_jobs`. `experiment_catalog_point_search_index_state` is the ES projection status; `experiment_catalog_point_evidence_state` and `experiment_catalog_point_evidence_bindings` are the fallback/static evidence status and selected chunk bindings. These job tables may be retried with catalog-node awareness, but default catalog seed import must preserve current question banks, questions, catalog-node evidence state/bindings, media bindings, source documents, source chunks, search dictionaries, and the authoritative catalog seed. Redis/Rabbit/Celery/RQ should be introduced only after throughput or distributed scheduling requirements justify changing the worker backend.
-
-## Search Rollback Notes
-
-If the point editor or search projection must be rolled back during a release:
-
-- Disable or hide the admin catalog point editor at the frontend/API routing layer while keeping catalog point tables in place.
-- Set `VIDEO_LIBRARY_SEARCH_ENABLED=false` only as an emergency product rollback; production readiness should fail until ES/IK search is restored for normal releases.
-- Clear or recreate the ES index with `python scripts/rebuild_video_library_index.py --recreate` after the issue is fixed.
-- Never roll back by deleting canonical chunks or source documents; those are protected corpus resources, not search projection cache. Local BGE embeddings and legacy manual-reviewed point evidence are retired and should not be restored as current point evidence.
-
-Local developers may set `VIDEO_LIBRARY_SEARCH_BACKEND=local` and `VIDEO_LIBRARY_SEARCH_LOCAL_FALLBACK=true` only for isolated fallback tests. Production-like development should run `docker compose up elasticsearch backend` and use the same ES/IK projection path as production.
-
-## Release Gate
-
-Before declaring a phase production-ready, run:
-
-```powershell
-python scripts/validate_production_readiness.py --install-frontend
-git status --short
-```
-
-The worktree should be clean after generated local outputs are either ignored or intentionally cleaned.
-
-## Continuous Integration
-
-The repository includes a GitHub Actions workflow at `.github/workflows/production-readiness.yml`.
-It is manually triggered with `workflow_dispatch` so ordinary pushes do not send automatic GitHub Actions notifications.
-
-CI performs the same readiness gates as the local script:
-
-- checkout with Git LFS enabled so protected seed resources are present
-- Python dependency installation and backend tests
-- frontend `npm ci`, typecheck, tests, production build, and chunk report
-- protected resource manifest validation
-- admin app import smoke
-
-If an environment-specific phase needs to skip a stage locally, use the explicit script flags such as `--skip-frontend`, `--skip-backend-tests`, or `--skip-resource-validation`. Use `--run-e2e` only when the local browser smoke prerequisites are running. Production release gates should run the full chain and may add `--run-e2e` when validating an interactive runtime.
+If a gate cannot run because a provider, browser, GPU, or Docker dependency is unavailable, report it as skipped with the missing prerequisite. Do not treat an unexecuted environment-dependent check as passing.

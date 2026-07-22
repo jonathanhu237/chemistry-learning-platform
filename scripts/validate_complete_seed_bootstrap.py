@@ -221,7 +221,6 @@ def _runtime_config_status() -> dict[str, Any]:
             and rerank.get("api_key")
             and rerank.get("model")
         ),
-        "video_library_search_backend": settings.video_library_search_backend,
         "teacher_catalog_search_backend": settings.teacher_catalog_search_backend,
         "configuration_pending_is_seed_failure": False,
     }

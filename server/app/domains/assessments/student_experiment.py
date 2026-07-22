@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import re
+from itertools import product
 from typing import Any
 
 from sqlalchemy import text
@@ -13,6 +15,8 @@ from server.app.domains.questions.point_identity import unique_strings
 
 TRUE_FALSE_TRUE_VALUES = {"true", "t", "1", "yes", "y", "正确", "对"}
 TRUE_FALSE_FALSE_VALUES = {"false", "f", "0", "no", "n", "错误", "错"}
+FILL_BLANK_ALTERNATIVE_SEPARATOR = re.compile(r"\s*(?:/|／)\s*")
+FILL_BLANK_PART_SEPARATOR = re.compile(r"\s*(?:、|，|,|；|;|和)\s*")
 
 
 def _json(value: Any) -> str:
@@ -58,9 +62,55 @@ def _grade_answer(question_type: str, expected: dict[str, Any], submitted: Any) 
             return False
         return bool(submitted_norm) is bool(expected.get("value"))
     if question_type == "fill_blank":
-        submitted_text = str(submitted).strip().lower()
-        return submitted_text in {str(item).strip().lower() for item in expected.get("accepted_answers") or []}
+        raw_submitted = submitted
+        if isinstance(submitted, dict):
+            raw_submitted = submitted.get("value", submitted.get("accepted_answers"))
+        if isinstance(raw_submitted, (list, tuple)):
+            submitted_parts = _fill_blank_parts(list(raw_submitted))
+            if not submitted_parts or any(not item for item in submitted_parts):
+                return False
+            expected_sequences = _fill_blank_expected_sequences(expected.get("accepted_answers") or [], len(submitted_parts))
+            return any(submitted_parts == sequence for sequence in expected_sequences)
+        submitted_text = _normalize_fill_blank_text(raw_submitted)
+        return submitted_text in {_normalize_fill_blank_text(item) for item in expected.get("accepted_answers") or []}
     return False
+
+
+def _normalize_fill_blank_text(value: Any) -> str:
+    return str(value if value is not None else "").strip().lower()
+
+
+def _fill_blank_parts(value: list[Any]) -> list[str]:
+    return [_normalize_fill_blank_text(item) for item in value]
+
+
+def _fill_blank_expected_sequences(values: list[Any], part_count: int) -> list[list[str]]:
+    raw_values = [str(item).strip() for item in values if str(item).strip()]
+    if part_count <= 1:
+        return [[_normalize_fill_blank_text(item)] for item in raw_values]
+
+    sequences: list[list[str]] = []
+    if len(raw_values) == part_count:
+        alternatives_by_part = [
+            [
+                _normalize_fill_blank_text(alternative)
+                for alternative in FILL_BLANK_ALTERNATIVE_SEPARATOR.split(raw_value)
+                if alternative.strip()
+            ]
+            for raw_value in raw_values
+        ]
+        if all(alternatives_by_part):
+            sequences.extend([list(sequence) for sequence in product(*alternatives_by_part)])
+    for raw_value in raw_values:
+        for alternative in FILL_BLANK_ALTERNATIVE_SEPARATOR.split(raw_value):
+            parts = [
+                _normalize_fill_blank_text(item)
+                for item in FILL_BLANK_PART_SEPARATOR.split(alternative)
+                if item.strip()
+            ]
+            if len(parts) == part_count:
+                sequences.append(parts)
+    return sequences
 
 
 def _single_choice_label(submitted: Any) -> str | None:

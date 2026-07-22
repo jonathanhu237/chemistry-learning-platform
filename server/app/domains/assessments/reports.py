@@ -8,7 +8,7 @@ from typing import Any
 
 from sqlalchemy import text
 
-from server.app.domains.assistant.providers import async_openai_client as _async_openai_client
+from server.app.domains.assistant.runtime_facade import openai_chat_client
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
 from server.app.domains.platform.settings import (
     _load_setting_value,
@@ -392,7 +392,7 @@ async def _generate_with_ai(
     if not _ai_ready():
         return _generated_text(fallback_text, mode="local_fallback")
     settings = effective_ai_settings(get_settings())
-    client = _async_openai_client(settings, timeout=ASSESSMENT_REPORT_AI_TIMEOUT_SECONDS)
+    client = openai_chat_client(settings, timeout=ASSESSMENT_REPORT_AI_TIMEOUT_SECONDS)
     user_payload = json.dumps(
         {
             "task": prompt,
@@ -575,6 +575,37 @@ def _report_from_row(row: dict[str, Any]) -> StudentAssessmentReport:
     )
 
 
+def _load_existing_source_report(
+    session: Any,
+    *,
+    student_id: str,
+    report_type: str,
+    source_session_id: str,
+) -> StudentAssessmentReport | None:
+    row = (
+        session.execute(
+            text(
+                """
+                SELECT *
+                FROM student_assessment_reports
+                WHERE student_id = :student_id
+                  AND report_type = :report_type
+                  AND source_session_id = CAST(:source_session_id AS uuid)
+                LIMIT 1
+                """
+            ),
+            {
+                "student_id": student_id,
+                "report_type": report_type,
+                "source_session_id": source_session_id,
+            },
+        )
+        .mappings()
+        .first()
+    )
+    return _report_from_row(dict(row)) if row else None
+
+
 def _insert_report(
     *,
     student_id: str,
@@ -613,19 +644,7 @@ def _insert_report(
                       CAST(:summary AS jsonb), CAST(:mistake_explanation AS jsonb),
                       CAST(:prompt_snapshot AS jsonb), CAST(:payload AS jsonb), :completed_at
                     )
-                    ON CONFLICT (report_type, source_session_id) DO UPDATE SET
-                      title = EXCLUDED.title,
-                      score = EXCLUDED.score,
-                      correct_count = EXCLUDED.correct_count,
-                      total_count = EXCLUDED.total_count,
-                      correct_rate = EXCLUDED.correct_rate,
-                      wrong_count = EXCLUDED.wrong_count,
-                      summary = EXCLUDED.summary,
-                      mistake_explanation = EXCLUDED.mistake_explanation,
-                      prompt_snapshot = EXCLUDED.prompt_snapshot,
-                      payload = EXCLUDED.payload,
-                      completed_at = EXCLUDED.completed_at,
-                      updated_at = now()
+                    ON CONFLICT (report_type, source_session_id) DO NOTHING
                     RETURNING *
                     """
                 ),
@@ -649,8 +668,21 @@ def _insert_report(
                 },
             )
             .mappings()
-            .one()
+            .first()
         )
+        if not row:
+            canonical = _load_existing_source_report(
+                session,
+                student_id=student_id,
+                report_type=report_type,
+                source_session_id=source_session_id,
+            )
+            if canonical is None:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Assessment report could not be persisted",
+                )
+            return canonical
     return _report_from_row(dict(row))
 
 
@@ -822,9 +854,6 @@ def _load_smart_attempts(session: Any, *, student_id: str, session_id: str) -> l
 async def create_smart_assessment_report(user: Any, report: StudentSmartAssessmentReport) -> StudentAssessmentReport:
     session_id = report.session_id
     student_id = str(getattr(user, "student_id", None) or getattr(user, "username", "")).strip().upper()
-    report_type = str(report.assessment_mode or "smart")
-    if report_type not in {"smart", "custom", "point"}:
-        report_type = "smart"
     with db_session() as session:
         ensure_report_tables(session)
         session_row = (
@@ -845,13 +874,33 @@ async def create_smart_assessment_report(user: Any, report: StudentSmartAssessme
         )
         if not session_row:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assessment session not found")
+
+        session_data = dict(session_row)
+        persisted_report = session_data.get("report")
+        if isinstance(persisted_report, dict) and persisted_report:
+            try:
+                report = StudentSmartAssessmentReport(**persisted_report)
+            except (TypeError, ValueError):
+                pass
+        report_type = str(session_data.get("assessment_mode") or report.assessment_mode or "smart")
+        if report_type not in {"smart", "custom", "point"}:
+            report_type = "smart"
+        existing_report = _load_existing_source_report(
+            session,
+            student_id=student_id,
+            report_type=report_type,
+            source_session_id=session_id,
+        )
+        if existing_report is not None:
+            return existing_report
+
         attempts = _load_smart_attempts(session, student_id=student_id, session_id=session_id)
     payload = _model_dump(report)
     wrong_answers = payload.get("wrong_answers") if isinstance(payload.get("wrong_answers"), list) else []
     shaped_attempts = [_shape_attempt(row) for row in attempts]
     summary, mistake, prompt_snapshot = await _generate_report_texts(
         user=user,
-        class_id=dict(session_row).get("class_id"),
+        class_id=session_data.get("class_id"),
         report_type=report_type,
         score=float(report.score),
         correct_count=int(report.correct_count),
@@ -863,7 +912,7 @@ async def create_smart_assessment_report(user: Any, report: StudentSmartAssessme
     )
     return _insert_report(
         student_id=student_id,
-        class_id=dict(session_row).get("class_id"),
+        class_id=session_data.get("class_id"),
         report_type=report_type,
         source_session_id=session_id,
         source_table="student_smart_assessment_sessions",
@@ -877,7 +926,7 @@ async def create_smart_assessment_report(user: Any, report: StudentSmartAssessme
         mistake_explanation=mistake,
         prompt_snapshot=prompt_snapshot,
         payload=payload,
-        completed_at=dict(session_row).get("completed_at"),
+        completed_at=session_data.get("completed_at"),
     )
 
 

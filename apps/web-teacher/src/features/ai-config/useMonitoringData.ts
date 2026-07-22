@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { LearningAssistantRuntime } from "../../api/learningAssistant";
 import type { AIConfiguration } from "../../api/settings";
 import { api } from "../../api/http";
-import type { VideoLibraryIndexDiagnostics, VideoLibrarySearchDiagnostics } from "./monitoringTypes";
+import type { TeacherCatalogIndexDiagnostics, TeacherCatalogSearchDiagnostics } from "./monitoringTypes";
 
 export function useMonitoringData(retrievalQuery: string) {
   const aiConfig = useQuery({
@@ -18,16 +18,16 @@ export function useMonitoringData(retrievalQuery: string) {
     refetchIntervalInBackground: true,
   });
   const indexDiagnostics = useQuery({
-    queryKey: ["video-library-index-diagnostics"],
-    queryFn: () => api<VideoLibraryIndexDiagnostics>("/api/admin/video-library/index/diagnostics"),
+    queryKey: ["teacher-catalog-index-diagnostics"],
+    queryFn: () => api<TeacherCatalogIndexDiagnostics>("/api/admin/catalog/search/index/diagnostics"),
     refetchInterval: 15000,
     refetchIntervalInBackground: true,
   });
   const searchDiagnostics = useQuery({
-    queryKey: ["video-library-search-diagnostics", retrievalQuery],
+    queryKey: ["teacher-catalog-search-diagnostics", retrievalQuery],
     queryFn: () =>
-      api<VideoLibrarySearchDiagnostics>(
-        `/api/admin/video-library/search/diagnostics?q=${encodeURIComponent(retrievalQuery)}&limit=8`,
+      api<TeacherCatalogSearchDiagnostics>(
+        `/api/admin/catalog/search/query/diagnostics?q=${encodeURIComponent(retrievalQuery)}&limit=8`,
       ),
     enabled: retrievalQuery.trim().length > 0,
   });

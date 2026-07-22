@@ -1,6 +1,5 @@
 .env
 .DS_Store
-apps/web-admin/.env.local
 apps/web-teacher/.env.local
 .tmp/
 tmp/
@@ -13,7 +12,6 @@ __pycache__/
 .ruff_cache/
 node_modules/
 dist/
-apps/web-admin/dist/
 apps/web-teacher/dist/
 apps/web-student/dist/
 data/media/
@@ -22,14 +20,6 @@ data/textbooks/
 server/vendor/ffmpeg/*.tar.xz
 !server/vendor/ffmpeg/.gitkeep
 apps/*-old/
-!apps/web-student-old/
-!apps/web-student-old/**
-!apps/web-teacher-old/
-!apps/web-teacher-old/**
-apps/web-student-old/node_modules/
-apps/web-student-old/dist/
-apps/web-teacher-old/node_modules/
-apps/web-teacher-old/dist/
 artifacts/recovery/
 
 # Admin repository extraction exclusions

@@ -13,7 +13,6 @@ from sqlalchemy import text
 
 from server.app.domains.catalog_tree.catalog_seed import reset_legacy_experiment_seed_data
 from server.app.domains.catalog_tree.equations import normalize_reaction_equations, replace_reaction_equations
-from server.app.domains.catalog_tree.search_documents import queue_index_state
 from server.app.domains.catalog_tree.teacher_search import queue_teacher_index_state
 from server.app.domains.experiment_points.textbook_import import normalize_import_text
 from server.app.infrastructure.database import db_session
@@ -712,8 +711,6 @@ def import_textbook_catalog_workspace(
         for node in nodes:
             if node.node_kind == "point":
                 queue_teacher_index_state(session, node_id=node.node_id, action="upsert", trigger_source="system", soft=True)
-                if publish:
-                    queue_index_state(session, node_id=node.node_id, action="upsert", trigger_source="system", soft=True)
 
     return {
         "dry_run": False,

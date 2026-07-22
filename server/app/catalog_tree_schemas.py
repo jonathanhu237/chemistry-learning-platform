@@ -52,6 +52,19 @@ class CatalogNodeReorderRequest(BaseModel):
 class CatalogNodeStatusRequest(BaseModel):
     action: str = Field(pattern="^(archive|restore|publish|unpublish)$")
     include_subtree: bool = False
+    archive_final_placement: bool = False
+
+
+class CatalogHomeRecommendationRequest(BaseModel):
+    recommended: bool = True
+    sort_order: int = Field(default=0, ge=0)
+
+
+class CatalogHomeRecommendationSetting(BaseModel):
+    recommended: bool = False
+    sort_order: int = Field(default=0, ge=0)
+    recommended_by: str | None = None
+    updated_at: str | None = None
 
 
 class CatalogPreviewTokenResponse(BaseModel):
@@ -206,7 +219,6 @@ class CatalogNodeCard(BaseModel):
     published_media_count: int = 0
     active_placement_count: int = 0
     validation: dict[str, Any] = Field(default_factory=dict)
-    index_state: dict[str, Any] | None = None
 
 
 class StudentCatalogChapterResponse(BaseModel):

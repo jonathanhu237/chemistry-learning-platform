@@ -2,12 +2,12 @@ import { Alert, Tag, Typography } from "antd";
 
 import { dictionaryRows, esMappingReady, esStatus, errorMessage } from "./monitoringMappers";
 import { LocalQueryState, MetricGrid, MetricTile, ModuleHeader } from "./MonitoringShared";
-import type { VideoLibraryIndexDiagnostics } from "./monitoringTypes";
+import type { TeacherCatalogIndexDiagnostics } from "./monitoringTypes";
 
 const { Text } = Typography;
 
 type DictionarySyncModuleProps = {
-  data?: VideoLibraryIndexDiagnostics;
+  data?: TeacherCatalogIndexDiagnostics;
   loading?: boolean;
   error?: unknown;
   retry?: () => void;

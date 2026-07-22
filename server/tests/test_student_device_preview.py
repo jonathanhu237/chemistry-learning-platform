@@ -7,6 +7,7 @@ import pytest
 from server.app.auth import AuthUser
 from server.app.domains.analytics import read_models
 from server.app.api.student import student_platform
+from server.app.app_runtime.main import app
 from server.app.domains.roster import classes as roster_classes
 from server.app.domains.preview import student_device_preview
 from server.app.domains.preview.student_device_preview import (
@@ -41,11 +42,7 @@ def _preview_user() -> AuthUser:
 def test_student_preview_routes_are_registered() -> None:
     assert_route("/api/admin/student-preview/session", "POST")
     assert_route("/api/preview/student-session/exchange", "POST")
-    assert_route("/api/web-admin/student-preview/classes", "GET")
-    assert_route("/api/web-admin/student-preview/classes/{teacher_user_id}/ensure", "POST")
-    assert_route("/api/web-admin/student-preview/classes/{teacher_user_id}/reset", "POST")
-    assert_route("/api/web-admin/student-preview/classes/{teacher_user_id}/disable", "POST")
-    assert_route("/api/web-admin/student-preview/classes/{teacher_user_id}/restore", "POST")
+    assert all(not path.startswith("/api/web-admin/") for path in app.openapi()["paths"])
 
 
 def test_preview_constants_keep_separate_purposes() -> None:
@@ -105,26 +102,6 @@ def test_preview_ticket_exchange_is_one_time_expiring_and_claim_scoped() -> None
     assert '"teacher_user_id": teacher_id' in source
     assert '"preview_class_id": class_id' in source
     assert '"preview_student_id": student_id' in source
-
-
-def test_preview_reset_cleans_only_preview_student_state() -> None:
-    source = inspect.getsource(student_device_preview.reset_preview_student)
-
-    assert "ensure_teacher_preview_student_by_teacher_id" in source
-    for table in [
-        "student_pretest_sessions",
-        "student_posttest_sessions",
-        "experiment_question_attempts",
-        "student_experiment_progress",
-        "student_experiment_mastery",
-        "student_events",
-        "student_feedback",
-    ]:
-        assert table in source
-    assert "WHERE student_id = :student_id" in source
-    assert "WHERE id = :class_id" in source
-    assert "DELETE FROM classes" not in source
-    assert "DELETE FROM roster_entries" not in source
 
 
 def test_preview_classes_and_students_are_excluded_from_teacher_and_analytics_sources() -> None:

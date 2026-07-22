@@ -36,9 +36,14 @@ from server.app.domains.catalog_tree.common import (
     validate_node_payload,
 )
 from server.app.domains.catalog_tree.directories import create_node_params, update_node_params
+from server.app.domains.catalog_tree.home_recommendations import home_video_recommendation_for_node
 from server.app.domains.catalog_tree.jobs import get_point_job_state, mark_point_evidence_stale, mark_subtree_evidence_stale
-from server.app.domains.catalog_tree.search_documents import queue_index_state, queue_subtree_point_indexes, search_preview_for_node
-from server.app.domains.catalog_tree.teacher_search import queue_subtree_teacher_indexes, queue_teacher_index_state, search_teacher_catalog_nodes
+from server.app.domains.catalog_tree.teacher_search import (
+    queue_subtree_teacher_indexes,
+    queue_teacher_index_state,
+    search_teacher_catalog_nodes,
+    teacher_search_document_for_node,
+)
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
 from server.app.infrastructure.database import db_session
 
@@ -47,6 +52,51 @@ def _payload_data(payload: Any, *, exclude_unset: bool = False) -> dict[str, Any
     if hasattr(payload, "model_dump"):
         return payload.model_dump(exclude_unset=exclude_unset)
     return dict(payload)
+
+
+def _teacher_search_state_for_node(session: Any, *, node_id: str) -> dict[str, Any] | None:
+    row = (
+        session.execute(
+            text(
+                """
+                SELECT node_id, placement_node_id, canonical_point_id, document_id,
+                       desired_action, sync_status, attempts, document_hash, last_error,
+                       indexed_at, last_attempted_at, analyzer_version, created_at, updated_at
+                FROM experiment_catalog_teacher_search_index_state
+                WHERE node_id = :node_id
+                """
+            ),
+            {"node_id": node_id},
+        )
+        .mappings()
+        .first()
+    )
+    return dict(row) if row else None
+
+
+def _teacher_facing_job_state(job_state: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not job_state:
+        return None
+    result = dict(job_state)
+    result.pop("es_state", None)
+    return result
+
+
+def trigger_teacher_search_sync(*, node_id: str, action: str, user: Any) -> dict[str, Any]:
+    del user
+    if action not in {"refresh", "delete"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported teacher search action")
+    with db_session() as session:
+        node = get_node(session, node_id)
+        if not point_capable(node):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Teacher search jobs require a point node")
+        queue_teacher_index_state(
+            session,
+            node_id=node_id,
+            action="upsert" if action == "refresh" else "delete",
+            trigger_source="manual",
+        )
+        return _teacher_facing_job_state(get_point_job_state(session, node_id=node_id)) or {}
 
 
 def _child_cards(session: Any, *, node_id: str, include_archived: bool, include_teacher_note: bool) -> list[dict[str, Any]]:
@@ -156,8 +206,10 @@ def get_node_detail(*, node_id: str) -> dict[str, Any]:
             else []
         )
         node_status = catalog_node_status_summary(node, content=content, validation=validation, job_state=job_state)
+        node_payload = node_card(node, content=content, validation=validation, job_state=job_state, include_teacher_note=True)
+        node_payload.pop("index_state", None)
         return {
-            "node": node_card(node, content=content, validation=validation, job_state=job_state, include_teacher_note=True),
+            "node": node_payload,
             "canonical_point": {
                 "canonical_point_id": node.get("canonical_point_id"),
                 "title": node.get("canonical_point_title") or node.get("title"),
@@ -174,9 +226,10 @@ def get_node_detail(*, node_id: str) -> dict[str, Any]:
             "related_links": related,
             "validation": validation,
             "node_status": node_status,
-            "search_preview": search_preview_for_node(session, node_id=node_id),
-            "index_state": node.get("index_state"),
-            "job_state": job_state,
+            "teacher_search_document": teacher_search_document_for_node(session, node_id=node_id),
+            "teacher_search_state": _teacher_search_state_for_node(session, node_id=node_id),
+            "home_recommendation": home_video_recommendation_for_node(session, node_id=node_id) if point_capable(node) else None,
+            "job_state": _teacher_facing_job_state(job_state),
         }
 
 
@@ -613,13 +666,10 @@ def update_node(*, node_id: str, payload: CatalogNodeUpdateRequest, user: Any) -
         if new_kind == "point" or node["node_kind"] == "point":
             if title_changed or kind_changed:
                 queue_teacher_index_state(session, node_id=node_id, action="upsert", soft=True)
-                if node["status"] == "published":
-                    queue_index_state(session, node_id=node_id, action="upsert", soft=True)
                 mark_point_evidence_stale(session, node_id=node_id, reason="point_node_metadata_edited")
         else:
             if title_changed or kind_changed:
                 queue_subtree_teacher_indexes(session, node_id=node_id, action="upsert", soft=True)
-                queue_subtree_point_indexes(session, node_id=node_id, soft=True)
                 mark_subtree_evidence_stale(session, node_id=node_id, reason="directory_context_edited")
     return get_node_detail(node_id=node_id)
 
@@ -648,7 +698,6 @@ def move_node(*, node_id: str, payload: CatalogNodeMoveRequest, user: Any) -> di
         )
         _normalize_sibling_orders(session, chapter_id=node["chapter_id"], parent_id=parent_id)
         queue_subtree_teacher_indexes(session, node_id=node_id, action="upsert", soft=True)
-        queue_subtree_point_indexes(session, node_id=node_id, soft=True)
         mark_subtree_evidence_stale(session, node_id=node_id, reason="catalog_path_moved")
     return get_node_detail(node_id=node_id)
 
@@ -686,7 +735,6 @@ def reorder_siblings(*, payload: CatalogNodeReorderRequest, user: Any) -> dict[s
         _normalize_sibling_orders(session, chapter_id=str(chapter_id), parent_id=str(parent_id) if parent_id else None)
         for changed_node_id in node_ids:
             queue_subtree_teacher_indexes(session, node_id=changed_node_id, action="upsert", soft=True)
-            queue_subtree_point_indexes(session, node_id=changed_node_id, soft=True)
             mark_subtree_evidence_stale(session, node_id=changed_node_id, reason="catalog_order_changed")
     return {"updated": len(items)}
 
@@ -762,7 +810,7 @@ def set_node_status(*, node_id: str, payload: CatalogNodeStatusRequest, user: An
                 .mappings()
                 .all()
             )
-            if final_placement_rows:
+            if final_placement_rows and not payload.archive_final_placement:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail={
@@ -795,11 +843,6 @@ def set_node_status(*, node_id: str, payload: CatalogNodeStatusRequest, user: An
                 session,
                 node_id=changed_node_id,
                 action="delete" if action == "archive" else "upsert",
-            )
-            queue_subtree_point_indexes(
-                session,
-                node_id=changed_node_id,
-                action="delete" if action in {"unpublish", "archive"} else "upsert",
             )
             mark_subtree_evidence_stale(session, node_id=changed_node_id, reason=f"node_status_{action}")
     return get_node_detail(node_id=node_id)

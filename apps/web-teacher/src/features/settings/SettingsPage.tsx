@@ -300,26 +300,6 @@ export function SettingsPage() {
                 <div className="settings-section">
                   <Flex justify="space-between" align="center" gap={12}>
                     <div>
-                      <Text strong>课前摸底</Text>
-                      <Text type="secondary" className="block-text">
-                        控制学生进入章节前是否看到摸底测试。
-                      </Text>
-                    </div>
-                    <Form.Item name={["assessment", "pretest_enabled"]} valuePropName="checked" noStyle>
-                      <Switch disabled={!canEdit} />
-                    </Form.Item>
-                  </Flex>
-                  <Form.Item
-                    name={["assessment", "pretest_question_count"]}
-                    label="摸底题数"
-                    rules={[{ required: true, message: "请输入摸底题数" }]}
-                  >
-                    <InputNumber min={1} max={50} precision={0} disabled={!canEdit} className="full" />
-                  </Form.Item>
-                </div>
-                <div className="settings-section">
-                  <Flex justify="space-between" align="center" gap={12}>
-                    <div>
                       <Text strong>课后测试</Text>
                       <Text type="secondary" className="block-text">
                         控制章节学习后的巩固测试入口和题量。
@@ -342,7 +322,7 @@ export function SettingsPage() {
                     <div>
                       <Text strong>智能组卷</Text>
                       <Text type="secondary" className="block-text">
-                        学生可直接进入测评；系统按未测点位比例和掌握薄弱倾向抽取点位题。
+                        首次智能基线始终必做；此开关控制完成基线后的智能组卷入口。
                       </Text>
                     </div>
                     <Form.Item name={["assessment", "smart_assessment", "enabled"]} valuePropName="checked" noStyle>
@@ -509,7 +489,7 @@ export function SettingsPage() {
           >
             {!reportPrompts.data?.can_edit ? <Alert type="info" showIcon title="当前账号可查看报告 Prompt，只有管理员可以修改。" className="section-alert" /> : null}
             <Text type="secondary" className="block-text ai-card-description">
-              学生提交课前测试、自主测评、智能测评或点位测评时，会用这里的 Prompt 生成报告总结和错题讲解并写入库。
+              学生提交自主测评、智能测评或点位测评时，会用这里的 Prompt 生成报告总结和错题讲解并写入库。
             </Text>
             <div className="report-prompt-variable-list">
               {(reportPrompts.data?.supported_variables || []).map((item) => (

@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import { StrictMode } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AiStaticMarkdown } from "../../components/AiMarkdown";
@@ -130,6 +131,40 @@ describe("student chemistry Markdown rendering", () => {
       />,
     );
     expect(screen.queryByRole("button", { name: /查看/ })).toBeNull();
+  });
+
+  it("keeps rich-content controls stable under StrictMode rendering", async () => {
+    const answer = [
+      "| 试剂 | 现象 |",
+      "|---|---|",
+      "| KBr | 生成 Br2 |",
+      "",
+      "```mermaid",
+      "flowchart TD",
+      "  A[观察] --> B[判断]",
+      "```",
+      "",
+      "| 步骤 | 判断 |",
+      "|---|---|",
+      "| 加入 CCl4 | 下层变橙色 |",
+    ].join("\n");
+
+    render(
+      <StrictMode>
+        <AiMessageMarkdown
+          text={answer}
+          artifactContext={{
+            historyId: "history-strict",
+            messageId: "assistant-message-strict",
+            onOpenArtifact: vi.fn(),
+          }}
+        />
+      </StrictMode>,
+    );
+
+    expect(screen.getByRole("button", { name: "查看表格 1: 试剂" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "查看表格 2: 步骤" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "查看流程图 1" })).toBeInTheDocument();
   });
 
   it("uses the Streamdown facade for active streaming answers", async () => {

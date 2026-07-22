@@ -44,7 +44,12 @@ import type {
   QuestionWorkbenchCandidate,
   QuestionWorkbenchSession,
 } from "../../api/questionBank";
-import { listCatalogQuestionBank, refreshCatalogQuestionBankEvidence } from "../../api/questionBank";
+import {
+  disableQuestion,
+  listCatalogQuestionBank,
+  refreshCatalogQuestionBankEvidence,
+  withdrawQuestionToDraft,
+} from "../../api/questionBank";
 import type { LearningAssistantRuntime } from "../../api/learningAssistant";
 import { PageTitle } from "../../components/PageTitle";
 import { QueryState } from "../../components/QueryState";
@@ -69,6 +74,7 @@ import {
   textbookSectionLabels,
   workbenchEvidenceSectionsFromPackage,
 } from "./questionBankDisplay";
+import { QuestionLifecycleActions, type QuestionLifecycleAction } from "./QuestionLifecycleActions";
 import "./question-bank.css";
 
 const { Text, Title } = Typography;
@@ -84,6 +90,7 @@ type ReviewItem =
 
 type DraftEditorState = {
   draftId: string;
+  withdrawnFromQuestionId?: string;
   questionType: Question["question_type"];
   stem: string;
   optionsText: string;
@@ -264,6 +271,10 @@ function draftStem(draft: QuestionDraft) {
 
 function draftValidationErrors(draft: QuestionDraft) {
   return draft.validation_errors || [];
+}
+
+function withdrawalSourceId(draft?: QuestionDraft | null) {
+  return draft?.withdrawal?.revoked_from_question_id || draft?.revoked_from_question_id || "";
 }
 
 function duplicateRiskFromPayload(payload: Partial<Question> & Record<string, unknown>): DuplicateRisk | null {
@@ -548,6 +559,40 @@ export function QuestionBanksPage() {
     onError: (error) => message.error(`保存失败：${errorMessage(error)}`),
   });
 
+  const withdrawQuestion = useMutation({
+    mutationFn: (questionId: string) => withdrawQuestionToDraft(questionId),
+    onSuccess: (draft) => {
+      const payload = draftPayload(draft);
+      const questionType = normalizeQuestionType(payload.question_type);
+      setDraftEditor({
+        draftId: draft.id,
+        withdrawnFromQuestionId: withdrawalSourceId(draft),
+        questionType,
+        stem: cleanText(String(payload.stem || "")),
+        optionsText: optionsToText(payload.options),
+        answerText: answerToEditableText(questionType, payload.answer),
+        explanation: cleanText(String(payload.explanation || "")),
+        payload,
+      });
+      setSelectedQuestion(null);
+      setDetailOpen(false);
+      message.success("已撤回，修订草稿已打开");
+      refreshQuestionBank();
+    },
+    onError: (error) => message.error(`撤回失败：${errorMessage(error)}`),
+  });
+
+  const disableQuestionMutation = useMutation({
+    mutationFn: (questionId: string) => disableQuestion(questionId),
+    onSuccess: () => {
+      setSelectedQuestion(null);
+      setDetailOpen(false);
+      message.success("题目已停用");
+      refreshQuestionBank();
+    },
+    onError: (error) => message.error(`停用失败：${errorMessage(error)}`),
+  });
+
   const openQuestionDetail = (question: Question) => {
     setSelectedQuestion(question);
     setDetailOpen(true);
@@ -559,10 +604,12 @@ export function QuestionBanksPage() {
       message.warning("这条待审题目缺少草稿记录，暂时不能手动编辑");
       return;
     }
+    const draft = item.draft;
     const payload = item.kind === "candidate" && item.draft ? draftPayload(item.draft) : item.kind === "candidate" ? candidatePayload(item.candidate) : draftPayload(item.draft);
     const questionType = normalizeQuestionType(payload.question_type);
     setDraftEditor({
       draftId,
+      withdrawnFromQuestionId: withdrawalSourceId(draft),
       questionType,
       stem: cleanText(String(payload.stem || "")),
       optionsText: optionsToText(payload.options),
@@ -732,6 +779,12 @@ export function QuestionBanksPage() {
         })),
     ];
   }, [visibleDrafts, workbenchCandidates]);
+
+  const lifecycleBusyAction = (questionId: string): QuestionLifecycleAction | null => {
+    if (withdrawQuestion.isPending && withdrawQuestion.variables === questionId) return "withdraw";
+    if (disableQuestionMutation.isPending && disableQuestionMutation.variables === questionId) return "disable";
+    return null;
+  };
 
   return (
     <Space orientation="vertical" size={18} className="full question-bank-catalog-page">
@@ -1061,6 +1114,7 @@ export function QuestionBanksPage() {
                               const status = draft ? draft.status : isCandidate ? item.candidate.status : item.draft.status;
                               const itemId = isCandidate ? item.candidate.id : item.draft.id;
                               const duplicateRisk = duplicateRiskFromPayload(payload);
+                              const withdrawnFromQuestionId = withdrawalSourceId(draft);
                               const duplicateMatches = duplicateRiskMatches(duplicateRisk);
                               const questionType = normalizeQuestionType(payload.question_type);
                               const stem = cleanText(String(payload.stem || ""));
@@ -1091,7 +1145,11 @@ export function QuestionBanksPage() {
                                     <Flex justify="space-between" align="start" gap={8}>
                                       <Space size={4} wrap>
                                         <Tag color="blue">{questionTypeLabel(questionType)}</Tag>
-                                        <Tag color={isCandidate ? "green" : "default"}>{isCandidate ? "本次生成" : "历史待审"}</Tag>
+                                        {withdrawnFromQuestionId ? (
+                                          <Tag color="gold">撤回修订</Tag>
+                                        ) : (
+                                          <Tag color={isCandidate ? "green" : "default"}>{isCandidate ? "本次生成" : "历史待审"}</Tag>
+                                        )}
                                         {errors.length ? <Tag color="red">需修订</Tag> : <Tag color="green">可发布</Tag>}
                                         {duplicateRisk ? <Tag color="orange">疑似重复 · {duplicateMatches.length || 1} 条</Tag> : null}
                                         {status !== "draft" ? <Tag>{status}</Tag> : null}
@@ -1117,6 +1175,15 @@ export function QuestionBanksPage() {
                                       <Descriptions.Item label="答案">{answerText(payload.answer as Record<string, unknown>)}</Descriptions.Item>
                                       <Descriptions.Item label="解析">{String(payload.explanation || "暂无解析")}</Descriptions.Item>
                                     </Descriptions>
+                                    {withdrawnFromQuestionId ? (
+                                      <Alert
+                                        type="info"
+                                        showIcon
+                                        className="question-withdrawal-notice"
+                                        message="这份草稿来自已发布题目的撤回修订"
+                                        description="发布后会更新原题并恢复启用；放弃草稿不会自动恢复原题。"
+                                      />
+                                    ) : null}
                                     {duplicateRisk ? (
                                       <Alert
                                         type="warning"
@@ -1274,7 +1341,21 @@ export function QuestionBanksPage() {
                         ),
                       },
                       { title: "状态", width: 84, dataIndex: "status", render: questionBankStatusTag },
+                      {
+                        title: "操作",
+                        width: 190,
+                        fixed: "right",
+                        render: (_: unknown, row: Question) => (
+                          <QuestionLifecycleActions
+                            question={row}
+                            busyAction={lifecycleBusyAction(row.id)}
+                            onWithdraw={(questionId) => withdrawQuestion.mutate(questionId)}
+                            onDisable={(questionId) => disableQuestionMutation.mutate(questionId)}
+                          />
+                        ),
+                      },
                     ]}
+                    scroll={{ x: 1080 }}
                   />
                 </QueryState>
               </Card>
@@ -1289,7 +1370,21 @@ export function QuestionBanksPage() {
         open={detailOpen}
         width={920}
         onCancel={() => setDetailOpen(false)}
-        footer={<Button onClick={() => setDetailOpen(false)}>关闭</Button>}
+        footer={
+          <Flex justify="space-between" align="center" gap={12}>
+            {selectedQuestion ? (
+              <QuestionLifecycleActions
+                question={selectedQuestion}
+                busyAction={lifecycleBusyAction(selectedQuestion.id)}
+                onWithdraw={(questionId) => withdrawQuestion.mutate(questionId)}
+                onDisable={(questionId) => disableQuestionMutation.mutate(questionId)}
+              />
+            ) : (
+              <span />
+            )}
+            <Button onClick={() => setDetailOpen(false)}>关闭</Button>
+          </Flex>
+        }
       >
         {selectedQuestion ? (
           <Space orientation="vertical" size={16} className="full question-detail-card">
@@ -1352,7 +1447,16 @@ export function QuestionBanksPage() {
       >
         {draftEditor ? (
           <Space orientation="vertical" size={14} className="full question-draft-editor">
-            <Alert type="info" showIcon message="保存后仍需点击发布，题目才会进入正式题库。" />
+            <Alert
+              type="info"
+              showIcon
+              message={draftEditor.withdrawnFromQuestionId ? "正在修订一条已撤回的正式题目" : "保存后仍需点击发布，题目才会进入正式题库。"}
+              description={
+                draftEditor.withdrawnFromQuestionId
+                  ? "保存只更新待审草稿；发布后会更新原题并恢复启用，题目 ID 保持不变。"
+                  : undefined
+              }
+            />
             <Space wrap>
               <Select
                 value={draftEditor.questionType}

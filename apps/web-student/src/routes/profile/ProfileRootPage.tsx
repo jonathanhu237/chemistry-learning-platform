@@ -97,10 +97,13 @@ export function ProfileRootPage() {
     void removeStudentVideoSave("favorite", favoriteSavePayload(item))
       .then(() => {
         setFavoriteItems((current) => current.filter((candidate) => !sameFavoriteItem(candidate, item)));
+        setFavoriteNextCursor(null);
+        setFavoriteHasMore(false);
         setFavoritesStatus(`已取消收藏：${item.title}`);
+        loadFavorites(null);
       })
       .catch((requestError) => setFavoritesStatus(errorMessage(requestError)));
-  }, []);
+  }, [loadFavorites]);
 
   return (
     <section className="learning-panel profile-tab-panel" aria-label="我的">

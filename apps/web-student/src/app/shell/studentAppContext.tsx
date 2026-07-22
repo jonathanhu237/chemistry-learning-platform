@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { AuthUser, StudentAppConfigResponse, StudentHomeVideoTopic, StudentSmartAssessmentResponse } from "../../api";
+import type { AuthUser, StudentAppConfigResponse, StudentSmartAssessmentResponse } from "../../api";
 
 export type StudentShellBaseContextValue = {
   user: AuthUser;
@@ -13,10 +13,6 @@ export type StudentRuntimeContextValue = StudentShellBaseContextValue & {
   previewPolicy: StudentAppConfigResponse["preview_policy"];
   canUseAssistant: boolean;
   canUseFeedback: boolean;
-  homeVideoTopic: StudentHomeVideoTopic;
-  setHomeVideoTopic: (topic: StudentHomeVideoTopic) => void;
-  lockHomeChromeForOverlay: () => void;
-  releaseHomeChromeForOverlay: () => void;
   startAssessmentSession: () => Promise<StudentSmartAssessmentResponse | null>;
   startPointAssessmentSession: (pointNodeId: string) => Promise<StudentSmartAssessmentResponse | null>;
   posttestLoading: boolean;

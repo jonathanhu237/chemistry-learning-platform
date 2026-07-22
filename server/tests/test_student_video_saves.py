@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -34,20 +35,27 @@ class _FakeSession:
         self.executed.append({"statement": str(statement), "params": params})
 
 
-def test_student_video_save_routes_are_registered() -> None:
-    assert_route("/api/student/video-saves/{save_type}", "PUT")
-    assert_route("/api/student/video-saves/{save_type}", "DELETE")
+def test_student_video_save_routes_are_favorite_only() -> None:
+    assert_route("/api/student/video-saves/favorite", "PUT")
+    assert_route("/api/student/video-saves/favorite", "DELETE")
     assert_route("/api/student/video-saves/favorite/feed", "GET")
 
 
-def test_normalize_save_type_accepts_aliases_and_rejects_unknown() -> None:
-    assert saves_service.normalize_save_type("watch-later") == "watch_later"
-    assert saves_service.normalize_save_type("favorite") == "favorite"
-    with pytest.raises(Exception):
-        saves_service.normalize_save_type("like")
+def test_visible_favorite_target_uses_same_published_playable_policy_as_home() -> None:
+    source = Path("server/app/domains/student_video_saves.py").read_text(encoding="utf-8")
+    visibility_source = Path("server/app/domains/media/student_catalog_visibility.py").read_text(encoding="utf-8")
+
+    assert "STUDENT_VISIBLE_PLAYABLE_MEDIA_CTES" in source
+    assert "FROM student_visible_playable_media visible_media" in source
+    assert "content.content_status = 'published'" in visibility_source
+    assert "binding.binding_status = 'published'" in visibility_source
+    assert "asset.upload_status = 'ready'" in visibility_source
+    assert "asset.playback_relative_path" in visibility_source
+    assert "placeholder_video" in visibility_source
+    assert "no-video-placeholder.mp4" in visibility_source
 
 
-def test_set_student_video_save_uses_independent_upsert_and_archive_paths(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_set_student_video_favorite_uses_upsert_and_archive_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_session = _FakeSession()
     visible = {
         "placement_node_id": "cat-point-halogen",
@@ -56,11 +64,8 @@ def test_set_student_video_save_uses_independent_upsert_and_archive_paths(monkey
     }
 
     def personal_state(_session: Any, _user: Any, *, placement_node_id: str, media_id: str) -> StudentVideoPersonalState:
-        last_type = fake_session.executed[-1]["params"]["save_type"]
-        return StudentVideoPersonalState(
-            watch_later=last_type == "watch_later",
-            favorite=last_type == "favorite",
-        )
+        statement = fake_session.executed[-1]["statement"]
+        return StudentVideoPersonalState(favorite="INSERT INTO student_video_saves" in statement)
 
     monkeypatch.setattr(saves_service, "db_session", lambda: _SessionContext(fake_session))
     monkeypatch.setattr(saves_service, "_visible_point_media", lambda *_args, **_kwargs: visible)
@@ -68,24 +73,23 @@ def test_set_student_video_save_uses_independent_upsert_and_archive_paths(monkey
 
     payload = StudentVideoSaveRequest(
         placement_node_id="cat-point-halogen",
-        canonical_point_id="cat-canon-halogen",
+        canonical_point_id="spoofed-canonical-point",
         media_id="00000000-0000-0000-0000-000000000001",
         source="unit_test",
     )
 
-    watch_later = saves_service.set_student_video_save(_Student(), save_type="watch_later", payload=payload, active=True)
-    favorite = saves_service.set_student_video_save(_Student(), save_type="favorite", payload=payload, active=True)
-    removed_watch_later = saves_service.set_student_video_save(_Student(), save_type="watch_later", payload=payload, active=False)
+    saved = saves_service.set_student_video_favorite(_Student(), payload=payload, active=True)
+    removed = saves_service.set_student_video_favorite(_Student(), payload=payload, active=False)
 
-    assert watch_later.save_type == "watch_later"
-    assert watch_later.active is True
-    assert watch_later.personal_state.watch_later is True
-    assert favorite.save_type == "favorite"
-    assert favorite.active is True
-    assert favorite.personal_state.favorite is True
-    assert removed_watch_later.save_type == "watch_later"
-    assert removed_watch_later.active is False
-    assert [call["params"]["save_type"] for call in fake_session.executed] == ["watch_later", "favorite", "watch_later"]
+    assert saved.save_type == "favorite"
+    assert saved.active is True
+    assert saved.canonical_point_id == "cat-canon-halogen"
+    assert saved.personal_state.favorite is True
+    assert removed.save_type == "favorite"
+    assert removed.active is False
+    assert removed.personal_state.favorite is False
     assert "INSERT INTO student_video_saves" in fake_session.executed[0]["statement"]
-    assert "INSERT INTO student_video_saves" in fake_session.executed[1]["statement"]
-    assert "UPDATE student_video_saves" in fake_session.executed[2]["statement"]
+    assert "save_type" in fake_session.executed[0]["statement"]
+    assert "'favorite'" in fake_session.executed[0]["statement"]
+    assert "UPDATE student_video_saves" in fake_session.executed[1]["statement"]
+    assert "watch_later" not in Path("server/app/domains/student_video_saves.py").read_text(encoding="utf-8")

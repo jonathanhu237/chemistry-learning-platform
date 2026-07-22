@@ -82,7 +82,7 @@ def _patch_save_dependencies(monkeypatch: Any, session: _FakeSession, existing_c
     monkeypatch.setattr(points, "get_content", lambda _session, _node_id: existing_content)
     monkeypatch.setattr(points, "active_placement_ids_for_canonical_point", lambda _session, _canonical_id: ["cat-point-1", "cat-point-2"])
     monkeypatch.setattr(points, "replace_reaction_equations", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(points, "queue_index_state", lambda _session, **kwargs: events.append({"kind": "index", **kwargs}))
+    monkeypatch.setattr(points, "queue_teacher_index_state", lambda _session, **kwargs: events.append({"kind": "teacher_index", **kwargs}))
     monkeypatch.setattr(points, "mark_point_evidence_stale", lambda _session, **kwargs: events.append({"kind": "rag", **kwargs}))
 
     import server.app.domains.catalog_tree.nodes as nodes
@@ -103,12 +103,12 @@ def test_published_point_autosave_preserves_published_status_and_schedules_soft_
 
     content_update = next(call for call in session.calls if "UPDATE experiment_catalog_point_content" in call["sql"])
     assert "WHEN experiment_catalog_point_content.content_status = 'published' THEN 'published'" in content_update["sql"]
-    assert {"kind": "index", "node_id": "cat-point-1", "action": "upsert", "soft": True} in events
-    assert {"kind": "index", "node_id": "cat-point-2", "action": "upsert", "soft": True} in events
+    assert {"kind": "teacher_index", "node_id": "cat-point-1", "action": "upsert", "soft": True} in events
+    assert {"kind": "teacher_index", "node_id": "cat-point-2", "action": "upsert", "soft": True} in events
     assert {"kind": "rag", "node_id": "cat-point-1", "reason": "point_content_edited"} in events
 
 
-def test_draft_point_autosave_does_not_create_student_search_upsert(monkeypatch: Any) -> None:
+def test_draft_point_autosave_updates_teacher_search(monkeypatch: Any) -> None:
     session = _FakeSession()
     events = _patch_save_dependencies(monkeypatch, session, _published_content(content_status="draft"))
 
@@ -118,11 +118,12 @@ def test_draft_point_autosave_does_not_create_student_search_upsert(monkeypatch:
         user=type("User", (), {"id": "00000000-0000-0000-0000-000000000001"})(),
     )
 
-    assert not [event for event in events if event["kind"] == "index"]
+    assert {"kind": "teacher_index", "node_id": "cat-point-1", "action": "upsert", "soft": True} in events
+    assert {"kind": "teacher_index", "node_id": "cat-point-2", "action": "upsert", "soft": True} in events
     assert {"kind": "rag", "node_id": "cat-point-1", "reason": "point_content_edited"} in events
 
 
-def test_teacher_note_only_autosave_does_not_trigger_es_or_rag(monkeypatch: Any) -> None:
+def test_teacher_note_only_autosave_updates_teacher_search_without_staling_rag(monkeypatch: Any) -> None:
     session = _FakeSession()
     events = _patch_save_dependencies(monkeypatch, session, _published_content())
 
@@ -132,4 +133,7 @@ def test_teacher_note_only_autosave_does_not_trigger_es_or_rag(monkeypatch: Any)
         user=type("User", (), {"id": "00000000-0000-0000-0000-000000000001"})(),
     )
 
-    assert events == []
+    assert events == [
+        {"kind": "teacher_index", "node_id": "cat-point-1", "action": "upsert", "soft": True},
+        {"kind": "teacher_index", "node_id": "cat-point-2", "action": "upsert", "soft": True},
+    ]

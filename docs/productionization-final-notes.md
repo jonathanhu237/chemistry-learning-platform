@@ -1,45 +1,46 @@
 # Productionization Final Notes
 
-`data/seed` now contains only current runtime/import/rebuild data. The authoritative boundary is `data/seed/manifests/core_resources.json` and `scripts/validate_production_resources.py`.
+`data/seed` contains only resources required to restore or validate the current product. The authoritative whitelist and expected database counts are `data/seed/manifests/core_resources.json`; enforcement belongs to `scripts/validate_production_resources.py`.
 
-Protected current resources include formal experiments, knowledge framework JSON, the current catalog tree, the 76-record catalog point-content seed, catalog-node textbook evidence seed, the current 54-bank / 1,965-question catalog-node question-bank seed, canonical textbook chunks, runtime search dictionaries including `chemistry_vocabulary.json`, ES/IK analyzer assets, student learning profiles, and the current manifest.
+Protected resources include formal experiments, the knowledge framework, the catalog tree and full point content, catalog-point textbook evidence, the current question bank, demo identities, reviewed media, canonical textbook chunks, the precomputed Qwen textbook RAG bundle, teacher-search dictionaries/IK assets, and student element profiles.
 
-Retired resources are intentionally absent: old 300-point inventories, old manual point evidence, old 2,310-question bank artifacts, generated import/validation reports under `data/seed`, normalized three-element audit drafts, and local BGE dense/sparse embedding seed files. Canonical chunks remain current corpus data; local BGE embeddings and populated `chunk_embeddings` are not current restore requirements.
+Retired generation packets, audit reports, old point-keyed evidence/question data, and local BGE embedding artifacts remain outside the protected boundary. The product has one textbook RAG vector projection. Student Home feed/search is relational and has no Elasticsearch seed or rebuild step; teacher catalog search remains a separate rebuildable Elasticsearch projection.
 
-## Restore Path
+## Canonical Restore
 
-```powershell
-python scripts/apply_migrations.py
-python scripts/publish_reviewed_curriculum.py
-python scripts/seed_formal_experiments.py --skip-migrations
-python scripts/import_canonical_evidence.py --skip-migrations
-python scripts/import_experiment_knowledge_framework.py --skip-migrations
-python scripts/generate_experiment_catalog_seed.py
-python scripts/validate_experiment_catalog_seed.py --write-report
-python scripts/import_experiment_catalog_seed.py --skip-migrations
-python scripts/seed_catalog_point_evidence.py import
-python scripts/seed_current_question_bank.py import --skip-migrations
-python scripts/rebuild_video_library_index.py --recreate
-python scripts/validate_production_resources.py
-python scripts/seed_current_question_bank.py validate
-python scripts/validate_experiment_points.py
+On a configured blank deployment:
+
+```bash
+python scripts/bootstrap_production_seed.py
 ```
 
-Expected restored counts:
+To also rebuild the retained teacher catalog-authoring index:
+
+```bash
+python scripts/bootstrap_production_seed.py --rebuild-search-indexes
+```
+
+Current manifest expectations include:
 
 - 77 active formal experiments.
-- 11 chapters, 133 units, 385 knowledge points.
-- 569 catalog nodes: 176 directories, 393 point placements, and 357 canonical experiment points.
-- 76 published catalog point-content seed records.
-- 54 published generated question banks and 1,965 published questions.
+- 11 chapters, 133 knowledge units, and 385 knowledge points.
+- 569 catalog nodes: 176 directories and 393 point placements.
+- 393 published point-content records.
+- 52 question banks and 1,785 published questions.
 - 2 source documents and 3,637 canonical source chunks.
-- 0 legacy point evidence bindings.
+- 393 point-evidence states and 3,537 evidence bindings.
 
-## Validation Chain
+Provider keys are not seed data. Configure MinerU OCR, embedding, rerank, and LLM endpoints through runtime environment values or the teacher settings page; never add real credentials to Git.
 
-```powershell
+## Validation
+
+```bash
+python scripts/validate_production_resources.py
+python scripts/validate_complete_seed_bootstrap.py
+python scripts/validate_teacher_catalog_search.py
 python scripts/validate_production_readiness.py --install-frontend
 git status --short
+git diff --check
 ```
 
-Generated artifacts, review packets, logs, caches, and build outputs remain outside the protected seed boundary.
+Generated reports, uploads, extracted textbook pages/chunks, logs, caches, database dumps, and frontend builds remain outside the committed seed boundary.

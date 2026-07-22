@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import json
-import urllib.error
-import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
@@ -22,17 +20,16 @@ from server.app.domains.errors import DomainHTTPException as HTTPException, doma
 from server.app.infrastructure.database import db_session
 from server.app.infrastructure.settings import get_settings
 from server.app.domains.platform.settings import _textbook_rag_runtime_status, ai_feature_enabled, effective_textbook_rag_settings
-from server.app.repositories import RepositoryProvider, get_repositories
+from server.app.repositories import RepositoryProvider
 from server.app.retrieval import keyword_score
-from server.app.schemas import AgentAskRequest
 from server.app.domains.textbook_rag.evidence import retrieve_point_textbook_evidence
 
 
-JOB_TYPES = {"es_upsert", "es_delete", "teacher_search_upsert", "teacher_search_delete", "rag_evidence_refresh", "rag_evidence_delete"}
+JOB_TYPES = {"teacher_search_upsert", "teacher_search_delete", "rag_evidence_refresh", "rag_evidence_delete"}
 TRIGGER_SOURCES = {"automatic", "manual", "retry", "system"}
 JOB_STATUSES = {"pending", "running", "succeeded", "failed", "disabled", "unavailable"}
-SOFT_ES_SYNC_QUIET_SECONDS = 30
-SOFT_ES_SYNC_MAX_WAIT_SECONDS = 180
+SOFT_SEARCH_SYNC_QUIET_SECONDS = 30
+SOFT_SEARCH_SYNC_MAX_WAIT_SECONDS = 180
 
 
 class CatalogPointJobUnavailable(RuntimeError):
@@ -236,36 +233,6 @@ def enqueue_point_job(
     return _public_job(_result_one(result))
 
 
-def queue_es_sync_job(
-    session: Any,
-    *,
-    node_id: str,
-    action: str,
-    trigger_source: str = "automatic",
-    payload: dict[str, Any] | None = None,
-    soft: bool = False,
-) -> dict[str, Any]:
-    desired_action = "delete" if action == "delete" else "upsert"
-    job_type = "es_delete" if desired_action == "delete" else "es_upsert"
-    soft_upsert = bool(soft and desired_action == "upsert")
-    idempotency_key = f"catalog-point:{node_id}:{job_type}:soft" if soft_upsert else None
-    return enqueue_point_job(
-        session,
-        node_id=node_id,
-        job_type=job_type,
-        trigger_source=trigger_source,
-        payload={
-            "desired_action": desired_action,
-            **({"sync_mode": "soft", "quiet_seconds": SOFT_ES_SYNC_QUIET_SECONDS, "max_wait_seconds": SOFT_ES_SYNC_MAX_WAIT_SECONDS} if soft_upsert else {}),
-            **(payload or {}),
-        },
-        idempotency_key=idempotency_key,
-        run_after_seconds=SOFT_ES_SYNC_QUIET_SECONDS if soft_upsert else 0,
-        coalesce_with_open_job=soft_upsert,
-        max_coalesce_seconds=SOFT_ES_SYNC_MAX_WAIT_SECONDS if soft_upsert else 0,
-    )
-
-
 def _catalog_node_identity(session: Any, node_id: str) -> dict[str, Any]:
     row = (
         session.execute(
@@ -349,9 +316,9 @@ def queue_teacher_search_sync_job(
             "job_type": job_type,
             "trigger_source": trigger_source,
             "idempotency_key": idempotency_key,
-            "run_after_seconds": SOFT_ES_SYNC_QUIET_SECONDS if soft_upsert else 0,
+            "run_after_seconds": SOFT_SEARCH_SYNC_QUIET_SECONDS if soft_upsert else 0,
             "coalesce_with_open_job": soft_upsert,
-            "max_coalesce_seconds": SOFT_ES_SYNC_MAX_WAIT_SECONDS if soft_upsert else 0,
+            "max_coalesce_seconds": SOFT_SEARCH_SYNC_MAX_WAIT_SECONDS if soft_upsert else 0,
             "payload": _json_param(
                 {
                     "desired_action": desired_action,
@@ -361,8 +328,8 @@ def queue_teacher_search_sync_job(
                     **(
                         {
                             "sync_mode": "soft",
-                            "quiet_seconds": SOFT_ES_SYNC_QUIET_SECONDS,
-                            "max_wait_seconds": SOFT_ES_SYNC_MAX_WAIT_SECONDS,
+                            "quiet_seconds": SOFT_SEARCH_SYNC_QUIET_SECONDS,
+                            "max_wait_seconds": SOFT_SEARCH_SYNC_MAX_WAIT_SECONDS,
                         }
                         if soft_upsert
                         else {}
@@ -577,22 +544,6 @@ def queue_rag_evidence_delete_job(
 
 def get_point_job_state(session: Any, *, node_id: str) -> dict[str, Any]:
     identity = _point_identity(session, node_id)
-    es_state = _as_dict(
-        session.execute(
-            text(
-                """
-                SELECT node_id, document_id, desired_action, sync_status, attempts,
-                       document_hash, last_error, indexed_at, last_attempted_at,
-                       analyzer_version, created_at, updated_at
-                FROM experiment_catalog_point_search_index_state
-                WHERE node_id = :node_id
-                """
-            ),
-            {"node_id": node_id},
-        )
-        .mappings()
-        .first()
-    )
     teacher_search_state = _as_dict(
         session.execute(
             text(
@@ -652,7 +603,6 @@ def get_point_job_state(session: Any, *, node_id: str) -> dict[str, Any]:
         "node_id": node_id,
         "placement_node_id": identity["placement_node_id"],
         "canonical_point_id": identity["canonical_point_id"],
-        "es_state": es_state or None,
         "teacher_search_state": teacher_search_state or None,
         "evidence_state": evidence_state,
         "recent_jobs": jobs,
@@ -673,15 +623,7 @@ def trigger_catalog_point_job(*, node_id: str, action: str, user: Any) -> dict[s
         node = get_node(session, node_id)
         if not point_capable(node):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Catalog point jobs require a point node")
-        if action == "es-refresh":
-            from server.app.domains.catalog_tree.search_documents import queue_index_state
-
-            queue_index_state(session, node_id=node_id, action="upsert", trigger_source="manual")
-        elif action == "es-delete":
-            from server.app.domains.catalog_tree.search_documents import queue_index_state
-
-            queue_index_state(session, node_id=node_id, action="delete", trigger_source="manual")
-        elif action == "rag-refresh":
+        if action == "rag-refresh":
             queue_rag_evidence_refresh_job(session, node_id=node_id, trigger_source="manual", reason="manual_refresh")
         elif action == "rag-delete":
             queue_rag_evidence_delete_job(session, node_id=node_id, trigger_source="manual", reason="manual_delete")
@@ -712,15 +654,6 @@ def _retry_latest_failed_job(session: Any, *, node_id: str) -> None:
     )
     if row:
         payload = row["payload"] if isinstance(row["payload"], dict) else {}
-        if row["job_type"] in {"es_upsert", "es_delete"}:
-            queue_es_sync_job(
-                session,
-                node_id=node_id,
-                action="delete" if row["job_type"] == "es_delete" else "upsert",
-                trigger_source="retry",
-                payload=payload,
-            )
-            return
         if row["job_type"] in {"teacher_search_upsert", "teacher_search_delete"}:
             queue_teacher_search_sync_job(
                 session,
@@ -736,17 +669,6 @@ def _retry_latest_failed_job(session: Any, *, node_id: str) -> None:
         if row["job_type"] == "rag_evidence_delete":
             queue_rag_evidence_delete_job(session, node_id=node_id, trigger_source="retry", reason=str(payload.get("reason") or "retry"))
             return
-    es_state = (
-        session.execute(
-            text("SELECT desired_action FROM experiment_catalog_point_search_index_state WHERE node_id = :node_id AND sync_status = 'failed'"),
-            {"node_id": node_id},
-        )
-        .mappings()
-        .first()
-    )
-    if es_state:
-        queue_es_sync_job(session, node_id=node_id, action=str(es_state["desired_action"] or "upsert"), trigger_source="retry")
-        return
     teacher_search_state = (
         session.execute(
             text(
@@ -949,10 +871,7 @@ def process_point_job_ids(
 
 def process_point_job(job: CatalogPointJob) -> None:
     try:
-        if job.job_type in {"es_upsert", "es_delete"}:
-            result = _process_es_job(job)
-            finish_point_job(job, result=result, status_value=str(result.get("job_status") or "succeeded"))
-        elif job.job_type in {"teacher_search_upsert", "teacher_search_delete"}:
+        if job.job_type in {"teacher_search_upsert", "teacher_search_delete"}:
             result = _process_teacher_search_job(job)
             finish_point_job(job, result=result, status_value=str(result.get("job_status") or "succeeded"))
         elif job.job_type == "rag_evidence_refresh":
@@ -966,8 +885,6 @@ def process_point_job(job: CatalogPointJob) -> None:
     except CatalogPointJobUnavailable as exc:
         if job.job_type == "rag_evidence_refresh":
             _mark_evidence_failure(node_id=job.node_id, error=str(exc), evidence_status="unavailable")
-        elif job.job_type in {"es_upsert", "es_delete"}:
-            _mark_es_state_failure(node_id=job.node_id, action="delete" if job.job_type == "es_delete" else "upsert", error=str(exc))
         elif job.job_type in {"teacher_search_upsert", "teacher_search_delete"}:
             from server.app.domains.catalog_tree.teacher_search import mark_teacher_search_state_failure
 
@@ -981,8 +898,6 @@ def process_point_job(job: CatalogPointJob) -> None:
     except Exception as exc:
         if job.job_type == "rag_evidence_refresh":
             _mark_evidence_failure(node_id=job.node_id, error=str(exc), evidence_status="failed")
-        elif job.job_type in {"es_upsert", "es_delete"}:
-            _mark_es_state_failure(node_id=job.node_id, action="delete" if job.job_type == "es_delete" else "upsert", error=str(exc))
         elif job.job_type in {"teacher_search_upsert", "teacher_search_delete"}:
             from server.app.domains.catalog_tree.teacher_search import mark_teacher_search_state_failure
 
@@ -992,53 +907,6 @@ def process_point_job(job: CatalogPointJob) -> None:
                 error=str(exc),
             )
         fail_point_job(job, f"{exc.__class__.__name__}: {str(exc)[:900]}")
-
-
-def _process_es_job(job: CatalogPointJob) -> dict[str, Any]:
-    from server.app.domains.catalog_tree.search_documents import student_search_document_for_node, student_search_document_sync_hash
-    from server.app.domains.video_library.index_client import configured_index_client
-
-    action = "delete" if job.job_type == "es_delete" else "upsert"
-    client = configured_index_client()
-    if client is None:
-        _mark_es_state_disabled(node_id=job.node_id, action=action, reason="Elasticsearch backend is not configured")
-        return {"job_status": "disabled", "action": action, "reason": "elasticsearch_not_configured"}
-    if action == "delete":
-        client.delete_document(job.node_id)
-        _mark_es_state_success(node_id=job.node_id, action="delete", document_hash="deleted")
-        return {"job_status": "succeeded", "action": "delete", "document_id": job.node_id}
-    indexed_hash = None
-    with db_session() as session:
-        document = student_search_document_for_node(session, node_id=job.node_id, require_published=True)
-        state = (
-            session.execute(
-                text("SELECT document_hash FROM experiment_catalog_point_search_index_state WHERE node_id = :node_id"),
-                {"node_id": job.node_id},
-            )
-            .mappings()
-            .first()
-        )
-        indexed_hash = str(state["document_hash"]) if state and state.get("document_hash") else None
-    if not document:
-        client.delete_document(job.node_id)
-        _mark_es_state_success(node_id=job.node_id, action="delete", document_hash="not_searchable")
-        return {"job_status": "succeeded", "action": "delete", "document_id": job.node_id, "reason": "point_not_searchable"}
-    payload_hash = student_search_document_sync_hash(document)
-    if indexed_hash == payload_hash:
-        _mark_es_state_success(node_id=job.node_id, action="upsert", document_hash=payload_hash, indexed=False)
-        return {
-            "job_status": "succeeded",
-            "action": "upsert",
-            "document_id": document["id"],
-            "document_hash": payload_hash,
-            "no_op": True,
-            "reason": "document_hash_unchanged",
-        }
-    analyzer_version = get_settings().video_library_search_analyzer
-    client.ensure_index(analyzer=analyzer_version)
-    client.upsert_document(document)
-    _mark_es_state_success(node_id=job.node_id, action="upsert", document_hash=payload_hash, analyzer_version=analyzer_version)
-    return {"job_status": "succeeded", "action": "upsert", "document_id": document["id"], "document_hash": payload_hash}
 
 
 def _process_teacher_search_job(job: CatalogPointJob) -> dict[str, Any]:
@@ -1102,116 +970,6 @@ def _process_teacher_search_job(job: CatalogPointJob) -> dict[str, Any]:
         "document_hash": payload_hash,
         "target_index": client.index,
     }
-
-
-def _mark_es_state_success(*, node_id: str, action: str, document_hash: str, indexed: bool = True, analyzer_version: str | None = None) -> None:
-    with db_session() as session:
-        identity = _point_identity(session, node_id)
-        session.execute(
-            text(
-                """
-                INSERT INTO experiment_catalog_point_search_index_state (
-                  node_id, placement_node_id, canonical_point_id, document_id, desired_action, sync_status, attempts,
-                  document_hash, last_error, indexed_at, last_attempted_at, analyzer_version, updated_at
-                )
-                VALUES (
-                  :node_id, :placement_node_id, :canonical_point_id, :node_id, :action, 'synced', 1,
-                  :document_hash, NULL, now(), now(), :analyzer_version, now()
-                )
-                ON CONFLICT (node_id) DO UPDATE SET
-                  placement_node_id = EXCLUDED.placement_node_id,
-                  canonical_point_id = EXCLUDED.canonical_point_id,
-                  document_id = EXCLUDED.document_id,
-                  desired_action = EXCLUDED.desired_action,
-                  sync_status = 'synced',
-                  attempts = experiment_catalog_point_search_index_state.attempts + 1,
-                  document_hash = EXCLUDED.document_hash,
-                  last_error = NULL,
-                  indexed_at = CASE WHEN :indexed THEN now() ELSE experiment_catalog_point_search_index_state.indexed_at END,
-                  last_attempted_at = now(),
-                  analyzer_version = COALESCE(EXCLUDED.analyzer_version, experiment_catalog_point_search_index_state.analyzer_version),
-                  updated_at = now()
-                """
-            ),
-            {
-                "node_id": node_id,
-                "placement_node_id": identity["placement_node_id"],
-                "canonical_point_id": identity["canonical_point_id"],
-                "action": action,
-                "document_hash": document_hash,
-                "indexed": bool(indexed),
-                "analyzer_version": analyzer_version,
-            },
-        )
-
-
-def _mark_es_state_failure(*, node_id: str, action: str, error: str) -> None:
-    with db_session() as session:
-        identity = _point_identity(session, node_id)
-        session.execute(
-            text(
-                """
-                INSERT INTO experiment_catalog_point_search_index_state (
-                  node_id, placement_node_id, canonical_point_id, document_id, desired_action, sync_status, attempts,
-                  last_error, last_attempted_at, updated_at
-                )
-                VALUES (
-                  :node_id, :placement_node_id, :canonical_point_id, :node_id, :action, 'failed', 1,
-                  :error, now(), now()
-                )
-                ON CONFLICT (node_id) DO UPDATE SET
-                  placement_node_id = EXCLUDED.placement_node_id,
-                  canonical_point_id = EXCLUDED.canonical_point_id,
-                  desired_action = EXCLUDED.desired_action,
-                  sync_status = 'failed',
-                  attempts = experiment_catalog_point_search_index_state.attempts + 1,
-                  last_error = EXCLUDED.last_error,
-                  last_attempted_at = now(),
-                  updated_at = now()
-                """
-            ),
-            {
-                "node_id": node_id,
-                "placement_node_id": identity["placement_node_id"],
-                "canonical_point_id": identity["canonical_point_id"],
-                "action": action,
-                "error": error[:1000],
-            },
-        )
-
-
-def _mark_es_state_disabled(*, node_id: str, action: str, reason: str) -> None:
-    with db_session() as session:
-        identity = _point_identity(session, node_id)
-        session.execute(
-            text(
-                """
-                INSERT INTO experiment_catalog_point_search_index_state (
-                  node_id, placement_node_id, canonical_point_id, document_id, desired_action, sync_status, attempts,
-                  last_error, last_attempted_at, updated_at
-                )
-                VALUES (
-                  :node_id, :placement_node_id, :canonical_point_id, :node_id, :action, 'disabled', 0,
-                  :reason, now(), now()
-                )
-                ON CONFLICT (node_id) DO UPDATE SET
-                  placement_node_id = EXCLUDED.placement_node_id,
-                  canonical_point_id = EXCLUDED.canonical_point_id,
-                  desired_action = EXCLUDED.desired_action,
-                  sync_status = 'disabled',
-                  last_error = EXCLUDED.last_error,
-                  last_attempted_at = now(),
-                  updated_at = now()
-                """
-            ),
-            {
-                "node_id": node_id,
-                "placement_node_id": identity["placement_node_id"],
-                "canonical_point_id": identity["canonical_point_id"],
-                "action": action,
-                "reason": reason[:1000],
-            },
-        )
 
 
 def _process_rag_evidence_delete(job: CatalogPointJob) -> dict[str, Any]:

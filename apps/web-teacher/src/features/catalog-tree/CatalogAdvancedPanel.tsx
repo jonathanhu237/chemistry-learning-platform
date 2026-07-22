@@ -32,10 +32,10 @@ function displayLabel(value?: string | null) {
     available_static_fallback: "静态兜底可用",
     stale_fallback_evidence: "静态兜底已过期",
     fresh: "最新",
-    es_refresh: "刷新 ES",
-    "es-refresh": "刷新 ES",
-    es_delete: "删除 ES",
-    "es-delete": "删除 ES",
+    teacher_search_upsert: "刷新教师目录搜索",
+    teacher_search_delete: "删除教师目录搜索文档",
+    "teacher-search-refresh": "刷新教师目录搜索",
+    "teacher-search-delete": "删除教师目录搜索文档",
     rag_refresh: "刷新 RAG 证据",
     "rag-refresh": "刷新 RAG 证据",
     retry: "重试",
@@ -74,6 +74,7 @@ export function CatalogAdvancedPanel({
   const { node } = detail;
   const divergentTitle = hasDivergentPointTitle(detail);
   const pointJobState = detail.job_state;
+  const teacherSearchState = detail.teacher_search_state || pointJobState?.teacher_search_state;
   const evidenceState = pointJobState?.evidence_state;
   const jobActionLoading = mutations.triggerPointJob.isPending;
   const canRunPointJobs = node.node_kind === "point";
@@ -125,7 +126,7 @@ export function CatalogAdvancedPanel({
           <Space size={6} wrap>
             {node.node_kind === "point" ? <Tag color="cyan">placement: {node.placement_node_id || node.node_id}</Tag> : null}
             {node.node_kind === "point" ? <Tag color="blue">canonical: {node.canonical_point_id || "-"}</Tag> : null}
-            {detail.index_state ? <Tag color={syncTagColor(detail.index_state.sync_status)}>{displayLabel(detail.index_state.sync_status)}</Tag> : <Tag>未入队</Tag>}
+            {teacherSearchState ? <Tag color={syncTagColor(teacherSearchState.sync_status)}>{displayLabel(teacherSearchState.sync_status)}</Tag> : <Tag>未入队</Tag>}
           </Space>
         </div>
         <Space wrap className="catalog-job-actions">
@@ -133,17 +134,17 @@ export function CatalogAdvancedPanel({
             size="small"
             disabled={!canRunPointJobs}
             loading={jobActionLoading}
-            onClick={() => mutations.triggerPointJob.mutate({ nodeId: node.node_id, action: "es-refresh" })}
+            onClick={() => mutations.triggerPointJob.mutate({ nodeId: node.node_id, action: "teacher-search-refresh" })}
           >
-            刷新 ES
+            刷新教师搜索
           </Button>
           <Button
             size="small"
             disabled={!canRunPointJobs}
             loading={jobActionLoading}
-            onClick={() => mutations.triggerPointJob.mutate({ nodeId: node.node_id, action: "es-delete" })}
+            onClick={() => mutations.triggerPointJob.mutate({ nodeId: node.node_id, action: "teacher-search-delete" })}
           >
-            删除 ES
+            删除教师搜索文档
           </Button>
           <Button
             size="small"
@@ -162,16 +163,16 @@ export function CatalogAdvancedPanel({
             重试
           </Button>
         </Space>
-        {detail.search_preview ? (
-          <pre className="catalog-search-preview">{prettyJson(detail.search_preview)}</pre>
+        {detail.teacher_search_document ? (
+          <pre className="catalog-search-preview">{prettyJson(detail.teacher_search_document)}</pre>
         ) : (
-          <Alert type="info" showIcon title="当前节点没有可预览的学生搜索文档" />
+          <Alert type="info" showIcon title="当前节点没有可预览的教师目录搜索文档" />
         )}
         <Descriptions size="small" column={2}>
-          <Descriptions.Item label="期望动作">{detail.index_state?.desired_action || "-"}</Descriptions.Item>
-          <Descriptions.Item label="尝试次数">{detail.index_state?.attempts ?? "-"}</Descriptions.Item>
-          <Descriptions.Item label="最近索引">{detail.index_state?.indexed_at || "-"}</Descriptions.Item>
-          <Descriptions.Item label="错误">{detail.index_state?.last_error || "-"}</Descriptions.Item>
+          <Descriptions.Item label="期望动作">{teacherSearchState?.desired_action || "-"}</Descriptions.Item>
+          <Descriptions.Item label="尝试次数">{teacherSearchState?.attempts ?? "-"}</Descriptions.Item>
+          <Descriptions.Item label="最近索引">{teacherSearchState?.indexed_at || "-"}</Descriptions.Item>
+          <Descriptions.Item label="错误">{teacherSearchState?.last_error || "-"}</Descriptions.Item>
         </Descriptions>
         <Descriptions size="small" column={2} className="catalog-job-state">
           <Descriptions.Item label="证据状态">

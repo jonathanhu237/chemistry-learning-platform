@@ -1,20 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { ClipboardCheck, LockKeyhole, Search, X } from "lucide-react";
+import { Outlet, useLocation } from "@tanstack/react-router";
+import { LockKeyhole } from "lucide-react";
 import { assistantEnabled, defaultStudentAppConfig, feedbackEnabled, previewRouteBlocked } from "../appConfig";
 import {
-  dismissStudentSmartBaselinePrompt,
   errorMessage,
   getStudentAppConfig,
-  getStudentAssessmentStatus,
   startStudentPointAssessment,
   startStudentSmartAssessment,
   type StudentAppConfigResponse,
-  type StudentAssessmentStatusResponse,
-  type StudentHomeVideoTopic,
 } from "../../api";
 import { storePosttestSession } from "../router/assessmentSessionStore";
-import { navigateToAssessmentSession, navigateToVideoLibrary } from "../router/navigation";
 import { rootIdForPath, routeRoleForPath } from "../router/routeVisibility";
 import type { StudentRootRouteId } from "../router/routeTypes";
 import { StudentRuntimeProvider, useStudentShellBase } from "./studentAppContext";
@@ -32,25 +27,6 @@ const rootHeaderMeta: Record<StudentRootRouteId, { title: string; subtitle: stri
   assessment: { title: "测评", subtitle: "练习与学习报告" },
   profile: { title: "我的", subtitle: "账号与反馈" },
 };
-
-const homeVideoTopics: Array<{ id: StudentHomeVideoTopic; label: string }> = [
-  { id: "discover", label: "发现" },
-  { id: "watch_later", label: "稍后学习" },
-  { id: "all", label: "全部" },
-  { id: "color_change", label: "颜色变化" },
-  { id: "precipitation", label: "沉淀生成" },
-  { id: "gas_generation", label: "气体生成" },
-  { id: "layer_extraction", label: "分层萃取" },
-  { id: "fading_bleaching", label: "褪色漂白" },
-  { id: "flame_light", label: "发光火焰" },
-  { id: "temperature_change", label: "温度变化" },
-  { id: "heating", label: "加热反应" },
-  { id: "test_paper", label: "试纸检验" },
-  { id: "indicator", label: "指示剂" },
-  { id: "crystallization", label: "晶体析出" },
-];
-
-type HomeChromeOverlayLock = "expanded" | "compressed";
 
 const ROOT_AI_COMPOSER_SELECTOR = ".ai-chat-panel.root .ai-chat-compose";
 
@@ -75,7 +51,6 @@ function isRootAiComposerTarget(target: EventTarget | null) {
 }
 
 export function AuthenticatedAppLayout() {
-  const navigate = useNavigate();
   const baseContext = useStudentShellBase();
   const location = useLocation();
   const activeRoot = rootIdForPath(location.pathname);
@@ -83,21 +58,15 @@ export function AuthenticatedAppLayout() {
   const isRootRoute = routeRole === "root";
   const isCatalogDetailRoute = /^\/chapter\/[^/]+$/.test(location.pathname) || /^\/catalog\/[^/]+$/.test(location.pathname);
   const [appConfig, setAppConfig] = useState<StudentAppConfigResponse>(defaultStudentAppConfig);
-  const [assessmentStatus, setAssessmentStatus] = useState<StudentAssessmentStatusResponse | null>(null);
-  const [assessmentPromptSnoozedKeys, setAssessmentPromptSnoozedKeys] = useState<string[]>([]);
-  const [assessmentPromptError, setAssessmentPromptError] = useState("");
   const [configError, setConfigError] = useState("");
   const [posttestLoading, setPosttestLoading] = useState(false);
   const [posttestError, setPosttestError] = useState("");
   const [navCompressed, setNavCompressed] = useState(false);
-  const [homeChromeOverlayLock, setHomeChromeOverlayLock] = useState<HomeChromeOverlayLock | null>(null);
-  const [homeVideoTopic, setHomeVideoTopic] = useState<StudentHomeVideoTopic>(homeVideoTopics[0].id);
   const [rootComposerFocused, setRootComposerFocused] = useState(false);
   const [visualViewportHeight, setVisualViewportHeight] = useState(getVisualViewportHeight);
   const [visualViewportTop, setVisualViewportTop] = useState(getVisualViewportTop);
   const [keyboardBottomInset, setKeyboardBottomInset] = useState(() => getKeyboardBottomInset(getVisualViewportHeight(), getVisualViewportTop()));
   const lastScrollY = useRef(0);
-  const homeChromeOverlayLockRef = useRef<HomeChromeOverlayLock | null>(null);
   const focusDebugTimers = useRef<number[]>([]);
   const maxVisualViewportHeight = useRef(0);
   const rootKeyboardCompressed = useRef(false);
@@ -105,33 +74,6 @@ export function AuthenticatedAppLayout() {
   const previewMode = Boolean(baseContext.user.preview_mode || appConfig.preview_mode);
   const isRootAiRoute = isRootRoute && activeRoot === "ai";
   const keyboardActive = isRootAiRoute && rootComposerFocused;
-
-  const refreshAssessmentStatus = useCallback(async () => {
-    try {
-      const response = await getStudentAssessmentStatus();
-      setAssessmentStatus(response);
-    } catch {
-      setAssessmentStatus(null);
-    }
-  }, []);
-
-  const snoozeAssessmentPrompt = useCallback((key: string) => {
-    setAssessmentPromptError("");
-    setAssessmentPromptSnoozedKeys((keys) => (keys.includes(key) ? keys : [...keys, key]));
-  }, []);
-
-  const releaseHomeChromeForOverlay = useCallback(() => {
-    homeChromeOverlayLockRef.current = null;
-    setHomeChromeOverlayLock(null);
-    lastScrollY.current = window.scrollY;
-  }, []);
-
-  const lockHomeChromeForOverlay = useCallback(() => {
-    const nextLock: HomeChromeOverlayLock = navCompressed ? "compressed" : "expanded";
-    homeChromeOverlayLockRef.current = nextLock;
-    setHomeChromeOverlayLock(nextLock);
-    lastScrollY.current = window.scrollY;
-  }, [navCompressed]);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,45 +105,12 @@ export function AuthenticatedAppLayout() {
   }, []);
 
   useEffect(() => {
-    if (baseContext.user.preview_mode) {
-      setAssessmentStatus(null);
-      return;
-    }
-    let cancelled = false;
-    const refreshStatus = async () => {
-      try {
-        const response = await getStudentAssessmentStatus();
-        if (!cancelled) setAssessmentStatus(response);
-      } catch {
-        if (!cancelled) setAssessmentStatus(null);
-      }
-    };
-    void refreshStatus();
-    const handleVisible = () => {
-      if (document.visibilityState !== "hidden") void refreshStatus();
-    };
-    window.addEventListener("focus", handleVisible);
-    document.addEventListener("visibilitychange", handleVisible);
-    const timer = window.setInterval(refreshStatus, 60_000);
-    return () => {
-      cancelled = true;
-      window.removeEventListener("focus", handleVisible);
-      document.removeEventListener("visibilitychange", handleVisible);
-      window.clearInterval(timer);
-    };
-  }, [baseContext.user.preview_mode]);
-
-  useEffect(() => {
     setNavCompressed(false);
     lastScrollY.current = window.scrollY;
     if (!isRootRoute) return;
 
     const handleScroll = () => {
       const nextScrollY = window.scrollY;
-      if (homeChromeOverlayLockRef.current) {
-        lastScrollY.current = nextScrollY;
-        return;
-      }
       const delta = nextScrollY - lastScrollY.current;
       if (nextScrollY < 64 || delta < -14) {
         setNavCompressed(false);
@@ -216,11 +125,6 @@ export function AuthenticatedAppLayout() {
       window.removeEventListener("scroll", handleScroll);
     };
   }, [isRootRoute, location.pathname]);
-
-  useEffect(() => {
-    if (isRootRoute && activeRoot === "home") return;
-    releaseHomeChromeForOverlay();
-  }, [activeRoot, isRootRoute, releaseHomeChromeForOverlay]);
 
   useEffect(() => {
     rootKeyboardCompressed.current = false;
@@ -324,7 +228,6 @@ export function AuthenticatedAppLayout() {
     try {
       const response = await startStudentSmartAssessment();
       storePosttestSession(response);
-      void refreshAssessmentStatus();
       return response;
     } catch (requestError) {
       setPosttestError(errorMessage(requestError));
@@ -332,7 +235,7 @@ export function AuthenticatedAppLayout() {
     } finally {
       setPosttestLoading(false);
     }
-  }, [refreshAssessmentStatus]);
+  }, []);
 
   const startPointAssessmentSession = useCallback(
     async (pointNodeId: string) => {
@@ -346,7 +249,6 @@ export function AuthenticatedAppLayout() {
       try {
         const response = await startStudentPointAssessment(normalizedPointNodeId);
         storePosttestSession(response);
-        void refreshAssessmentStatus();
         return response;
       } catch (requestError) {
         setPosttestError(errorMessage(requestError));
@@ -355,61 +257,8 @@ export function AuthenticatedAppLayout() {
         setPosttestLoading(false);
       }
     },
-    [refreshAssessmentStatus],
+    [],
   );
-
-  const assessmentPrompt = useMemo(() => {
-    if (!assessmentStatus || routeBlocked || previewMode) return null;
-    if (location.pathname.startsWith("/assessment/session") || location.pathname.startsWith("/assessment/report")) return null;
-    if (assessmentStatus.has_open_assessment && assessmentStatus.open_session_id) {
-      const key = `open:${assessmentStatus.open_session_id}`;
-      if (assessmentPromptSnoozedKeys.includes(key)) return null;
-      return {
-        key,
-        kind: "open" as const,
-        title: "继续未完成测评",
-        body: "你还有一轮测评未提交，先完成它再开始新的测评。",
-        primaryLabel: "继续测评",
-        secondaryLabel: "稍后",
-      };
-    }
-    if (!assessmentStatus.has_completed_smart_baseline && !assessmentStatus.smart_baseline_prompt_dismissed) {
-      const key = "smart-baseline";
-      if (assessmentPromptSnoozedKeys.includes(key)) return null;
-      return {
-        key,
-        kind: "baseline" as const,
-        title: "先做一次智能测评",
-        body: "系统还没有你的初始掌握情况，完成一次智能组卷后会更准确地推荐薄弱点位。",
-        primaryLabel: "去测评",
-        secondaryLabel: "稍后",
-      };
-    }
-    return null;
-  }, [assessmentPromptSnoozedKeys, assessmentStatus, location.pathname, previewMode, routeBlocked]);
-
-  const handleAssessmentPromptPrimary = useCallback(async () => {
-    if (!assessmentPrompt) return;
-    setAssessmentPromptError("");
-    if (assessmentPrompt.kind === "open") {
-      const sessionId = assessmentStatus?.open_session_id;
-      if (sessionId) navigateToAssessmentSession(navigate, sessionId, "assessment");
-      return;
-    }
-    const posttest = await startAssessmentSession();
-    if (posttest) navigateToAssessmentSession(navigate, posttest.session_id, "assessment");
-  }, [assessmentPrompt, assessmentStatus?.open_session_id, navigate, startAssessmentSession]);
-
-  const dismissBaselinePromptPermanently = useCallback(async () => {
-    setAssessmentPromptError("");
-    try {
-      const response = await dismissStudentSmartBaselinePrompt();
-      setAssessmentStatus(response);
-      snoozeAssessmentPrompt("smart-baseline");
-    } catch (requestError) {
-      setAssessmentPromptError(errorMessage(requestError));
-    }
-  }, [snoozeAssessmentPrompt]);
 
   const runtime = useMemo(
     () => ({
@@ -420,10 +269,6 @@ export function AuthenticatedAppLayout() {
       previewPolicy: appConfig.preview_policy,
       canUseAssistant: assistantEnabled(appConfig.features),
       canUseFeedback: feedbackEnabled(appConfig.features),
-      homeVideoTopic,
-      setHomeVideoTopic,
-      lockHomeChromeForOverlay,
-      releaseHomeChromeForOverlay,
       startAssessmentSession,
       startPointAssessmentSession,
       posttestLoading,
@@ -433,12 +278,9 @@ export function AuthenticatedAppLayout() {
       appConfig,
       baseContext,
       configError,
-      homeVideoTopic,
-      lockHomeChromeForOverlay,
       posttestError,
       posttestLoading,
       previewMode,
-      releaseHomeChromeForOverlay,
       startAssessmentSession,
       startPointAssessmentSession,
     ],
@@ -446,8 +288,7 @@ export function AuthenticatedAppLayout() {
 
   const headerMeta = activeRoot ? rootHeaderMeta[activeRoot] : null;
   const shouldRenderHeader = Boolean(headerMeta && !(isRootRoute && activeRoot === "ai"));
-  const effectiveNavCompressed =
-    isRootRoute && (homeChromeOverlayLock === "compressed" || (homeChromeOverlayLock !== "expanded" && navCompressed));
+  const effectiveNavCompressed = isRootRoute && navCompressed;
   const shellStyle = useMemo(
     () =>
       ({
@@ -468,7 +309,6 @@ export function AuthenticatedAppLayout() {
           isCatalogDetailRoute ? "catalog-detail-route" : "",
           activeRoot ? `root-${activeRoot}` : "",
           effectiveNavCompressed ? "nav-compressed" : "",
-          homeChromeOverlayLock === "expanded" ? "home-chrome-overlay-expanded" : "",
           keyboardActive ? "keyboard-active" : "",
         ]
           .filter(Boolean)
@@ -481,31 +321,6 @@ export function AuthenticatedAppLayout() {
             <StudentAppHeader
               ariaLabel="学生端首页"
               brand={<img className="student-app-header-logo" src={sysuLogoNameGreenUrl} alt="中山大学" />}
-              actions={
-                <button
-                  className="student-app-header-icon-action"
-                  type="button"
-                  aria-label="搜索实验视频"
-                  onClick={() => navigateToVideoLibrary(navigate, { from: "home" })}
-                >
-                  <Search size={29} />
-                </button>
-              }
-              below={
-                <div className="home-video-topic-rail" aria-label="实验视频推荐标签">
-                  {homeVideoTopics.map((topic) => (
-                    <button
-                      type="button"
-                      key={topic.id}
-                      className={topic.id === homeVideoTopic ? "active" : ""}
-                      aria-pressed={topic.id === homeVideoTopic}
-                      onClick={() => setHomeVideoTopic(topic.id)}
-                    >
-                      {topic.label}
-                    </button>
-                  ))}
-                </div>
-              }
             />
           ) : (
             <StudentAppHeader title={headerMeta.title} subtitle={headerMeta.subtitle} />
@@ -524,42 +339,6 @@ export function AuthenticatedAppLayout() {
           )}
         </div>
         {activeRoot ? <StudentBottomNav activeRoot={activeRoot} /> : null}
-        {assessmentPrompt ? (
-          <div className="assessment-reminder-backdrop">
-            <section className="assessment-reminder-dialog" role="dialog" aria-modal="true" aria-label={assessmentPrompt.title}>
-              <button
-                type="button"
-                className="assessment-reminder-close"
-                aria-label="关闭测评提醒"
-                onClick={() => snoozeAssessmentPrompt(assessmentPrompt.key)}
-              >
-                <X size={18} />
-              </button>
-              <span className="assessment-reminder-icon" aria-hidden="true">
-                <ClipboardCheck size={24} />
-              </span>
-              <div className="assessment-reminder-copy">
-                <p>{assessmentPrompt.kind === "baseline" ? "学习建议" : "测评进行中"}</p>
-                <h3>{assessmentPrompt.title}</h3>
-                <span>{assessmentPrompt.body}</span>
-              </div>
-              {assessmentPromptError ? <div className="form-error assessment-reminder-error">{assessmentPromptError}</div> : null}
-              <div className="assessment-reminder-actions">
-                <button type="button" className="secondary" onClick={() => snoozeAssessmentPrompt(assessmentPrompt.key)}>
-                  {assessmentPrompt.secondaryLabel}
-                </button>
-                {assessmentPrompt.kind === "baseline" ? (
-                  <button type="button" className="secondary" onClick={dismissBaselinePromptPermanently}>
-                    不再提醒
-                  </button>
-                ) : null}
-                <button type="button" onClick={handleAssessmentPromptPrimary} disabled={posttestLoading}>
-                  {posttestLoading ? "生成中" : assessmentPrompt.primaryLabel}
-                </button>
-              </div>
-            </section>
-          </div>
-        ) : null}
         <PreviewInputRuntime />
       </section>
     </StudentRuntimeProvider>

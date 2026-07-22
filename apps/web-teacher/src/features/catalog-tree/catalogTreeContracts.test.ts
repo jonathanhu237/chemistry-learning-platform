@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import catalogTreeApiSource from "../../api/catalogTree.ts?raw";
 import mediaApiSource from "../../api/media.ts?raw";
 import advancedPanelSource from "./CatalogAdvancedPanel.tsx?raw";
+import archiveConfirmationSource from "./catalogArchiveConfirmation.ts?raw";
 import aiContextPanelSource from "./CatalogAiContextPanel.tsx?raw";
 import editorHeaderSource from "./CatalogEditorHeader.tsx?raw";
 import contentPanelSource from "./CatalogNodeContentPanel.tsx?raw";
@@ -180,7 +181,7 @@ describe("catalog tree UI contracts", () => {
     expect(contentPanelSource).not.toContain("display_order");
     expect(advancedPanelSource).toContain("节点 ID");
     expect(advancedPanelSource).toContain("显示顺序");
-    expect(advancedPanelSource).toContain("search_preview");
+    expect(advancedPanelSource).toContain("teacher_search_document");
   });
 
   it("uses a Chinese natural multiline equation authoring workflow", () => {
@@ -585,8 +586,25 @@ describe("catalog tree UI contracts", () => {
     expect(nodeStatusPanelSource).toContain("核心完整性");
     expect(nodeStatusPanelSource).toContain("学生可见性");
     expect(nodeStatusPanelSource).toContain("同步诊断");
-    expect(nodeStatusPanelSource).toContain("刷新 ES");
+    expect(nodeStatusPanelSource).toContain("刷新教师搜索");
     expect(nodeStatusPanelSource).toContain("刷新 RAG");
     expect(nodeStatusPanelSource).toContain("重试失败任务");
+  });
+
+  it("authors Home recommendations in the current point video workflow", () => {
+    expect(catalogTreeApiSource).toContain("setCatalogHomeRecommendation");
+    expect(catalogTreeApiSource).toContain("/home-recommendation");
+    expect(hooksSource).toContain("setHomeRecommendation");
+    expect(videoPanelSource).toContain("学生首页推荐");
+    expect(videoPanelSource).toContain("保存推荐设置");
+    expect(videoPanelSource).toContain("sortOrder");
+  });
+
+  it("requires a destructive confirmation before explicitly archiving final placements", () => {
+    expect(archiveConfirmationSource).toContain("archiveFinalPlacement: true");
+    expect(archiveConfirmationSource).toContain("includeSubtree: true");
+    expect(archiveConfirmationSource).toContain("归档该实验的最后一个目录位置？");
+    expect(editorHeaderSource).toContain("confirmCatalogNodeArchive");
+    expect(workspaceSource).toContain("confirmCatalogNodeArchive");
   });
 });

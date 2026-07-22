@@ -22,12 +22,10 @@ REQUIRED_SERVICES = {
     "textbook-ingestion-worker",
     "tusd",
     "video-worker",
-    "web-admin",
     "web-student",
     "web-teacher",
 }
-LEGACY_SERVICES = {"web-student-old", "web-teacher-old"}
-RETIRED_SERVICES = {"bge-rag"}
+RETIRED_SERVICES = {"bge-rag", "web-admin", "web-student-old", "web-teacher-old"}
 ES_ANALYZER_ASSET_PATHS = [
     "/usr/share/elasticsearch/config/analysis-ik/IKAnalyzer.cfg.xml",
     "/usr/share/elasticsearch/config/analysis-ik/custom/hit_stopwords.dic",
@@ -36,6 +34,11 @@ ES_ANALYZER_ASSET_PATHS = [
     "/usr/share/elasticsearch/config/analysis/chemistry_stopwords.txt",
     "/usr/share/elasticsearch/config/analysis/chemistry_synonyms.txt",
 ]
+COMPOSE_COMMAND = ["docker", "compose"]
+
+
+def _compose_command(*args: str) -> list[str]:
+    return [*COMPOSE_COMMAND, *args]
 
 
 def _run(command: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -81,7 +84,7 @@ def _request_status(url: str, *, method: str = "GET", timeout: float = 5) -> int
 
 
 def _compose_port(service: str, port: int) -> str:
-    completed = _run(["docker", "compose", "port", service, str(port)])
+    completed = _run(_compose_command("port", service, str(port)))
     lines = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
     if not lines:
         raise SystemExit(f"Compose service {service!r} does not publish port {port}")
@@ -92,7 +95,7 @@ def _compose_port(service: str, port: int) -> str:
 
 
 def _assert_required_services_running(required_services: set[str]) -> None:
-    completed = _run(["docker", "compose", "ps", "--services", "--status", "running"])
+    completed = _run(_compose_command("ps", "--services", "--status", "running"))
     running = {line.strip() for line in completed.stdout.splitlines() if line.strip()}
     missing = sorted(required_services - running)
     if missing:
@@ -101,7 +104,7 @@ def _assert_required_services_running(required_services: set[str]) -> None:
 
 
 def _assert_no_retired_services_configured() -> None:
-    completed = _run(["docker", "compose", "config", "--services"])
+    completed = _run(_compose_command("config", "--services"))
     configured = {line.strip() for line in completed.stdout.splitlines() if line.strip()}
     retired = sorted(RETIRED_SERVICES & configured)
     if retired:
@@ -165,7 +168,7 @@ def _assert_ik_analyzer(elasticsearch_base_url: str) -> None:
 
 def _assert_es_analyzer_assets() -> None:
     for path in ES_ANALYZER_ASSET_PATHS:
-        _run(["docker", "compose", "exec", "-T", "elasticsearch", "sh", "-lc", f"test -s {path}"])
+        _run(_compose_command("exec", "-T", "elasticsearch", "sh", "-lc", f"test -s {path}"))
     print("ES/IK analyzer assets present: ok")
 
 
@@ -174,72 +177,70 @@ def main() -> None:
     parser.add_argument("--build", action="store_true", help="Build required service images before starting the stack.")
     parser.add_argument("--keep-orphans", action="store_true", help="Do not remove obsolete Compose service containers.")
     parser.add_argument("--skip-up", action="store_true", help="Validate already-running Compose services without starting them.")
-    parser.add_argument("--skip-index-rebuild", action="store_true", help="Skip rebuilding the video-library search index.")
-    parser.add_argument("--include-legacy", action="store_true", help="Include web-student-old and web-teacher-old in service and frontend smoke checks.")
+    parser.add_argument("--skip-index-rebuild", action="store_true", help="Skip rebuilding the teacher catalog search index.")
+    parser.add_argument(
+        "--gpu",
+        action="store_true",
+        help="Enable the NVIDIA GPU override from docker-compose.gpu.yml for video-worker.",
+    )
     args = parser.parse_args()
 
-    required_services = REQUIRED_SERVICES | (LEGACY_SERVICES if args.include_legacy else set())
+    global COMPOSE_COMMAND
+    if args.gpu:
+        COMPOSE_COMMAND = ["docker", "compose", "-f", "docker-compose.yml", "-f", "docker-compose.gpu.yml"]
 
-    _run(["docker", "compose", "config", "--quiet"])
+    required_services = REQUIRED_SERVICES
+
+    _run(_compose_command("config", "--quiet"))
     _assert_no_retired_services_configured()
     if not args.skip_up:
-        command = ["docker", "compose", "up", "-d", *sorted(required_services)]
+        up_args = ["up", "-d"]
         if args.build:
-            command.insert(4, "--build")
+            up_args.append("--build")
         if not args.keep_orphans:
-            command.insert(4 if not args.build else 5, "--remove-orphans")
-        _run(command)
+            up_args.append("--remove-orphans")
+        up_args.extend(sorted(required_services))
+        _run(_compose_command(*up_args))
     _assert_required_services_running(required_services)
 
     elasticsearch_url = "http://" + _compose_port("elasticsearch", 9200)
     backend_url = "http://" + _compose_port("backend", 8000)
     web_student_url = "http://" + _compose_port("web-student", 80)
     web_teacher_url = "http://" + _compose_port("web-teacher", 80)
-    web_admin_url = "http://" + _compose_port("web-admin", 80)
-    web_student_old_url = "http://" + _compose_port("web-student-old", 80) if args.include_legacy else ""
-    web_teacher_old_url = "http://" + _compose_port("web-teacher-old", 80) if args.include_legacy else ""
 
-    _run(["docker", "compose", "exec", "-T", "postgres", "pg_isready", "-U", "chemistry", "-d", "chemistry_exam"])
+    _run(_compose_command("exec", "-T", "postgres", "pg_isready", "-U", "chemistry", "-d", "chemistry_exam"))
     _wait_json(f"{elasticsearch_url}/_cluster/health", label="Elasticsearch")
     _assert_es_analyzer_assets()
     _assert_ik_analyzer(elasticsearch_url)
     _wait_json(f"{backend_url}/health", label="backend")
     _wait_status(f"{web_student_url}/health", label="web-student frontend health", expected={200})
     _wait_status(f"{web_teacher_url}/health", label="web-teacher frontend health", expected={200})
-    _wait_status(f"{web_admin_url}/health", label="web-admin frontend health", expected={200})
     _wait_status(f"{web_student_url}/", label="web-student frontend root", expected={200})
     _wait_status(f"{web_teacher_url}/login", label="web-teacher login", expected={200})
-    _wait_status(f"{web_admin_url}/", label="web-admin root", expected={200})
     _wait_status(f"{web_student_url}/api/auth/me", label="web-student API proxy", expected={401})
     _wait_status(f"{web_teacher_url}/api/auth/me", label="web-teacher API proxy", expected={401})
-    _wait_status(f"{web_admin_url}/api/web-admin/session", label="web-admin API proxy", expected={401, 503})
-    if args.include_legacy:
-        _wait_status(f"{web_student_old_url}/", label="web-student-old root", expected={200})
-        _wait_status(f"{web_student_old_url}/assessment", label="web-student-old deep route", expected={200})
-        _wait_status(f"{web_student_old_url}/api/auth/me", label="web-student-old API proxy", expected={401})
-        _wait_status(f"{web_teacher_old_url}/", label="web-teacher-old root", expected={200})
-        _wait_status(f"{web_teacher_old_url}/scores", label="web-teacher-old deep route", expected={200})
-        _wait_status(f"{web_teacher_old_url}/api/auth/me", label="web-teacher-old API proxy", expected={401})
 
-    _run(["docker", "compose", "exec", "-T", "backend", "python", "scripts/apply_migrations.py"])
+    _run(_compose_command("exec", "-T", "backend", "python", "scripts/apply_migrations.py"))
     if not args.skip_index_rebuild:
-        _run(["docker", "compose", "exec", "-T", "backend", "python", "scripts/rebuild_video_library_index.py", "--recreate"])
+        _run(_compose_command("exec", "-T", "backend", "python", "scripts/rebuild_teacher_catalog_search_index.py", "--recreate"))
     _run(
-        [
-            "docker",
-            "compose",
+        _compose_command(
             "exec",
             "-T",
             "-e",
             "CHEMISTRY_APP_ENV=production",
             "-e",
-            "VIDEO_LIBRARY_SEARCH_LOCAL_FALLBACK=false",
+            "TEACHER_CATALOG_SEARCH_ENABLED=true",
             "-e",
-            "VIDEO_LIBRARY_SEARCH_REQUIRE_ES_IN_PRODUCTION=true",
+            "TEACHER_CATALOG_SEARCH_BACKEND=elasticsearch",
+            "-e",
+            "TEACHER_CATALOG_SEARCH_URL=http://elasticsearch:9200",
+            "-e",
+            "TEACHER_CATALOG_SEARCH_LOCAL_FALLBACK=false",
             "backend",
             "python",
-            "scripts/validate_video_library_search.py",
-        ]
+            "scripts/validate_teacher_catalog_search.py",
+        )
     )
     print("Compose stack smoke: ok")
 

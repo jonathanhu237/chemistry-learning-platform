@@ -7,23 +7,13 @@ from typing import Any
 from sqlalchemy import text
 
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
+from server.app.domains.media.student_catalog_visibility import STUDENT_VISIBLE_PLAYABLE_MEDIA_CTES
 from server.app.infrastructure.database import db_session
 from server.app.student_video_save_schemas import (
     StudentVideoPersonalState,
     StudentVideoSaveRequest,
     StudentVideoSaveResponse,
-    StudentVideoSaveType,
 )
-
-
-SAVE_TYPES: set[str] = {"watch_later", "favorite"}
-
-
-def normalize_save_type(save_type: str) -> StudentVideoSaveType:
-    normalized = str(save_type or "").strip().lower().replace("-", "_")
-    if normalized not in SAVE_TYPES:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported video save type")
-    return normalized  # type: ignore[return-value]
 
 
 def student_user_id(user: Any) -> str:
@@ -38,20 +28,6 @@ def _format_dt(value: Any) -> str | None:
     return str(value)
 
 
-def _state_from_rows(rows: list[dict[str, Any]]) -> StudentVideoPersonalState:
-    state = StudentVideoPersonalState()
-    for row in rows:
-        save_type = str(row.get("save_type") or "")
-        saved_at = _format_dt(row.get("updated_at") or row.get("created_at"))
-        if save_type == "watch_later":
-            state.watch_later = True
-            state.watch_later_saved_at = saved_at
-        elif save_type == "favorite":
-            state.favorite = True
-            state.favorite_saved_at = saved_at
-    return state
-
-
 def _save_key(placement_node_id: str, media_id: str) -> str:
     return f"{placement_node_id}:{media_id}"
 
@@ -61,11 +37,13 @@ def personal_states_for_items(
     user: Any,
     items: list[tuple[str, str]],
 ) -> dict[str, StudentVideoPersonalState]:
+    default_states = {
+        _save_key(placement, media): StudentVideoPersonalState()
+        for placement, media in items
+    }
     user_id = student_user_id(user)
-    if not user_id or not items:
-        return {_save_key(placement, media): StudentVideoPersonalState() for placement, media in items}
-    if not hasattr(session, "execute"):
-        return {_save_key(placement, media): StudentVideoPersonalState() for placement, media in items}
+    if not user_id or not items or not hasattr(session, "execute"):
+        return default_states
     values = [
         {"placement_node_id": str(placement), "media_id": str(media)}
         for placement, media in items
@@ -83,18 +61,17 @@ def personal_states_for_items(
                     AS item(placement_node_id text, media_id text)
                 )
                 SELECT
-                  svs.placement_node_id,
-                  svs.media_asset_id,
-                  svs.save_type,
-                  svs.created_at,
-                  svs.updated_at
-                FROM student_video_saves svs
-                JOIN requested r
-                  ON r.placement_node_id = svs.placement_node_id
-                 AND r.media_asset_id = svs.media_asset_id
-                WHERE svs.student_id = CAST(:student_id AS uuid)
-                  AND svs.archived_at IS NULL
-                  AND svs.save_type IN ('watch_later', 'favorite')
+                  saves.placement_node_id,
+                  saves.media_asset_id,
+                  saves.created_at,
+                  saves.updated_at
+                FROM student_video_saves saves
+                JOIN requested requested_item
+                  ON requested_item.placement_node_id = saves.placement_node_id
+                 AND requested_item.media_asset_id = saves.media_asset_id
+                WHERE saves.student_id = CAST(:student_id AS uuid)
+                  AND saves.archived_at IS NULL
+                  AND saves.save_type = 'favorite'
                 """
             ),
             {"student_id": user_id, "items": json.dumps(values, ensure_ascii=False)},
@@ -102,17 +79,22 @@ def personal_states_for_items(
         .mappings()
         .all()
     )
-    grouped: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         key = _save_key(str(row["placement_node_id"]), str(row["media_asset_id"]))
-        grouped.setdefault(key, []).append(dict(row))
-    return {
-        _save_key(placement, media): _state_from_rows(grouped.get(_save_key(placement, media), []))
-        for placement, media in items
-    }
+        default_states[key] = StudentVideoPersonalState(
+            favorite=True,
+            favorite_saved_at=_format_dt(row.get("updated_at") or row.get("created_at")),
+        )
+    return default_states
 
 
-def personal_state_for_item(session: Any, user: Any, *, placement_node_id: str, media_id: str) -> StudentVideoPersonalState:
+def personal_state_for_item(
+    session: Any,
+    user: Any,
+    *,
+    placement_node_id: str,
+    media_id: str,
+) -> StudentVideoPersonalState:
     return personal_states_for_items(session, user, [(placement_node_id, media_id)]).get(
         _save_key(placement_node_id, media_id),
         StudentVideoPersonalState(),
@@ -123,38 +105,15 @@ def _visible_point_media(session: Any, *, placement_node_id: str, media_id: str)
     row = (
         session.execute(
             text(
-                """
+                f"""
+                WITH RECURSIVE {STUDENT_VISIBLE_PLAYABLE_MEDIA_CTES}
                 SELECT
-                  n.id AS placement_node_id,
-                  COALESCE(n.canonical_point_id, n.id) AS canonical_point_id,
-                  mb.media_asset_id
-                FROM experiment_catalog_nodes n
-                JOIN experiment_catalog_points cp ON cp.id = n.canonical_point_id
-                JOIN experiment_catalog_point_media_bindings mb
-                  ON ((n.canonical_point_id IS NOT NULL AND mb.canonical_point_id = n.canonical_point_id)
-                   OR mb.node_id = n.id)
-                JOIN media_assets ma ON ma.id = mb.media_asset_id
-                WHERE n.id = :placement_node_id
-                  AND n.node_kind = 'point'
-                  AND n.status = 'published'
-                  AND cp.status = 'published'
-                  AND mb.media_asset_id = CAST(:media_id AS uuid)
-                  AND mb.binding_status = 'published'
-                  AND ma.upload_status = 'ready'
-                  AND COALESCE(ma.lifecycle_status, 'active') = 'active'
-                  AND (
-                    WITH RECURSIVE path AS (
-                      SELECT id, parent_id, status
-                      FROM experiment_catalog_nodes
-                      WHERE id = n.id
-                      UNION ALL
-                      SELECT parent.id, parent.parent_id, parent.status
-                      FROM experiment_catalog_nodes parent
-                      JOIN path ON path.parent_id = parent.id
-                    )
-                    SELECT COALESCE(bool_and(status = 'published'), false)
-                    FROM path
-                  )
+                  visible_media.placement_node_id,
+                  visible_media.canonical_point_id,
+                  visible_media.media_asset_id
+                FROM student_visible_playable_media visible_media
+                WHERE visible_media.placement_node_id = :placement_node_id
+                  AND visible_media.media_asset_id = CAST(:media_id AS uuid)
                 LIMIT 1
                 """
             ),
@@ -168,24 +127,25 @@ def _visible_point_media(session: Any, *, placement_node_id: str, media_id: str)
     return dict(row)
 
 
-def set_student_video_save(
+def set_student_video_favorite(
     user: Any,
     *,
-    save_type: str,
     payload: StudentVideoSaveRequest,
     active: bool,
 ) -> StudentVideoSaveResponse:
-    normalized_type = normalize_save_type(save_type)
     user_id = student_user_id(user)
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Student user required")
     with db_session() as session:
-        visible = _visible_point_media(session, placement_node_id=payload.placement_node_id, media_id=payload.media_id)
+        visible = _visible_point_media(
+            session,
+            placement_node_id=payload.placement_node_id,
+            media_id=payload.media_id,
+        )
         params = {
             "student_id": user_id,
-            "save_type": normalized_type,
-            "placement_node_id": visible["placement_node_id"],
-            "canonical_point_id": payload.canonical_point_id or visible["canonical_point_id"],
+            "placement_node_id": str(visible["placement_node_id"]),
+            "canonical_point_id": str(visible["canonical_point_id"]),
             "media_id": str(visible["media_asset_id"]),
             "source": payload.source or "unknown",
         }
@@ -198,7 +158,7 @@ def set_student_video_save(
                       source, archived_at, created_at, updated_at
                     )
                     VALUES (
-                      CAST(:student_id AS uuid), :save_type, :placement_node_id, :canonical_point_id,
+                      CAST(:student_id AS uuid), 'favorite', :placement_node_id, :canonical_point_id,
                       CAST(:media_id AS uuid), :source, NULL, now(), now()
                     )
                     ON CONFLICT (student_id, save_type, placement_node_id, media_asset_id)
@@ -219,7 +179,7 @@ def set_student_video_save(
                     SET archived_at = COALESCE(archived_at, now()),
                         updated_at = now()
                     WHERE student_id = CAST(:student_id AS uuid)
-                      AND save_type = :save_type
+                      AND save_type = 'favorite'
                       AND placement_node_id = :placement_node_id
                       AND media_asset_id = CAST(:media_id AS uuid)
                     """
@@ -229,14 +189,14 @@ def set_student_video_save(
         state = personal_state_for_item(
             session,
             user,
-            placement_node_id=str(visible["placement_node_id"]),
-            media_id=str(visible["media_asset_id"]),
+            placement_node_id=params["placement_node_id"],
+            media_id=params["media_id"],
         )
     return StudentVideoSaveResponse(
-        save_type=normalized_type,
-        placement_node_id=str(visible["placement_node_id"]),
-        canonical_point_id=str(visible["canonical_point_id"]),
-        media_id=str(visible["media_asset_id"]),
+        save_type="favorite",
+        placement_node_id=params["placement_node_id"],
+        canonical_point_id=params["canonical_point_id"],
+        media_id=params["media_id"],
         active=active,
         personal_state=state,
     )

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Atom, Bookmark, ClipboardList, Clock3, Eye, Flag, FlaskConical, LoaderCircle, MoreHorizontal, PlayCircle, Share2, ShieldAlert, ThumbsUp } from "lucide-react";
+import { Atom, Bookmark, ClipboardList, Eye, FlaskConical, LoaderCircle, PlayCircle, ShieldAlert } from "lucide-react";
 
 import { buildReactionEquationRows } from "../../../../shared/reactionEquations";
 import type { StudentPointDetailResponse, StudentPointVideo, StudentVideoSaveRequest, StudentVideoSaveResponse } from "../../api";
@@ -24,7 +24,6 @@ export function CatalogPointDetailPanel({
   assistantEnabled,
   onOpenAssistant,
   onOpenRelatedPoint,
-  onOpenFeedback,
   previewMode = false,
   loadPointDetail = getStudentCatalogPointDetail,
   resolveMediaUrl = studentMediaUrl,
@@ -38,7 +37,6 @@ export function CatalogPointDetailPanel({
   assistantEnabled: boolean;
   onOpenAssistant: (context: AssistantContext) => void;
   onOpenRelatedPoint: (nodeId: string, pointTitle: string) => void;
-  onOpenFeedback?: (detail: StudentPointDetailResponse) => void;
   previewMode?: boolean;
   loadPointDetail?: (nodeId: string) => Promise<StudentPointDetailResponse>;
   resolveMediaUrl?: (path: string) => string;
@@ -46,27 +44,20 @@ export function CatalogPointDetailPanel({
   const [detail, setDetail] = useState<StudentPointDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [watchLater, setWatchLater] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const [actionStatus, setActionStatus] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError("");
-    setLiked(false);
     setSaved(false);
-    setWatchLater(false);
-    setMoreOpen(false);
     setActionStatus("");
     loadPointDetail(nodeId)
       .then((payload) => {
         if (!cancelled) {
           setDetail(payload);
           setSaved(Boolean(payload.personal_state.favorite));
-          setWatchLater(Boolean(payload.personal_state.watch_later));
         }
       })
       .catch((requestError) => {
@@ -128,26 +119,8 @@ export function CatalogPointDetailPanel({
     };
   }, [detail, principleText]);
 
-  const sharePoint = useCallback(() => {
-    if (!detail) return;
-    const shareText = compactText([pathText, principleText || detail.phenomenon_explanation || detail.summary]);
-    if (typeof navigator.share === "function") {
-      void navigator
-        .share({
-          title: detail.title,
-          text: shareText || detail.title,
-          url: window.location.href,
-        })
-        .then(() => setActionStatus("已打开系统分享"))
-        .catch(() => undefined);
-      return;
-    }
-    setActionStatus("当前环境暂不支持系统分享");
-  }, [detail, pathText, principleText]);
-
   const applySaveResponse = useCallback((response: StudentVideoSaveResponse) => {
     setSaved(response.personal_state.favorite);
-    setWatchLater(response.personal_state.watch_later);
     setDetail((current) =>
       current
         ? {
@@ -157,15 +130,6 @@ export function CatalogPointDetailPanel({
         : current,
     );
   }, []);
-
-  useEffect(() => {
-    if (!moreOpen) return undefined;
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") setMoreOpen(false);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [moreOpen]);
 
   const buildSavePayload = useCallback((targetDetail: StudentPointDetailResponse, targetVideo: StudentPointVideo, source: string): StudentVideoSaveRequest => {
     return {
@@ -192,31 +156,6 @@ export function CatalogPointDetailPanel({
       })
       .catch((requestError) => setActionStatus(errorMessage(requestError)));
   }, [applySaveResponse, buildSavePayload, detail, saved, video]);
-
-  const markWatchLater = useCallback(() => {
-    if (!detail || !video) {
-      setMoreOpen(false);
-      setActionStatus("当前实验还没有可稍后学习的视频");
-      return;
-    }
-    setMoreOpen(false);
-    const active = watchLater;
-    const request = active
-      ? removeStudentVideoSave("watch_later", buildSavePayload(detail, video, "point_detail"))
-      : saveStudentVideo("watch_later", buildSavePayload(detail, video, "point_detail"));
-    void request
-      .then((response) => {
-        applySaveResponse(response);
-        setActionStatus(active ? `已移出稍后学习：${detail.title}` : `已记录稍后学习：${detail.title}`);
-      })
-      .catch((requestError) => setActionStatus(errorMessage(requestError)));
-  }, [applySaveResponse, buildSavePayload, detail, video, watchLater]);
-
-  const openFeedback = useCallback(() => {
-    if (!detail) return;
-    setMoreOpen(false);
-    onOpenFeedback?.(detail);
-  }, [detail, onOpenFeedback]);
 
   return (
     <section className="learning-panel catalog-point-detail" aria-label="点位视频详情">
@@ -266,16 +205,6 @@ export function CatalogPointDetailPanel({
               <div className="point-learning-utility-row" aria-label="次要操作">
                 <button
                   type="button"
-                  className={liked ? "point-learning-utility-action active" : "point-learning-utility-action"}
-                  aria-label={liked ? "取消点赞" : "点赞"}
-                  aria-pressed={liked}
-                  onClick={() => setLiked((value) => !value)}
-                >
-                  <ThumbsUp size={18} />
-                  <span>{liked ? "已赞" : "点赞"}</span>
-                </button>
-                <button
-                  type="button"
                   className={saved ? "point-learning-utility-action active" : "point-learning-utility-action"}
                   aria-label={saved ? "取消收藏" : "收藏"}
                   aria-pressed={saved}
@@ -284,26 +213,9 @@ export function CatalogPointDetailPanel({
                   <Bookmark size={18} />
                   <span>{saved ? "已收藏" : "收藏"}</span>
                 </button>
-                <button type="button" className="point-learning-utility-action" aria-label="分享" onClick={sharePoint}>
-                  <Share2 size={18} />
-                  <span>分享</span>
-                </button>
-                <button
-                  type="button"
-                  className={moreOpen ? "point-learning-utility-action active" : "point-learning-utility-action"}
-                  aria-haspopup="dialog"
-                  aria-expanded={moreOpen}
-                  onClick={() => setMoreOpen((value) => !value)}
-                >
-                  <MoreHorizontal size={19} />
-                  <span>更多</span>
-                </button>
               </div>
               {finishError ? <div className="form-error">{finishError}</div> : null}
               {actionStatus ? <div className="point-learning-action-hint">{actionStatus}</div> : null}
-              {moreOpen ? (
-                <PointLearningMoreSheet title={detail.title} watchLater={watchLater} onClose={() => setMoreOpen(false)} onWatchLater={markWatchLater} onFeedback={openFeedback} />
-              ) : null}
             </section>
           ) : null}
 
@@ -344,51 +256,6 @@ function relatedPointRelationLabel(relationType?: string | null) {
     default:
       return "相关实验";
   }
-}
-
-function PointLearningMoreSheet({
-  title,
-  watchLater,
-  onClose,
-  onWatchLater,
-  onFeedback,
-}: {
-  title: string;
-  watchLater: boolean;
-  onClose: () => void;
-  onWatchLater: () => void;
-  onFeedback: () => void;
-}) {
-  return (
-    <div
-      className="point-learning-more-backdrop"
-      role="presentation"
-      onPointerDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <section className="point-learning-more-sheet" role="dialog" aria-modal="true" aria-label={`更多学习操作：${title}`}>
-        <div className="point-learning-more-head">
-          <p>更多</p>
-          <h3>{title}</h3>
-        </div>
-        <button type="button" onClick={onWatchLater}>
-          <Clock3 size={22} />
-          <span>
-            <b>{watchLater ? "移出稍后学习" : "稍后学习"}</b>
-            <small>{watchLater ? "不再放在首页稍后学习标签里" : "先把这个实验留到稍后再看"}</small>
-          </span>
-        </button>
-        <button type="button" onClick={onFeedback}>
-          <Flag size={22} />
-          <span>
-            <b>反馈问题</b>
-            <small>记录这个视频卡片的问题</small>
-          </span>
-        </button>
-      </section>
-    </div>
-  );
 }
 
 function LearningContentSection({

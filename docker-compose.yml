@@ -51,7 +51,7 @@ services:
       DATABASE_URL: postgresql+psycopg://chemistry:chemistry@postgres:5432/chemistry_exam
       MEDIA_ROOT: /app/data/media
       API_PUBLIC_BASE_URL: http://127.0.0.1:8000
-      FRONTEND_ALLOWED_ORIGINS: ${FRONTEND_ALLOWED_ORIGINS:-http://222.200.189.249:15173,http://localhost:15173,http://127.0.0.1:15173,http://localhost:15174,http://127.0.0.1:15174,http://localhost:15175,http://127.0.0.1:15175,http://222.200.189.249:15176,http://localhost:15176,http://127.0.0.1:15176,http://localhost:15177,http://127.0.0.1:15177}
+      FRONTEND_ALLOWED_ORIGINS: ${FRONTEND_ALLOWED_ORIGINS:-http://222.200.189.249:15173,http://localhost:15173,http://127.0.0.1:15173,http://localhost:15174,http://127.0.0.1:15174}
       STUDENT_PREVIEW_APP_BASE_URL: ${STUDENT_PREVIEW_APP_BASE_URL:-http://222.200.189.249:15173}
       STUDENT_PREVIEW_ALLOWED_ORIGINS: ${STUDENT_PREVIEW_ALLOWED_ORIGINS:-}
       STUDENT_PREVIEW_TICKET_EXPIRE_MINUTES: "10"
@@ -63,13 +63,12 @@ services:
       TEXTBOOK_STORAGE_ROOT: /app/data/textbooks
       TEXTBOOK_RAG_ELASTICSEARCH_URL: ${TEXTBOOK_RAG_ELASTICSEARCH_URL:-http://elasticsearch:9200}
       TEXTBOOK_RAG_ELASTICSEARCH_INDEX: ${TEXTBOOK_RAG_ELASTICSEARCH_INDEX:-canonical-rag-chunks-qwen-v1}
-      WEB_ADMIN_ACCESS_TOKEN: ${WEB_ADMIN_ACCESS_TOKEN:-dev-only-web-admin-token-change-me}
-      VIDEO_LIBRARY_SEARCH_ENABLED: "true"
-      VIDEO_LIBRARY_SEARCH_BACKEND: elasticsearch
-      VIDEO_LIBRARY_SEARCH_URL: http://elasticsearch:9200
-      VIDEO_LIBRARY_SEARCH_INDEX: student-video-library
-      VIDEO_LIBRARY_SEARCH_ANALYZER: ik_max_word
-      VIDEO_LIBRARY_SEARCH_LOCAL_FALLBACK: "false"
+      TEACHER_CATALOG_SEARCH_ENABLED: "true"
+      TEACHER_CATALOG_SEARCH_BACKEND: elasticsearch
+      TEACHER_CATALOG_SEARCH_URL: http://elasticsearch:9200
+      TEACHER_CATALOG_SEARCH_INDEX: teacher-catalog-admin-search
+      TEACHER_CATALOG_SEARCH_ANALYZER: ik_max_word
+      TEACHER_CATALOG_SEARCH_LOCAL_FALLBACK: "false"
     ports:
       - "${BACKEND_HOST_BIND:-127.0.0.1}:${BACKEND_HOST_PORT:-8000}:8000"
     volumes:
@@ -130,69 +129,6 @@ services:
       timeout: 5s
       retries: 12
 
-  web-admin:
-    image: chemistry-admin-web-admin:234baa67124f
-    build:
-      context: .
-      dockerfile: server/Dockerfile.frontend
-      args:
-        APP_DIR: apps/web-admin
-    environment:
-      BACKEND_UPSTREAM: http://backend:8000
-      FRAME_ANCESTORS: "'self'"
-    ports:
-      - "${WEB_ADMIN_HOST_BIND:-127.0.0.1}:${WEB_ADMIN_HOST_PORT:-15175}:80"
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/health >/dev/null"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-
-  web-student-old:
-    image: chemistry-admin-web-student-old:legacy
-    build:
-      context: .
-      dockerfile: server/Dockerfile.frontend
-      args:
-        APP_DIR: apps/web-student-old
-    environment:
-      BACKEND_UPSTREAM: http://backend:8000
-      FRAME_ANCESTORS: "'self'"
-    ports:
-      - "${WEB_STUDENT_OLD_HOST_BIND:-222.200.189.249}:${WEB_STUDENT_OLD_HOST_PORT:-15176}:80"
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/health >/dev/null"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-
-  web-teacher-old:
-    image: chemistry-admin-web-teacher-old:legacy
-    build:
-      context: .
-      dockerfile: server/Dockerfile.frontend
-      args:
-        APP_DIR: apps/web-teacher-old
-    environment:
-      BACKEND_UPSTREAM: http://backend:8000
-      FRAME_ANCESTORS: "'self'"
-    ports:
-      - "${WEB_TEACHER_OLD_HOST_BIND:-127.0.0.1}:${WEB_TEACHER_OLD_HOST_PORT:-15177}:80"
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/health >/dev/null"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-
   tusd:
     image: tusproject/tusd:v2@sha256:9c61565fccd2689b052aa78e52d9558f309e98f6320960746f225d2fd73a35e3
     command:
@@ -211,7 +147,6 @@ services:
     build:
       context: .
       dockerfile: server/Dockerfile.video-worker
-    gpus: all
     env_file:
       - path: .env
         required: false
@@ -237,8 +172,6 @@ services:
       VIDEO_DUPLICATE_DURATION_TOLERANCE_RATIO: 0.001
       VIDEO_DUPLICATE_DURATION_TOLERANCE_FLOOR_SECONDS: 0.5
       VIDEO_DUPLICATE_DURATION_TOLERANCE_CEILING_SECONDS: 2.0
-      NVIDIA_DRIVER_CAPABILITIES: compute,utility,video
-      NVIDIA_VISIBLE_DEVICES: all
     volumes:
       - ./data/media:/app/data/media
     depends_on:

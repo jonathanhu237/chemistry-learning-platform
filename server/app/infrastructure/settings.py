@@ -87,7 +87,6 @@ class Settings:
     video_duplicate_detection_min_interval_seconds: float = 0.5
     auth_secret_key: str = "dev-only-secret"
     access_token_expire_minutes: int = 720
-    web_admin_access_token: str = ""
     student_preview_app_base_url: str = "http://222.200.189.249:15173"
     student_preview_allowed_origins: tuple[str, ...] = (
         "http://222.200.189.249:15173",
@@ -159,15 +158,6 @@ class Settings:
     textbook_rag_rerank_model: str = ""
     textbook_rag_min_rerank_score: float = 0.0
     textbook_rag_timeout_seconds: float = 8.0
-    video_library_search_enabled: bool = True
-    video_library_search_backend: str = "local"
-    video_library_search_url: str = ""
-    video_library_search_index: str = "student-video-library"
-    video_library_search_analyzer: str = "ik_max_word"
-    video_library_search_bootstrap_index: bool = True
-    video_library_search_timeout_seconds: float = 3.0
-    video_library_search_local_fallback: bool = True
-    video_library_search_require_es_in_production: bool = True
     teacher_catalog_search_enabled: bool = True
     teacher_catalog_search_backend: str = "elasticsearch"
     teacher_catalog_search_url: str = ""
@@ -184,8 +174,6 @@ class Settings:
         errors: list[str] = []
         if self.data_backend not in {"json", "postgres"}:
             errors.append("DATA_BACKEND must be json or postgres")
-        if self.video_library_search_backend not in {"local", "elasticsearch", "disabled"}:
-            errors.append("VIDEO_LIBRARY_SEARCH_BACKEND must be local, elasticsearch, or disabled")
         if self.teacher_catalog_search_backend not in {"elasticsearch", "disabled"}:
             errors.append("TEACHER_CATALOG_SEARCH_BACKEND must be elasticsearch or disabled")
         if self.video_transcode_acceleration not in {"auto", "cpu", "nvenc"}:
@@ -233,12 +221,6 @@ class Settings:
                 errors.append("API_PUBLIC_BASE_URL is required in production")
             if not _getenv("AUTH_SECRET_KEY") or self.auth_secret_key in {"", "dev-only-secret", "dev-only-change-me"}:
                 errors.append("AUTH_SECRET_KEY must be set to a non-development value in production")
-            if (
-                not _getenv("WEB_ADMIN_ACCESS_TOKEN")
-                or len(self.web_admin_access_token) < 32
-                or self.web_admin_access_token.startswith("dev-only-")
-            ):
-                errors.append("WEB_ADMIN_ACCESS_TOKEN must be set to a long non-development value in production")
             if not _getenv("AGENT_LLM_PROVIDER"):
                 errors.append("AGENT_LLM_PROVIDER must be explicit in production, use disabled when no LLM is configured")
             if self.agent_llm_provider and self.agent_llm_provider != "disabled":
@@ -304,13 +286,6 @@ class Settings:
                     errors.append("TEXTBOOK_OCR_API_KEY is required when textbook OCR is enabled")
                 if not self.textbook_ocr_model:
                     errors.append("TEXTBOOK_OCR_MODEL is required when textbook OCR is enabled")
-            if self.video_library_search_enabled and self.video_library_search_require_es_in_production:
-                if self.video_library_search_backend != "elasticsearch":
-                    errors.append("VIDEO_LIBRARY_SEARCH_BACKEND must be elasticsearch in production when video-library search is enabled")
-                if not self.video_library_search_url:
-                    errors.append("VIDEO_LIBRARY_SEARCH_URL is required in production when video-library search is enabled")
-                if self.video_library_search_local_fallback:
-                    errors.append("VIDEO_LIBRARY_SEARCH_LOCAL_FALLBACK must be false in production")
         if errors:
             raise RuntimeError("Invalid production configuration: " + "; ".join(errors))
 
@@ -392,7 +367,6 @@ def get_settings() -> Settings:
         ),
         auth_secret_key=_getenv("AUTH_SECRET_KEY", Settings.auth_secret_key),
         access_token_expire_minutes=_get_int("ACCESS_TOKEN_EXPIRE_MINUTES", Settings.access_token_expire_minutes),
-        web_admin_access_token=_getenv("WEB_ADMIN_ACCESS_TOKEN", Settings.web_admin_access_token),
         student_preview_app_base_url=student_preview_app_base_url,
         student_preview_allowed_origins=tuple(student_preview_allowed_origins),
         student_preview_ticket_expire_minutes=_get_int(
@@ -553,39 +527,6 @@ def get_settings() -> Settings:
             "TEXTBOOK_RAG_TIMEOUT_SECONDS",
             Settings.textbook_rag_timeout_seconds,
         ),
-        video_library_search_enabled=_get_bool(
-            "VIDEO_LIBRARY_SEARCH_ENABLED",
-            Settings.video_library_search_enabled,
-        ),
-        video_library_search_backend=_getenv(
-            "VIDEO_LIBRARY_SEARCH_BACKEND",
-            Settings.video_library_search_backend,
-        ).lower(),
-        video_library_search_url=_getenv("VIDEO_LIBRARY_SEARCH_URL").rstrip("/"),
-        video_library_search_index=_getenv(
-            "VIDEO_LIBRARY_SEARCH_INDEX",
-            Settings.video_library_search_index,
-        ),
-        video_library_search_analyzer=_getenv(
-            "VIDEO_LIBRARY_SEARCH_ANALYZER",
-            Settings.video_library_search_analyzer,
-        ),
-        video_library_search_bootstrap_index=_get_bool(
-            "VIDEO_LIBRARY_SEARCH_BOOTSTRAP_INDEX",
-            Settings.video_library_search_bootstrap_index,
-        ),
-        video_library_search_timeout_seconds=_get_float(
-            "VIDEO_LIBRARY_SEARCH_TIMEOUT_SECONDS",
-            Settings.video_library_search_timeout_seconds,
-        ),
-        video_library_search_local_fallback=_get_bool(
-            "VIDEO_LIBRARY_SEARCH_LOCAL_FALLBACK",
-            Settings.video_library_search_local_fallback,
-        ),
-        video_library_search_require_es_in_production=_get_bool(
-            "VIDEO_LIBRARY_SEARCH_REQUIRE_ES_IN_PRODUCTION",
-            Settings.video_library_search_require_es_in_production,
-        ),
         teacher_catalog_search_enabled=_get_bool(
             "TEACHER_CATALOG_SEARCH_ENABLED",
             Settings.teacher_catalog_search_enabled,
@@ -596,7 +537,7 @@ def get_settings() -> Settings:
         ).lower(),
         teacher_catalog_search_url=_getenv(
             "TEACHER_CATALOG_SEARCH_URL",
-            _getenv("VIDEO_LIBRARY_SEARCH_URL", Settings.teacher_catalog_search_url),
+            Settings.teacher_catalog_search_url,
         ).rstrip("/"),
         teacher_catalog_search_index=_getenv(
             "TEACHER_CATALOG_SEARCH_INDEX",

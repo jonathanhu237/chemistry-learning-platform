@@ -47,10 +47,10 @@ def main() -> None:
                       COUNT(*) FILTER (
                         WHERE n.node_kind = 'point'
                           AND si.node_id IS NOT NULL
-                      ) AS search_state_count
+                      ) AS teacher_search_state_count
                     FROM experiment_catalog_nodes n
                     LEFT JOIN experiment_catalog_point_content pc ON pc.node_id = n.id
-                    LEFT JOIN experiment_catalog_point_search_index_state si ON si.node_id = n.id
+                    LEFT JOIN experiment_catalog_teacher_search_index_state si ON si.node_id = n.id
                     """
                 )
             ).mappings().one()
@@ -74,10 +74,10 @@ def main() -> None:
                       COUNT(*) AS full_content_count,
                       COUNT(DISTINCT pc.node_id) AS unique_full_content_node_count,
                       COUNT(*) FILTER (WHERE pc.content_status = 'published') AS published_full_content_count,
-                      COUNT(*) FILTER (WHERE si.node_id IS NOT NULL) AS indexed_full_content_count
+                      COUNT(*) FILTER (WHERE si.node_id IS NOT NULL) AS teacher_search_full_content_count
                     FROM experiment_catalog_point_content pc
                     JOIN experiment_catalog_nodes n ON n.id = pc.node_id AND n.node_kind = 'point'
-                    LEFT JOIN experiment_catalog_point_search_index_state si ON si.node_id = pc.node_id
+                    LEFT JOIN experiment_catalog_teacher_search_index_state si ON si.node_id = pc.node_id
                     """
                 )
             ).mappings().one()
@@ -292,7 +292,7 @@ def main() -> None:
     full_content_count = int(full_content_row["full_content_count"] or 0)
     unique_full_content_node_count = int(full_content_row["unique_full_content_node_count"] or 0)
     published_full_content_count = int(full_content_row["published_full_content_count"] or 0)
-    indexed_full_content_count = int(full_content_row["indexed_full_content_count"] or 0)
+    teacher_search_full_content_count = int(full_content_row["teacher_search_full_content_count"] or 0)
     canonical_point_count = int(canonical_row["canonical_point_count"] or 0)
     point_without_canonical_count = int(canonical_row["point_without_canonical_count"] or 0)
     directory_with_canonical_count = int(canonical_row["directory_with_canonical_count"] or 0)
@@ -338,10 +338,10 @@ def main() -> None:
             "published catalog point content mismatch: "
             f"expected {EXPECTED_CATALOG_POINT_CONTENT_COUNT}, got {published_full_content_count}"
         )
-    if indexed_full_content_count != EXPECTED_CATALOG_POINT_CONTENT_COUNT:
+    if teacher_search_full_content_count != EXPECTED_CATALOG_POINT_CONTENT_COUNT:
         errors.append(
-            "indexed catalog point content mismatch: "
-            f"expected {EXPECTED_CATALOG_POINT_CONTENT_COUNT}, got {indexed_full_content_count}"
+            "teacher catalog search point-content state mismatch: "
+            f"expected {EXPECTED_CATALOG_POINT_CONTENT_COUNT}, got {teacher_search_full_content_count}"
         )
     unresolved_question_without_point_nodes = max(
         0,
@@ -398,12 +398,12 @@ def main() -> None:
         "point_children": point_children,
         "full_content_count": full_content_count,
         "unique_full_content_node_count": unique_full_content_node_count,
-        "indexed_full_content_count": indexed_full_content_count,
+        "teacher_search_full_content_count": teacher_search_full_content_count,
         "unresolved_question_without_point_nodes": unresolved_question_without_point_nodes,
         "unresolved_question_without_canonical_points": unresolved_question_without_canonical_points,
         "published_content_count": int(row["published_content_count"] or 0),
         "teacher_note_count": int(row["teacher_note_count"] or 0),
-        "search_state_count": int(row["search_state_count"] or 0),
+        "teacher_search_state_count": int(row["teacher_search_state_count"] or 0),
         "corrected_hypochlorite_titles": sorted(corrected_titles),
         "current_question_bank_counts": question_identity_counts,
         "retired_counts": {key: int(retired_row[key] or 0) for key in retired_row.keys()},

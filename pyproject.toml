@@ -1,7 +1,7 @@
 [project]
 name = "sysu-chemistry-admin"
 version = "0.1.0"
-description = "Standalone SYSU chemistry experiment admin console and backend service."
+description = "SYSU chemistry learning platform for students and teachers."
 requires-python = ">=3.11"
 dependencies = [
   "beautifulsoup4",

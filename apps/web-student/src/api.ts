@@ -47,22 +47,12 @@ export type StudentAppConfigResponse = {
   preview_policy?: StudentPreviewPolicy | null;
 };
 
-export type PretestQuestionOption = {
+export type AssessmentQuestionOption = {
   label?: string;
   key?: string;
   value?: string;
   text?: string;
   [key: string]: unknown;
-};
-
-export type PublicPretestQuestion = {
-  id: string;
-  question_type: "single_choice" | "true_false" | "fill_blank";
-  stem: string;
-  options: PretestQuestionOption[];
-  area: string;
-  related_chapter_ids: string[];
-  related_knowledge_point_ids: string[];
 };
 
 export type PublicPosttestQuestion = {
@@ -71,22 +61,9 @@ export type PublicPosttestQuestion = {
   experiment_title: string;
   question_type: "single_choice" | "true_false" | "fill_blank";
   stem: string;
-  options: PretestQuestionOption[];
+  options: AssessmentQuestionOption[];
   related_chapter_ids: string[];
   related_knowledge_point_ids: string[];
-};
-
-export type StudentPretestResponse = {
-  status: "in_progress" | "completed";
-  stage: 1 | 2 | null;
-  questions: PublicPretestQuestion[];
-  session_id?: string | null;
-  report?: StudentAssessmentReport | null;
-};
-
-export type StudentPretestAnswer = {
-  question_id: string;
-  answer: unknown;
 };
 
 export type StudentLearningArea = {
@@ -331,14 +308,8 @@ export type StudentLearningPageResponse = {
   active_profile?: StudentLearningProfile | null;
 };
 
-export type VideoLibraryResultType = "video_point" | "experiment" | "chapter_experiment" | "knowledge_point" | "ai_prompt";
-export type VideoLibraryTargetKind = "point_detail" | "chapter_detail" | "ai_chat";
-export type VideoLibrarySearchStatus = "ok" | "fallback" | "disabled" | "empty" | "error";
-export type VideoLibrarySearchBackend = "local" | "elasticsearch" | "disabled";
-export type VideoLibraryBrowseChipKind = "phenomenon" | "reagent" | "chapter" | "element_family" | "knowledge";
-
-export type StudentVideoLibraryRouteTarget = {
-  kind: VideoLibraryTargetKind;
+export type StudentHomeVideoTarget = {
+  kind: "point_detail";
   route: string;
   node_id?: string | null;
   placement_node_id?: string | null;
@@ -353,77 +324,12 @@ export type StudentVideoLibraryRouteTarget = {
   point_title?: string | null;
   context_title?: string | null;
   context_summary?: string | null;
-  prompt?: string | null;
-};
-
-export type StudentVideoLibraryResultItem = {
-  id: string;
-  type: VideoLibraryResultType;
-  title: string;
-  subtitle: string;
-  snippet: string;
-  score: number;
-  badges: string[];
-  action_label: string;
-  target?: StudentVideoLibraryRouteTarget | null;
-  disabled_reason?: string | null;
-};
-
-export type StudentVideoLibraryResultGroup = {
-  key: string;
-  title: string;
-  summary: string;
-  items: StudentVideoLibraryResultItem[];
-};
-
-export type StudentVideoLibraryBrowseChip = {
-  kind: VideoLibraryBrowseChipKind;
-  label: string;
-  query: string;
-  profile_id?: string | null;
-  chapter_id?: string | null;
-  element_symbol?: string | null;
-};
-
-export type StudentVideoLibraryBrowseState = {
-  recommended: StudentVideoLibraryResultItem[];
-  recent: StudentVideoLibraryResultItem[];
-  chips: StudentVideoLibraryBrowseChip[];
-};
-
-export type StudentVideoLibrarySearchResponse = {
-  query: string;
-  status: VideoLibrarySearchStatus;
-  backend: VideoLibrarySearchBackend;
-  message: string;
-  total: number;
-  groups: StudentVideoLibraryResultGroup[];
-  browse: StudentVideoLibraryBrowseState;
 };
 
 export type StudentHomeVideoFeedStatus = "ok" | "empty";
-export type StudentHomeVideoFeedReason = "catalog" | "recommended" | "recent" | "weakness";
-export type StudentHomeVideoTopic =
-  | "discover"
-  | "watch_later"
-  | "all"
-  | "color_change"
-  | "precipitation"
-  | "gas_generation"
-  | "layer_extraction"
-  | "fading_bleaching"
-  | "flame_light"
-  | "temperature_change"
-  | "heating"
-  | "test_paper"
-  | "indicator"
-  | "crystallization"
-  | "favorites";
-export type StudentHomeVideoRepeatMode = "cycled" | "none";
+export type StudentHomeVideoFeedReason = "catalog" | "recommended";
 
 export type StudentVideoPersonalState = {
-  watch_later: boolean;
-  watch_later_saved_at?: string | null;
   favorite: boolean;
   favorite_saved_at?: string | null;
 };
@@ -451,7 +357,7 @@ export type StudentHomeVideoFeedItem = {
   catalog_path: string[];
   badges: string[];
   video: StudentHomeVideoMedia;
-  target: StudentVideoLibraryRouteTarget;
+  target: StudentHomeVideoTarget;
   personal_state: StudentVideoPersonalState;
   reason: StudentHomeVideoFeedReason;
 };
@@ -459,16 +365,15 @@ export type StudentHomeVideoFeedItem = {
 export type StudentHomeVideoFeedResponse = {
   status: StudentHomeVideoFeedStatus;
   message: string;
-  topic: StudentHomeVideoTopic | string;
+  query: string;
   next_cursor?: string | null;
   has_more: boolean;
   batch_size: number;
   pool_size: number;
-  repeat_mode: StudentHomeVideoRepeatMode;
   items: StudentHomeVideoFeedItem[];
 };
 
-export type StudentVideoSaveType = "watch_later" | "favorite";
+export type StudentVideoSaveType = "favorite";
 
 export type StudentVideoSaveRequest = {
   placement_node_id: string;
@@ -512,7 +417,7 @@ export type StudentPosttestWrongAnswer = {
   experiment_title: string;
   question_type: string;
   stem: string;
-  options: PretestQuestionOption[];
+  options: AssessmentQuestionOption[];
   submitted_answer: unknown;
   correct_answer: unknown;
   explanation?: string | null;
@@ -702,32 +607,30 @@ export type StudentSmartAssessmentSubmitResponse = {
 
 export type StudentAssessmentStatusResponse = {
   has_completed_smart_baseline: boolean;
+  needs_smart_baseline: boolean;
   has_open_assessment: boolean;
   open_session_id?: string | null;
   open_assessment_mode?: "smart" | "custom" | "point" | null;
-  smart_baseline_prompt_dismissed: boolean;
 };
 
 export type CustomAssessmentOptionsSettings = {
   enabled: boolean;
-  question_count_options: number[];
-  default_question_count: number;
-  max_question_count: number;
-  max_questions_per_experiment: number;
+  questions_per_point_options: Array<1 | 2 | 3>;
+  default_questions_per_point: 1 | 2 | 3;
 };
 
-export type CustomAssessmentExperimentOption = {
+export type CustomAssessmentScopeNode = {
   id: string;
-  code: string;
   title: string;
-  parent_code?: string | null;
-  parent_title?: string | null;
+  kind: "chapter" | "directory" | "point";
+  parent_id?: string | null;
   question_count: number;
+  children: CustomAssessmentScopeNode[];
 };
 
 export type StudentCustomAssessmentOptionsResponse = {
   settings: CustomAssessmentOptionsSettings;
-  experiments: CustomAssessmentExperimentOption[];
+  scope_tree: CustomAssessmentScopeNode[];
 };
 
 export type AgentChatMessage = {
@@ -937,9 +840,6 @@ export class ApiError extends Error {
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 409) {
-      if (typeof error.detail === "string" && error.detail.includes("Pretest question bank")) {
-        return "课前摸底题库暂未配置，请联系教师";
-      }
       if (typeof error.detail === "string" && error.detail.includes("Posttest question bank")) {
         return "课后摸底题库暂未配置，请联系教师";
       }
@@ -1101,17 +1001,6 @@ export function getStudentAppConfig(): Promise<StudentAppConfigResponse> {
   return api<StudentAppConfigResponse>("/api/student/app-config");
 }
 
-export function startStudentPretest(): Promise<StudentPretestResponse> {
-  return postJson<StudentPretestResponse>("/api/student/pretest/start", {});
-}
-
-export function submitStudentPretest(stage: 1 | 2, answers: StudentPretestAnswer[]): Promise<StudentPretestResponse> {
-  return postJson<StudentPretestResponse>("/api/student/pretest/submit", {
-    stage,
-    answers,
-  });
-}
-
 export function getStudentAssessmentReports(): Promise<StudentAssessmentReportListResponse> {
   return api<StudentAssessmentReportListResponse>("/api/student/assessment-reports");
 }
@@ -1124,10 +1013,10 @@ export function getStudentLearningHome(): Promise<StudentLearningHomeResponse> {
   return api<StudentLearningHomeResponse>("/api/student/learning-home");
 }
 
-export function getStudentHomeVideoFeed(options: number | { limit?: number; topic?: string; cursor?: string | null } = 12): Promise<StudentHomeVideoFeedResponse> {
+export function getStudentHomeVideoFeed(options: number | { limit?: number; q?: string; cursor?: string | null } = 12): Promise<StudentHomeVideoFeedResponse> {
   const payload = typeof options === "number" ? { limit: options } : options;
   const params = new URLSearchParams({ limit: String(payload.limit ?? 12) });
-  if (payload.topic) params.set("topic", payload.topic);
+  if (payload.q?.trim()) params.set("q", payload.q.trim());
   if (payload.cursor) params.set("cursor", payload.cursor);
   return api<StudentHomeVideoFeedResponse>(`/api/student/home-video-feed?${params.toString()}`);
 }
@@ -1179,12 +1068,6 @@ export function getPreviewCatalogNode(nodeId: string, previewToken: string): Pro
   return api<CatalogPreviewNodeResponse>(`/api/preview/catalog/nodes/${encodeURIComponent(nodeId)}?${params.toString()}`);
 }
 
-export function searchStudentVideoLibrary(query = "", limit = 24): Promise<StudentVideoLibrarySearchResponse> {
-  const params = new URLSearchParams({ domain: "experiment_video", limit: String(limit) });
-  if (query.trim()) params.set("q", query.trim());
-  return api<StudentVideoLibrarySearchResponse>(`/api/student/video-library/search?${params.toString()}`);
-}
-
 export function startStudentPosttest(): Promise<StudentPosttestResponse> {
   return postJson<StudentPosttestResponse>("/api/student/posttest/start", {});
 }
@@ -1204,10 +1087,6 @@ export function getStudentAssessmentStatus(): Promise<StudentAssessmentStatusRes
   return api<StudentAssessmentStatusResponse>("/api/student/assessment/status");
 }
 
-export function dismissStudentSmartBaselinePrompt(): Promise<StudentAssessmentStatusResponse> {
-  return postJson<StudentAssessmentStatusResponse>("/api/student/assessment/baseline-prompt-dismiss", {});
-}
-
 export function startStudentPointAssessment(pointNodeId: string): Promise<StudentSmartAssessmentResponse> {
   return postJson<StudentSmartAssessmentResponse>("/api/student/point-assessment/start", {
     point_node_id: pointNodeId,
@@ -1219,12 +1098,12 @@ export function getStudentCustomAssessmentOptions(): Promise<StudentCustomAssess
 }
 
 export function startStudentCustomAssessment(
-  experimentIds: string[],
-  questionCount: number,
+  scopeNodeIds: string[],
+  questionsPerPoint: 1 | 2 | 3,
 ): Promise<StudentSmartAssessmentResponse> {
   return postJson<StudentSmartAssessmentResponse>("/api/student/custom-assessment/start", {
-    experiment_ids: experimentIds,
-    question_count: questionCount,
+    scope_node_ids: scopeNodeIds,
+    questions_per_point: questionsPerPoint,
   });
 }
 

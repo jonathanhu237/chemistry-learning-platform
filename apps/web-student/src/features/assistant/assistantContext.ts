@@ -2,8 +2,8 @@ import type {
   StudentAssistantAskRequest,
   StudentCatalogBreadcrumb,
   StudentCatalogNodeCard,
-  StudentVideoLibraryResultItem,
-  StudentVideoLibraryRouteTarget,
+  StudentHomeVideoFeedItem,
+  StudentHomeVideoTarget,
 } from "../../api";
 
 export type AssistantContext = Omit<StudentAssistantAskRequest, "question" | "conversation_history"> & { prompts: string[] };
@@ -55,20 +55,20 @@ export function assistantContextPathLabel(context: AssistantContext): string {
   return uniquePath(context.catalog_path || []).join(" / ");
 }
 
-export function isBindableVideoLibraryResult(item: StudentVideoLibraryResultItem): boolean {
+export function isBindableHomeFeedItem(item: StudentHomeVideoFeedItem): boolean {
   const target = item.target;
   return Boolean(target && target.kind === "point_detail" && (target.node_id || target.placement_node_id));
 }
 
-export function assistantContextFromVideoLibraryResult(item: StudentVideoLibraryResultItem): AssistantContext | null {
+export function assistantContextFromHomeFeedItem(item: StudentHomeVideoFeedItem): AssistantContext | null {
   const target = item.target;
-  if (!target || !isBindableVideoLibraryResult(item)) return null;
-  return assistantContextFromVideoLibraryTarget(item, target);
+  if (!target || !isBindableHomeFeedItem(item)) return null;
+  return assistantContextFromHomeFeedTarget(item, target);
 }
 
-export function assistantContextFromVideoLibraryTarget(
-  item: Pick<StudentVideoLibraryResultItem, "title" | "subtitle" | "snippet">,
-  target: StudentVideoLibraryRouteTarget,
+export function assistantContextFromHomeFeedTarget(
+  item: Pick<StudentHomeVideoFeedItem, "title" | "summary" | "snippet">,
+  target: StudentHomeVideoTarget,
 ): AssistantContext {
   const title = target.context_title || target.point_title || item.title;
   const path = uniquePath(target.catalog_path || []);
@@ -76,7 +76,7 @@ export function assistantContextFromVideoLibraryTarget(
     path.length ? `目录路径：${path.join(" / ")}` : null,
     target.context_summary,
     item.snippet,
-    item.subtitle,
+    item.summary,
   ]);
   return {
     context_type: "learning_point",
@@ -87,7 +87,7 @@ export function assistantContextFromVideoLibraryTarget(
     source_node_id: target.source_node_id || undefined,
     catalog_path: path.length ? path : undefined,
     prompts: [
-      target.prompt || `解释「${promptTitle(title)}」这个实验现象`,
+      `解释「${promptTitle(title)}」这个实验现象`,
       "这个现象对应的原理是什么？",
       "学习这个点位要注意哪些步骤？",
     ],

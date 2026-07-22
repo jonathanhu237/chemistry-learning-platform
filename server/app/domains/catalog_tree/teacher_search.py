@@ -5,7 +5,12 @@ from typing import Any
 
 from sqlalchemy import text
 
-from server.app.chemistry_search import chemistry_query_terms, chemistry_terms_for_document, formula_pair_terms
+from server.app.chemistry_search import (
+    chemistry_query_terms,
+    chemistry_terms_for_document,
+    chemistry_vocabulary_metadata,
+    formula_pair_terms,
+)
 from server.app.domains.catalog_tree.common import (
     MISSING_LEARNING_FIELD_KEYS,
     breadcrumbs,
@@ -21,13 +26,9 @@ from server.app.domains.catalog_tree.common import (
     validate_node_payload,
 )
 from server.app.domains.catalog_tree.equations import reaction_derived_terms, reaction_principle_text
-from server.app.domains.video_library.index_client import (
-    VideoLibraryIndexClient,
-    document_hash,
-    video_library_analyzer_assets,
-)
 from server.app.infrastructure.database import db_session
 from server.app.infrastructure.settings import get_settings
+from server.app.search_index import SearchIndexClient, chemistry_analyzer_assets, document_hash
 
 
 TEACHER_CATALOG_SEARCH_INDEX_MAPPING_VERSION = "teacher-catalog-admin-v1"
@@ -115,7 +116,7 @@ def teacher_catalog_search_index_mapping(
             "_meta": {
                 "mapping_version": TEACHER_CATALOG_SEARCH_INDEX_MAPPING_VERSION,
                 "retrieval_model": "teacher-catalog-admin-authoring-context",
-                "student_index_boundary": "separate-index-no-student-documents",
+                "projection_owner": "teacher-catalog-authoring",
             },
             "dynamic": "false",
             "properties": {
@@ -180,7 +181,7 @@ def teacher_catalog_search_index_mapping(
     }
 
 
-class TeacherCatalogSearchIndexClient(VideoLibraryIndexClient):
+class TeacherCatalogSearchIndexClient(SearchIndexClient):
     def ensure_index(self, *, recreate: bool = False, analyzer: str = "ik_max_word") -> None:
         if recreate:
             try:
@@ -846,7 +847,7 @@ def _total_hits_value(response: dict[str, Any] | None) -> int:
 
 def _teacher_es_hits_for_scope(
     *,
-    client: VideoLibraryIndexClient,
+    client: TeacherCatalogSearchIndexClient,
     query: str,
     chapter_id: str | None = None,
     exclude_chapter_id: str | None = None,
@@ -1212,7 +1213,8 @@ def teacher_catalog_search_index_diagnostics() -> dict[str, Any]:
             "desired_mapping_version": TEACHER_CATALOG_SEARCH_INDEX_MAPPING_VERSION,
             "analyzer": settings.teacher_catalog_search_analyzer,
             "local_fallback": settings.teacher_catalog_search_local_fallback,
-            "analyzer_assets": video_library_analyzer_assets(),
+            "analyzer_assets": chemistry_analyzer_assets(),
+            "dictionary_assets": chemistry_vocabulary_metadata(),
         },
         "postgres": {
             "migration_available": migration_available,
@@ -1223,3 +1225,99 @@ def teacher_catalog_search_index_diagnostics() -> dict[str, Any]:
         },
         "elasticsearch": es,
     }
+
+
+def diagnose_teacher_catalog_search(*, query: str, limit: int = 10) -> dict[str, Any]:
+    """Expose the teacher-owned catalog retrieval plan without reviving the student ES projection."""
+
+    normalized_limit = max(1, min(int(limit or 10), 50))
+    terms = chemistry_query_terms(query)
+    payload = build_teacher_catalog_search_payload(
+        query=query,
+        chapter_id=None,
+        status_filter="all",
+        limit=normalized_limit,
+    )
+    search = search_teacher_catalog_nodes(
+        query=query,
+        chapter_id=None,
+        status_filter="all",
+        limit=normalized_limit,
+    )
+    meta = search.get("meta") if isinstance(search.get("meta"), dict) else {}
+    backend = str(meta.get("backend") or "unavailable")
+    if backend == "elasticsearch":
+        diagnostic_status = "ok"
+    elif backend in {"postgres_fallback", "none"}:
+        diagnostic_status = "fallback"
+    else:
+        diagnostic_status = "error"
+
+    route_labels = {
+        "text": "目录文本",
+        "chemistry_synonym_text": "同义词与化学词",
+        "structured_formulae": "化学式结构",
+        "structured_title_formulae": "标题化学式",
+        "structured_strict_aliases": "严格同义词",
+        "structured_reactants": "反应物",
+        "structured_products": "生成物",
+        "structured_participants": "反应参与物",
+        "structured_equation_formula_pairs": "方程式组合",
+        "structured_annotation_formulae": "标注化学式",
+        "structured_condition_tags": "反应条件",
+        "structured_phenomenon_tags": "实验现象",
+        "structured_property_tags": "物质性质",
+    }
+    routes: list[dict[str, Any]] = []
+    bool_query = ((payload.get("query") or {}).get("bool") or {}) if isinstance(payload, dict) else {}
+    for clause in bool_query.get("should") or []:
+        if not isinstance(clause, dict):
+            continue
+        multi_match = clause.get("multi_match") if isinstance(clause.get("multi_match"), dict) else None
+        terms_clause = clause.get("terms") if isinstance(clause.get("terms"), dict) else None
+        name = str((multi_match or {}).get("_name") or (terms_clause or {}).get("_name") or "").strip()
+        if not name:
+            continue
+        routes.append(
+            {
+                "name": name,
+                "label": route_labels.get(name, name.removeprefix("structured_").replace("_", " ")),
+                "fields": list((multi_match or {}).get("fields") or []),
+                "enabled": True,
+            }
+        )
+
+    results: list[dict[str, Any]] = []
+    for rank, item in enumerate(search.get("items") or [], start=1):
+        if not isinstance(item, dict):
+            continue
+        match = item.get("search_match") if isinstance(item.get("search_match"), dict) else {}
+        field_label = str(match.get("field_label") or "").strip()
+        results.append(
+            {
+                "rank": rank,
+                "id": str(item.get("node_id") or item.get("id") or ""),
+                "title": str(item.get("title") or "未命名目录点位"),
+                "subtitle": str(item.get("breadcrumb_path") or item.get("summary") or ""),
+                "score": match.get("score"),
+                "matched_routes": [field_label] if field_label else [],
+                "formulae": [],
+                "condition_tags": [],
+                "phenomenon_tags": [],
+                "property_tags": [],
+            }
+        )
+
+    response: dict[str, Any] = {
+        "query": query,
+        "status": diagnostic_status,
+        "backend": backend,
+        "index": meta.get("index"),
+        "query_plan": {"terms": terms, "routes": routes},
+        "payload": payload,
+        "results": results,
+        "total": meta.get("total", len(results)),
+    }
+    if diagnostic_status == "error":
+        response["error"] = str(meta.get("fallback_reason") or "Teacher catalog search is unavailable")
+    return response

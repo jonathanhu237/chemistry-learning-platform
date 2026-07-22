@@ -38,7 +38,7 @@ function reportSourceLabel(source: string): string {
 function experimentMeta(experiment: ReportRecord, report: StudentAssessmentReport): string {
   const points = asRecordArray(experiment.points);
   if (report.report_type === "pretest") return "课前摸底";
-  if (report.report_type === "custom") return `自选实验 · 点位 ${points.length}`;
+  if (report.report_type === "custom") return `自选范围 · 点位 ${points.length}`;
   if (report.report_type === "point") return `点位测评 · ${points.length} 个点位`;
   const source = stringValue(experiment.source);
   if (source === "untested") return `未测点位 · ${points.length} 个`;
@@ -102,8 +102,8 @@ export function AssessmentReportPanel({ report, onContinue }: { report: StudentA
       {report.report_type === "pretest" ? null : (
         <section className="summary-grid smart-composition-grid">
           <div>
-            <span>{report.report_type === "point" ? "测评点位" : report.report_type === "custom" ? "自选实验" : "未测点位"}</span>
-            <strong>{report.report_type === "custom" ? experiments.length : report.report_type === "point" ? selectedPointCount : untestedQuestionCount}</strong>
+            <span>{report.report_type === "point" ? "测评点位" : report.report_type === "custom" ? "自选点位" : "未测点位"}</span>
+            <strong>{report.report_type === "custom" || report.report_type === "point" ? selectedPointCount : untestedQuestionCount}</strong>
             <small>{report.report_type === "smart" ? `目标占比 ${untestedRatio}%` : "本轮选择范围"}</small>
           </div>
           <div>
@@ -135,7 +135,7 @@ export function AssessmentReportPanel({ report, onContinue }: { report: StudentA
 
       {experiments.length ? (
         <section className="detail-section">
-          <h3>本轮组卷实验</h3>
+          <h3>本轮覆盖实验</h3>
           <div className="learned-list">
             {experiments.map((experiment, index) => (
               <div key={recordKey(experiment, `experiment-${index}`)}>

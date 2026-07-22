@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FlaskConical, LoaderCircle, Search } from "lucide-react";
+import { FlaskConical, LoaderCircle } from "lucide-react";
 import { StudentLearningPageResponse, errorMessage, getStudentLearningPage } from "../../api";
 import { LearningState } from "../../shared/mobile/LearningState";
 import { PeriodicTable } from "../periodic-table/PeriodicTable";
@@ -38,10 +38,8 @@ function findProfileForElement(element: PeriodicElementSearchMeta, profiles: Lea
 }
 
 export function LearningEntryPanel({
-  onOpenSearch,
   onSelectProfile,
 }: {
-  onOpenSearch: () => void;
   onSelectProfile: (profile: LearningProfileSummary, options?: LearningProfileSelectOptions) => void;
 }) {
   const [page, setPage] = useState<StudentLearningPageResponse | null>(null);
@@ -88,10 +86,6 @@ export function LearningEntryPanel({
       {error ? <LearningState icon={<FlaskConical size={23} />} text={error} /> : null}
       {!loading && !error ? (
         <>
-          <button className="learning-global-search-entry" type="button" aria-label="搜索全章节内容" onClick={onOpenSearch}>
-            <Search size={18} />
-            <span>搜目录、实验现象、试剂、点位</span>
-          </button>
           <PeriodicTable
             onSelectArea={(areaId, triggerElement) => {
               if (selectedArea === areaId && areaAnchorElement === triggerElement) {

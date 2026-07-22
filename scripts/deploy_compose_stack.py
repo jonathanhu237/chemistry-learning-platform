@@ -15,13 +15,12 @@ DEFAULT_SERVICES = [
     "backend",
     "web-student",
     "web-teacher",
-    "web-admin",
     "postgres",
     "elasticsearch",
     "tusd",
     "video-worker",
+    "textbook-ingestion-worker",
 ]
-LEGACY_SERVICES = ["web-student-old", "web-teacher-old"]
 
 
 def _run(command: list[str]) -> None:
@@ -43,31 +42,38 @@ def main() -> None:
     parser.add_argument("--skip-build", action="store_true", help="Reuse existing images instead of rebuilding.")
     parser.add_argument("--keep-orphans", action="store_true", help="Do not remove obsolete Compose service containers.")
     parser.add_argument("--skip-smoke", action="store_true", help="Skip post-deploy Compose smoke validation.")
-    parser.add_argument("--skip-index-rebuild", action="store_true", help="Skip video-library index rebuild during smoke.")
-    parser.add_argument("--include-legacy", action="store_true", help="Also start and smoke-test the legacy competition frontend services.")
+    parser.add_argument("--skip-index-rebuild", action="store_true", help="Skip teacher catalog index rebuild during smoke.")
+    parser.add_argument(
+        "--gpu",
+        action="store_true",
+        help="Enable the NVIDIA GPU override from docker-compose.gpu.yml for video-worker.",
+    )
     args = parser.parse_args()
 
-    _run(["docker", "compose", "config", "--quiet"])
+    compose_command = ["docker", "compose"]
+    if args.gpu:
+        compose_command.extend(["-f", "docker-compose.yml", "-f", "docker-compose.gpu.yml"])
 
-    up_command = ["docker", "compose"]
+    _run([*compose_command, "config", "--quiet"])
+
+    up_command = list(compose_command)
     up_command.extend(["up", "-d"])
     if not args.skip_build:
         up_command.append("--build")
     if not args.keep_orphans:
         up_command.append("--remove-orphans")
-    services = [*DEFAULT_SERVICES, *(LEGACY_SERVICES if args.include_legacy else [])]
-    up_command.extend(services)
+    up_command.extend(DEFAULT_SERVICES)
     _run(up_command)
 
     if not args.skip_smoke:
         smoke_command = [sys.executable, "scripts/validate_compose_stack.py", "--skip-up"]
+        if args.gpu:
+            smoke_command.append("--gpu")
         if args.skip_index_rebuild:
             smoke_command.append("--skip-index-rebuild")
-        if args.include_legacy:
-            smoke_command.append("--include-legacy")
         _run(smoke_command)
 
-    _run(["docker", "compose", "ps"])
+    _run([*compose_command, "ps"])
 
 
 if __name__ == "__main__":

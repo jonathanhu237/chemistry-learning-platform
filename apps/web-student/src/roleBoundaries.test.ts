@@ -11,7 +11,6 @@ import previewInputRuntimeSource from "./app/preview/input/PreviewInputRuntime.t
 import periodicTableSource from "./features/periodic-table/PeriodicTable.tsx?raw";
 import pointVideoPlayerSource from "./features/catalog/PointVideoPlayer.tsx?raw";
 import homeRootPageSource from "./routes/home/HomeRootPage.tsx?raw";
-import unifiedSearchSource from "./routes/search/UnifiedSearchPage.tsx?raw";
 import backArrowIconSource from "./shared/mobile/BackArrowIcon.tsx?raw";
 import pagebarSource from "./shared/mobile/PageBar.tsx?raw";
 import studentPackageSource from "../package.json?raw";
@@ -144,8 +143,7 @@ describe("student console role boundaries", () => {
 
     expect(authenticatedAppLayoutSource).toContain('window.addEventListener("scroll", handleScroll, { passive: true });');
     expect(authenticatedAppLayoutSource).toContain('effectiveNavCompressed ? "nav-compressed" : ""');
-    expect(authenticatedAppLayoutSource).toContain('homeChromeOverlayLock === "compressed"');
-    expect(authenticatedAppLayoutSource).toContain('homeChromeOverlayLock !== "expanded"');
+    expect(authenticatedAppLayoutSource).not.toContain("homeChromeOverlayLock");
     expect(authenticatedAppLayoutSource).not.toMatch(/addEventListener\("touchmove"|addEventListener\("wheel"/);
     expect(authenticatedAppLayoutSource).not.toContain("preventDefault");
     expect(authenticatedAppLayoutSource).not.toContain("window.scrollBy");
@@ -155,7 +153,7 @@ describe("student console role boundaries", () => {
     expect(appShellCssSource).not.toContain("animation-range");
     expect(appShellCssSource).not.toContain("@keyframes home-title-scroll-away");
     expect(appShellCssSource).not.toContain("--home-title-height");
-    expect(appShellCssSource).toContain("--home-app-header-height: 88px;");
+    expect(appShellCssSource).toContain("--home-app-header-height: calc(58px + env(safe-area-inset-top, 0px));");
     expect(homeHeaderBlock).toContain("position: fixed;");
     expect(homeHeaderBlock).toContain("top: 0;");
     expect(homeHeaderBlock).toContain("width: min(100%, var(--mobile-content-max));");
@@ -516,19 +514,11 @@ describe("student console role boundaries", () => {
     const homeVideoBodyBlock = appShellCssSource.match(/\.home-video-body\s*\{[^}]*\}/)?.[0] || "";
     const homeVideoTextButtonBlock = appShellCssSource.match(/\.home-video-text-button\s*\{[^}]*\}/)?.[0] || "";
     const homeVideoMetadataBlock = appShellCssSource.match(/\.home-video-metadata\s*\{[^}]*white-space: nowrap;[^}]*\}/)?.[0] || "";
-    const homeVideoOverflowTriggerBlock = appShellCssSource.match(/\.home-video-overflow-trigger\s*\{[^}]*width: 40px;[^}]*\}/)?.[0] || "";
+    const homeFeedSearchBlock = appShellCssSource.match(/\.home-feed-search\s*\{[^}]*\}/)?.[0] || "";
     const homeVideoMediaBlock = appShellCssSource.match(/\.home-video-media\s*\{[^}]*\}/)?.[0] || "";
     const homeVideoInactiveProgressBlock = appShellCssSource.match(/\.home-video-inactive-progress\s*\{[^}]*\}/)?.[0] || "";
-    const homeVideoOverlayRouteContentBlock = appShellCssSource.match(/\.student-route-content:has\(\.home-video-overflow-backdrop\)\s*\{[^}]*\}/)?.[0] || "";
-    const homeChromeOverlayHeaderBlock =
-      appShellCssSource.match(/\.student-app-shell\.root-route\.root-home\.home-chrome-overlay-expanded \.student-app-header\s*\{[^}]*\}/)?.[0] || "";
-    const homeChromeOverlayBackdropBlock =
-      appShellCssSource.match(/\.student-app-shell\.root-route\.root-home\.home-chrome-overlay-expanded \.home-video-overflow-backdrop\s*\{[^}]*\}/)?.[0] || "";
-    const pointLearningOverlayRouteContentBlock = appShellCssSource.match(/\.student-route-content:has\(\.point-learning-more-backdrop\)\s*\{[^}]*\}/)?.[0] || "";
     const pointLearningMainRowBlock = experimentsCssSource.match(/\.point-learning-main-row\s*\{[^}]*\}/)?.[0] || "";
     const pointLearningUtilityRowBlock = experimentsCssSource.match(/\.point-learning-utility-row\s*\{[^}]*\}/)?.[0] || "";
-    const pointLearningMoreBackdropBlock = experimentsCssSource.match(/\.point-learning-more-backdrop\s*\{[^}]*\}/)?.[0] || "";
-    const pointLearningMoreSheetBlock = experimentsCssSource.match(/\.point-learning-more-sheet\s*\{[^}]*\}/)?.[0] || "";
     const catalogPointDetailSource = routeAndFeatureSources["./features/catalog/CatalogPointDetailPanel.tsx"] || "";
 
     expect(homeRootPageSource).not.toContain("home-video-open-action");
@@ -541,9 +531,18 @@ describe("student console role boundaries", () => {
     expect(homeRootPageSource).not.toContain("<MoreHorizontal");
     expect(homeRootPageSource).not.toContain("<VolumeX");
     expect(homeRootPageSource).not.toContain("<Volume2");
-    expect(homeRootPageSource).toContain("<MoreVertical");
-    expect(homeRootPageSource).toContain("home-video-overflow-trigger");
-    expect(homeRootPageSource).toContain("home-video-overflow-sheet");
+    expect(homeRootPageSource).not.toContain("<MoreVertical");
+    expect(homeRootPageSource).not.toContain("home-video-overflow-trigger");
+    expect(homeRootPageSource).not.toContain("home-video-overflow-sheet");
+    expect(homeRootPageSource).not.toContain("watch_later");
+    expect(homeRootPageSource).not.toContain("not-interested");
+    expect(homeRootPageSource).not.toContain("navigator.share");
+    expect(homeRootPageSource).toContain('role="search"');
+    expect(homeRootPageSource).toContain("home-feed-search-clear");
+    expect(homeRootPageSource).toContain("home-feed-result-summary");
+    expect(homeRootPageSource).toContain("home-feed-pagination");
+    expect(homeRootPageSource).toContain('item.reason === "recommended"');
+    expect(homeRootPageSource).toContain("home-video-recommendation-badge");
     expect(homeRootPageSource).toContain("home-video-inactive-progress");
     expect(homeRootPageSource).not.toContain("home-video-mute-toggle");
     expect(homeRootPageSource).not.toContain("home-video-preview-state");
@@ -554,7 +553,7 @@ describe("student console role boundaries", () => {
     expect(homeRootPageSource).not.toContain("home-video-avatar");
     expect(homeRootPageSource).not.toContain("home-video-channel");
     expect(homeRootPageSource).not.toContain("搜索相关");
-    expect(homeRootPageSource).not.toContain("onSearch");
+    expect(homeRootPageSource).toContain("submitSearch");
     expect(appShellCssSource).not.toContain(".home-video-actions");
     expect(appShellCssSource).not.toContain(".home-video-icon-action");
     expect(appShellCssSource).not.toContain(".home-video-badges");
@@ -566,30 +565,29 @@ describe("student console role boundaries", () => {
     expect(homeVideoMediaBlock).toContain("--student-video-progress-played: linear-gradient");
     expect(homeVideoInactiveProgressBlock).toContain("height: 2px;");
     expect(homeVideoInactiveProgressBlock).toContain("background: var(--student-video-progress-track);");
-    expect(homeVideoBodyBlock).toContain("grid-template-columns: minmax(0, 1fr) 40px;");
+    expect(homeVideoBodyBlock).toContain("display: block;");
+    expect(homeFeedSearchBlock).toContain("grid-template-columns: minmax(0, 1fr) auto;");
     expect(homeVideoTextButtonBlock).toContain("cursor: pointer;");
     expect(homeVideoTextButtonBlock).toContain("text-align: left;");
     expect(homeVideoMetadataBlock).toContain("white-space: nowrap;");
     expect(homeVideoMetadataBlock).toContain("text-overflow: ellipsis;");
     expect(homeVideoMetadataBlock).not.toContain("background:");
     expect(homeVideoMetadataBlock).not.toContain("border-radius:");
-    expect(homeVideoOverflowTriggerBlock).toContain("width: 40px;");
-    expect(homeVideoOverflowTriggerBlock).toContain("min-height: 40px;");
-    expect(homeVideoOverlayRouteContentBlock).toContain("z-index: calc(var(--mobile-z-floating) + 16);");
-    expect(authenticatedAppLayoutSource).toContain('"home-chrome-overlay-expanded"');
-    expect(homeChromeOverlayHeaderBlock).toContain("z-index: calc(var(--mobile-z-floating) + 18);");
-    expect(homeChromeOverlayBackdropBlock).toContain("top: var(--home-app-header-height);");
-    expect(pointLearningOverlayRouteContentBlock).toContain("z-index: calc(var(--mobile-z-floating) + 16);");
+    expect(authenticatedAppLayoutSource).not.toContain("homeVideoTopic");
+    expect(authenticatedAppLayoutSource).not.toContain("home-video-topic-rail");
+    expect(authenticatedAppLayoutSource).not.toContain("home-chrome-overlay-expanded");
     expect(experimentsCssSource).not.toContain(".point-title-actions");
     expect(experimentsCssSource).not.toContain(".point-title-action-row");
-    expect(experimentsCssSource).not.toContain(".point-learning-more-panel");
+    expect(experimentsCssSource).not.toContain(".point-learning-more-");
     expect(pointLearningMainRowBlock).toContain("grid-template-columns: minmax(0, 1.14fr) minmax(0, 1fr);");
-    expect(pointLearningUtilityRowBlock).toContain("grid-template-columns: repeat(4, minmax(0, 1fr));");
-    expect(pointLearningMoreBackdropBlock).toContain("position: fixed;");
-    expect(pointLearningMoreSheetBlock).toContain("border-radius: 16px 16px 0 0;");
-    expect(catalogPointDetailSource).toContain("PointLearningMoreSheet");
-    expect(catalogPointDetailSource).toContain("稍后学习");
-    expect(catalogPointDetailSource).toContain("反馈问题");
+    expect(pointLearningUtilityRowBlock).toContain("display: flex;");
+    expect(pointLearningUtilityRowBlock).toContain("justify-content: flex-end;");
+    expect(catalogPointDetailSource).not.toContain("PointLearningMoreSheet");
+    expect(catalogPointDetailSource).not.toContain("稍后学习");
+    expect(catalogPointDetailSource).not.toContain("反馈问题");
+    expect(catalogPointDetailSource).not.toContain("ThumbsUp");
+    expect(catalogPointDetailSource).not.toContain("Share2");
+    expect(catalogPointDetailSource).toContain('saveStudentVideo("favorite"');
   });
 
   it("locks the student periodic learning taxonomy without the removed combined area", () => {
@@ -762,10 +760,8 @@ describe("student console role boundaries", () => {
     const { readFileSync } = await import("node:fs");
     const cwd = (globalThis as unknown as { process: { cwd: () => string } }).process.cwd();
     const appShellCssSource = readFileSync(`${cwd}/src/styles/app-shell.css`, "utf8");
-    const learningCssSource = readFileSync(`${cwd}/src/styles/learning.css`, "utf8");
     const pagebarButtonBlock = appShellCssSource.match(/\.pagebar \.icon-action\s*\{[^}]*\}/)?.[0] || "";
     const pagebarBlock = appShellCssSource.match(/\.pagebar\s*\{[^}]*minmax\(0, 1fr\)[^}]*\}/)?.[0] || "";
-    const searchBackBlock = learningCssSource.match(/\.unified-search-back\s*\{[^}]*\}/)?.[0] || "";
 
     expect(backArrowIconSource).toContain('studentBackArrowViewBox = "0 0 24 24"');
     expect(backArrowIconSource).toContain(
@@ -781,17 +777,12 @@ describe("student console role boundaries", () => {
     expect(backArrowIconSource).not.toMatch(/base64|\\.png|\\.jpg|\\.jpeg|\\.webp/i);
     expect(pagebarSource).toContain("BackArrowIcon");
     expect(pagebarSource).not.toContain("ArrowLeft");
-    expect(unifiedSearchSource).toContain("VideoLibraryPage");
-    expect(unifiedSearchSource).not.toContain("ArrowLeft");
     expect(pagebarBlock).toContain("grid-template-columns: 38px minmax(0, 1fr);");
     expect(pagebarBlock).toContain("gap: 4px;");
     expect(pagebarButtonBlock).toContain("width: 44px;");
     expect(pagebarButtonBlock).toContain("height: 44px;");
     expect(appShellCssSource).toContain("margin-left: 12px;");
     expect(pagebarButtonBlock).toContain("transform: translateX(-8px);");
-    expect(searchBackBlock).toContain("width: 44px;");
-    expect(searchBackBlock).toContain("height: 44px;");
-    expect(searchBackBlock).toContain("transform: translateX(-8px);");
 
     [
       "routes/learn/LearningAreaPage.tsx",
@@ -809,12 +800,8 @@ describe("student console role boundaries", () => {
       expect(source).not.toContain("ChevronLeft");
     });
 
-    expect(routeAndFeatureSources["./routes/search/UnifiedSearchPage.tsx"]).toContain("VideoLibraryPage");
-    expect(routeAndFeatureSources["./routes/search/UnifiedSearchPage.tsx"]).not.toContain("DetailPageFrame");
-    expect(routeAndFeatureSources["./routes/video-library/VideoLibraryPage.tsx"]).toContain("BackArrowIcon");
-    expect(routeAndFeatureSources["./routes/video-library/VideoLibraryPage.tsx"]).not.toContain("DetailPageFrame");
-    expect(routeAndFeatureSources["./routes/video-library/VideoLibraryPage.tsx"]).not.toContain("ArrowLeft");
-    expect(routeAndFeatureSources["./routes/video-library/VideoLibraryPage.tsx"]).not.toContain("ChevronLeft");
+    expect(routeAndFeatureSources["./routes/search/UnifiedSearchPage.tsx"]).toBeUndefined();
+    expect(routeAndFeatureSources["./routes/video-library/VideoLibraryPage.tsx"]).toBeUndefined();
     expect(routeAndFeatureSources["./routes/learn/ExperimentPointPage.tsx"]).toContain("CatalogPointDetailPanel");
     expect(routeAndFeatureSources["./routes/learn/ExperimentPointPage.tsx"]).not.toContain("DetailPageFrame");
   });

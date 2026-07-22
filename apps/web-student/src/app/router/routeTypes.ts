@@ -1,6 +1,6 @@
 import type { StudentSmartAssessmentReport, StudentSmartAssessmentResponse } from "../../api";
 
-export type ViewState = "checking" | "login" | "password" | "pretest-loading" | "pretest-error" | "pretest" | "home";
+export type ViewState = "checking" | "login" | "password" | "baseline" | "home";
 
 export type ChapterLearningView = "facts" | "experiments";
 
@@ -11,8 +11,6 @@ export type StudentDetailSource =
   | "chapter"
   | "element"
   | "point"
-  | "search"
-  | "video-library"
   | "assessment-custom"
   | "assessment-session"
   | "assessment-report"
@@ -32,7 +30,6 @@ export type StudentRouteSearch = {
   chapterView?: ChapterLearningView;
   pointTitle?: string;
   catalogPath?: string;
-  q?: string;
 };
 
 export type StoredPosttestSession = StudentSmartAssessmentResponse;
@@ -58,6 +55,5 @@ export function parseStudentRouteSearch(search: Record<string, unknown>): Studen
     chapterView: chapterView === "facts" || chapterView === "experiments" ? chapterView : undefined,
     pointTitle: optionalString(search.pointTitle),
     catalogPath: optionalString(search.catalogPath),
-    q: optionalString(search.q),
   };
 }

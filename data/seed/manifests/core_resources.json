@@ -364,7 +364,7 @@
     },
     {
       "id": "chemical_search_aliases",
-      "role": "Chemistry-aware video-library search formula alias dictionary",
+      "role": "Chemistry-aware teacher catalog search formula alias dictionary",
       "path": "data/seed/search/chemical_aliases.json",
       "source_path": "data/seed/search/chemical_aliases.json",
       "required": true,
@@ -374,7 +374,7 @@
     },
     {
       "id": "chemical_search_stopwords",
-      "role": "Chemistry-aware video-library search domain stopword list",
+      "role": "Chemistry-aware teacher catalog search domain stopword list",
       "path": "data/seed/search/chemical_stopwords.txt",
       "source_path": "data/seed/search/chemical_stopwords.txt",
       "required": true,

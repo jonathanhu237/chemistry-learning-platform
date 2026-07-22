@@ -4,7 +4,7 @@ import json
 import math
 from collections import defaultdict
 from dataclasses import replace
-from typing import Any
+from typing import Any, Literal, cast
 
 from sqlalchemy import text
 
@@ -16,19 +16,29 @@ from server.app.domains.assessments.posttest import (
     _experiment_summary_from_row,
     _json,
     _json_array,
+    _load_locked_session_questions,
     _load_experiment_summaries,
-    _load_questions_by_ids,
     _mastery_average,
     _mastery_changes,
+    _candidate_from_question_snapshot,
+    _question_snapshot,
+    _question_snapshots,
+    _question_type_from_value,
     _question_canonical_point_ids,
     _question_ids,
     _question_point_node_ids,
     _question_source_placement_node_ids,
     _session_experiment_ids,
+    _session_experiment_summaries,
     _session_question_ids,
     _stable_hash,
 )
-from server.app.domains.assessments.pretest import _ensure_student_row, _load_student_context
+from server.app.domains.assessments.student_context import (
+    ensure_student_row as _ensure_student_row,
+    load_student_context as _load_student_context,
+    require_completed_smart_baseline as _require_completed_smart_baseline,
+    student_has_completed_smart_baseline as _student_has_completed_smart_baseline,
+)
 from server.app.domains.assessments.student_experiment import _grade_answer
 from server.app.domains.errors import DomainHTTPException as HTTPException, domain_status as status
 from server.app.domains.platform.settings import CustomAssessmentSettings, SmartAssessmentSettings, get_learning_behavior_settings
@@ -36,8 +46,9 @@ from server.app.domains.roster.classes import require_class_access
 from server.app.infrastructure.database import db_session
 from server.app.mastery import update_mastery
 from server.app.student_smart_assessment_schemas import (
-    CustomAssessmentExperimentOption,
+    AssessmentMode,
     CustomAssessmentOptionsSettings,
+    CustomAssessmentScopeNode,
     CustomAssessmentSettingsResponse,
     PublicSmartAssessmentQuestion,
     StudentAssessmentStatusResponse,
@@ -58,8 +69,8 @@ from server.app.student_smart_assessment_schemas import (
 )
 
 CUSTOM_QUESTION_COUNT_OPTIONS = [5, 10, 15, 20]
+CUSTOM_QUESTIONS_PER_POINT_OPTIONS: list[Literal[1, 2, 3]] = [1, 2, 3]
 POINT_ASSESSMENT_TARGET_COUNT = 3
-SMART_BASELINE_PROMPT_DISMISSED_EVENT = "smart_baseline_prompt_dismissed"
 ASSESSMENT_SOURCE_VALUES = {"measured", "untested", "custom", "point"}
 
 _CREATE_SMART_ASSESSMENT_SQL = """
@@ -159,12 +170,17 @@ def _custom_settings_from_value(value: Any, fallback: CustomAssessmentSettings |
 
 
 def _custom_options_settings(settings: CustomAssessmentSettings) -> CustomAssessmentOptionsSettings:
+    default_questions_per_point: Literal[1, 2, 3]
+    if settings.max_questions_per_experiment <= 1:
+        default_questions_per_point = 1
+    elif settings.max_questions_per_experiment == 2:
+        default_questions_per_point = 2
+    else:
+        default_questions_per_point = 3
     return CustomAssessmentOptionsSettings(
         enabled=settings.enabled,
-        question_count_options=[option for option in CUSTOM_QUESTION_COUNT_OPTIONS if option <= settings.max_question_count],
-        default_question_count=settings.default_question_count,
-        max_question_count=settings.max_question_count,
-        max_questions_per_experiment=settings.max_questions_per_experiment,
+        questions_per_point_options=CUSTOM_QUESTIONS_PER_POINT_OPTIONS,
+        default_questions_per_point=default_questions_per_point,
     )
 
 
@@ -602,9 +618,36 @@ def _load_open_session(session: Any, student_id: str) -> dict[str, Any] | None:
     return dict(row) if row else None
 
 
-def _assessment_mode_from_value(value: Any) -> str:
+def _lock_student_assessment_owner(session: Any, student_id: str) -> None:
+    session.execute(
+        text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
+        {"lock_key": f"student-smart-assessment:{student_id}"},
+    )
+
+
+def _load_assessment_session_for_submit(session: Any, *, student_id: str, session_id: str) -> dict[str, Any] | None:
+    row = (
+        session.execute(
+            text(
+                """
+                SELECT *
+                FROM student_smart_assessment_sessions
+                WHERE id = CAST(:session_id AS uuid)
+                  AND student_id = :student_id
+                FOR UPDATE
+                """
+            ),
+            {"session_id": session_id, "student_id": student_id},
+        )
+        .mappings()
+        .first()
+    )
+    return dict(row) if row else None
+
+
+def _assessment_mode_from_value(value: Any) -> AssessmentMode:
     mode = str(value or "smart")
-    return mode if mode in {"smart", "custom", "point"} else "smart"
+    return cast(AssessmentMode, mode) if mode in {"smart", "custom", "point"} else "smart"
 
 
 def _attempt_kind_for_assessment_mode(assessment_mode: str) -> str:
@@ -640,13 +683,16 @@ def _question_assessment_canonical_ids(question: PosttestQuestionCandidate) -> l
 
 
 def _public_question(question: PosttestQuestionCandidate) -> PublicSmartAssessmentQuestion:
+    question_type = _question_type_from_value(question.question_type)
+    if question_type is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Assessment question type is invalid")
     return PublicSmartAssessmentQuestion(
         id=question.id,
         experiment_id=question.experiment_id,
         experiment_title=question.experiment_title,
         point_node_ids=_question_assessment_point_ids(question),
         canonical_point_ids=_question_assessment_canonical_ids(question),
-        question_type=question.question_type,  # type: ignore[arg-type]
+        question_type=question_type,
         stem=question.stem,
         options=question.options,
         related_chapter_ids=question.related_chapter_ids,
@@ -753,6 +799,7 @@ def _load_point_info(
                 path.depth + 1
               FROM experiment_catalog_nodes parent
               JOIN path ON path.parent_id = parent.id
+              WHERE parent.status = 'published'
             ),
             point_rows AS (
               SELECT DISTINCT ON (point_node_id)
@@ -786,6 +833,9 @@ def _load_point_info(
               fe.title AS experiment_title
             FROM point_rows p
             JOIN root_rows r ON r.point_node_id = p.point_node_id
+            JOIN chapters c
+              ON c.id = r.root_chapter_id
+             AND COALESCE(c.content_status, 'published') = 'published'
             LEFT JOIN formal_experiments fe
               ON fe.metadata->>'catalog_root_node_id' = r.root_node_id
              AND fe.status = 'published'
@@ -841,45 +891,174 @@ def _point_backed_candidates(session: Any, candidates: list[PosttestQuestionCand
     return filtered
 
 
-def _custom_options_from_candidates(
-    session: Any,
-    candidates: list[PosttestQuestionCandidate],
-) -> list[CustomAssessmentExperimentOption]:
+def _candidate_question_counts_by_point(candidates: list[PosttestQuestionCandidate]) -> dict[str, int]:
     counts: dict[str, int] = {}
     for question in candidates:
-        counts[question.experiment_id] = counts.get(question.experiment_id, 0) + 1
-    experiment_ids = sorted(counts)
-    if not experiment_ids:
+        for point_id in _question_assessment_point_ids(question):
+            counts[point_id] = counts.get(point_id, 0) + 1
+    return counts
+
+
+def _custom_scope_tree_from_candidates(
+    session: Any,
+    candidates: list[PosttestQuestionCandidate],
+) -> list[CustomAssessmentScopeNode]:
+    point_counts = _candidate_question_counts_by_point(candidates)
+    point_ids = sorted(point_counts)
+    if not point_ids:
         return []
     rows = session.execute(
         text(
             """
-            SELECT id, code, title, metadata, display_order
-            FROM formal_experiments
-            WHERE id = ANY(:experiment_ids)
-              AND status = 'published'
-            ORDER BY display_order, code
+            WITH RECURSIVE path AS (
+              SELECT
+                n.id,
+                n.parent_id,
+                n.node_kind,
+                n.title,
+                n.chapter_id,
+                n.display_order
+              FROM experiment_catalog_nodes n
+              WHERE n.id = ANY(:point_ids)
+                AND n.node_kind = 'point'
+                AND n.status = 'published'
+              UNION
+              SELECT
+                parent.id,
+                parent.parent_id,
+                parent.node_kind,
+                parent.title,
+                parent.chapter_id,
+                parent.display_order
+              FROM experiment_catalog_nodes parent
+              JOIN path child ON child.parent_id = parent.id
+              WHERE parent.status = 'published'
+            )
+            SELECT DISTINCT
+              path.id,
+              path.parent_id,
+              path.node_kind,
+              path.title,
+              path.chapter_id,
+              path.display_order,
+              c.chapter_number,
+              c.chapter_title
+            FROM path
+            JOIN chapters c
+              ON c.id = path.chapter_id
+             AND COALESCE(c.content_status, 'published') = 'published'
+            ORDER BY c.chapter_number, c.chapter_title, path.display_order, path.title, path.id
             """
         ),
-        {"experiment_ids": experiment_ids},
+        {"point_ids": point_ids},
     ).mappings()
-    options: list[CustomAssessmentExperimentOption] = []
+    nodes: dict[str, dict[str, Any]] = {}
+
+    def chapter_node_id(chapter_id: str) -> str:
+        return f"chapter:{chapter_id}"
+
     for row in rows:
-        metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
-        question_count = counts.get(str(row["id"]), 0)
-        if question_count <= 0:
-            continue
-        options.append(
-            CustomAssessmentExperimentOption(
-                id=str(row["id"]),
-                code=str(row.get("code") or ""),
-                title=str(row.get("title") or row["id"]),
-                parent_code=str(metadata.get("parent_code")) if metadata.get("parent_code") else None,
-                parent_title=str(metadata.get("parent_title")) if metadata.get("parent_title") else None,
-                question_count=question_count,
+        chapter_id = str(row["chapter_id"])
+        chapter_id_value = chapter_node_id(chapter_id)
+        nodes.setdefault(
+            chapter_id_value,
+            {
+                "id": chapter_id_value,
+                "title": str(row.get("chapter_title") or chapter_id),
+                "kind": "chapter",
+                "parent_id": None,
+                "display_order": int(row.get("chapter_number") or 0),
+                "question_count": 0,
+                "children": [],
+            },
+        )
+        node_id = str(row["id"])
+        node_kind = "point" if str(row.get("node_kind")) == "point" else "directory"
+        nodes[node_id] = {
+            "id": node_id,
+            "title": str(row.get("title") or node_id),
+            "kind": node_kind,
+            "parent_id": str(row["parent_id"]) if row.get("parent_id") else chapter_id_value,
+            "display_order": int(row.get("display_order") or 0),
+            "question_count": point_counts.get(node_id, 0) if node_kind == "point" else 0,
+            "children": [],
+        }
+
+    for node in list(nodes.values()):
+        parent_id = node.get("parent_id")
+        if parent_id and parent_id in nodes:
+            nodes[parent_id]["children"].append(node)
+
+    def normalize(node: dict[str, Any]) -> int:
+        if node["kind"] == "point":
+            return int(node.get("question_count") or 0)
+        children = node.get("children") or []
+        children.sort(
+            key=lambda item: (
+                int(item.get("display_order") or 0),
+                str(item.get("title") or ""),
+                str(item.get("id") or ""),
             )
         )
-    return options
+        kept_children = [child for child in children if normalize(child) > 0]
+        node["children"] = kept_children
+        node["question_count"] = sum(int(child.get("question_count") or 0) for child in kept_children)
+        return int(node["question_count"])
+
+    def to_schema(node: dict[str, Any]) -> CustomAssessmentScopeNode:
+        return CustomAssessmentScopeNode(
+            id=str(node["id"]),
+            title=str(node["title"]),
+            kind=cast(Literal["chapter", "directory", "point"], node["kind"]),
+            parent_id=str(node["parent_id"]) if node.get("parent_id") else None,
+            question_count=int(node.get("question_count") or 0),
+            children=[to_schema(child) for child in node.get("children") or []],
+        )
+
+    roots = [node for node in nodes.values() if node.get("kind") == "chapter" and normalize(node) > 0]
+    roots.sort(
+        key=lambda item: (
+            int(item.get("display_order") or 0),
+            str(item.get("title") or ""),
+            str(item.get("id") or ""),
+        )
+    )
+    return [to_schema(node) for node in roots]
+
+
+def _scope_tree_node_map(nodes: list[CustomAssessmentScopeNode]) -> dict[str, CustomAssessmentScopeNode]:
+    result: dict[str, CustomAssessmentScopeNode] = {}
+
+    def walk(node: CustomAssessmentScopeNode) -> None:
+        result[node.id] = node
+        for child in node.children:
+            walk(child)
+
+    for node in nodes:
+        walk(node)
+    return result
+
+
+def _scope_leaf_point_ids(node: CustomAssessmentScopeNode) -> list[str]:
+    if node.kind == "point":
+        return [node.id] if node.question_count > 0 else []
+    return _unique([point_id for child in node.children for point_id in _scope_leaf_point_ids(child)])
+
+
+def _point_ids_for_scope_nodes(
+    scope_tree: list[CustomAssessmentScopeNode],
+    scope_node_ids: list[str],
+) -> tuple[list[str], list[str]]:
+    node_map = _scope_tree_node_map(scope_tree)
+    selected: list[str] = []
+    invalid: list[str] = []
+    for scope_id in _unique(scope_node_ids):
+        node = node_map.get(scope_id)
+        if not node:
+            invalid.append(scope_id)
+            continue
+        selected.extend(_scope_leaf_point_ids(node))
+    return _unique(selected), invalid
 
 
 def _ordered_experiment_ids(candidates: list[PosttestQuestionCandidate]) -> list[str]:
@@ -1250,100 +1429,84 @@ def _compose_questions(
 def _compose_custom_questions(
     *,
     candidates: list[PosttestQuestionCandidate],
-    selected_experiment_ids: list[str],
-    settings: CustomAssessmentSettings,
+    selected_point_ids: list[str],
     student_id: str,
-    requested_question_count: int,
+    questions_per_point: int,
 ) -> tuple[list[PosttestQuestionCandidate], SmartAssessmentCompositionSummary, dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
-    selected_set = set(selected_experiment_ids)
-    filtered = [question for question in candidates if question.experiment_id in selected_set]
+    selected_points = _unique(selected_point_ids)
+    selected_set = set(selected_points)
+    filtered = [
+        question
+        for question in candidates
+        if any(point_id in selected_set for point_id in _question_assessment_point_ids(question))
+    ]
     point_to_experiment = _point_experiment_map(filtered)
     pools = _ordered_point_pools(filtered, student_id=student_id, seed_namespace="custom-assessment")
-    points_by_experiment: dict[str, list[str]] = defaultdict(list)
-    for point_id, experiment_id in point_to_experiment.items():
-        if experiment_id in selected_set and point_id not in points_by_experiment[experiment_id]:
-            points_by_experiment[experiment_id].append(point_id)
-    for experiment_id, point_ids in list(points_by_experiment.items()):
-        points_by_experiment[experiment_id] = _stable_experiment_order(point_ids, f"{student_id}:custom-assessment:{experiment_id}")
-    order = [experiment_id for experiment_id in selected_experiment_ids if points_by_experiment.get(experiment_id)]
+    order = [point_id for point_id in selected_points if point_to_experiment.get(point_id) and pools.get(point_id)]
     used_questions: set[str] = set()
-    used_points: set[str] = set()
-    counts: dict[str, int] = {}
     selected: list[PosttestQuestionCandidate] = []
-    question_sources: dict[str, str] = {}
-    point_meta: dict[str, dict[str, Any]] = {}
-    experiment_meta: dict[str, dict[str, Any]] = {
-        experiment_id: {
+    available_question_counts = {point_id: len({question.id for question in pools.get(point_id, [])}) for point_id in order}
+    point_meta: dict[str, dict[str, Any]] = {
+        point_id: {
             "source": "custom",
             "draw_tickets": None,
             "question_count": 0,
-            "reason": "学生自主选择本轮要练习的实验",
+            "available_question_count": available_question_counts.get(point_id, 0),
+            "reason": "学生自主选择本轮要练习的点位",
         }
-        for experiment_id in order
+        for point_id in order
     }
-    target_count = min(requested_question_count, settings.max_question_count)
-    quota_by_experiment: dict[str, int] = {}
-    if order:
-        base = target_count // len(order)
-        remainder = target_count % len(order)
-        for index, experiment_id in enumerate(order):
-            quota_by_experiment[experiment_id] = base + (1 if index < remainder else 0)
-    for experiment_id in order:
-        _take_point_questions(
-            order=points_by_experiment.get(experiment_id, []),
-            pools=pools,
-            quota=quota_by_experiment.get(experiment_id, 0),
-            max_per_experiment=settings.max_questions_per_experiment,
-            point_to_experiment=point_to_experiment,
-            used_questions=used_questions,
-            used_points=used_points,
-            counts=counts,
-            selected=selected,
-            source="custom",
-            point_meta=point_meta,
-            question_sources=question_sources,
-        )
-    if len(selected) < target_count:
-        all_points = [point_id for experiment_id in order for point_id in points_by_experiment.get(experiment_id, [])]
-        _take_point_questions(
-            order=all_points,
-            pools=pools,
-            quota=target_count - len(selected),
-            max_per_experiment=settings.max_questions_per_experiment,
-            point_to_experiment=point_to_experiment,
-            used_questions=used_questions,
-            used_points=used_points,
-            counts=counts,
-            selected=selected,
-            source="custom",
-            point_meta=point_meta,
-            question_sources=question_sources,
-        )
+    target_count = len(order) * questions_per_point
+    for point_id in order:
+        taken = 0
+        for question in pools.get(point_id, []):
+            if taken >= questions_per_point:
+                break
+            if question.id in used_questions:
+                continue
+            selected.append(question)
+            used_questions.add(question.id)
+            point_meta[point_id]["question_count"] = int(point_meta[point_id].get("question_count") or 0) + 1
+            taken += 1
+
+    experiment_meta: dict[str, dict[str, Any]] = {}
     for question in selected:
         meta = experiment_meta.setdefault(
             question.experiment_id,
-            {"source": "custom", "draw_tickets": None, "question_count": 0, "reason": "学生自主选择本轮要练习的实验"},
+            {"source": "custom", "draw_tickets": None, "question_count": 0, "reason": "学生自主选择本轮要练习的点位"},
         )
         meta["question_count"] = int(meta.get("question_count") or 0) + 1
-    selected_experiments = {question.experiment_id for question in selected}
-    experiment_meta = {experiment_id: meta for experiment_id, meta in experiment_meta.items() if experiment_id in selected_experiments}
+
+    selected_question_counts = {
+        point_id: int((point_meta.get(point_id) or {}).get("question_count") or 0)
+        for point_id in order
+    }
+    underfilled_point_ids = [
+        point_id
+        for point_id in order
+        if selected_question_counts.get(point_id, 0) < questions_per_point
+    ]
     composition = SmartAssessmentCompositionSummary(
         total_questions=len(selected),
         target_question_count=target_count,
-        requested_question_count=requested_question_count,
-        selected_point_count=len({point_id for question in selected for point_id in _question_assessment_point_ids(question)}),
-        candidate_point_count=len(point_to_experiment),
+        requested_question_count=target_count,
+        selected_point_count=len(order),
+        candidate_point_count=len(selected_points),
         custom_question_count=len(selected),
-        max_questions_per_experiment=settings.max_questions_per_experiment,
+        max_questions_per_experiment=questions_per_point,
         warnings={
             "underfilled": len(selected) < target_count,
-            "selected_experiment_count": len(selected_experiment_ids),
+            "point_question_bank_underfilled": bool(underfilled_point_ids),
+            "selected_point_count": len(selected_points),
+            "questions_per_point": questions_per_point,
+            "underfilled_point_ids": underfilled_point_ids,
+            "available_question_counts": available_question_counts,
+            "selected_question_counts": selected_question_counts,
         },
     )
     return selected, composition, experiment_meta, {
         point_id: {**meta, "question_count": int(meta.get("question_count") or 0)}
         for point_id, meta in point_meta.items()
-        if point_id in used_points
     }
 
 
@@ -1528,7 +1691,10 @@ def _experiments_for_session(
     mastery_before: dict[str, Any],
     metadata: dict[str, Any],
 ) -> list[SmartAssessmentExperimentSummary]:
-    summaries = _load_experiment_summaries(session, experiment_ids)
+    summaries = _session_experiment_summaries(
+        session,
+        {"experiment_ids": experiment_ids, "metadata": metadata},
+    )
     meta = metadata.get("experiment_sources") if isinstance(metadata.get("experiment_sources"), dict) else {}
     point_source_meta = metadata.get("point_sources") if isinstance(metadata.get("point_sources"), dict) else {}
     total_point_counts = _experiment_total_point_counts(session, experiment_ids)
@@ -1554,7 +1720,7 @@ def _experiments_for_session(
                 mastery_score=float(mastery.get("mastery_score")) if mastery.get("mastery_score") is not None else None,
                 before_score=float(mastery.get("mastery_score")) if mastery.get("mastery_score") is not None else None,
                 evidence_count=int(mastery.get("evidence_count") or 0),
-                source=source,  # type: ignore[arg-type]
+                source=cast(Literal["measured", "untested", "custom", "point"], source),
                 draw_tickets=float(source_meta.get("draw_tickets")) if source_meta.get("draw_tickets") is not None else None,
                 question_count=int(source_meta.get("question_count") or 0),
                 reason=str(source_meta.get("reason")) if source_meta.get("reason") else None,
@@ -1578,7 +1744,7 @@ def _experiments_for_session(
                 parent_title=summary.parent_title,
                 mastery_score=round(sum(measured_scores) / len(measured_scores), 2) if measured_scores else None,
                 evidence_count=evidence_count,
-                source=source,  # type: ignore[arg-type]
+                source=cast(Literal["measured", "untested", "custom", "point"], source),
                 draw_tickets=float(source_meta.get("draw_tickets")) if source_meta.get("draw_tickets") is not None else None,
                 question_count=int(source_meta.get("question_count") or 0),
                 measured_point_count=sum(1 for point in points if point.evidence_count > 0),
@@ -1593,8 +1759,11 @@ def _experiments_for_session(
 
 def _response_for_session(session: Any, row: dict[str, Any]) -> StudentSmartAssessmentResponse:
     question_ids = _session_question_ids(row)
-    questions = _load_questions_by_ids(session, question_ids)
-    ordered_questions = [questions[question_id] for question_id in question_ids if question_id in questions]
+    ordered_questions = _load_locked_session_questions(
+        session,
+        row,
+        changed_detail="Smart assessment question bank has changed",
+    )
     strategy = _strategy_from_value(row.get("strategy_snapshot") if isinstance(row.get("strategy_snapshot"), dict) else {})
     mastery_before = row.get("mastery_before") if isinstance(row.get("mastery_before"), dict) else {}
     metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
@@ -1604,7 +1773,7 @@ def _response_for_session(session: Any, row: dict[str, Any]) -> StudentSmartAsse
     return StudentSmartAssessmentResponse(
         status="in_progress",
         session_id=str(row["id"]),
-        assessment_mode=_assessment_mode_from_value(row.get("assessment_mode")),  # type: ignore[arg-type]
+        assessment_mode=_assessment_mode_from_value(row.get("assessment_mode")),
         strategy=strategy,
         composition=_composition_from_row(row, strategy),
         experiments=_experiments_for_session(
@@ -1618,15 +1787,51 @@ def _response_for_session(session: Any, row: dict[str, Any]) -> StudentSmartAsse
     )
 
 
-def _custom_strategy_snapshot(settings: CustomAssessmentSettings, question_count: int) -> SmartAssessmentSettings:
+def _assessment_content_snapshot(
+    session: Any,
+    *,
+    experiment_ids: list[str],
+    questions: list[PosttestQuestionCandidate],
+) -> dict[str, Any]:
+    experiments = _load_experiment_summaries(session, experiment_ids)
+    if {experiment.id for experiment in experiments} != set(experiment_ids):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Assessment experiment catalog has changed")
+    return {
+        "experiments": [experiment.model_dump() for experiment in experiments],
+        "question_snapshots": _question_snapshots(questions),
+    }
+
+
+def _custom_strategy_snapshot(
+    settings: CustomAssessmentSettings,
+    question_count: int,
+    *,
+    questions_per_point: int,
+) -> SmartAssessmentSettings:
     return SmartAssessmentSettings(
         enabled=settings.enabled,
-        question_count=question_count,
+        question_count=max(1, min(50, question_count)),
         untested_ratio_percent=0,
         weak_tendency_percent=0,
-        max_questions_per_experiment=settings.max_questions_per_experiment,
+        max_questions_per_experiment=questions_per_point,
         weak_curve=2.0,
         weak_max_bonus=9.0,
+    )
+
+
+def _assessment_status_response(
+    session: Any,
+    *,
+    student_id: str,
+    open_session: dict[str, Any] | None,
+) -> StudentAssessmentStatusResponse:
+    has_completed_smart_baseline = _student_has_completed_smart_baseline(session, student_id)
+    return StudentAssessmentStatusResponse(
+        has_completed_smart_baseline=has_completed_smart_baseline,
+        needs_smart_baseline=not has_completed_smart_baseline,
+        has_open_assessment=bool(open_session),
+        open_session_id=str(open_session["id"]) if open_session else None,
+        open_assessment_mode=_assessment_mode_from_value(open_session.get("assessment_mode")) if open_session else None,
     )
 
 
@@ -1636,100 +1841,7 @@ def get_student_assessment_status(user: Any) -> StudentAssessmentStatusResponse:
         context = _load_student_context(session, user)
         _ensure_student_row(session, context)
         open_session = _load_open_session(session, context.student_id)
-        completed_smart_baseline = bool(
-            session.execute(
-                text(
-                    """
-                    SELECT 1
-                    FROM student_smart_assessment_sessions
-                    WHERE student_id = :student_id
-                      AND status = 'completed'
-                      AND assessment_mode = 'smart'
-                    LIMIT 1
-                    """
-                ),
-                {"student_id": context.student_id},
-            ).scalar_one_or_none()
-        )
-        baseline_prompt_dismissed = bool(
-            session.execute(
-                text(
-                    """
-                    SELECT 1
-                    FROM student_events
-                    WHERE student_id = :student_id
-                      AND event_type = :event_type
-                    LIMIT 1
-                    """
-                ),
-                {"student_id": context.student_id, "event_type": SMART_BASELINE_PROMPT_DISMISSED_EVENT},
-            ).scalar_one_or_none()
-        )
-        return StudentAssessmentStatusResponse(
-            has_completed_smart_baseline=completed_smart_baseline,
-            has_open_assessment=bool(open_session),
-            open_session_id=str(open_session["id"]) if open_session else None,
-            open_assessment_mode=_assessment_mode_from_value(open_session.get("assessment_mode")) if open_session else None,  # type: ignore[arg-type]
-            smart_baseline_prompt_dismissed=baseline_prompt_dismissed,
-        )
-
-
-def dismiss_student_smart_baseline_prompt(user: Any) -> StudentAssessmentStatusResponse:
-    with db_session() as session:
-        _ensure_tables(session)
-        context = _load_student_context(session, user)
-        _ensure_student_row(session, context)
-        already_dismissed = bool(
-            session.execute(
-                text(
-                    """
-                    SELECT 1
-                    FROM student_events
-                    WHERE student_id = :student_id
-                      AND event_type = :event_type
-                    LIMIT 1
-                    """
-                ),
-                {"student_id": context.student_id, "event_type": SMART_BASELINE_PROMPT_DISMISSED_EVENT},
-            ).scalar_one_or_none()
-        )
-        if not already_dismissed:
-            session.execute(
-                text(
-                    """
-                    INSERT INTO student_events (student_id, event_type, difficulty, metadata, created_at)
-                    VALUES (:student_id, :event_type, 'basic', CAST(:metadata AS jsonb), now())
-                    """
-                ),
-                {
-                    "student_id": context.student_id,
-                    "event_type": SMART_BASELINE_PROMPT_DISMISSED_EVENT,
-                    "metadata": _json({"source": "student_h5_assessment_prompt"}),
-                },
-            )
-        open_session = _load_open_session(session, context.student_id)
-        completed_smart_baseline = bool(
-            session.execute(
-                text(
-                    """
-                    SELECT 1
-                    FROM student_smart_assessment_sessions
-                    WHERE student_id = :student_id
-                      AND status = 'completed'
-                      AND assessment_mode = 'smart'
-                    LIMIT 1
-                    """
-                ),
-                {"student_id": context.student_id},
-            ).scalar_one_or_none()
-        )
-        return StudentAssessmentStatusResponse(
-            has_completed_smart_baseline=completed_smart_baseline,
-            has_open_assessment=bool(open_session),
-            open_session_id=str(open_session["id"]) if open_session else None,
-            open_assessment_mode=_assessment_mode_from_value(open_session.get("assessment_mode")) if open_session else None,  # type: ignore[arg-type]
-            smart_baseline_prompt_dismissed=True,
-        )
+        return _assessment_status_response(session, student_id=context.student_id, open_session=open_session)
 
 
 def start_student_smart_assessment(user: Any) -> StudentSmartAssessmentResponse:
@@ -1737,13 +1849,16 @@ def start_student_smart_assessment(user: Any) -> StudentSmartAssessmentResponse:
         _ensure_tables(session)
         context = _load_student_context(session, user)
         _ensure_student_row(session, context)
-        strategy, _inherited, _has_override = _effective_strategy(session, context.class_id)
-        if not strategy.enabled:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Smart assessment is disabled")
-
+        _lock_student_assessment_owner(session, context.student_id)
         existing = _load_open_session(session, context.student_id)
         if existing:
+            if _assessment_mode_from_value(existing.get("assessment_mode")) != "smart":
+                _require_completed_smart_baseline(session, context.student_id)
             return _response_for_session(session, existing)
+
+        strategy, _inherited, _has_override = _effective_strategy(session, context.class_id)
+        if not strategy.enabled and _student_has_completed_smart_baseline(session, context.student_id):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Smart assessment is disabled")
 
         candidates = _load_all_published_candidates(session)
         if not candidates:
@@ -1772,6 +1887,7 @@ def start_student_smart_assessment(user: Any) -> StudentSmartAssessmentResponse:
         canonical_point_ids = _unique([point_id for question in selected for point_id in _question_assessment_canonical_ids(question)])
         mastery_before = _point_mastery_snapshot(session, student_id=context.student_id, point_ids=point_node_ids)
         metadata = {
+            **_assessment_content_snapshot(session, experiment_ids=experiment_ids, questions=selected),
             "experiment_sources": experiment_meta,
             "point_sources": point_meta,
             "candidate_experiment_count": len(candidate_experiment_ids),
@@ -1846,7 +1962,7 @@ def get_student_custom_assessment_options(user: Any) -> StudentCustomAssessmentO
         candidates = _load_all_published_candidates(session) if settings.enabled else []
         return StudentCustomAssessmentOptionsResponse(
             settings=_custom_options_settings(settings),
-            experiments=_custom_options_from_candidates(session, candidates),
+            scope_tree=_custom_scope_tree_from_candidates(session, candidates),
         )
 
 
@@ -1854,53 +1970,51 @@ def start_student_custom_assessment(
     user: Any,
     payload: StudentCustomAssessmentStartRequest,
 ) -> StudentSmartAssessmentResponse:
-    requested_experiment_ids: list[str] = []
-    seen_requested: set[str] = set()
-    for experiment_id in payload.experiment_ids:
-        experiment_id = str(experiment_id).strip()
-        if experiment_id and experiment_id not in seen_requested:
-            requested_experiment_ids.append(experiment_id)
-            seen_requested.add(experiment_id)
-    if not requested_experiment_ids:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Select at least one experiment")
+    requested_scope_node_ids = _unique(payload.scope_node_ids)
+    questions_per_point = int(payload.questions_per_point)
+    if not requested_scope_node_ids:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Select at least one assessment scope")
 
     with db_session() as session:
         _ensure_tables(session)
         context = _load_student_context(session, user)
         _ensure_student_row(session, context)
+        _lock_student_assessment_owner(session, context.student_id)
+        existing = _load_open_session(session, context.student_id)
+        if existing:
+            if _assessment_mode_from_value(existing.get("assessment_mode")) != "smart":
+                _require_completed_smart_baseline(session, context.student_id)
+            return _response_for_session(session, existing)
+
+        _require_completed_smart_baseline(session, context.student_id)
         settings, _inherited, _has_override = _effective_custom_settings(session, context.class_id)
         if not settings.enabled:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Custom assessment is disabled")
 
-        existing = _load_open_session(session, context.student_id)
-        if existing:
-            return _response_for_session(session, existing)
-
-        options_settings = _custom_options_settings(settings)
-        if payload.question_count not in options_settings.question_count_options:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Question count is not allowed")
-
         candidates = _load_all_published_candidates(session)
-        options = _custom_options_from_candidates(session, candidates)
-        allowed_ids = {option.id for option in options}
-        invalid_ids = [experiment_id for experiment_id in requested_experiment_ids if experiment_id not in allowed_ids]
-        if invalid_ids:
+        if not candidates:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Custom assessment question bank is not configured")
+        scope_tree = _custom_scope_tree_from_candidates(session, candidates)
+        selected_point_ids, invalid_scope_ids = _point_ids_for_scope_nodes(scope_tree, requested_scope_node_ids)
+        if invalid_scope_ids:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"message": "Selected experiments are not available for custom assessment", "experiment_ids": invalid_ids},
+                detail={
+                    "message": "Selected scopes are not available for custom assessment",
+                    "scope_node_ids": invalid_scope_ids,
+                },
             )
-        if not candidates or not options:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Custom assessment question bank is not configured")
+        if not selected_point_ids:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected scope has no usable question-bearing points")
 
         selected, composition, experiment_meta, point_meta = _compose_custom_questions(
             candidates=candidates,
-            selected_experiment_ids=requested_experiment_ids,
-            settings=settings,
+            selected_point_ids=selected_point_ids,
             student_id=context.student_id,
-            requested_question_count=payload.question_count,
+            questions_per_point=questions_per_point,
         )
         if not selected:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Selected experiments do not have available questions")
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Selected scope does not have available questions")
 
         experiment_ids = []
         seen: set[str] = set()
@@ -1912,14 +2026,20 @@ def start_student_custom_assessment(
         point_node_ids = _unique([point_id for question in selected for point_id in _question_assessment_point_ids(question)])
         canonical_point_ids = _unique([point_id for question in selected for point_id in _question_assessment_canonical_ids(question)])
         mastery_before = _point_mastery_snapshot(session, student_id=context.student_id, point_ids=point_node_ids)
-        strategy = _custom_strategy_snapshot(settings, composition.target_question_count)
+        strategy = _custom_strategy_snapshot(
+            settings,
+            composition.target_question_count,
+            questions_per_point=questions_per_point,
+        )
         metadata = {
+            **_assessment_content_snapshot(session, experiment_ids=experiment_ids, questions=selected),
             "assessment_mode": "custom",
             "experiment_sources": experiment_meta,
             "point_sources": point_meta,
-            "candidate_experiment_count": len(options),
             "candidate_point_count": len(_all_candidate_point_ids(candidates)),
-            "requested_experiment_ids": requested_experiment_ids,
+            "requested_scope_node_ids": requested_scope_node_ids,
+            "requested_point_ids": selected_point_ids,
+            "questions_per_point": questions_per_point,
             "selected_experiment_count": len(experiment_ids),
             "custom_assessment_settings": _model_dump(settings),
         }
@@ -1977,7 +2097,9 @@ def start_student_custom_assessment(
                         "experiment_ids": experiment_ids,
                         "point_node_ids": point_node_ids,
                         "question_count": len(selected),
-                        "requested_question_count": payload.question_count,
+                        "requested_question_count": composition.requested_question_count,
+                        "requested_scope_node_ids": requested_scope_node_ids,
+                        "questions_per_point": questions_per_point,
                     }
                 ),
             },
@@ -1997,11 +2119,15 @@ def start_student_point_assessment(
         _ensure_tables(session)
         context = _load_student_context(session, user)
         _ensure_student_row(session, context)
+        _lock_student_assessment_owner(session, context.student_id)
 
         existing = _load_open_session(session, context.student_id)
         if existing:
+            if _assessment_mode_from_value(existing.get("assessment_mode")) != "smart":
+                _require_completed_smart_baseline(session, context.student_id)
             return _response_for_session(session, existing)
 
+        _require_completed_smart_baseline(session, context.student_id)
         candidates = _load_all_published_candidates(session)
         if not candidates:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Point assessment question bank is not configured")
@@ -2034,6 +2160,7 @@ def start_student_point_assessment(
             weak_max_bonus=9.0,
         )
         metadata = {
+            **_assessment_content_snapshot(session, experiment_ids=experiment_ids, questions=selected),
             "assessment_mode": "point",
             "experiment_sources": experiment_meta,
             "point_sources": point_meta,
@@ -2167,6 +2294,7 @@ def _insert_attempts(
                         "canonical_point_ids": _question_assessment_canonical_ids(question),
                         "related_chapter_ids": question.related_chapter_ids,
                         "related_knowledge_point_ids": question.related_knowledge_point_ids,
+                        "question_snapshot": _question_snapshot(question),
                     }
                 ),
             },
@@ -2205,13 +2333,21 @@ def _update_mastery_from_smart_assessment(session: Any, *, student_id: str, smar
     assessment_mode = _assessment_mode_from_value(mode_value)
     for row in attempt_rows:
         metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
-        row["point_node_ids"] = _as_list(metadata.get("point_node_ids")) or _as_list(row.get("primary_point_node_ids"))
-        row["source_placement_node_ids"] = (
-            _as_list(metadata.get("source_placement_node_ids"))
-            or _as_list(row.get("source_placement_node_ids"))
-            or _as_list(row.get("point_node_id"))
-        )
-        row["canonical_point_ids"] = _as_list(metadata.get("canonical_point_ids")) or _as_list(row.get("primary_canonical_point_ids"))
+        snapshot = _candidate_from_question_snapshot(metadata.get("question_snapshot"))
+        if snapshot is not None:
+            row["difficulty"] = snapshot.difficulty
+            row["related_knowledge_point_ids"] = snapshot.related_knowledge_point_ids
+            row["point_node_ids"] = _question_point_node_ids(snapshot)
+            row["source_placement_node_ids"] = _question_assessment_point_ids(snapshot)
+            row["canonical_point_ids"] = _question_assessment_canonical_ids(snapshot)
+        else:
+            row["point_node_ids"] = _as_list(metadata.get("point_node_ids")) or _as_list(row.get("primary_point_node_ids"))
+            row["source_placement_node_ids"] = (
+                _as_list(metadata.get("source_placement_node_ids"))
+                or _as_list(row.get("source_placement_node_ids"))
+                or _as_list(row.get("point_node_id"))
+            )
+            row["canonical_point_ids"] = _as_list(metadata.get("canonical_point_ids")) or _as_list(row.get("primary_canonical_point_ids"))
     update_point_mastery_from_attempt_rows(
         session,
         student_id=student_id,
@@ -2410,22 +2546,51 @@ def _build_report(
     )
 
 
+def _completed_submission_response(row: dict[str, Any]) -> StudentSmartAssessmentSubmitResponse | None:
+    if str(row.get("status") or "") != "completed":
+        return None
+    report_payload = row.get("report")
+    if not isinstance(report_payload, dict) or not report_payload:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Completed assessment report is not available",
+        )
+    try:
+        report = StudentSmartAssessmentReport(**report_payload)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Completed assessment report is invalid",
+        ) from exc
+    return StudentSmartAssessmentSubmitResponse(status="completed", report=report)
+
+
 def submit_student_smart_assessment(user: Any, payload: StudentSmartAssessmentSubmitRequest) -> StudentSmartAssessmentSubmitResponse:
     with db_session() as session:
         _ensure_tables(session)
         context = _load_student_context(session, user)
         _ensure_student_row(session, context)
-        current = _load_open_session(session, context.student_id)
-        if not current or str(current["id"]) != payload.session_id:
+        current = _load_assessment_session_for_submit(
+            session,
+            student_id=context.student_id,
+            session_id=payload.session_id,
+        )
+        if not current:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="No active assessment session")
+        completed_response = _completed_submission_response(current)
+        if completed_response is not None:
+            return completed_response
+        if str(current.get("status") or "") != "in_progress":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="No active assessment session")
         assessment_mode = _assessment_mode_from_value(current.get("assessment_mode"))
 
         question_ids = _session_question_ids(current)
         answers = _validate_submitted_answers(question_ids, payload)
-        questions_by_id = _load_questions_by_ids(session, question_ids)
-        if len(questions_by_id) != len(question_ids):
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Smart assessment question bank has changed")
-        ordered_questions = [questions_by_id[question_id] for question_id in question_ids]
+        ordered_questions = _load_locked_session_questions(
+            session,
+            current,
+            changed_detail="Smart assessment question bank has changed",
+        )
 
         session_id = str(current["id"])
         graded = _insert_attempts(
@@ -2504,11 +2669,14 @@ def submit_student_smart_assessment(user: Any, payload: StudentSmartAssessmentSu
                         completed_at = now(),
                         updated_at = now()
                     WHERE id = CAST(:id AS uuid)
+                      AND student_id = :student_id
+                      AND status = 'in_progress'
                     RETURNING *
                     """
                 ),
                 {
                     "id": session_id,
+                    "student_id": context.student_id,
                     "score": score,
                     "correct_count": correct_count,
                     "total_count": total_count,
@@ -2531,8 +2699,14 @@ def submit_student_smart_assessment(user: Any, payload: StudentSmartAssessmentSu
                 UPDATE student_smart_assessment_sessions
                 SET report = CAST(:report AS jsonb)
                 WHERE id = CAST(:id AS uuid)
+                  AND student_id = :student_id
+                  AND status = 'completed'
                 """
             ),
-            {"id": session_id, "report": json.dumps(_model_dump(report), ensure_ascii=False, default=str)},
+            {
+                "id": session_id,
+                "student_id": context.student_id,
+                "report": json.dumps(_model_dump(report), ensure_ascii=False, default=str),
+            },
         )
         return StudentSmartAssessmentSubmitResponse(status="completed", report=report)

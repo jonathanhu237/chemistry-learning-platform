@@ -1,6 +1,6 @@
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
-import { navigateToAiChat, navigateToAssessmentSession, navigateToFeedback, navigateToPoint } from "../../app/router/navigation";
+import { navigateToAiChat, navigateToAssessmentSession, navigateToPoint } from "../../app/router/navigation";
 import { storePosttestSessionNotice } from "../../app/router/assessmentSessionStore";
 import type { StudentRouteSearch } from "../../app/router/routeTypes";
 import { useDetailBack } from "../../app/shell/useDetailBack";
@@ -36,7 +36,6 @@ export function ExperimentPointPage() {
       finishError={posttestError}
       assistantEnabled={canUseAssistant}
       onOpenAssistant={(context) => navigateToAiChat(navigate, context, "point")}
-      onOpenFeedback={() => navigateToFeedback(navigate, "point")}
       onOpenRelatedPoint={(targetNodeId, pointTitle) =>
         navigateToPoint(navigate, targetNodeId, {
           from: "point",

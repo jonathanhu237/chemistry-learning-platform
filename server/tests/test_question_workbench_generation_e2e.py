@@ -334,6 +334,18 @@ def question_workbench_generation_e2e(monkeypatch: pytest.MonkeyPatch) -> Questi
         ),
     )
     monkeypatch.setattr(question_workbench_service, "effective_ai_settings", lambda settings: settings)
+    monkeypatch.setattr(question_workbench_service, "effective_textbook_rag_settings", lambda: {"enabled": True})
+    monkeypatch.setattr(
+        question_workbench_service,
+        "_textbook_rag_runtime_status",
+        lambda _settings, *, rag_enabled: {
+            "enabled": rag_enabled,
+            "status": "healthy",
+            "message": "E2E textbook RAG readiness stubbed.",
+            "models": {"embedding": "e2e-embedding", "rerank": "e2e-rerank"},
+            "diagnostics": {"index_exists": True},
+        },
+    )
     monkeypatch.setattr(question_workbench_service, "_try_openai_point_aware_suggestions", lambda **kwargs: [])
     monkeypatch.setattr(
         question_workbench_service,

@@ -28,7 +28,7 @@ Back up Postgres and `data/media` together. A database-only backup preserves met
 
 ## Upload Flow
 
-The admin web uses Uppy with tus support when `VITE_TUS_ENDPOINT` is configured. The browser can stream a SHA-256 precheck with `hash-wasm`; the backend remains authoritative and recomputes or verifies SHA-256 after the local upload handoff.
+The teacher console uses Uppy with tus support when `VITE_TUS_ENDPOINT` is configured. The browser can stream a SHA-256 precheck with `hash-wasm`; the backend remains authoritative and recomputes or verifies SHA-256 after the local upload handoff.
 
 Original video uploads are limited by `MAX_MEDIA_UPLOAD_MB` (local default: 8192 MB). The teacher frontend reads the effective policy from the backend and rejects files above that size before hashing or tus upload starts. The backend still enforces the same limit for direct uploads and tus finalization.
 
@@ -71,26 +71,26 @@ Default learning rendition:
 
 Videos above `VIDEO_LEARNING_TRANSCODE_THRESHOLD_MB` or outside the compatible profile are transcoded. Already compatible MP4s are remuxed for playback. Originals are retained.
 
-`VIDEO_TRANSCODE_ACCELERATION=auto` probes NVIDIA NVENC at worker runtime and uses the NVIDIA path when available. For H.264/HEVC inputs the worker uses CUVID/NVDEC decode, CUVID resize when scaling is needed, and `h264_nvenc` encode. The output is still browser-compatible H.264 Main / 8-bit `yuv420p`. If the probe fails, or if an auto-selected NVIDIA transcode fails during a job, the worker falls back to CPU `libx264`. Set `VIDEO_TRANSCODE_ACCELERATION=cpu` to force CPU-only behavior. On a CPU-only Docker host, also remove or override the `video-worker` `gpus: all` compose setting before starting the worker.
+`VIDEO_TRANSCODE_ACCELERATION=auto` probes NVIDIA NVENC at worker runtime and uses the NVIDIA path when available. For H.264/HEVC inputs the worker uses CUVID/NVDEC decode, CUVID resize when scaling is needed, and `h264_nvenc` encode. The output is still browser-compatible H.264 Main / 8-bit `yuv420p`. If the probe fails, or if an auto-selected NVIDIA transcode fails during a job, the worker falls back to CPU `libx264`. Set `VIDEO_TRANSCODE_ACCELERATION=cpu` to force CPU-only behavior. The default Compose file does not request a GPU, so it runs on CPU-only and ARM64 hosts. NVIDIA hosts opt in with `docker-compose.gpu.yml`.
 
 Verify local GPU video encoding support with:
 
 ```powershell
 docker run --rm --gpus all -e NVIDIA_DRIVER_CAPABILITIES=compute,utility,video nvidia/cuda:13.0.2-base-ubuntu24.04 nvidia-smi
-docker compose run --rm video-worker sh -lc "ffmpeg -hide_banner -f lavfi -i testsrc2=size=640x360:rate=30 -t 1 -c:v h264_nvenc -f null -"
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml run --rm video-worker sh -lc "ffmpeg -hide_banner -f lavfi -i testsrc2=size=640x360:rate=30 -t 1 -c:v h264_nvenc -f null -"
 ```
 
-If Docker build cannot reach GitHub for the FFmpeg archive, download the archive on the host and place it under `server/vendor/ffmpeg/`:
+The default build resolves the matching `amd64` or `arm64` GPL archive from BtbN's `latest` release and verifies the SHA-256 digest published in the GitHub release metadata. If Docker cannot reach GitHub, download the archive for the target architecture on the host and place it under `server/vendor/ffmpeg/`, for example:
 
 ```text
-server/vendor/ffmpeg/ffmpeg-N-125136-gb57ff00bcf-linux64-gpl.tar.xz
+server/vendor/ffmpeg/ffmpeg-master-latest-linuxarm64-gpl.tar.xz
 ```
 
-Then build normally. The Dockerfile copies that directory into the `ffmpeg` build stage, verifies `FFMPEG_SHA256`, and only falls back to `FFMPEG_URL` when no local `*.tar.xz` archive exists. If multiple archives are present, pass `--build-arg FFMPEG_LOCAL_ARCHIVE=<filename>`.
+Local archives and custom `FFMPEG_URL` values require an explicit `--build-arg FFMPEG_SHA256=<sha256>`; the build rejects unverified overrides and archives for the wrong CPU architecture. If multiple archives are present, also pass `--build-arg FFMPEG_LOCAL_ARCHIVE=<filename>`.
 
 ## Duplicate Detection Boundary
 
-The video library only tries to find true full-video duplicates. It does not try to find contained clips, partial overlaps, shared intros/outros, or generic "looks similar" relationships.
+The media-processing pipeline only tries to find true full-video duplicates. It does not try to find contained clips, partial overlaps, shared intros/outros, or generic "looks similar" relationships. This is a teacher media-management safeguard, not a separate student video-library product.
 
 Exact duplicates are handled first through SHA-256 plus file size. Perceptual duplicate detection is only a secondary path for re-encoded copies of the same full video.
 
@@ -150,7 +150,7 @@ Implementation review checklist:
 - No custom thumbnail extraction or transcoding logic outside FFmpeg/ffprobe calls.
 - No project-owned pHash/dHash/frame-voting/video-hash implementation.
 - Duplicate-detection commands must be replaceable through `VIDEO_DUPLICATE_DETECTION_COMMAND` and `VIDEO_DUPLICATE_DETECTION_COMPARE_COMMAND`.
-- Suspected duplicate candidates must remain advisory until a teacher/admin records a decision.
+- Suspected duplicate candidates must remain advisory until a teacher records a decision.
 
 ## Operations
 
@@ -174,7 +174,7 @@ Queue non-blocking backfill jobs for existing ready media:
 docker compose run --rm -e VIDEO_WORKER_BACKFILL=1 video-worker
 ```
 
-Retry a failed asset from the admin UI or call:
+Retry a failed asset from the teacher console or call:
 
 ```http
 POST /api/admin/media/assets/{asset_id}/retry-processing

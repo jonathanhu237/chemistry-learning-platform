@@ -63,7 +63,6 @@ CATALOG_LIVE_PATHS = [
     APP_ROOT / "api" / "admin" / "admin_catalog_tree.py",
     APP_ROOT / "api" / "student" / "student_catalog.py",
     APP_ROOT / "domains" / "catalog_tree",
-    APP_ROOT / "domains" / "video_library",
 ]
 CATALOG_FORBIDDEN_SNIPPETS = (
     "shortcut_target_node_id",

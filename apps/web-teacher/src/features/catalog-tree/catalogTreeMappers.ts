@@ -325,7 +325,7 @@ function fallbackStatusForNode(node: CatalogNodeCard): CatalogNodeStatusSummary 
       student_available: node.status === "published" && !hasStructureErrors,
     },
     async_consumption: {
-      search_index: node.index_state?.sync_status === "synced" ? "synced" : node.index_state?.sync_status || "idle",
+      search_index: "idle",
       ai_evidence: "idle",
     },
     conditions: [],
